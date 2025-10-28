@@ -1,0 +1,21 @@
+[project]
+name = "invoice-parser"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Paulescu", email = "plabartabajo@gmail.com" } 
+]
+requires-python = ">=3.12"
+dependencies = [
+    "ollama>=0.3.0",
+    "watchdog>=4.0.0",
+    "pandas>=2.0.0",
+    "click>=8.0.0",
+    "outlines>=1.2.8",
+    "loguru>=0.7.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

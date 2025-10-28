@@ -1,0 +1,5 @@
+processed_at,file_path,utility,amount,currency
+2025-10-28 22:36:13,inputs/water_australia.png,electricity,68.46,AUD
+2025-10-28 22:36:25,inputs/Sample-electric-Bill-2023.jpg,electricity,28.32,USD
+2025-10-28 22:36:33,inputs/castlewater1.png,electricity,150.0,USD
+2025-10-28 22:36:35,inputs/british_gas.png,electricity,81.31,GBP
