@@ -8,8 +8,3 @@ wheels/
 
 # Virtual environments
 .venv
-
-# Mac
-.DS_Store
-
-.ruff_cache
