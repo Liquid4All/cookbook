@@ -1,0 +1,94 @@
+seed: 23
+
+model_name: LiquidAI/LFM2-VL-450M
+max_seq_length: 2048
+
+dataset_name:  Paulescu/stanford_cars
+dataset_samples: 6000
+dataset_image_column: image
+dataset_label_colum: maker
+train_split_ratio: 0.9
+
+system_prompt: |
+  You excel at identifying car makers from pictures.
+
+user_prompt: |
+  What car maker do you see in this picture?
+  Pick one from the following list:
+
+  - AM
+  - Acura
+  - Aston
+  - Audi
+  - BMW
+  - Bentley
+  - Bugatti
+  - Buick
+  - Cadillac
+  - Chevrolet
+  - Chrysler
+  - Daewoo
+  - Dodge
+  - Eagle
+  - FIAT
+  - Ferrari
+  - Fisker
+  - Ford
+  - GMC
+  - Geo
+  - HUMMER
+  - Honda
+  - Hyundai
+  - Infiniti
+  - Isuzu
+  - Jaguar
+  - Jeep
+  - Lamborghini
+  - Land
+  - Lincoln
+  - MINI
+  - Maybach
+  - Mazda
+  - McLaren
+  - Mercedes-Benz
+  - Mitsubishi
+  - Nissan
+  - Plymouth
+  - Porsche
+  - Ram
+  - Rolls-Royce
+  - Scion
+  - Spyker
+  - Suzuki
+  - Tesla
+  - Toyota
+  - Volkswagen
+  - Volvo
+  - smart
+
+learning_rate: 5e-4
+num_train_epochs: 3
+batch_size: 1
+gradient_accumulation_steps: 16
+optim: adamw_8bit
+warmup_ratio: 0.1
+weight_decay: 0.01
+logging_steps: 10
+eval_steps: 100 # TODO: increase to al least 100
+
+use_peft: true
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_bias: none
+use_rslora: false
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+modal_app_name: cars-fine-tune

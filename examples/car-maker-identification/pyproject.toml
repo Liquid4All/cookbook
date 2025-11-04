@@ -1,0 +1,28 @@
+[project]
+name = "car-maker-identification"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Paulescu", email = "plabartabajo@gmail.com" } 
+]
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.1.1",
+    "modal>=1.1.4",
+    "outlines>=1.2.7",
+    "peft>=0.15.2",
+    "pillow>=11.3.0",
+    "pydantic-settings>=2.10.1",
+    "tqdm>=4.67.1",
+    "torchao>=0.4.0",
+    "transformers==4.57.1",
+    "trl>=0.18.2",
+    "wandb>=0.22.2",
+    "torchvision>=0.24.0",
+    "matplotlib>=3.10.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
