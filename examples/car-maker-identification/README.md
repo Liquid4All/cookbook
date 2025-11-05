@@ -118,7 +118,6 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
    uv run wandb login
    ```
    This will open a browser window where you can copy your API key and paste it in the terminal.
-
 </details>
 
 ### Install make
@@ -131,6 +130,15 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
    sudo apt-get install make
    ```
 </details>
+
+<br>
+Once you have installed these tools, you can git clone the repository and create the virtual environment with the following command:
+
+```sh
+git clone https://github.com/Liquid4All/cookbook.git
+cd cookbook/examples/car-maker-identification
+uv sync
+```
 
 ## Steps to fine-tune LFM2-VL models for car maker identification
 
@@ -179,7 +187,7 @@ The dataset contains:
 The dataset includes additional splits with various image corruptions (gaussian noise, motion blur, etc.) for robustness testing, making it ideal for evaluating model performance under different conditions. In this tutorial we will only use the train and test splits.
 
 
-## Step 2. Evaluating LFM2-VL models
+## Step 2. Baseline performance of LFM2-VL models
 
 Before embarking into any fine-tuning experiment, we need to establish a baseline performance for existing models. In this case, we will evaluate the peformance of
 
@@ -290,157 +298,143 @@ user_prompt: |
 ```
 </details>
 
-The only difference is the model name.
-
-You can run evaluation for all the models with the following commands:
+You can run the evaluation for the 3 models with the following commands:
 ```sh
 make evaluate config=eval_lfm_450M.yaml
 make evaluate config=eval_lfm_1.6B.yaml
 make evaluate config=eval_lfm_3B.yaml
 ```
 
-The evaluation script starts as remove job inside a Docker container on Modal, using the Docker image
+The evaluation logic is encapsulated in the `evaluate.py` script, inside the `evaluate` function. This function does not run locally on your machine, but on a remote GPU thanks to the Modal `@app.function` decorator, and the `gpu="L40S"` argument.
 
+```python
+@app.function(
+    image=image,
+    gpu="L40S",
+    volumes={
+        "/model_checkpoints": volume,
+    },
+    secrets=get_secrets(),
+    timeout=1 * 60 * 60,
+    retries=get_retries(max_retries=1),
+    max_inputs=1,  # Ensure we get a fresh container on retry
+)
+def evaluate(
+    config: EvaluationConfig,
+) -> EvalReport:
+   """
+   """
+   # ...
+```
 
-
-The results are:
+The evaluationresults are the following:
 
 | Model | Accuracy |
 |-------|----------|
 | LFM2-VL-450M | 60% |
 | LFM2-VL-1.6B | 72% |
-| LFM2-VL-3B | 80% |
+| LFM2-VL-3B | 81% |
 
+Apart from the overall accuracy, it is highly recommended to inspect the misclassified images to understand the model's behavior.
 
-Besides the overall accuracy,
-
-
-![](./media/train_loss.png)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## Step 1. Establish baseline accuracy with different models
-
-Let's start by cloning the repository:
-
+You can do this by running the following command:
 ```sh
-git clone https://github.com/Liquid4All/cookbook.git
-cd cookbook/examples/car-maker-identification
+make report
 ```
 
+This will open a Jupyter notebook that you can run to see:
 
+- sample by sample comparison of the ground truth and predicted labels.
+- confusion matrix of the predicted vs actual car makers.
 
+For example, the confusion matrix for the LFM2-VL-3B model is this:
 
+![](./media/confusion_matrix_lfm2_3b.png)
 
+> [!NOTE]
+> **Observations:**
+> - The confusion matrix is mostly diagonal, meaning the model is good at identifying the correct car maker for most images.
+> - Ford and Chevrolet are the most represented car makers in the eval set (7 samples each). However, while for Chevrolet the model is able to identify it correctly in most cases, for Ford it is not.
 
-## Need help?
+If you are happy with the results, you don't need to fine-tune the model further. Otherwise, you need to fine-tune the model to improve its performance.
 
-Join the [Liquid AI Discord Community](https://discord.gg/DFU3WQeaYD) and ask.
-[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+## Step 3. Fine-tune LFM2-VL models
 
+To fine-tune the model, we will use the LoRA technique. LoRA is a parameter-efficient fine-tuning technique that allows us to fine-tune the model by adding and tuning a small number of parameters.
 
+![](./media/lora.webp)
 
-
-
-
-## Step 1. Build a model-agnostic evaluation script
-
-
-## Step 2. Generate baselines
-
-```yaml
-system_prompt: |
-  You excel at identifying car makers from pictures.
-
-user_prompt: |
-  What car maker do you see in this picture?
-  Pick one from the following list:
-
-  - AM
-  - Acura
-  - Aston
-  - Audi
-  - BMW
-  - Bentley
-  - Bugatti
-  - Buick
-  - Cadillac
-  - Chevrolet
-  - Chrysler
-  - Daewoo
-  - Dodge
-  - Eagle
-  - FIAT
-  - Ferrari
-  - Fisker
-  - Ford
-  - GMC
-  - Geo
-  - HUMMER
-  - Honda
-  - Hyundai
-  - Infiniti
-  - Isuzu
-  - Jaguar
-  - Jeep
-  - Lamborghini
-  - Land
-  - Lincoln
-  - MINI
-  - Maybach
-  - Mazda
-  - McLaren
-  - Mercedes-Benz
-  - Mitsubishi
-  - Nissan
-  - Plymouth
-  - Porsche
-  - Ram
-  - Rolls-Royce
-  - Scion
-  - Spyker
-  - Suzuki
-  - Tesla
-  - Toyota
-  - Volkswagen
-  - Volvo
-  - smart
-
-```
-
-```sh
-make evaluate config=eval_lfm_450M.yaml
-make evaluate config=eval_lfm_1.6B.yaml
-make evaluate config=eval_lfm_3B.yaml
-```
-
-The results are:
-
-| Model | Accuracy |
-|-------|----------|
-| LFM2-VL-450M | 60% |
-| LFM2-VL-1.6B | 72% |
-| LFM2-VL-3B | 80% |
-
-### Step 3.
-
+We will fine-tune the 3 models with the following commands:
 ```sh
 make fine-tune config=finetune_lfm_450M.yaml
 make fine-tune config=finetune_lfm_1.6B.yaml
 make fine-tune config=finetune_lfm_3B.yaml
 ```
 
+This will fine-tune the models for 3 epochs and save the checkpoints in a remote Modal volume. You can monitor the training progress with Weights & Biases.
 
+The train loss curves for the 3 models stabilize around very different loss values, where
+
+- the LFM2-VL-3B model has the lowest loss, and
+- the LFM2-VL-450M model has the highest loss.
+
+![](./media/train_loss.png)
+
+At this stage we know that for the same training dataset, the LFM2-VL-3B model is able to fit the data better than the other two models.
+
+Apart from this, the train loss curves do not tell us much about the actual model peformance. Language Models are highly parametric neural networks, that can fit **anything** in the training dataset. This **anything** includes both actual patterns in the data, and noise, that does not generalize to the test set.
+
+So, to get a better understanding of the model performance, we need to evaluate the model on a held-out dataset. This is what the evaluation loss curve tells us.
+
+![](./media/eval_loss.png)
+
+Again LFM2-VL-3B is able to fit the data better than the other two models.
+When you look at its evaluation loss curve, you can see that it is stricly decreasing, meaning the model is learning epoch by epoch and still has not gotten to the point of overfitting.
+
+The following table shows the evaluation loss at different checkpoints during fine-tuning:
+
+| Checkpoint | Train Loss | Eval Loss |
+|------------|------------|-----------|
+| 100        | 5.82       | 5.46      |
+| 200        | 0.16       | 0.20      |
+| 300        | 0.07       | 0.10      |
+| 500        | 0.03       | 0.03      |
+| 1000        | 0.008       | 0.005      |
+
+> [!TIP]
+> **What is overfitting?**
+>
+> Overfitting is when a model learns the noise in the training data, and does not generalize to the test set. In other words, the training loss is decreasing, but the evaluation loss is increasing.
+
+At this point, we can conclude that LFM2-VL-3B is the most promising model for our use case.
+
+However, we still need to check its actual performance on the test set.
+
+So, let's go back to the evaluation step.
+
+## Step 4. Evaluate the fine-tuned model
+
+To evaluate the fine-tuned model, we will use the `evaluate.py` script again, but this time we will use the last model checkpoint.
+
+```sh
+make evaluate config=eval_lfm_3B_checkpoint_1000.yaml
+```
+
+### Results
+
+| Checkpoint | Accuracy |
+|------------|----------|
+| Base Model (LFM2-VL-3B) | 81% |
+| checkpoint-1000 | 82% |
+
+The confusion matrix for the fine-tuned model is the following:
+
+![](./media/confusion_matrix_lfm2_3b_checkpoint_1000.png)
+
+## What's next?
+
+There are 2 things we should do next:
+
+- Train the model for more epochs to see if we can improve the performance further. The latest checkpoint at 1000 steps is not overfitting, so why not?
+
+- Inspect the dataset for wrong labels! We have seen that the model is not able to identify Ford correctly. Let's inspect the dataset to see if there are any wrong labels.

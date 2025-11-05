@@ -1,7 +1,7 @@
 seed: 23
 
 # Model parameters
-model: LiquidAI/LFM2-VL-450M
+model: /model_checkpoints/LFM2-VL-3B-Paulescu--stanford_cars-20251103-132002/checkpoint-500
 structured_generation: true
 
 # Dataset parameters

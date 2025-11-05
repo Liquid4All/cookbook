@@ -20,12 +20,12 @@ from .modal_infra import (
     get_secrets,
     get_volume,
 )
-from .report import EvalReport  #, save_predictions_to_disk
+from .report import EvalReport  # , save_predictions_to_disk
 from .output_types import ModelOutputType, get_model_output_schema
 
 app = get_modal_app("car-maker-identification")
 image = get_docker_image()
-volume = get_volume("car-maker-identification")
+volume = get_volume("cats-vs-dogs-fine-tune")
 
 
 @app.function(
@@ -43,7 +43,7 @@ volume = get_volume("car-maker-identification")
 )
 def evaluate(
     config: EvaluationConfig,
- ) -> EvalReport:
+) -> EvalReport:
     """
     Runs a model evaluation on a given dataset using Modal serverless GPU
 
@@ -59,7 +59,7 @@ def evaluate(
         dataset_name=config.dataset,
         splits=[config.split],
         n_samples=config.n_samples,
-        seed=config.seed
+        seed=config.seed,
     )
 
     model, processor = load_model_and_processor(model_id=config.model)
@@ -70,10 +70,9 @@ def evaluate(
     # Naive evaluation loop without batching
     accurate_predictions: int = 0
     for sample in tqdm(dataset):
-
         # Extracts sample image and normalized label
         image = sample[config.image_column]
-        
+
         if config.label_mapping is not None:
             label = config.label_mapping[sample[config.label_column]]
         else:
@@ -95,7 +94,6 @@ def evaluate(
         ]
 
         if config.structured_generation:
-
             # Using JSON structured output
             model_output: ModelOutputType | None = get_structured_model_output(
                 model,
@@ -103,7 +101,7 @@ def evaluate(
                 config.system_prompt,
                 config.user_prompt,
                 image,
-                output_schema=get_model_output_schema(config.dataset)
+                output_schema=get_model_output_schema(config.dataset),
             )
 
             if model_output is None:
@@ -116,8 +114,9 @@ def evaluate(
             # Using raw model output without structured generation
             pred_class: str = get_model_output(model, processor, conversation)
 
-        print(f"Predicted class: {pred_class}")
-        print(f"Ground truth: {label}")
+        # print(f"Predicted class: {pred_class}")
+        # print(f"Ground truth: {label}")
+        # print("--------------------------------")
 
         # Compare predicton vs ground truth.
         accurate_predictions += 1 if pred_class == label else 0
@@ -125,13 +124,12 @@ def evaluate(
         # Add record to evaluation report
         eval_report.add_record(image, label, pred_class)
 
-        print("--------------------------------")
-
     print(f"Accuracy: {eval_report.get_accuracy():.2f}")
 
     print("✅ Evaluation completed successfully")
 
     return eval_report
+
 
 @app.local_entrypoint()
 def main(

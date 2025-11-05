@@ -9,6 +9,7 @@ def get_path_to_configs() -> str:
 
     return path
 
+
 def get_path_to_evals() -> str:
     path = str(Path(__file__).parent.parent.parent / "evals")
 
@@ -16,6 +17,7 @@ def get_path_to_evals() -> str:
     Path(path).mkdir(parents=True, exist_ok=True)
 
     return path
+
 
 def get_path_model_checkpoints_in_modal_volume(
     experiment_name: str,
@@ -29,6 +31,7 @@ def get_path_model_checkpoints_in_modal_volume(
         path.mkdir(parents=True, exist_ok=True)
 
     return str(path)
+
 
 def get_path_model_checkpoints() -> str:
     """Returns path to the local model checkpoints."""

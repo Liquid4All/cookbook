@@ -1,4 +1,5 @@
 """ """
+
 from typing import Any, Optional
 
 from datetime import datetime
@@ -19,7 +20,7 @@ class FineTuningConfig(BaseSettings):
     # Model configuration
     model_name: str = "LiquidAI/LFM2-VL-450M"  # or LiquidAI/LFM2-VL-1.6B
     max_seq_length: int = 2048
-    checkpoint_path: Optional[str] = None # useful to resume training from a checkpoint
+    checkpoint_path: Optional[str] = None  # useful to resume training from a checkpoint
 
     # Dataset configuration
     dataset_name: str
@@ -94,9 +95,12 @@ class FineTuningConfig(BaseSettings):
         if self.wandb_experiment_name is None:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
             model_short = self.model_name.split("/")[-1]
-            self.wandb_experiment_name = f"{model_short}-{self.dataset_name}-{timestamp}"
+            self.wandb_experiment_name = (
+                f"{model_short}-{self.dataset_name}-{timestamp}"
+            )
 
         return self
+
 
 class EvaluationConfig(BaseSettings):
     seed: int = 23

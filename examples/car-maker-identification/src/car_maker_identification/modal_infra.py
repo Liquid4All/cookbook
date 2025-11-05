@@ -50,6 +50,7 @@ def get_retries(max_retries: int) -> modal.Retries:
     """
     return modal.Retries(initial_delay=0.0, max_retries=max_retries)
 
+
 def get_secrets() -> list[modal.Secret]:
     """
     Returns the Weights & Biases secret.

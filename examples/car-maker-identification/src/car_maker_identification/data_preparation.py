@@ -1,7 +1,6 @@
 from typing import Any
 
 from datasets import Dataset
-from .output_types import CatsVsDogsClassificationOutputType
 
 
 def split_dataset(
@@ -15,13 +14,14 @@ def split_dataset(
     split = dataset.train_test_split(test_size=test_size, seed=seed)
     return split["train"], split["test"]
 
+
 def format_dataset_as_conversation(
     dataset: Dataset,
     system_prompt: str,
     user_prompt: str,
     image_column: str,
     label_column: str,
-    label_mapping: dict[Any, str]
+    label_mapping: dict[Any, str],
 ) -> Dataset:
     """Formats a dataset into a conversation format suitable for SFT training."""
 
@@ -32,7 +32,7 @@ def format_dataset_as_conversation(
             label_json = sample[label_column]
         else:
             label_json = label_mapping[sample[label_column]]
-        
+
         # print(f'Image type: {type(sample[image_column]).__name__}')
 
         return [

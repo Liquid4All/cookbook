@@ -1,9 +1,11 @@
-
 import os
+import random
+import numpy as np
 import datasets
 from datasets import concatenate_datasets, Dataset
 from transformers import AutoModelForImageTextToText, AutoProcessor
 from huggingface_hub import login
+import torch
 
 
 def load_dataset(
@@ -31,7 +33,14 @@ def load_dataset(
     # dataset = datasets.load_dataset(dataset_name, split=split, num_proc=1)
 
     # Shuffle the dataset
+    print(f"Shuffling dataset with seed {seed}...")
     dataset = dataset.shuffle(seed=seed)
+    # Shuffle the dataset with generator for reproducibility
+    # if seed is not None:
+    #     generator = torch.Generator().manual_seed(seed)
+    #     dataset = dataset.shuffle(seed=seed, generator=generator)
+    # else:
+    #     dataset = dataset.shuffle()
 
     # Select a subset of the dataset
     if n_samples is not None:
@@ -46,25 +55,25 @@ def load_dataset(
 def fix_model_type_in_config_json(model_id: str):
     """Fix config.json by replacing 'lfm2-vl' model_type with 'lfm2_vl'."""
     import json
-    import os
     from pathlib import Path
 
     config_path = Path(model_id) / "config.json"
-    
+
     # Check if model_id is a local path
-    with open(config_path, 'r') as f:
+    with open(config_path, "r") as f:
         config = json.load(f)
-    
+
     # Fix the model_type if needed
     if config.get("model_type") == "lfm2-vl":
         print(f"Fixing config.json for model {model_id}...")
         config["model_type"] = "lfm2_vl"
-        
+
         # Write back the fixed config
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
 
-        print('config.json fixed successfully!')
+        print("config.json fixed successfully!")
+
 
 def load_model_and_processor(
     model_id: str,
@@ -79,7 +88,7 @@ def load_model_and_processor(
         login(token=hf_token)
     else:
         print("⚠️ No HF_TOKEN found in environment variables")
-    
+
     # TODO: hack hack hack
     try:
         fix_model_type_in_config_json(model_id)

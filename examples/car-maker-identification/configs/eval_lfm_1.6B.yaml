@@ -6,7 +6,7 @@ structured_generation: true
 
 # Dataset parameters
 dataset: Paulescu/stanford_cars
-n_samples: 50
+n_samples: 100
 split: test
 
 system_prompt: |

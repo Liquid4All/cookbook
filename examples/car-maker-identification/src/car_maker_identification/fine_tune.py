@@ -21,6 +21,7 @@ app = get_modal_app("car-maker-identification")
 image = get_docker_image()
 volume = get_volume("car-maker-identification")
 
+
 def create_collate_fn(processor):
     """Create a collate function that prepares batch inputs for the processor."""
 
@@ -57,16 +58,18 @@ def fine_tune(
 
     # Initialize wandb if enabled
     if config.use_wandb:
-        print(f"Initializing WandB experiment {config.wandb_experiment_name or 'fine-tune-experiment'}")
+        print(
+            f"Initializing WandB experiment {config.wandb_experiment_name or 'fine-tune-experiment'}"
+        )
         wandb.init(
             project=config.wandb_project_name,
             name=config.wandb_experiment_name,
-            config=config.__dict__
+            config=config.__dict__,
         )
     else:
         os.environ["WANDB_DISABLED"] = "true"
 
-    print(f'Loading the model {config.model_name} and processor...')
+    print(f"Loading the model {config.model_name} and processor...")
     model, processor = load_model_and_processor(model_id=config.model_name)
 
     print(f"Loading dataset {config.dataset_name}")
@@ -74,13 +77,14 @@ def fine_tune(
         dataset_name=config.dataset_name,
         splits=config.dataset_splits,
         n_samples=config.dataset_samples,
-        seed=config.seed
+        seed=config.seed,
     )
 
-    print('Splitting the dataset into train and eval sets...')
+    print("Splitting the dataset into train and eval sets...")
     train_dataset, eval_dataset = split_dataset(
-        train_ds, test_size=(1 - config.train_split_ratio), seed=config.seed)
-    
+        train_ds, test_size=(1 - config.train_split_ratio), seed=config.seed
+    )
+
     print("Formatting the datasets into a conversation format...")
     train_dataset = format_dataset_as_conversation(
         train_dataset,
@@ -102,8 +106,8 @@ def fine_tune(
     print("✅ SFT Dataset formatted:")
     print(f"📚 Train samples: {len(train_dataset)}")
     print(f"🧪 Eval samples: {len(eval_dataset)}")
-    print('Train sample: ', train_dataset[0])
-    print('Eval sample: ', eval_dataset[0])
+    print("Train sample: ", train_dataset[0])
+    print("Eval sample: ", eval_dataset[0])
 
     if config.use_peft:
         from peft import LoraConfig, get_peft_model
@@ -122,7 +126,9 @@ def fine_tune(
 
     collate_fn = create_collate_fn(processor)
 
-    checkpoints_dir = get_path_model_checkpoints_in_modal_volume(config.wandb_experiment_name)
+    checkpoints_dir = get_path_model_checkpoints_in_modal_volume(
+        config.wandb_experiment_name
+    )
     print(f"Checkpoints will be saved to: {checkpoints_dir}")
 
     # Optional: model = get_peft_model(model, peft_config)
@@ -138,17 +144,17 @@ def fine_tune(
         logging_steps=config.logging_steps,
         optim=config.optim,
         gradient_checkpointing=True,
-        max_length=512, # TODO: use config.max_seq_length ?
+        max_length=512,  # TODO: use config.max_seq_length ?
         dataset_kwargs={"skip_prepare_dataset": True},
         report_to="wandb" if config.use_wandb else None,
         # Add these for step-based evaluation:
-        eval_strategy="steps",           # Evaluate every N steps
-        eval_steps=config.eval_steps,                 # Evaluate every 1000 steps
+        eval_strategy="steps",  # Evaluate every N steps
+        eval_steps=config.eval_steps,  # Evaluate every 1000 steps
         per_device_eval_batch_size=config.batch_size,  # Eval batch size
-        save_strategy="steps",           # Save checkpoints every N steps
-        save_steps=config.eval_steps,                 # Save every 1000 steps
-        load_best_model_at_end=True,     # Load best model after training
-        metric_for_best_model="eval_loss", # Metric to determine best model
+        save_strategy="steps",  # Save checkpoints every N steps
+        save_steps=config.eval_steps,  # Save every 1000 steps
+        load_best_model_at_end=True,  # Load best model after training
+        metric_for_best_model="eval_loss",  # Metric to determine best model
     )
 
     # Create callbacks
@@ -171,12 +177,17 @@ def fine_tune(
 
     print("\n🚀 Starting SFT training...")
     from pathlib import Path
+
     if config.checkpoint_path is None:
         print("No checkpoint path provided, starting training from scratch.")
         trainer.train()
     else:
         print(f"Resuming training from checkpoint: {config.checkpoint_path}")
-        trainer.train(resume_from_checkpoint=str(Path("/model_checkpoints") / config.checkpoint_path))
+        trainer.train(
+            resume_from_checkpoint=str(
+                Path("/model_checkpoints") / config.checkpoint_path
+            )
+        )
 
     # print("Saving merged model")
     # if hasattr(model, 'peft_config'):
@@ -186,11 +197,9 @@ def fine_tune(
     # processor.save_pretrained(checkpoints_dir / "final")
     # print("💾 Model saved to: {checkpoints_dir / 'final'}")
 
-
     # Finish wandb run if enabled
     if config.use_wandb:
         wandb.finish()
-
 
 
 @app.local_entrypoint()
@@ -210,4 +219,3 @@ def main(config_file_name: str):
     except Exception as e:
         print(f"❌ Fine-tuning job failed: {e}")
         raise e
-
