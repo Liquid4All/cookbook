@@ -2,7 +2,7 @@ seed: 23
 
 # Model parameters
 model: LiquidAI/LFM2-VL-450M
-structured_generation: true
+structured_generation: false
 
 # Dataset parameters
 dataset: Paulescu/stanford_cars

@@ -29,6 +29,8 @@ def get_docker_image() -> modal.Image:
             "wandb>=0.22.2",
             "torchvision==0.23.0",
             "bitsandbytes",
+            "seaborn",
+            "scikit-learn",
         )
         # .add_local_python_source(".")
         .env({"HF_HOME": "/model_cache"})

@@ -119,6 +119,9 @@ class EvaluationConfig(BaseSettings):
     label_column: str
     label_mapping: Optional[dict] = None
 
+    # Weights and Biases configuration
+    wandb_project_name: str = "car-maker-identification-evals"
+
     @classmethod
     def from_yaml(cls, file_name: str) -> "EvaluationConfig":
         """

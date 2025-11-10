@@ -8,7 +8,11 @@ Steps:
 4. Compute accuracy as a binary score: 1 if the model output matches the ground truth, 0 otherwise
 """
 
+import time
 from tqdm import tqdm
+import wandb
+import tempfile
+import matplotlib.pyplot as plt
 
 from .config import EvaluationConfig
 from .inference import get_model_output, get_structured_model_output
@@ -25,21 +29,21 @@ from .output_types import ModelOutputType, get_model_output_schema
 
 app = get_modal_app("car-maker-identification")
 image = get_docker_image()
-volume = get_volume("cats-vs-dogs-fine-tune")
+datasets_volume = get_volume("datasets")
+models_volume = get_volume("models")
 
 
 @app.function(
     image=image,
-    gpu="L40S",
-    # gpu="H100",
+    gpu="L40S", # Need more power? Use `gpu="H100"`
     volumes={
-        # "/datasets": volume,
-        "/model_checkpoints": volume,
+        "/datasets": datasets_volume,
+        "/models": models_volume,
     },
     secrets=get_secrets(),
     timeout=1 * 60 * 60,
     retries=get_retries(max_retries=1),
-    max_inputs=1,  # Ensure we get a fresh container on retry
+    max_inputs=1, # Ensure we get a fresh container on retry
 )
 def evaluate(
     config: EvaluationConfig,
@@ -53,16 +57,25 @@ def evaluate(
     Returns:
         EvalReport: The evaluation report
     """
+    start_time = time.time()
     print(f"Starting evaluation of {config.model} on {config.dataset}")
+
+    # Initialize wandb run
+    wandb.init(
+        project=config.wandb_project_name,
+        config=config.model_dump(),
+        tags=[config.model.split("/")[-1], config.dataset.split("/")[-1]],
+    )
 
     dataset = load_dataset(
         dataset_name=config.dataset,
         splits=[config.split],
         n_samples=config.n_samples,
         seed=config.seed,
+        cache_dir="/datasets",
     )
 
-    model, processor = load_model_and_processor(model_id=config.model)
+    model, processor = load_model_and_processor(model_id=config.model, cache_dir="/models")
 
     # Prepare evaluation report
     eval_report = EvalReport()
@@ -114,19 +127,37 @@ def evaluate(
             # Using raw model output without structured generation
             pred_class: str = get_model_output(model, processor, conversation)
 
-        # print(f"Predicted class: {pred_class}")
-        # print(f"Ground truth: {label}")
-        # print("--------------------------------")
-
         # Compare predicton vs ground truth.
         accurate_predictions += 1 if pred_class == label else 0
 
         # Add record to evaluation report
         eval_report.add_record(image, label, pred_class)
 
-    print(f"Accuracy: {eval_report.get_accuracy():.2f}")
+    accuracy = eval_report.get_accuracy()
+    print(f"Accuracy: {accuracy:.2f}")
 
+    # Log accuracy to wandb
+    wandb.log({"accuracy": accuracy})
+
+    # Generate and log confusion matrix
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
+        # Create confusion matrix plot
+        eval_report.print_confusion_matrix()
+        plt.savefig(tmp_file.name, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        # Log confusion matrix as image artifact
+        wandb.log({"confusion_matrix": wandb.Image(tmp_file.name)})
+
+    end_time = time.time()
+    total_time = end_time - start_time
+    wandb.log({"total_execution_time_seconds": total_time})
+    
+    print(f"⏱️ Total execution time: {total_time:.2f} seconds ({total_time/60:.1f} minutes)")
     print("✅ Evaluation completed successfully")
+
+    # Finish wandb run
+    wandb.finish()
 
     return eval_report
 

@@ -1,0 +1,70 @@
+seed: 23
+
+# Model parameters
+model: LiquidAI/LFM2-VL-1.6B
+structured_generation: false
+
+# Dataset parameters
+dataset: Paulescu/stanford_cars
+n_samples: 100
+split: test
+
+system_prompt: |
+  You excel at identifying car makers from pictures.
+
+user_prompt: |
+  What car maker do you see in this picture?
+  Pick one from the following list:
+
+  - AM
+  - Acura
+  - Aston
+  - Audi
+  - BMW
+  - Bentley
+  - Bugatti
+  - Buick
+  - Cadillac
+  - Chevrolet
+  - Chrysler
+  - Daewoo
+  - Dodge
+  - Eagle
+  - FIAT
+  - Ferrari
+  - Fisker
+  - Ford
+  - GMC
+  - Geo
+  - HUMMER
+  - Honda
+  - Hyundai
+  - Infiniti
+  - Isuzu
+  - Jaguar
+  - Jeep
+  - Lamborghini
+  - Land
+  - Lincoln
+  - MINI
+  - Maybach
+  - Mazda
+  - McLaren
+  - Mercedes-Benz
+  - Mitsubishi
+  - Nissan
+  - Plymouth
+  - Porsche
+  - Ram
+  - Rolls-Royce
+  - Scion
+  - Spyker
+  - Suzuki
+  - Tesla
+  - Toyota
+  - Volkswagen
+  - Volvo
+  - smart
+
+image_column: image
+label_column: maker
