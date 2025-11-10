@@ -19,7 +19,7 @@ from .paths import get_path_model_checkpoints_in_modal_volume
 
 app = get_modal_app("car-maker-identification")
 image = get_docker_image()
-volume = get_volume("car-maker-identification")
+volume = get_volume("models")
 
 
 def create_collate_fn(processor):
@@ -69,10 +69,8 @@ def fine_tune(
     else:
         os.environ["WANDB_DISABLED"] = "true"
 
-    print(f"Loading the model {config.model_name} and processor...")
     model, processor = load_model_and_processor(model_id=config.model_name)
 
-    print(f"Loading dataset {config.dataset_name}")
     train_ds: Dataset = load_dataset(
         dataset_name=config.dataset_name,
         splits=config.dataset_splits,

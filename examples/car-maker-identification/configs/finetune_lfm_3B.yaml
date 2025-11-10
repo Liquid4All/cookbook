@@ -67,7 +67,7 @@ user_prompt: |
   - smart
 
 learning_rate: 5e-4
-num_train_epochs: 15
+num_train_epochs: 3
 batch_size: 1
 gradient_accumulation_steps: 16
 optim: adamw_8bit

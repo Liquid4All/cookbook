@@ -5,16 +5,6 @@ from pydantic import BaseModel
 ModelOutputType = TypeVar("ModelOutputType", bound=BaseModel)
 
 
-class CatsVsDogsClassificationOutputType(BaseModel):
-    pred_class: Literal["cat", "dog"]
-
-    @classmethod
-    def from_pred_class(cls, pred_class: str) -> str:
-        """Create instance from pred_class and return as JSON string."""
-        instance = cls(pred_class=pred_class)
-        return instance.model_dump_json()
-
-
 class CarIdentificationOutputType(BaseModel):
     pred_class: Literal[
         "AM",

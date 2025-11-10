@@ -25,7 +25,8 @@ from .modal_infra import (
     get_volume,
 )
 from .report import EvalReport  # , save_predictions_to_disk
-from .output_types import ModelOutputType, get_model_output_schema
+from .output_types import CarIdentificationOutputType
+from .batching import create_batches
 
 app = get_modal_app("car-maker-identification")
 image = get_docker_image()
@@ -80,58 +81,58 @@ def evaluate(
     # Prepare evaluation report
     eval_report = EvalReport()
 
-    # Naive evaluation loop without batching
+    # Create batches
+    batches = create_batches(dataset, config)
+    print(f"Processing {len(dataset)} samples in {len(batches)} batches of size {config.batch_size}")
+    
+    # Process batches
     accurate_predictions: int = 0
-    for sample in tqdm(dataset):
-        # Extracts sample image and normalized label
-        image = sample[config.image_column]
-
-        if config.label_mapping is not None:
-            label = config.label_mapping[sample[config.label_column]]
-        else:
-            label = sample[config.label_column]
-
-        # create the conversation
-        conversation = [
-            {
-                "role": "system",
-                "content": [{"type": "text", "text": config.system_prompt}],
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "image": image},
-                    {"type": "text", "text": config.user_prompt},
-                ],
-            },
-        ]
-
+    for batch_images, batch_labels in tqdm(batches, desc="Processing batches"):
+        
         if config.structured_generation:
-            # Using JSON structured output
-            model_output: ModelOutputType | None = get_structured_model_output(
-                model,
-                processor,
-                config.system_prompt,
-                config.user_prompt,
-                image,
-                output_schema=get_model_output_schema(config.dataset),
-            )
-
-            if model_output is None:
-                continue
-
-            # Extract th predicted class from the structured output
-            pred_class = model_output.pred_class
-
+            # Use structured generation with batching
+            if len(batch_images) == 1:
+                # Single image case
+                model_outputs = get_structured_model_output(
+                    model, processor, config.system_prompt, config.user_prompt, batch_images[0]
+                )
+                model_outputs = [model_outputs] if model_outputs is not None else [None]
+            else:
+                # Batch case
+                model_outputs = get_structured_model_output(
+                    model, processor, config.system_prompt, config.user_prompt, batch_images
+                )
+            
+            # Process results
+            if model_outputs is not None:
+                for image, label, model_output in zip(batch_images, batch_labels, model_outputs):
+                    if model_output is not None:
+                        pred_class = model_output.pred_class
+                        accurate_predictions += 1 if pred_class == label else 0
+                        eval_report.add_record(image, label, pred_class)
+            else:
+                print(f"Skipping batch of {len(batch_images)} samples due to failed batch processing")
+        
         else:
-            # Using raw model output without structured generation
-            pred_class: str = get_model_output(model, processor, conversation)
-
-        # Compare predicton vs ground truth.
-        accurate_predictions += 1 if pred_class == label else 0
-
-        # Add record to evaluation report
-        eval_report.add_record(image, label, pred_class)
+            # Process individually for non-structured generation
+            for image, label in zip(batch_images, batch_labels):
+                conversation = [
+                    {
+                        "role": "system",
+                        "content": [{"type": "text", "text": config.system_prompt}],
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image", "image": image},
+                            {"type": "text", "text": config.user_prompt},
+                        ],
+                    },
+                ]
+                
+                pred_class: str = get_model_output(model, processor, conversation)
+                accurate_predictions += 1 if pred_class == label else 0
+                eval_report.add_record(image, label, pred_class)
 
     accuracy = eval_report.get_accuracy()
     print(f"Accuracy: {accuracy:.2f}")

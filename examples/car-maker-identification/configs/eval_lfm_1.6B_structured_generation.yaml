@@ -1,7 +1,7 @@
 seed: 23
 
 # Model parameters
-model: LiquidAI/LFM2-VL-3B
+model: LiquidAI/LFM2-VL-1.6B
 structured_generation: true
 
 # Dataset parameters

@@ -69,7 +69,7 @@ class FineTuningConfig(BaseSettings):
     # eval_sample_callback_enabled: bool = False
 
     # Weights and Biases configuration
-    wandb_project_name: str = "car-maker-identification"
+    wandb_project_name: str = "car-maker-identification-fine-tuning"
     wandb_experiment_name: str | None = None
     skip_eval: bool = False
     output_dir: str = "outputs"
@@ -118,6 +118,9 @@ class EvaluationConfig(BaseSettings):
     image_column: str
     label_column: str
     label_mapping: Optional[dict] = None
+
+    # Batch processing parameters
+    batch_size: int = 1
 
     # Weights and Biases configuration
     wandb_project_name: str = "car-maker-identification-evals"
