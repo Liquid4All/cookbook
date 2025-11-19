@@ -1,5 +1,7 @@
 # Audio-to-text transcription in real-time with LFM2-Audio-1.5B
 
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+
 ## What's inside?
 
 This example demonstrates how to use the LFM2-Audio-1.5B model with llama.cpp to transcribe audio files locally in real-time.
