@@ -34,14 +34,9 @@ def process_existing_files(directory: str, handler: InvoiceFileHandler):
     help="Directory to watch for invoice images",
 )
 @click.option(
-    "--extractor-model",
-    required=True,
-    help="LFM model name for data extraction (e.g., LFM2-1.2B-Extract)",
-)
-@click.option(
     "--image-model",
     required=True,
-    help="LFM vision model name for image processing (e.g., LFM2-VL-3B)",
+    help="LFM vision model name for image processing and data extraction (e.g., LFM2-VL-3B)",
 )
 @click.option(
     "--process-existing",
@@ -50,17 +45,16 @@ def process_existing_files(directory: str, handler: InvoiceFileHandler):
 )
 def main(
     dir: Path,
-    extractor_model: str,
     image_model: str,
     process_existing: bool,
 ):
     """Invoice extraction tool using Large Foundation Models.
 
     This tool watches a directory for new invoice images, processes them using
-    LFM models to extract bill type and amount, and saves the data to a CSV file.
+    an LFM vision model to extract bill type and amount, and saves the data to a CSV file.
     """
     # Initialize processor and handler
-    processor = InvoiceProcessor(extractor_model, image_model)
+    processor = InvoiceProcessor(image_model)
     handler = InvoiceFileHandler(processor, str(dir / 'bills.csv'))
 
     # Process existing files if requested
@@ -74,7 +68,6 @@ def main(
     logger.info("Starting invoice extraction tool...")
     logger.info(f"Watching directory: {dir}")
     logger.info(f"Image processing model: {image_model}")
-    logger.info(f"Extractor model: {extractor_model}")
 
     observer.start()
 
