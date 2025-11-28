@@ -54,6 +54,7 @@ class AudioRecorder:
         callback: Optional[Callable] = None,
         silence_duration: Optional[float] = None,
         silence_threshold: float = 0.01,
+        show_audio_bar: bool = False,
     ):
         """
         Start recording audio from the microphone.
@@ -62,12 +63,17 @@ class AudioRecorder:
             callback: Optional function to call with each audio chunk
             silence_duration: Stop recording after this many seconds of silence (None = manual stop)
             silence_threshold: Energy threshold below which audio is considered silent
+            show_audio_bar: Show a rich audio visualization bar (default: False)
         """
         if self.is_recording:
             print("Already recording!")
             return
 
-        self.callback = callback
+        # Set up callback - use rich audio bar if requested, otherwise use provided callback
+        if show_audio_bar:
+            self.callback = self._rich_audio_bar_callback
+        else:
+            self.callback = callback
         self.frames = []
         self.is_recording = True
         self.silence_duration = 0.0
@@ -120,6 +126,69 @@ class AudioRecorder:
         energy = np.sqrt(np.mean(normalized**2))
 
         return energy < self.silence_threshold
+
+    def _rich_audio_bar_callback(self, chunk, is_silent):
+        """
+        Rich audio visualization callback with colorful progress bar.
+        """
+        try:
+            from rich.console import Console
+            from rich.text import Text
+            import sys
+            
+            # Calculate energy level
+            normalized = chunk.astype(np.float32) / 32768.0
+            energy = np.sqrt(np.mean(normalized**2))
+            
+            console = Console(file=sys.stdout, force_terminal=True)
+            
+            # Amplify the visualization scale for better visibility
+            energy_percent = min(energy * 500, 100)  # Scale to 0-100%
+            
+            # Create colored status indicator (fixed width to prevent shifting)
+            if is_silent:
+                status = Text("🔇 SILENT  ", style="red bold")
+            else:
+                status = Text("🎤 SPEAKING", style="green bold")
+            
+            # Create visual bar using rich characters
+            bar_width = 30
+            filled_width = int((energy_percent / 100) * bar_width)
+            
+            if energy_percent > 80:
+                bar_style = "red on red"
+            elif energy_percent > 50:
+                bar_style = "yellow on yellow"
+            elif energy_percent > 20:
+                bar_style = "green on green"
+            else:
+                bar_style = "blue on blue"
+            
+            # Create the bar visualization
+            filled_bar = "█" * filled_width
+            empty_bar = "░" * (bar_width - filled_width)
+            
+            bar_text = Text(filled_bar, style=bar_style) + Text(empty_bar, style="dim white")
+            
+            # Print the complete line with proper overwrite
+            output = Text.assemble(
+                status, " ",
+                Text("Audio: "), bar_text,
+                Text(f" {energy_percent:5.1f}% ", style="cyan"),
+                Text(f"({energy:.6f})", style="dim")
+            )
+            
+            # Clear line and print new content
+            console.print("\r" + " " * 80, end="\r")  # Clear the line first
+            console.print(output, end="", highlight=False)
+            
+        except ImportError:
+            # Fallback to simple text if rich is not available
+            energy = np.sqrt(np.mean((chunk.astype(np.float32) / 32768.0)**2))
+            energy_percent = min(energy * 500, 100)
+            status = "SILENT" if is_silent else "SPEAKING"
+            bar = "=" * int(energy_percent / 3)  # Simple text bar
+            print(f"\r{status} Audio: {bar:<30} {energy_percent:5.1f}%", end="", flush=True)
 
     def _record_loop(self):
         """Internal loop for recording audio chunks."""

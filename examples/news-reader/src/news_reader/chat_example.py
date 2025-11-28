@@ -130,65 +130,13 @@ def record() -> Path:
     
     recorder = AudioRecorder(sample_rate=16000, channels=1)
 
-    # Callback to show audio input bar with rich styling
-    def show_audio_bar(chunk, is_silent):
-        from rich.console import Console
-        from rich.text import Text
-        import sys
-        
-        # Calculate energy level
-        normalized = chunk.astype(np.float32) / 32768.0
-        energy = np.sqrt(np.mean(normalized**2))
-        
-        console = Console(file=sys.stdout, force_terminal=True)
-        
-        # Amplify the visualization scale for better visibility (reduced scale for smoother visualization)
-        energy_percent = min(energy * 500, 100)  # Scale to 0-100%
-        
-        # Create colored status indicator (fixed width to prevent shifting)
-        if is_silent:
-            status = Text("🔇 SILENT  ", style="red bold")
-        else:
-            status = Text("🎤 SPEAKING", style="green bold")
-        
-        # Create visual bar using rich characters
-        bar_width = 30
-        filled_width = int((energy_percent / 100) * bar_width)
-        
-        if energy_percent > 80:
-            bar_style = "red on red"
-        elif energy_percent > 50:
-            bar_style = "yellow on yellow"
-        elif energy_percent > 20:
-            bar_style = "green on green"
-        else:
-            bar_style = "blue on blue"
-        
-        # Create the bar visualization
-        filled_bar = "█" * filled_width
-        empty_bar = "░" * (bar_width - filled_width)
-        
-        bar_text = Text(filled_bar, style=bar_style) + Text(empty_bar, style="dim white")
-        
-        # Print the complete line with proper overwrite
-        output = Text.assemble(
-            status, " ",
-            Text("Audio: "), bar_text,
-            Text(f" {energy_percent:5.1f}% ", style="cyan"),
-            Text(f"({energy:.6f})", style="dim")
-        )
-        
-        # Clear line and print new content
-        console.print("\r" + " " * 80, end="\r")  # Clear the line first
-        console.print(output, end="", highlight=False)
-
     print("Starting recording... Speak now!")
     
-    # Start recording with auto-stop on silence
+    # Start recording with auto-stop on silence and rich audio bar
     recorder.start_recording(
-        callback=show_audio_bar,
         silence_duration=2.0,    # Stop after 2 seconds of silence
-        silence_threshold=0.02   # Higher threshold = less sensitive to background noise
+        silence_threshold=0.02,  # Higher threshold = less sensitive to background noise
+        show_audio_bar=True      # Enable rich audio visualization
     )
 
     # Wait for recording to finish automatically
