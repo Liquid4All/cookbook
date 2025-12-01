@@ -6,7 +6,7 @@ import sys
 
 from .config import Config
 from .model_wrapper import LFM2AudioWrapper
-from .auto_download import download_llama_cpp_builds_for_audio
+# from .auto_download import download_model_files_and_llama_cpp
 
 def main(
     audio_file: str, 
@@ -17,10 +17,13 @@ def main(
     typewriter_speed: float = None,
 ):
     """Test real-time transcription functionality."""
-    
+    config = Config()
+
     # Ensure llama.cpp builds are available
     try:
-        download_llama_cpp_builds_for_audio()
+        from .model_downloader import ModelDownloader
+        model_downloader = ModelDownloader(target_dir=config.base_dir)
+        model_downloader.download()
     except Exception as e:
         print(f"⚠️  Warning: Failed to auto-download llama.cpp builds: {e}")
         sys.exit(1)
@@ -29,9 +32,6 @@ def main(
     if clean_text:
         print("🧹 Text cleaning enabled")
     print("=" * 50)
-    
-    # Initialize configuration and model
-    config = Config()
     
     # Override typewriter settings if provided
     if typewriter_speed is not None:

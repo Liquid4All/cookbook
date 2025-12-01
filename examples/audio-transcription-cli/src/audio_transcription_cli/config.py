@@ -1,5 +1,6 @@
 """Configuration management for audio settings and model paths."""
 
+import os
 from pathlib import Path
 from pydantic import Field, validator
 from pydantic_settings import BaseSettings
@@ -8,13 +9,14 @@ from pydantic_settings import BaseSettings
 class Config(BaseSettings):
     """Configuration settings for audio processing and model paths."""
     
-    # Base paths
+    # Directoy where model files and llama.cpp will be downloaded to
     base_dir: Path = Field(
-        default=Path("LFM2-Audio-1.5B-GGUF"),
+        default=Path(os.getcwd()) / "LFM2-Audio-1.5B-GGUF",
         description="Base directory containing model files"
     )
     
-    # Model files
+    # Model files.
+    # By default, we use the LFM2-Audio-1.5B-Q8_0.gguf model.
     model_filename: str = Field(
         default="LFM2-Audio-1.5B-Q8_0.gguf",
         description="Main model file"
@@ -150,6 +152,7 @@ class Config(BaseSettings):
         
         for path in required_paths:
             if not path.exists():
+                breakpoint()
                 print(f"Missing required file: {path}")
                 return False
                 
