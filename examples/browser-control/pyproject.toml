@@ -1,0 +1,24 @@
+[project]
+name = "browser-control"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Paulescu", email = "plabartabajo@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.4.1",
+    "numpy>=2.3.5",
+    "openenv-core>=0.1.1",
+    "pillow>=12.0.0",
+    "requests>=2.32.5",
+    "torchvision>=0.24.1",
+    "trackio>=0.2.2",
+    "transformers>=4.57.3",
+    "trl>=0.25.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.8,<0.10.0"]
+build-backend = "uv_build"
