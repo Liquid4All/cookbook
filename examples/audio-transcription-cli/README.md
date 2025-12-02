@@ -63,14 +63,7 @@ This example is a 100% local audio-to-text transcription CLI, that runs on your 
 
 ![](./media/diagram.gif)
 
-
-## llama.cpp support for audio models
-
-[llama.cpp](https://github.com/ggerganov/llama.cpp) is a super fast and lightweight open-source inference engine for Language Models. It is written in C++ and can be used to run LLMs on your local machine.
-
-Audio support in llama.cpp is still quite experimental, and not fully integrated on the main branch of the llama.cpp project. Because of this, the Liquid AI team has released specialized llama.cpp builds that support the LFM2-Audio-1.5B model, that you will need to run this CLI.
-
-The tool downloads the necessary llama.cpp builds for your platform automatically, so you don't need to worry about it.
+The Python code downloads the necessary llama.cpp builds for your platform automatically, so you don't need to worry about it. Audio support in llama.cpp is still quite experimental, and not fully integrated on the main branch of the llama.cpp project. Because of this, the Liquid AI team has released specialized llama.cpp builds that support the LFM2-Audio-1.5B model, that you will need to run this CLI.
 
 > [!NOTE]
 > **Supported Platforms**
@@ -82,6 +75,47 @@ The tool downloads the necessary llama.cpp builds for your platform automaticall
 > - ubuntu-x64
 > 
 > If your platform is not supported, you will need to wait for the builds to be released.
+
+## llama.cpp support for audio models
+
+[llama.cpp](https://github.com/ggerganov/llama.cpp) is a super fast and lightweight open-source inference engine for Language Models. It is written in C++ and can be used to run LLMs on your local machine. For example, our Python CLI used llama.cpp under the hood to deliver fast transcriptions, instead of using either `PyTorch` or the higher-level `transformers` library.
+
+In the `examples.sh` script you will find 3 examples on how to run inference with LFM2-Audio-1.5 for 3 common use cases:
+
+- Audio to text transcription. This is essentially what our Python CLI does under the hood:
+    ```sh
+    # Audio to Speech Recognition (ASR)   
+    ./llama-lfm2-audio \
+        -m $CKPT/LFM2-Audio-1.5B-Q8_0.gguf \
+        --mmproj $CKPT/mmproj-audioencoder-LFM2-Audio-1.5B-Q8_0.gguf \
+        -mv $CKPT/audiodecoder-LFM2-Audio-1.5B-Q8_0.gguf \
+        -sys "Perform ASR." \
+        --audio $INPUT_WAV
+    ```
+
+- Text to speech.
+    ```sh
+    # Text To Speech (TTS)
+    ./llama-lfm2-audio \
+        -m $CKPT/LFM2-Audio-1.5B-Q8_0.gguf \
+        --mmproj $CKPT/mmproj-audioencoder-LFM2-Audio-1.5B-Q8_0.gguf \
+        -mv $CKPT/audiodecoder-LFM2-Audio-1.5B-Q8_0.gguf \
+        -sys "Perform TTS." \
+        -p "My name is Pau Labarta Bajo and I love AI" \
+        --output $OUTPUT_WAV
+    ```
+
+- Text to speech with voice instructions
+    ```sh
+    ./llama-lfm2-audio \
+        -m $CKPT/LFM2-Audio-1.5B-Q8_0.gguf \
+        --mmproj $CKPT/mmproj-audioencoder-LFM2-Audio-1.5B-Q8_0.gguf \
+        -mv $CKPT/audiodecoder-LFM2-Audio-1.5B-Q8_0.gguf \
+        -sys "Perform TTS.
+        Use the following voice: A male speaker delivers a very expressive and animated speech, with a low-pitch voice and a slightly close-sounding tone. The recording carries a slight background noise." \
+        -p "What is your name man?" \
+        --output $OUTPUT_WAV
+    ```
 
 
 ## Further improvements
@@ -101,9 +135,7 @@ LFM2-350M is a small text-to-text model that can be used for tasks like text cle
 
 One way to do so is by using the Leap Worbench, a no-code tool that we are developing at Liquid AI for tasks like this.
 
-If you want to get early access, join the Liquid AI Discord server and head to the #gpt5-level-slms
-
-<a href="https://discord.gg/DFU3WQeaYD"><img src="https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white" alt="Join Discord"></a>
+If you want to get early access, join the [Liquid AI Discord server](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white) and head to the [#gpt5-level-slms](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)
 
 ## Need help?
 Join the Liquid AI Discord Community and ask.
