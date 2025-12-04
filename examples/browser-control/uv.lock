@@ -310,7 +310,7 @@ requires-dist = [
     { name = "datasets", specifier = ">=4.4.1" },
     { name = "gradio", specifier = ">=6.0.2" },
     { name = "numpy", specifier = ">=2.3.5" },
-    { name = "openenv", git = "https://github.com/Paulescu/OpenEnv" },
+    { name = "openenv", git = "https://github.com/meta-pytorch/OpenEnv.git" },
     { name = "openenv-core", specifier = ">=0.1.1" },
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "requests", specifier = ">=2.32.5" },
@@ -1428,7 +1428,7 @@ wheels = [
 [[package]]
 name = "openenv"
 version = "0.1.1"
-source = { git = "https://github.com/Paulescu/OpenEnv#68872fea9d99b5c8666e4e7c92eafd475e22cde5" }
+source = { git = "https://github.com/meta-pytorch/OpenEnv.git#693bdb178d413de2354ed560ff9b5cf203766e84" }
 dependencies = [
     { name = "fastapi" },
     { name = "huggingface-hub" },

@@ -27,4 +27,4 @@ requires = ["uv_build>=0.9.8,<0.10.0"]
 build-backend = "uv_build"
 
 [tool.uv.sources]
-openenv = { git = "https://github.com/Paulescu/OpenEnv" }
+openenv = { git = "https://github.com/meta-pytorch/OpenEnv.git" }

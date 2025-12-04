@@ -17,3 +17,5 @@ wheels/
 *.mp3
 LFM2-Audio-1.5B-GGUF/
 *.wav
+*.env.local
+OpenEnv
