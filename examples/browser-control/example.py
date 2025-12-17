@@ -6,24 +6,22 @@ environment interface.
 
 from __future__ import annotations
 
-from datetime import datetime
-import sys
-from pathlib import Path
-from typing import Dict, List, Optional
-
 import base64
+from datetime import datetime
 from io import BytesIO
 import os
 import re
 import textwrap
+from typing import Dict, List, Optional
 
+from datasets import Dataset
 import numpy as np
 from PIL import Image
 import requests
-from datasets import Dataset
 from transformers import AutoProcessor
 from trl import GRPOConfig, GRPOTrainer
 from trl.data_utils import prepare_multimodal_messages
+
 from envs.browsergym_env import BrowserGymAction, BrowserGymEnv
 
 # ---------------------------------------------------------------------------
