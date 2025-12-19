@@ -3,22 +3,75 @@
 ## Test various models without structured output generation
 
 ```
-uv run example-raw-generation.py --model-id LFM2-1.2B-Extract
-uv run example-raw-generation.py --model-id LFM2-700M
+uv run example-raw-generation.py \
+    --model-id LiquidAI/LFM2-1.2B-Extract \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v1
+# wrong -> output does not adhere to JSON schema
+
+uv run example-raw-generation.py \
+    --model-id LiquidAI/LFM2-1.2B-Extract \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v2
+# wrong -> output does not adhere to JSON schema
+
+uv run example-raw-generation.py \
+    --model-id LiquidAI/LFM2-700M \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v1
+# works!
+
+uv run example-raw-generation.py \
+    --model-id LiquidAI/LFM2-700M \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v2
+# wrong -> output does not adhere to JSON schema
 ```
 
 ## Test various model with structured output generation
 
 ```
-uv run example-structured-generation.py --model-id LFM2-1.2B-Extract
-uv run example-structured-generation.py --model-id LFM2-700M
+uv run example-structured-generation.py \
+    --model-id LiquidAI/LFM2-1.2B-Extract \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v1
+# wrong! misses medical condition information in the output
+
+uv run example-structured-generation.py \
+    --model-id LiquidAI/LFM2-1.2B-Extract \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v2
+# wrong! dosage=Dosage(text='20 mg twice daily,'))
+
+uv run example-structured-generation.py \
+    --model-id LiquidAI/LFM2-700M \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v1
+# wrong! misses medical condition information
+
+uv run example-structured-generation.py \
+    --model-id LiquidAI/LFM2-700M \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v2
+# works!
 ```
 
 ## Test things work with the GGUF checkpoints and llama.cpp
 
 ```
-uv run example-with-llama-cpp.py --model-id LFM2-1.2B-Extract
-uv run example-with-llama-cpp.py --model-id LFM2-700M
+uv run example-with-llama-cpp.py \
+    --model-id LiquidAI/LFM2-700M-GGUF \
+    --model-file LFM2-700M-Q4_0.gguf \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v2
+# wrong! hallucinated medication `simvastatin`
+
+uv run example-with-llama-cpp.py \
+    --model-id LiquidAI/LFM2-700M-GGUF \
+    --model-file LFM2-700M-Q8_0.gguf \
+    --user-prompt "I have high cholesterol and take atorvastatin 20 mg once daily" \
+    --system-prompt-version v2
+# works! { "entities": [ { "category": "MEDICAL_CONDITION", "text": "high cholesterol" }, { "category": "MEDICATION", "text": "atorvastatin 20 mg once daily" , "dosage": { "text": "20 mg" } } ]}
 ```
 
 ### Attention!
@@ -40,6 +93,9 @@ Output: [ { "text": "diabetes", "category": "MEDICAL_CONDITION" }, { "text": "me
 
 Input: My blood pressure was 120/80.
 Output: [ { "text": "blood pressure", "category": "MEASUREMENT", "value": { "text": "120/80" } } ]
+
+Input: "I have high cholesterol and take atorvastatin 20 mg once daily."
+Output: [{"text": "high cholesterol", "category": "MEDICAL_CONDITION"}, {"text": "atorvastatin", "category": "MEDICATION", "dosage": {"text": "20 mg once daily"}}]
 ```
 
 ## Systemm prompt
