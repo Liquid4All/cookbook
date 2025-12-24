@@ -24,7 +24,7 @@ def get_docker_image() -> modal.Image:
             "liger-kernel",
             "wandb",
         )
-        .env({"HF_HOME": "/model_cache"})
+        .env({"HF_HOME": "/hf_model_cache"})
     )
 
     return docker_image
