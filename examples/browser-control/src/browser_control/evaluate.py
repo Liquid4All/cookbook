@@ -81,8 +81,9 @@ def test_click_in_browsergym(
             goal = observation.goal or dataset_prompt
             axtree = observation.axtree_txt or ""
             error = observation.error if observation.last_action_error else ""
-            
+
             user_prompt = make_user_prompt(goal, step_num, axtree, error)
+            breakpoint()
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},

@@ -24,6 +24,7 @@ dependencies = [
     "modal>=1.2.5",
     "pydantic-settings>=2.12.0",
     "wandb>=0.23.1",
+    "peft>=0.13.0",
 ]
 
 [build-system]

@@ -1,5 +1,6 @@
 from datasets import Dataset
 from envs.browsergym_env import BrowserGymEnv, BrowserGymAction
+from peft import LoraConfig
 from transformers import AutoTokenizer
 from trl import GRPOTrainer, GRPOConfig
 import wandb
@@ -187,6 +188,24 @@ def reward_completion(completions: list[str], **kwargs) -> list[float]:
         return [0.0 for _ in completions]
     return [float(r) for r in rewards]
 
+def create_peft_config(config: FineTuningConfig) -> LoraConfig | None:
+    """
+    Creates LoRA configuration from FineTuningConfig.
+    Returns None if use_peft is False.
+    """
+    if not config.use_peft:
+        return None
+
+    return LoraConfig(
+        r=config.lora_r,
+        lora_alpha=config.lora_alpha,
+        lora_dropout=config.lora_dropout,
+        bias=config.lora_bias,
+        task_type="CAUSAL_LM",
+        target_modules=config.lora_target_modules,
+        use_rslora=config.use_rslora,
+    )
+
 @app.function(
     image=image,
     gpu="A100", #"L40S",
@@ -247,11 +266,19 @@ def fine_tune(config: FineTuningConfig) -> None:
     )
 
     print("Setting up the GRPOTrainer")
+
+    # Create PEFT config if LoRA is enabled
+    peft_config = create_peft_config(config)
+    if peft_config:
+        print(f"LoRA enabled: r={config.lora_r}, alpha={config.lora_alpha}")
+        print(f"Target modules: {config.lora_target_modules}")
+
     trainer = GRPOTrainer(
         model=config.model_name,
         reward_funcs=[reward_completion],
         train_dataset=dataset,
         args=grpo_config,
+        peft_config=peft_config,
         rollout_func=lambda prompts, trainer: rollout_func(
             prompts=prompts,
             trainer=trainer,
@@ -263,8 +290,16 @@ def fine_tune(config: FineTuningConfig) -> None:
 
     trainer_stats = trainer.train()
 
+    # Save model (with LoRA adapters if enabled)
+    print(f"Saving model to {output_dir}")
+    if config.use_peft:
+        print("Saving LoRA adapter weights (not full model)")
     trainer.save_model(output_dir)
+
     if config.push_to_hf:
+        print("Pushing model to HuggingFace Hub")
+        if config.use_peft:
+            print("Note: Pushing LoRA adapters only (~5-10MB vs ~350MB full model)")
         trainer.push_to_hub()
 
 @app.local_entrypoint()
@@ -277,20 +312,6 @@ def main(config_file_name: str):
     except Exception as e:
         print(f"❌ Fine-tuning job failed: {e}")
         raise e
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
 
 if __name__ == "__main__":
     main()

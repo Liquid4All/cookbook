@@ -1,6 +1,3 @@
-#########################################################
-# LFM2-350M with full fine-tuning
-#########################################################
 
 seed: 23
 # resume_from_checkpoint: null
@@ -30,7 +27,7 @@ system_prompt: |
   Do not include explanations or multiple actions.
 
 # BrowserGym environment
-browsergym_url: https://burtenshaw-browsergym-v2.hf.space
+browsergym_url: https://paulescu-browsergym-book-flight.hf.space
 dataset_size: 100
 default_goal: Complete the web task successfully.
 

@@ -46,22 +46,22 @@ class FineTuningConfig(BaseSettings):
     logging_steps: int                  # How often do we print out training loss?
     push_to_hf: Optional[bool] = True
 
-    # # LoRA-specific hyperparameters for parameter efficient fine-tuning
-    # use_peft: bool = False
-    # lora_r: int = 16
-    # lora_alpha: int = 32
-    # lora_dropout: float = 0.0
-    # lora_bias: str = "none"  # unsloth: optimized lora kernel
-    # use_rslora: bool = False
-    # lora_target_modules: list[str] = [
-    #     "q_proj",
-    #     "k_proj",
-    #     "v_proj",
-    #     "o_proj",
-    #     "gate_proj",
-    #     "up_proj",
-    #     "down_proj",
-    # ]
+    # LoRA-specific hyperparameters for parameter efficient fine-tuning
+    use_peft: bool = False  # Default: disabled for backward compatibility
+    lora_r: int = 8  # LoRA rank - memory efficient default
+    lora_alpha: int = 16  # LoRA scaling factor (2x rank)
+    lora_dropout: float = 0.0
+    lora_bias: str = "none"
+    use_rslora: bool = False
+    lora_target_modules: list[str] = [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+    ]
 
     # max_steps: int = 10000  # increase!
     # save_steps: int = 1000  # increase!
@@ -92,3 +92,4 @@ class FineTuningConfig(BaseSettings):
             )
 
         return self
+    

@@ -23,6 +23,7 @@ def get_docker_image() -> modal.Image:
             "openenv_core==0.1.1",
             "liger-kernel",
             "wandb",
+            "peft>=0.13.0",
         )
         .env({"HF_HOME": "/hf_model_cache"})
     )

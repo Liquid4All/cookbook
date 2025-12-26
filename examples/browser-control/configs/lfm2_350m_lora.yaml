@@ -1,6 +1,8 @@
-# Training configuration
+#########################################################
+# LFM2-350M with LoRA fine-tuning
+#########################################################
+
 seed: 23
-# resume_from_checkpoint: null
 
 # Language Model parameters
 model_name: LiquidAI/LFM2-350M
@@ -28,28 +30,40 @@ system_prompt: |
 
 # BrowserGym environment
 browsergym_url: https://burtenshaw-browsergym-v2.hf.space
-dataset_size: 10
+dataset_size: 100
 default_goal: Complete the web task successfully.
 
-# How long and how aggressive do we train?
-learning_rate: 5.0e-6
+# Training hyperparameters (adjusted for LoRA)
+learning_rate: 1.0e-4  # Higher LR suitable for LoRA (fewer trainable params)
 warmup_steps: 10
-
-# Optimization
-# gradient_checkpointing: true
 
 # vLLM inference
 per_device_train_batch_size: 1
-num_generations: 2
-generation_batch_size: 2
-max_steps: 1
+num_generations: 4
+generation_batch_size: 4
+max_steps: 10
 max_completion_length: 32
 use_vllm: true
 vllm_mode: "colocate"
-vllm_gpu_memory_utilization: 0.1
+vllm_gpu_memory_utilization: 0.15  # Slightly increased to accommodate LoRA adapters
+
+# LoRA configuration (ENABLED)
+use_peft: true
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.0
+lora_bias: "none"
+use_rslora: false
+lora_target_modules:
+  - "q_proj"
+  - "k_proj"
+  - "v_proj"
+  - "o_proj"
+  - "gate_proj"
+  - "up_proj"
+  - "down_proj"
 
 # Experiment tracking
 wandb_enabled: true
 wandb_project_name: "browser-control-fine-tune-with-grpo"
 logging_steps: 1
-push_to_hf: false

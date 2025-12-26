@@ -1,5 +1,6 @@
 #########################################################
-# LFM2-350M with full fine-tuning
+# LFM2-350M with full fine-tuning for book-flight task
+# NOTE: as per 2025-12-25 this example is not complete due to a bug in OpenEnv
 #########################################################
 
 seed: 23
@@ -31,7 +32,7 @@ system_prompt: |
 
 # BrowserGym environment
 browsergym_url: https://burtenshaw-browsergym-v2.hf.space
-dataset_size: 100
+dataset_size: 10
 default_goal: Complete the web task successfully.
 
 # How long and how aggressive do we train?
@@ -43,9 +44,9 @@ warmup_steps: 10
 
 # vLLM inference
 per_device_train_batch_size: 1
-num_generations: 4
-generation_batch_size: 4
-max_steps: 10
+num_generations: 2
+generation_batch_size: 2
+max_steps: 1
 max_completion_length: 32
 use_vllm: true
 vllm_mode: "colocate"
@@ -55,3 +56,4 @@ vllm_gpu_memory_utilization: 0.1
 wandb_enabled: true
 wandb_project_name: "browser-control-fine-tune-with-grpo"
 logging_steps: 1
+push_to_hf: false
