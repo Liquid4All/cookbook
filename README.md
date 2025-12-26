@@ -137,6 +137,8 @@ Working applications that demonstrate Liquid models in action.
 |---------|------------|
 | TranslatorLens: Building An Offline Translation Camera | [▶️ Go to the repo](https://github.com/linmx0130/TranslatorLens) ![GitHub Repo stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens) |
 | Food Images Fine-tuning | [▶️ Go to the repo](https://github.com/benitomartin/food-images-finetuning) ![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning) |
+| Meeting Intelligence CLI | [▶️ Go to the repo](https://github.com/csanghvi-stripe/meeting-prompter) ![GitHub Repo stars](https://img.shields.io/github/stars/csanghvi-stripe/meeting-prompter) |
+| Private Doc Q&A: On-device document Q&A with RAG and voice input | [▶️ Go to the repo](https://github.com/csanghvi-stripe/private-doc-qa) ![GitHub Repo stars](https://img.shields.io/github/stars/csanghvi-stripe/private-doc-qa) |
 
 
 ## Contributing
