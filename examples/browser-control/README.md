@@ -1,19 +1,21 @@
 # Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv
 
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+
 ### Table of contents
 - [What is browser control?](#what-is-browser-control)
 - [Real-world use cases](#real-world-use-cases)
 - [Why do we need Reinforcement Learning (RL)?](#why-do-we-need-reinforcement-learning-rl)
   - [Example](#example)
 - [Building blocks of an RL training framework](#building-blocks-of-an-rl-training-framework)
-  - [1. The environment -> OpenEnv](#1-the-environment---openenv)
+  - [1. The environment -> BrowserGym via OpenEnv](#1-the-environment---browsergym-via-openenv)
   - [2. The RL algorithm -> GRPO](#2-the-rl-algorithm---grpo)
   - [3. The policy -> LFM2-350M](#3-the-policy---lfm2-350m)
-- [Architecture of the solution](#architecture-of-the-solution)
-- [Out-of-the box performance](#out-of-the-box-performance)
-- [Fine-tuning](#fine-tuning)
-- [Evaluation of the fine-tuned checkpoints](#evaluation-of-the-fine-tuned-checkpoints)
-- [TODOs](#todos)
+- [Architecture](#architecture)
+- [Experiments](#experiments)
+  - [Full-fine tune](#full-fine-tune)
+  - [Parameter efficient fine-tune with LoRA](#parameter-efficient-fine-tune-with-lora)
+- [Next steps](#next-steps)
 
 
 ## What is browser control?
@@ -82,7 +84,7 @@ Rewards for browser control tasks can be computed programatically with tools lik
 - check URLs to verify the agent landed on the desired page, or
 - query databases to check the agent modified their state correctly.
 
-### 1. The environment -> OpenEnv
+### 1. The environment -> BrowserGym via OpenEnv
 
 [OpenEnv](https://github.com/meta-pytorch/OpenEnv) is an open-source library that
 
@@ -141,36 +143,49 @@ We will be using [LFM2-350M](https://huggingface.co/LiquidAI/LFM2-350M), which i
 To speed up training we will also add support for LoRA adapters, so we don't need a whole model fine-tune.
 
 
-## Architecture of the solution
+## Architecture
 
-The 3 components of our RL training framework
+The 3 components of our RL training framework are:
 
+1. The `GRPOTrainer` from the trl library that implements the GRPO algorithm. It needs to run on GPU so the backward pass that updates model parameters is fast enough.
+2. The `vLLM` server to generate rollouts with LFM2-300M. It needs to run on GPU to parallelize the generation of rollouts.
+3. The Docker container with the `BrowserGym` environment, running as a Hugging Face space. Feel free to run on locally or on your infra Kubernetes. This one can run on CPU.
 
+![](./media/3_components.jpg)
 
-## Fine-tuning experiments
+To simplify things a bit, we will run both the `GRPOTrainer` and the `vLLM` on the same GPU.
 
-Full-fine tune:
+![](./media/collocate_vllm.jpg)
+
+We use [Modal](https://modal.com/) for serverless GPU infrastructure. Modal is a great option for AI engineers who don't want to worry too much about infrastructure and prefer to pay per usage. It provides on-demand GPU access with simple Python-based configuration, making it easy to scale training workloads without managing clusters or dealing with complex DevOps setup.
+
+## Experiments
+
+### Full-fine tune
+
+The first experiment we run is a full fine-tune of LFM2-350M
+
 ```
 make run config=lfm2_350m.yaml
 ```
 
-You can find the 2 checkpoints on Hugging Face
+The `click-test` task in an easy one, and the model is capable of solving it in less than 10 attempts from the beginning.
+
+The final checkpoint is available on HF
 
 - [Paulescu/LFM2-350M-browsergym-20251224-013119](https://huggingface.co/Paulescu/LFM2-350M-browsergym-20251224-013119)
 
 
-LoRA for parameter efficient fine-tuning:
+### Parameter efficient fine-tune with LoRA
 
+With LoRA we can match full fine-tune results with way less compute and time.
 ```
 make run config=lfm2_350m_lora.yaml
 ```
 
 
-## Evaluation of the fine-tuned checkpoints
+## Next steps
 
-```
-
-```
-
+- Run experiments for a more complext task like [`book-flight`](https://miniwob.farama.org/environments/book-flight/)
 
 
