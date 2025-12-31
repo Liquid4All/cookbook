@@ -18,8 +18,8 @@ def detect_language(text: str) -> str:
 
 def main(
     text: str,
-    model_name: str = "gyung/lfm2-1.2b-koen-mt-v4-100k",
-    adapter_name: str = "gyung/lfm2-1.2b-koen-mt-v5-rl-10k-adapter",
+    model_name: str = "gyung/lfm2-1.2b-koen-mt-v6.4-merged",
+    adapter_name: str = "gyung/lfm2-1.2b-koen-mt-v8-rl-10k-adapter",
     max_new_tokens: int = 256,
     temperature: float = 0.3,
     min_p: float = 0.15,
