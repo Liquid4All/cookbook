@@ -172,19 +172,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model",
         type=str,
-        required=True,
+        default="LiquidAI/LFM2-2.6B-Transcript-GGUF",
         help="Path to local GGUF model file, or HuggingFace repository ID (e.g., 'LiquidAI/LFM2-2.6B-Transcript-GGUF')"
     )
     parser.add_argument(
         "--hf-model-file",
         type=str,
-        default=None,
+        default="LFM2-2.6B-Transcript-1-GGUF.gguf",
         help="If using HuggingFace, specify the GGUF filename within the repo (e.g., 'llama-2-7b.Q4_K_M.gguf')"
     )
     parser.add_argument(
         "--transcript-file",
         type=str,
-        required=True,
+        default="https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/transcripts/example_1.txt",
         help="Path to the text file containing the transcript, or an HTTP/HTTPS URL"
     )
     args = parser.parse_args()
