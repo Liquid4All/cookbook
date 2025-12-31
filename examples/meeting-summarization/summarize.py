@@ -11,10 +11,9 @@
 from llama_cpp import Llama
 from huggingface_hub import hf_hub_download
 import os
+from urllib.request import urlopen
 from rich.console import Console
 from rich.panel import Panel
-from rich.markdown import Markdown
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 console = Console()
 
@@ -55,12 +54,47 @@ def load_model(model: str, hf_model_file: str = None) -> Llama:
     # Load the model
     model = Llama(
         model_path=model_path,
-        n_ctx=8192,  # Increased context window to handle longer transcripts
+        n_ctx=16384,  # Increased context window to handle longer transcripts
         n_threads=4,
         verbose=False,
     )
 
     return model
+
+
+def load_transcript(path: str) -> str:
+    """
+    Load a transcript from either a local file or a remote HTTP URL.
+
+    Args:
+        path: Either a local file path or an HTTP/HTTPS URL
+
+    Returns:
+        str: The transcript content
+
+    Examples:
+        # Load from local file
+        transcript = load_transcript("transcript.txt")
+
+        # Load from HTTP URL
+        transcript = load_transcript("https://example.com/transcript.txt")
+    """
+    if path.startswith("http://") or path.startswith("https://"):
+        # Load from remote URL
+        console.print(f"[cyan]Fetching transcript from URL:[/cyan] [blue]{path}[/blue]")
+        with urlopen(path) as response:
+            transcript = response.read().decode('utf-8')
+        console.print(f"[green]✓[/green] Transcript loaded from URL")
+    else:
+        # Load from local file
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Transcript file not found: {path}")
+        console.print(f"[cyan]Loading transcript from local file:[/cyan] [dim]{path}[/dim]")
+        with open(path, "r") as f:
+            transcript = f.read()
+        console.print(f"[green]✓[/green] Transcript loaded from file")
+
+    return transcript
 
 
 def main(
@@ -94,7 +128,7 @@ def main(
 
         - TOPICS_DISCUSSED: Enumerate the primary discussion points contained within this meeting record
         - EXECUTIVE_SUMMARY: Provide a concise overview – two or three sentences – outlining the primary conclusions and resolutions detailed in the transcript.
-        - KEY_DECISIONS: Identify and enumerate the definitive decisions reached during this meeting. Focus specifically on outcomes and actions agreed upon. A straightforward list will suffice.
+        - ACTION_ITEMS: Identify and enumerate the definitive decisions reached during this meeting. Focus specifically on outcomes and actions agreed upon. A straightforward list will suffice.
 
         Organize the response with distinct headings delineating each requested summary type.
         """
@@ -104,8 +138,8 @@ def main(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": transcript}
             ],
-            max_tokens=1024,
-            temperature=0.7,
+            max_tokens=2048,
+            temperature=0.0,
             top_p=0.9,
             stream=True,  # Enable streaming
         )
@@ -139,7 +173,7 @@ if __name__ == "__main__":
         "--model",
         type=str,
         required=True,
-        help="Path to local GGUF model file, or HuggingFace repository ID (e.g., 'TheBloke/Llama-2-7B-GGUF')"
+        help="Path to local GGUF model file, or HuggingFace repository ID (e.g., 'LiquidAI/LFM2-2.6B-Transcript-GGUF')"
     )
     parser.add_argument(
         "--hf-model-file",
@@ -148,15 +182,14 @@ if __name__ == "__main__":
         help="If using HuggingFace, specify the GGUF filename within the repo (e.g., 'llama-2-7b.Q4_K_M.gguf')"
     )
     parser.add_argument(
-        "--transcript",
+        "--transcript-file",
         type=str,
         required=True,
-        help="Path to the text file containing the transcript"
+        help="Path to the text file containing the transcript, or an HTTP/HTTPS URL"
     )
     args = parser.parse_args()
 
-    with open(args.transcript, "r") as f:
-        transcript = f.read()
+    transcript = load_transcript(args.transcript_file)
 
     main(
         args.model,
