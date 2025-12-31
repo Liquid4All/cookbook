@@ -33,7 +33,7 @@ Isn't that beautiful?
 
 3. If you want to use a different transcript file, you can pass the `--transcript-file` argument explicitly, either as a local file path or as an HTTP/HTTPS URL, and the tool will automatically download and use it.
 
-    For example:
+    For example, to use [this other file](https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/transcripts/example_2.txt) you can run:
 
     ```sh
     uv run https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/summarize.py \
@@ -41,14 +41,14 @@ Isn't that beautiful?
     ```
 
 
-4. If you want to dig deeper into the code, experiment with the code and modify it, you can clone the repository
+4. If you want to dig deeper into the code, experiment with it, and modify it, you can clone the repository
 
     ```sh
     git clone https://github.com/Liquid4All/cookbook.git
     cd cookbook/examples/meeting-summarization
     ```
 
-    and run the summarization CLI using the following full command:
+    and run the summarization CLI using the following command:
 
     ```sh
     uv run summarize.py \
