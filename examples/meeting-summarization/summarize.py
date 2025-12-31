@@ -4,12 +4,19 @@
 # dependencies = [
 #   "llama-cpp-python>=0.3.16",
 #   "huggingface-hub>=0.20.0",
+#   "rich>=13.0.0",
 # ]
 # ///
 
 from llama_cpp import Llama
 from huggingface_hub import hf_hub_download
 import os
+from rich.console import Console
+from rich.panel import Panel
+from rich.markdown import Markdown
+from rich.progress import Progress, SpinnerColumn, TextColumn
+
+console = Console()
 
 
 def load_model(model: str, hf_model_file: str = None) -> Llama:
@@ -32,18 +39,18 @@ def load_model(model: str, hf_model_file: str = None) -> Llama:
     """
     if hf_model_file:
         # Download from HuggingFace
-        print(f"Downloading {hf_model_file} from HuggingFace repository: {model}")
+        console.print(f"[cyan]Downloading[/cyan] [yellow]{hf_model_file}[/yellow] from HuggingFace repository: [blue]{model}[/blue]")
         model_path = hf_hub_download(
             repo_id=model,
             filename=hf_model_file,
         )
-        print(f"Model downloaded to: {model_path}")
+        console.print(f"[green]✓[/green] Model downloaded to: [dim]{model_path}[/dim]")
     else:
         # Use local path
         model_path = model
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file not found: {model_path}")
-        print(f"Loading model from local path: {model_path}")
+        console.print(f"[cyan]Loading model from local path:[/cyan] [dim]{model_path}[/dim]")
 
     # Load the model
     model = Llama(
@@ -61,30 +68,34 @@ def main(
     transcript: str,
     hf_model_file: str = None,
 ):
-    print(f"Meeting summarization CLI")
+    console.print(Panel.fit(
+        "[bold cyan]Meeting Summarization CLI[/bold cyan]",
+        border_style="cyan"
+    ))
 
     # Load model
     model = load_model(model, hf_model_file)
 
     # Run inference
-    print(f"\n{'='*80}")
-    print(f"Processing transcript")
-    print(f"{'='*80}\n")
+    console.print(Panel(
+        "[bold yellow]Processing transcript...[/bold yellow]",
+        border_style="yellow"
+    ))
 
     try:
         # Reset the model state before each inference to clear KV cache
         model.reset()
 
         # Generate summary using the model with streaming
-        print("SUMMARY:")
+        console.print("\n[bold green]SUMMARY:[/bold green]\n")
 
         system_prompt = """
         Provide a comprehensive summary of the transcript, broken down as indicated below.
-        
+
         - TOPICS_DISCUSSED: Enumerate the primary discussion points contained within this meeting record
         - EXECUTIVE_SUMMARY: Provide a concise overview – two or three sentences – outlining the primary conclusions and resolutions detailed in the transcript.
         - KEY_DECISIONS: Identify and enumerate the definitive decisions reached during this meeting. Focus specifically on outcomes and actions agreed upon. A straightforward list will suffice.
-        
+
         Organize the response with distinct headings delineating each requested summary type.
         """
 
@@ -98,15 +109,21 @@ def main(
         )
 
         # Collect tokens and print as they arrive
+        summary_text = ""
         for chunk in stream:
             token = chunk['choices'][0]['text']
-            print(token, end='', flush=True)
+            summary_text += token
+            console.print(token, end='', highlight=False)
 
-        print(f"\n\n{'='*80}\n")
+        console.print("\n")
+        console.rule("[dim]End of Summary[/dim]", style="dim")
 
     except Exception as e:
-        print(f"ERROR processing transcript: {e}\n")
-        print(f"{'='*80}\n")
+        console.print(Panel(
+            f"[bold red]ERROR processing transcript:[/bold red]\n{e}",
+            border_style="red",
+            title="Error"
+        ))
 
 
 if __name__ == "__main__":
