@@ -99,21 +99,25 @@ def main(
         Organize the response with distinct headings delineating each requested summary type.
         """
 
-        stream = model(
-            system_prompt + "\n\n" + transcript,
+        stream = model.create_chat_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": transcript}
+            ],
             max_tokens=1024,
             temperature=0.7,
             top_p=0.9,
-            echo=False,
             stream=True,  # Enable streaming
         )
 
         # Collect tokens and print as they arrive
         summary_text = ""
         for chunk in stream:
-            token = chunk['choices'][0]['text']
-            summary_text += token
-            console.print(token, end='', highlight=False)
+            delta = chunk['choices'][0]['delta']
+            if 'content' in delta:
+                token = delta['content']
+                summary_text += token
+                console.print(token, end='', highlight=False)
 
         console.print("\n")
         console.rule("[dim]End of Summary[/dim]", style="dim")
