@@ -3,24 +3,68 @@
 # /// script
 # dependencies = [
 #   "llama-cpp-python>=0.3.16",
+#   "huggingface-hub>=0.20.0",
 # ]
 # ///
 
 from llama_cpp import Llama
+from huggingface_hub import hf_hub_download
+import os
 
-def main(
-    model: str,
-    transcript: str,
-):
-    print(f"Meeting summarization CLI")
 
-    # Load model
+def load_model(model: str, hf_model_file: str = None) -> Llama:
+    """
+    Load a Llama model from either a local GGUF file or a HuggingFace repository.
+
+    Args:
+        model: Either a local path to a GGUF file, or a HuggingFace repository ID
+        hf_model_file: If provided, treats 'model' as a HF repo ID and downloads this specific GGUF file
+
+    Returns:
+        Llama: Loaded model instance
+
+    Examples:
+        # Load from local path
+        model = load_model("path/to/model.gguf")
+
+        # Load from HuggingFace
+        model = load_model("TheBloke/Llama-2-7B-GGUF", hf_model_file="llama-2-7b.Q4_K_M.gguf")
+    """
+    if hf_model_file:
+        # Download from HuggingFace
+        print(f"Downloading {hf_model_file} from HuggingFace repository: {model}")
+        model_path = hf_hub_download(
+            repo_id=model,
+            filename=hf_model_file,
+        )
+        print(f"Model downloaded to: {model_path}")
+    else:
+        # Use local path
+        model_path = model
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+        print(f"Loading model from local path: {model_path}")
+
+    # Load the model
     model = Llama(
-        model_path=model,
+        model_path=model_path,
         n_ctx=8192,  # Increased context window to handle longer transcripts
         n_threads=4,
         verbose=False,
     )
+
+    return model
+
+
+def main(
+    model: str,
+    transcript: str,
+    hf_model_file: str = None,
+):
+    print(f"Meeting summarization CLI")
+
+    # Load model
+    model = load_model(model, hf_model_file)
 
     # Run inference
     print(f"\n{'='*80}")
@@ -70,8 +114,24 @@ if __name__ == "__main__":
     # CLI argument parser
     from argparse import ArgumentParser
     parser = ArgumentParser(description="Meeting Summarization CLI - Summarize meeting transcripts using LLM")
-    parser.add_argument("--model", type=str, required=True, help="Path to the GGUF model file")
-    parser.add_argument("--transcript", type=str, required=True, help="Path to the text file containing the transcript")
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=True,
+        help="Path to local GGUF model file, or HuggingFace repository ID (e.g., 'TheBloke/Llama-2-7B-GGUF')"
+    )
+    parser.add_argument(
+        "--hf-model-file",
+        type=str,
+        default=None,
+        help="If using HuggingFace, specify the GGUF filename within the repo (e.g., 'llama-2-7b.Q4_K_M.gguf')"
+    )
+    parser.add_argument(
+        "--transcript",
+        type=str,
+        required=True,
+        help="Path to the text file containing the transcript"
+    )
     args = parser.parse_args()
 
     with open(args.transcript, "r") as f:
@@ -80,4 +140,5 @@ if __name__ == "__main__":
     main(
         args.model,
         transcript,
+        args.hf_model_file,
     )

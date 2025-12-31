@@ -1,34 +1,59 @@
 # Meeting summarization CLI
 
-This example is a 100% local meeting summarization CLI, that runs on your machine thanks to llama.cpp. Neither inputs transcripts nor outputs summaries are sent to any server. Everything runs on your machine.
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
+
+This example is a 100% local meeting summarization tool, that runs on your machine thanks to:
+
+- `LiquidAI/LFM2-2.6B-Transcript` -> a small language model specialized in summarizing meeting transcripts.
+
+- `llama.cpp` -> a fast inference engine with a minimal setup and state-of-the-art performance on a wide range of hardware, both locally and in the cloud.
+
+This tool can be piped with an audio transcription model to map
+
+- audio files to their corresponding transcripts, and
+- transform the transcripts into summaries using this tool.
+
+This 2-step pipeline can be run on your machine, without any cloud services or API keys.
+
+Isn't that beautiful?
 
 ## Quick start
 
-You can run the script with `uv run`
+To run this CLI tool, you need to have `uv` installed in your system. Follow instructions [here](https://docs.astral.sh/uv/getting-started/installation/) to install it.
 
-
-
-1. Clone the repository
-    ```sh
-    git clone https://github.com/Liquid4All/cookbook.git
-    cd cookbook/examples/meeting-summarization
-    ```
-
-2. Run the summarization CLI, and see the summary in the console.
-
-    ```sh
-    uv run summarize --transcripts-file './transcripts.csv'
-    ```
-
+Once you have `uv` installed, you can run the tool with `uv run` without cloning the repository.
+```sh
+TODO
 ```
-[
-  {
-    "content": "Please analyze the following meeting transcript and prepare summaries as outlined below.\n- PARTICIPANTS: Identify all attendees and their designated capacities, if stated.\n- DETAILED: Provide a complete summary, including all pertinent details and context.\n\nPresent the results with distinct headings delineating each section.\n\nMARKETING & SALES SYNC MEETING TRANSCRIPT\n**DATE**: September 11, 2023\n**TIME**: 8:30 AM\n**DURATION**: 90 minutes\n**PARTICIPANTS**: Julie Garcia (Marketing Director), Kimberly Bradshaw (Sales Director), Bruce Williams (Demand Generation Manager), Beverly Holland (Content Marketing Manager), Emily Brown (Sales Operations Manager), Daisy Clark (Account Executive)\n\n----------\n\n**JULIE GARCIA**: Good morning, everyone. Thanks for joining. Let's jump right in. I'd like to spend the next ninety minutes really digging into how the recent marketing campaigns are impacting the sales pipeline and identifying any bottlenecks or opportunities for improvement. Kimberly, maybe you can kick us off with a high-level view from the sales side?\n\n**KIMBERLY BRADSHAW**: Sure. Overall, September is looking… okay. Not fantastic, but not terrible. We're seeing a slight dip in qualified leads compared to August, about 12% down. We closed a few decent deals last week, thankfully, but conversion rates on those MQLs we *are* getting are a bit sluggish. Daisy, how are things looking from your perspective on the front lines?\n\n**DAISY CLARK**: It's definitely taking more touchpoints to get meetings booked. The leads coming in feel… less engaged, almost. A lot of the initial responses are just 'not a good fit' or no response at all. I’m working through the existing pipeline, but it’s slower going. I’ve noticed a lot are coming from the webinar on ‘Advanced Data Analytics,’ which is good, but they seem to be more junior-level people, and the buying decision is usually higher up.\n\n**BRUCE WILLIAMS**: That’s helpful to know, Daisy. The ‘Advanced Data Analytics’ webinar was heavily promoted on LinkedIn – targeted at Data Science Managers and above. We might have had some keyword overlap and are attracting the wrong titles. I can refine the targeting. Emily, can you pull reports showing the job titles associated with the MQLs from that campaign specifically?\n\n**EMILY BROWN**: Absolutely, Bruce. Give me ten minutes, and I can have that to you. I can also segment MQL data by campaign source and show you the conversion rates at each stage of the funnel. I’ve been tracking the lead score distribution as well; we might see a pattern there. Lead scoring has been tweaked recently, so it's good to double-check.\n\n**JULIE GARCIA**: Good, Emily. That’s exactly what we need. Let's hold off on diving into the full funnel analysis for now, though, and focus on the ‘Advanced Data Analytics’ campaign for a moment. Beverly, what was the messaging around that webinar? Was there a clear value proposition for senior-level decision-makers?\n\n**BEVERLY HOLLAND**: We focused on the ROI of advanced analytics, showcasing case studies where clients had achieved significant cost savings and revenue increases. The messaging was geared towards demonstrating thought leadership and positioning us as experts. We did have a slightly more technical deep-dive section, which perhaps resonated more with the analyst crowd… I can certainly adjust the content for future promotion, leaning more into the business impact and less into the ‘how-to’.\n\n**KIMBERLY BRADSHAW**: That sounds like a good starting point, Beverly. Maybe we can add some testimonials from VPs or Directors who’ve benefited from those analytics insights. Something that speaks directly to their pain points – like, 'how this helps *them* meet their quarterly goals,’ not just ‘how it helps their team do their jobs better.’\n\n**DAISY CLARK**: I agree. When I'm on the call, if I can lead with, 'This is how we helped a company similar to yours achieve X result,' it’s a much stronger conversation starter than, 'Here's all the amazing technical features.' \n\n**BRUCE WILLIAMS**: Okay, I'll work with Beverly to adjust the LinkedIn ad copy and landing page to emphasize those high-level benefits. We can A/B test different versions. Emily, when you send over the job title breakdown, can you also include the lead source for those MQLs? I want to see if it's just LinkedIn, or if we’re pulling in incorrect titles from other channels as well.\n\n**EMILY BROWN**: Will do. Should be with you in about eight minutes. I’m also running a report on the average time it's taking sales to follow up with MQLs. Initial data shows a slight increase – about 4 hours slower than last month. Could be contributing to the lower engagement.\n\n**KIMBERLY BRADSHAW**: Four hours is too long. Our SLA is one hour, maximum. We've been a little short-staffed with a couple of folks out sick, but that’s not an excuse. I’ll address that with the team immediately. Emily, can you flag those MQLs with delayed follow-up in Salesforce so I can see them?\n\n**EMILY BROWN**: Already done. It's a custom report view, just for you. It shows the MQL, the lead source, the date/time the MQL was assigned, and the date/time of the first meaningful touch. 'Meaningful touch' being an email response or a logged call.\n\n**JULIE GARCIA**: Okay, that’s good accountability. Let’s switch gears slightly. We launched the new ebook, ‘The Future of Predictive Analytics,’ two weeks ago. Bruce, how’s that performing?\n\n**BRUCE WILLIAMS**: The ebook is doing well in terms of downloads – over 500 in the first two weeks. Traffic is primarily coming from our blog and organic search, which is encouraging. We’re seeing a decent click-through rate on the gated download form. However, the MQL conversion rate from ebook downloads is lower than expected – around 6%. Normally, we see closer to 8-10%.\n\n**BEVERLY HOLLAND**: Interesting. Maybe the content isn't qualifying as strongly as we thought. It's a fairly broad overview, designed to attract a wider audience. Perhaps we need to add more qualifying questions to the download form?\n\n**KIMBERLY BRADSHAW**: I like that idea, Beverly. We could ask about their current analytics stack, their team size, or their biggest analytics challenge. Something that helps us gauge their readiness to buy. Daisy, any feedback from the leads who downloaded the ebook?\n\n**DAISY CLARK**: I've spoken to a few. They found it informative, but a lot of them are still in the research phase. They're trying to understand the broader landscape before committing to a specific solution. It feels less ‘sales-ready’ than the webinar leads, which makes sense, given it's a top-of-funnel asset.\n\n**BRUCE WILLIAMS**: Okay, so it's performing as expected, just maybe not *optimally*. We’re nurturing those leads with a follow-up email series, including a case study and an invitation to a demo. We can A/B test different subject lines and content in the nurture sequence to improve engagement.\n\n**JULIE GARCIA**: Let's prioritize that. Emily, can you track the performance of that nurture sequence and identify any drop-off points?\n\n**EMILY BROWN**: Already on it. I’ve set up tracking in Marketo. I'll have a report for you by the end of the week showing open rates, click-through rates, and MQL conversion rates for each email in the series.\n\n**KIMBERLY BRADSHAW**: One thing I’ve noticed is a lot of our reps are defaulting to the standard demo script, even when the lead clearly has different pain points. We need to reinforce the importance of tailoring the presentation to the individual prospect. I'll run a refresher training session next week.\n\n**DAISY CLARK**: That would be really helpful. Sometimes I feel like I'm fighting against the system, trying to customize the message instead of just sticking to the pre-approved script.\n\n**BRUCE WILLIAMS**: Okay, Emily, you mentioned the report on job titles from the ‘Advanced Data Analytics’ webinar is ready. Can you share your screen?\n\n**EMILY BROWN**: (Shares screen) Here it is. As you can see, the top job titles are Data Analyst, Data Scientist, and Business Intelligence Analyst. We're getting very few Director-level or above. About 70% are individual contributors. That confirms Daisy’s observation.\n\n**KIMBERLY BRADSHAW**: Wow, that's a significant skew. We’re essentially wasting our sales team’s time on leads who don’t have the budget authority.\n\n**JULIE GARCIA**: Okay, so immediate action item: Bruce, refine the LinkedIn targeting for the ‘Advanced Data Analytics’ campaign. Beverly, adjust the ad copy and landing page to focus on executive-level benefits. Let's also pause the campaign for 48 hours while we implement those changes. Bruce, what's the estimated turnaround time?\n\n**BRUCE WILLIAMS**: I can have the changes implemented and the campaign relaunched by tomorrow afternoon. I’ll closely monitor the performance and report back on Friday.\n\n**KIMBERLY BRADSHAW**: And I’ll reinforce the follow-up SLA with the sales team. I also want to schedule regular pipeline reviews – weekly, maybe? – to catch these issues earlier.\n\n**JULIE GARCIA**: Excellent. Weekly pipeline reviews sound good. Emily, can you set that up on everyone’s calendars? Let's aim for Thursdays at 9:00 AM. Anything else before we wrap up?\n\n**BEVERLY HOLLAND**: I’m going to brainstorm some new testimonial options, focusing on executive-level clients. I’ll share a draft with Kimberly and Daisy by Wednesday.\n\n**DAISY CLARK**: Just a quick thought - maybe we can create a separate landing page specifically for the executive audience, with tailored content and a more direct call to action?\n\n**BRUCE WILLIAMS**: That's a great idea, Daisy! We can use dynamic content to show different versions of the landing page based on job title. I'll add that to the list.\n\n**JULIE GARCIA**: Okay, fantastic. It sounds like we have a clear action plan. To recap: Bruce and Beverly are adjusting the ‘Advanced Data Analytics’ campaign, Kimberly is reinforcing the sales SLA and scheduling training, Emily is scheduling weekly pipeline reviews and tracking nurture sequence performance, and Beverly is drafting new testimonials. Let's all stay in close communication. Thanks, everyone, for a productive meeting.",
-    "role": "user"
-  },
-  {
-    "content": "## MARKETING & SALES SYNC MEETING SUMMARY – September 11, 2023\n\n**PARTICIPANTS:**\n\n*   Julie Garcia – Marketing Director\n*   Kimberly Bradshaw – Sales Director\n*   Bruce Williams – Demand Generation Manager\n*   Beverly Holland – Content Marketing Manager\n*   Emily Brown – Sales Operations Manager\n*   Daisy Clark – Account Executive\n\n**DETAILED SUMMARY:**\n\nThe meeting focused on recent marketing campaign performance, sales pipeline impact, and areas for improvement. Key discussion points included a slight dip in September lead quality and conversion rates, particularly concerning the ‘Advanced Data Analytics’ webinar and the ‘Future of Predictive Analytics’ ebook.\n\n**Key Decisions:**\n\n*   Refine LinkedIn targeting and ad copy for the ‘Advanced Data Analytics’ campaign to focus on executive-level audiences.\n*   Prioritize A/B testing of nurture sequences for the ‘Future of Predictive Analytics’ ebook.\n*   Implement weekly pipeline reviews to proactively address bottlenecks.\n*   Reinforce the importance of tailoring sales presentations to individual prospect needs.\n\n**Action Items:**\n\n*   **Bruce Williams:** Refine LinkedIn targeting & ad copy for ‘Advanced Data Analytics’ campaign; relaunch campaign. **Due Date:** Tomorrow afternoon.\n*   **Bruce Williams:** Explore dynamic content for a separate landing page targeting executive audiences. **Due Date:** To be determined.\n*   **Beverly Holland:** Adjust ‘Advanced Data Analytics’ landing page copy to emphasize executive-level benefits; Draft executive-focused testimonials. **Due Date:** Testimonial draft – Wednesday.\n*   **Kimberly Bradshaw:** Address sales follow-up SLA violations with the sales team; Schedule refresher training on tailored presentations. **Due Date:** Training – Next week.\n*   **Emily Brown:** Schedule weekly pipeline reviews. **Due Date:** First meeting – Thursday at 9:00 AM.\n*   **Emily Brown:** Track nurture sequence performance for the ‘Future of Predictive Analytics’ ebook. **Due Date:** Report – End of week.\n*   **Emily Brown:** Provide report on job titles & lead source for ‘Advanced Data Analytics’ MQLs. **Due Date:** Completed.\n\n\n\n",
-    "role": "assistant"
-  }
-]
+
+Alternatively, if you plan on digging deeper and modifying the code, you can clone the repository
+
+```sh
+git clone https://github.com/Liquid4All/cookbook.git
+cd cookbook/examples/meeting-summarization
 ```
+
+and run the summarization CLI using the following command:
+
+```sh
+uv run summarize.py \
+  --model LiquidAI/LFM2-2.6B-Transcript-GGUF \
+  --hf-model-file LFM2-2.6B-Transcript-1-GGUF.gguf \
+  --transcript transcript.txt
+```
+
+## How does it work?
+
+The CLI uses the llama.cpp Python bindings to download the llama.cpp binary for your platform automatically, so you don't need to worry about it.
+
+Then, it uses the `LiquidAI/LFM2-2.6B-Transcript` model to summarize the transcript.
+
+```python
+model = Llama(
+    model_path="LiquidAI/LFM2-2.6B-Transcript-GGUF",
+    n_ctx=8192,
+    n_threads=4,
+    verbose=False,
+)
+```
+

@@ -6,4 +6,5 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "llama-cpp-python>=0.3.16",
+    "huggingface-hub>=0.20.0",
 ]
