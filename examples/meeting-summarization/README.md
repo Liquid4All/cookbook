@@ -6,9 +6,9 @@
 
 This example is a 100% local meeting summarization tool, that runs on your machine thanks to:
 
-- `LiquidAI/LFM2-2.6B-Transcript` -> a small language model specialized in summarizing meeting transcripts.
+- [`LiquidAI/LFM2-2.6B-Transcript`](https://huggingface.co/LiquidAI/LFM2-2.6B-Transcript) -> a small language model specialized in summarizing meeting transcripts.
 
-- `llama.cpp` -> a fast inference engine with a minimal setup and state-of-the-art performance on a wide range of hardware, both locally and in the cloud.
+- [`llama.cpp`](https://github.com/ggerganov/llama.cpp) -> a fast inference engine with a minimal setup and state-of-the-art performance on a wide range of hardware, both locally and in the cloud.
 
 This tool can be piped with an audio transcription model to map
 
