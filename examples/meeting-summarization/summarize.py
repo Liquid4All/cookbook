@@ -178,7 +178,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--hf-model-file",
         type=str,
-        default="LFM2-2.6B-Transcript-1-GGUF.gguf",
+        default="LFM2-2.6B-Transcript-Q4_0.gguf",
         help="If using HuggingFace, specify the GGUF filename within the repo (e.g., 'llama-2-7b.Q4_K_M.gguf')"
     )
     parser.add_argument(
