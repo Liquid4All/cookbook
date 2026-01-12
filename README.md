@@ -139,7 +139,8 @@ Working applications that demonstrate Liquid models in action.
 | Food Images Fine-tuning | [▶️ Go to the repo](https://github.com/benitomartin/food-images-finetuning) ![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning) |
 | Meeting Intelligence CLI | [▶️ Go to the repo](https://github.com/csanghvi-stripe/meeting-prompter) ![GitHub Repo stars](https://img.shields.io/github/stars/csanghvi-stripe/meeting-prompter) |
 | Private Doc Q&A: On-device document Q&A with RAG and voice input | [▶️ Go to the repo](https://github.com/csanghvi-stripe/private-doc-qa) ![GitHub Repo stars](https://img.shields.io/github/stars/csanghvi-stripe/private-doc-qa) |
-
+| LFM-Scholar | [▶️ Go to the repo](https://github.com/gyunggyung/LFM-Scholar) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar) |
+| LFM2-KoEn-Tuning | [▶️ Go to the repo](https://github.com/gyunggyung/LFM2-KoEn-Tuning) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning) |
 
 ## Contributing
 
