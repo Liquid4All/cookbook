@@ -8,7 +8,7 @@ An efficient bidirectional translation system powered by Liquid AI's LFM2 1.2B m
 
 Key features:
 - **Automatic language detection** - Intelligently detects input language and translates accordingly
-- **High-quality translation** - CHrF++ 32.96 / BLEU 12.05 on Flores-200 benchmark
+- **High-quality translation** - CHrF++ 34.61 / BLEU 13.21 on Flores-200 benchmark
 - **Efficient inference** - Runs on modest hardware with merged adapters for speed
 - **Easy-to-use CLI** - Simple command-line interface powered by Fire
 
@@ -37,13 +37,13 @@ uv run python main.py --text "$(cat linkedin_post.txt)" --max-new-tokens 1024
 
 The system uses a two-stage training approach:
 
-1. **Supervised Fine-tuning (SFT)**: 100K high-quality Korean-English parallel datasets establish the translation foundation
+1. **Supervised Fine-tuning (SFT)**: 280K high-quality Korean-English parallel datasets establish the translation foundation
 2. **Reinforcement Learning (RL)**: GRPO optimization with 10K additional samples refines translation quality
 
 ### Model Components
 
-- **Base Model**: `gyung/lfm2-1.2b-koen-mt-v4-100k` - SFT fine-tuned LFM2 1.2B
-- **Adapter**: `gyung/lfm2-1.2b-koen-mt-v5-rl-10k-adapter` - LoRA adapter trained with GRPO
+- **Base Model**: `gyung/lfm2-1.2b-koen-mt-v6.4-merged` - SFT fine-tuned LFM2 1.2B
+- **Adapter**: `gyung/lfm2-1.2b-koen-mt-v8-rl-10k-adapter` - LoRA adapter trained with GRPO
 - **Automatic Detection**: Regular expression pattern matching for Korean text (Hangul syllables, Jamo)
 
 The system automatically detects the input language and applies the appropriate translation direction, supporting both English→Korean and Korean→English translation.
@@ -55,8 +55,8 @@ uv run python main.py [OPTIONS]
 
 Options:
   --text TEXT                    Text to translate (required)
-  --model-name TEXT             Base model name (default: gyung/lfm2-1.2b-koen-mt-v4-100k)
-  --adapter-name TEXT           Adapter name (default: gyung/lfm2-1.2b-koen-mt-v5-rl-10k-adapter)
+  --model-name TEXT             Base model name (default: gyung/lfm2-1.2b-koen-mt-v6.4-merged)
+  --adapter-name TEXT           Adapter name (default: gyung/lfm2-1.2b-koen-mt-v8-rl-10k-adapter)
   --max-new-tokens INTEGER     Maximum tokens to generate (default: 256)
   --temperature FLOAT          Sampling temperature (default: 0.3)
   --min-p FLOAT               Minimum probability threshold (default: 0.15)
@@ -86,7 +86,7 @@ On Flores-200 benchmark (1,012 samples):
 
 | Model | Parameters | CHrF++ | BLEU |
 |-------|------------|--------|------|
-| **LFM2-KoEn-v5-RL** | **1.2B** | **32.96** | **12.05** |
+| **LFM2-KoEn-v8-rl** | **1.2B** | **34.61** | **13.21** |
 | Gemma-3-4B | 4B | 32.83 | 11.36 |
 | Qwen3-4B | 4B | 25.62 | 7.46 |
 
