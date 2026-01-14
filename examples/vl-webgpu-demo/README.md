@@ -7,6 +7,7 @@ This example showcases how to run a local vision language model on the browser u
 
 This is a WebGPU-based vision-language model demo, so make sure you're using a browser that supports WebGPU (like Chrome or Edge).
 
+You can fin all the code [in this Hugging Face Space](https://huggingface.co/spaces/LiquidAI/LFM2.5-VL-1.6B-WebGPU/tree/main).
 
 ## Table of Contents
 
@@ -15,7 +16,6 @@ This is a WebGPU-based vision-language model demo, so make sure you're using a b
   - [Key advantages](#key-advantages)
 - [How to run the app locally](#how-to-run-the-app-locally)
 - [How to deploy the app to production](#how-to-deploy-the-app-to-production)
-- [Project Structure](#project-structure)
   - [How the code is organized](#how-the-code-is-organized)
 - [Frequently Asked Questions for non-Node JS developers](#frequently-asked-questions-for-non-node-js-developers)
   - [What does `npm run` do?](#what-does-npm-run-do)
@@ -68,19 +68,19 @@ This demo showcases a different approach: running a vision-language model entire
 
    [Downloading and installing Node.js and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 
-2. Install dependencies specified in `package.json` with `npm`
+3. Install dependencies specified in `package.json` with `npm`
    ```sh
    npm install
    ```
    
-3. Start the development server:
+4. Start the development server:
    ```sh
    npm run dev
    ```
 
    The dev server will start and provide you with a local URL (typically `http://localhost:5173`) where you can access the app in your browser.
 
-4. Optional. Run with Docker locally
+5. Optional. Run with Docker locally
 
    If you prefer to test the production build locally using Docker:
 
@@ -118,7 +118,7 @@ This static website can be deployed to any static hosting service, such as:
   - Apache
   - Caddy
 
-**Important**: This app requires specific CORS headers to enable WebGPU and SharedArrayBuffer. Ensure your hosting solution supports custom headers (see details below).
+**Important**: This app requires specific CORS headers to enable WebGPU and SharedArrayBuffer. Github pages, for example, does not support them, so it is not an option to host this app.
 
 
 ### How the code is organized
