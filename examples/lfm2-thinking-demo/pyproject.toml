@@ -1,0 +1,22 @@
+[project]
+name = "lfm2-thinking-demo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=1.12.0",
+    "anthropic>=0.76.0",
+    "fire>=0.7.1",
+    "google-api-python-client>=2.188.0",
+    "google-auth-httplib2>=0.3.0",
+    "google-auth-oauthlib>=1.2.3",
+    "langchain>=1.2.4",
+    "langchain-openai>=1.1.7",
+    "langchain-tavily>=0.2.16",
+    "langgraph>=1.0.6",
+    "rich>=14.2.0",
+    "tavily-python>=0.7.18",
+    "torch>=2.9.1",
+    "transformers>=4.57.5",
+]
