@@ -1,0 +1,15 @@
+.env
+**/__pycache__
+.venv
+uv.lock
+.ruff_cache
+
+# Generated list of functions
+# functions.json
+
+# Local server runtimes and models
+llama-server
+llama.cpp
+llama-liquid-audio*
+runners/
+LFM2.5-Audio-1.5B-GGUF

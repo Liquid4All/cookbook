@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Car Cockpit Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Shader Logo -->
+  <div class="logo-container">
+    <canvas id="liquidCanvas"></canvas>
+  </div>
+
+  <div class="page-container">
+    <main class="cockpit-grid">
+      <!-- WINDOWS -->
+      <section class="card" id="windows-card">
+        <div class="card-header">
+          <div class="card-title">Windows</div>
+          <div class="card-tag">Schematic</div>
+        </div>
+        <div class="windows-layout">
+          <!-- Left Controls -->
+          <div class="window-controls-left">
+            <div class="window-control-item">
+              <div class="window-label">Front Left</div>
+              <button class="btn window-toggle-btn" data-window-toggle="fl">Open</button>
+            </div>
+            <div class="window-control-item">
+              <div class="window-label">Rear Left</div>
+              <button class="btn window-toggle-btn" data-window-toggle="rl">Open</button>
+            </div>
+          </div>
+
+          <!-- Car Visualization Center -->
+          <div class="window-visual-center">
+            <div class="car-schematic">
+                <div class="windshield"></div>
+
+                <!-- Left Side Windows -->
+                <div class="window-frame frame-fl" id="viz-fl">
+                    <div class="glass"></div>
+                </div>
+                <div class="b-pillar-left"></div>
+                <div class="window-frame frame-rl" id="viz-rl">
+                    <div class="glass"></div>
+                </div>
+
+                <!-- Right Side Windows -->
+                <div class="window-frame frame-fr" id="viz-fr">
+                    <div class="glass"></div>
+                </div>
+                <div class="b-pillar-right"></div>
+                <div class="window-frame frame-rr" id="viz-rr">
+                    <div class="glass"></div>
+                </div>
+
+                <div class="rear-windshield"></div>
+            </div>
+
+            <!-- Footer buttons centered below car -->
+            <div class="window-footer-buttons">
+              <button class="btn btn-ghost" id="windows-open-all">Open all</button>
+              <button class="btn btn-ghost" id="windows-close-all">Close all</button>
+            </div>
+          </div>
+
+          <!-- Right Controls -->
+          <div class="window-controls-right">
+            <div class="window-control-item">
+              <div class="window-label">Front Right</div>
+              <button class="btn window-toggle-btn" data-window-toggle="fr">Open</button>
+            </div>
+            <div class="window-control-item">
+              <div class="window-label">Rear Right</div>
+              <button class="btn window-toggle-btn" data-window-toggle="rr">Open</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MEDIA -->
+      <section class="card" id="media-card">
+        <div class="card-header">
+          <div class="card-title">Media</div>
+          <div class="pill-toggle"><span class="pill-dot"></span><span>Bluetooth</span></div>
+        </div>
+        <div class="media-main">
+          <div class="media-track-info">
+            <div class="media-track-title" id="media-title">Neon Skyline</div>
+            <div class="media-track-meta">
+              <span id="media-artist">Ocean Drive</span>
+              <span>
+                • <span id="media-album">Night Run</span>
+              </span>
+            </div>
+          </div>
+          <div class="media-slider">
+            <div class="progress-track">
+              <div class="progress-fill media-progress-fill" id="media-progress"></div>
+            </div>
+            <div class="media-time-row">
+              <span id="media-current-time">0:00</span>
+              <span id="media-total-time">3:12</span>
+            </div>
+          </div>
+          <div class="media-controls">
+            <div class="media-controls-left">
+              <button class="btn btn-icon media-control-btn" id="media-prev" title="Previous">
+                <span class="icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 5v14" />
+                    <path d="M18 6l-8.5 6L18 18V6z" />
+                  </svg>
+                </span>
+              </button>
+              <button class="btn btn-icon media-control-btn primary" id="media-play-pause" title="Play / Pause">
+                <span class="icon" id="media-play-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
+              </button>
+              <button class="btn btn-icon media-control-btn" id="media-next" title="Next">
+                <span class="icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 5v14" />
+                    <path d="M6 6l8.5 6L6 18V6z" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+            
+            <!-- "Playing" Decoration -->
+            <div class="media-indicators">
+              <div class="chip-equalizer" id="media-status-chip">
+                  <div class="eq-bars">
+                      <div class="eq-bar"></div>
+                      <div class="eq-bar"></div>
+                      <div class="eq-bar"></div>
+                      <div class="eq-bar"></div>
+                      <div class="eq-bar"></div>
+                  </div>
+                  <span id="media-status-text" style="margin-left:4px;">Paused</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Assistant Section -->
+        <div class="audio-assistant-section">
+          <div class="subtle-label">Voice Assistant</div>
+          <div class="audio-controls">
+            <button class="btn btn-voice" id="push-to-talk">
+              <span class="voice-icon">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                  <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                </svg>
+              </span>
+              <span id="voice-btn-text">Hold to Talk</span>
+            </button>
+            <div class="voice-select-wrapper">
+              <label class="voice-label">Voice</label>
+              <select id="voice-select" class="voice-select">
+                <option value="UK female">UK Female</option>
+                <option value="UK male">UK Male</option>
+                <option value="US female">US Female</option>
+                <option value="US male">US Male</option>
+              </select>
+            </div>
+          </div>
+          <div class="audio-status-row">
+            <div class="audio-indicator" id="audio-indicator">
+              <div class="audio-wave">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+              </div>
+              <span id="audio-status-text">Ready</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CLIMATE -->
+      <section class="card" id="climate-card">
+        <div class="card-header">
+          <div class="card-title">Climate</div>
+          <div class="climate-mode-pill">
+            <span class="badge">AUTO</span>
+            <span>Cabin comfort</span>
+          </div>
+        </div>
+        <div class="climate-layout">
+          <div class="climate-temp-stack">
+            <div class="subtle-label">Cabin temperature</div>
+            <div class="climate-current"><span id="climate-current">23</span><span class="unit">°C</span></div>
+            <div class="climate-target-row">
+              <button class="btn btn-icon temp-step-btn" data-temp="down">-</button>
+              <div>
+                <div class="muted">Target</div>
+                <div class="climate-target-value"><span id="climate-target">23</span>°</div>
+              </div>
+              <button class="btn btn-icon temp-step-btn" data-temp="up">+</button>
+            </div>
+            <div class="climate-status-row">
+              <div class="climate-status-pill" id="climate-status-pill">
+                <span class="dot"></span>
+                <span id="climate-status-label">Constant</span>
+              </div>
+              <div class="climate-status-text" id="climate-status-text">Maintaining cabin temperature.</div>
+            </div>
+          </div>
+          <div class="climate-right">
+            <div class="fan-wrapper">
+              <div class="fan-icon">
+                <div class="fan-rotor" id="fan-rotor">
+                  <div class="fan-blades">
+                    <div class="fan-blade"></div>
+                    <div class="fan-blade"></div>
+                    <div class="fan-blade"></div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="fan-speed-label">Fan speed <span id="fan-level">2</span></div>
+                <div class="fan-buttons">
+                  <button class="btn btn-small" data-fan="down">-</button>
+                  <button class="btn btn-small" data-fan="up">+</button>
+                </div>
+                <div class="fan-speed-bar">
+                  <div class="fan-speed-dot" data-fan-dot="1"></div>
+                  <div class="fan-speed-dot" data-fan-dot="2"></div>
+                  <div class="fan-speed-dot" data-fan-dot="3"></div>
+                  <div class="fan-speed-dot" data-fan-dot="4"></div>
+                </div>
+              </div>
+            </div>
+            <div style="width:100%;margin-top:8px;">
+              <div class="subtle-label" style="margin-bottom:4px;">Temperature change</div>
+              <div class="progress-track">
+                <div class="progress-fill" id="climate-progress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NAVIGATION -->
+      <section class="card" id="navigation-card">
+        <div class="card-header">
+          <div class="card-title">Navigation</div>
+          <div class="card-tag">Turn-by-turn</div>
+        </div>
+        <div class="nav-layout">
+          <div class="nav-top-row">
+            <div class="nav-destination">
+              <div class="subtle-label">Destination</div>
+              <div class="nav-destination-name" id="nav-destination-name">No destination set</div>
+            </div>
+            <div class="nav-buttons">
+              <button class="btn" id="nav-set-destination">Set destination</button>
+              <button class="btn" id="nav-toggle">Start</button>
+              <button class="btn btn-ghost" id="nav-clear">Clear</button>
+            </div>
+          </div>
+
+          <div class="nav-current-step">
+            <div class="row-space">
+              <div>
+                <div class="nav-step-text" id="nav-current-text">Waiting for route…</div>
+                <div class="nav-step-sub" id="nav-current-sub">&nbsp;</div>
+              </div>
+              <div class="nav-badge badge-pulse" id="nav-status-badge">Idle</div>
+            </div>
+            <div class="nav-progress">
+              <div class="progress-track">
+                <div class="progress-fill" id="nav-progress"></div>
+              </div>
+            </div>
+            <div class="nav-status" id="nav-status-text">Route not active.</div>
+          </div>
+
+          <div>
+            <div class="subtle-label" style="margin-bottom:4px;">Next turns</div>
+            <ul class="nav-list" id="nav-list"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="shader-logo.js"></script>
+</body>
+</html>
