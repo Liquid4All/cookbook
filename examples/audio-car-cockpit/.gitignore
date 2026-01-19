@@ -4,9 +4,6 @@
 uv.lock
 .ruff_cache
 
-# Generated list of functions
-# functions.json
-
 # Local server runtimes and models
 llama-server
 llama.cpp

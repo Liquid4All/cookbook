@@ -1,6 +1,6 @@
 [project]
 name = "audio_car_cockpit"
-version = "0.1.0"
+version = "1.0.0"
 description = "Audio car cockpit demo"
 readme = "README.md"
 requires-python = ">=3.13, <3.14"  # Note: also set in `.python-version`
