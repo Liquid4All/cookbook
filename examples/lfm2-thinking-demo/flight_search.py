@@ -5,6 +5,7 @@ Supports both OpenAI models and local models via llama-server
 """
 
 from openai import OpenAI
+import csv
 import json
 from datetime import datetime, timedelta
 import random
@@ -13,11 +14,13 @@ import sys
 import os
 from typing import Dict, List, Optional, Tuple, Any, Union
 
+# Path to the flights data CSV
+FLIGHTS_CSV_PATH = os.path.join(os.path.dirname(__file__), "sample_flights.csv")
+
 # Type aliases for clarity
 Airport = Dict[str, str]
 FlightData = Dict[str, Any]
 FlightSearchResult = Dict[str, Any]
-FlightDetails = Dict[str, Any]
 Messages = List[Dict[str, Any]]
 
 # Airport database
@@ -31,6 +34,7 @@ AIRPORTS: Dict[str, Airport] = {
     "FRA": {"name": "Frankfurt Airport", "city": "Frankfurt", "country": "Germany"},
     "AMS": {"name": "Amsterdam Schiphol", "city": "Amsterdam", "country": "Netherlands"},
     "IST": {"name": "Istanbul Airport", "city": "Istanbul", "country": "Turkey"},
+    "BCN": {"name": "Barcelona-El Prat", "city": "Barcelona", "country": "Spain"},
 }
 
 CITY_TO_AIRPORT: Dict[str, str] = {
@@ -43,6 +47,7 @@ CITY_TO_AIRPORT: Dict[str, str] = {
     "Frankfurt": "FRA",
     "Amsterdam": "AMS",
     "Istanbul": "IST",
+    "Barcelona": "BCN",
 }
 
 # Tool definitions
@@ -80,24 +85,24 @@ tools: List[Dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "get_flight_details",
-            "description": "Get detailed information about a specific flight by flight number",
+            "name": "book_flight",
+            "description": "Book a flight by its flight number for a specific date",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "flight_number": {
                         "type": "string",
-                        "description": "Flight number (e.g., 'AA123', 'LH456')"
+                        "description": "The flight number to book (e.g., 'AA123', 'LH456')"
                     },
                     "date": {
                         "type": "string",
-                        "description": "Flight date in YYYY-MM-DD format"
+                        "description": "The date of the flight in YYYY-MM-DD format"
                     }
                 },
                 "required": ["flight_number", "date"]
             }
         }
-    }
+    },
 ]
 
 
@@ -120,111 +125,66 @@ def normalize_location(location: str) -> str:
     return location.upper()
 
 
-def calculate_distance(departure: str, destination: str) -> int:
-    """
-    Calculate approximate distance between airports in kilometers.
-    
-    Args:
-        departure: Departure airport code
-        destination: Destination airport code
-        
-    Returns:
-        Distance in kilometers
-    """
-    distances: Dict[Tuple[str, str], int] = {
-        ("JFK", "LHR"): 3451, ("JFK", "CDG"): 3625, ("LAX", "LHR"): 5456,
-        ("BEG", "LHR"): 1056, ("BEG", "CDG"): 862, ("BEG", "JFK"): 4647,
-        ("DXB", "JFK"): 6847, ("DXB", "LHR"): 3414, ("IST", "BEG"): 522,
-        ("FRA", "BEG"): 740,
-    }
-    key: Tuple[str, str] = (departure, destination)
-    reverse_key: Tuple[str, str] = (destination, departure)
-    return distances.get(key, distances.get(reverse_key, 2000))
-
-
 def search_flights(
-    departure: str, 
-    destination: str, 
-    date: str, 
+    departure: str,
+    destination: str,
+    date: str,
     max_results: int = 5
 ) -> FlightSearchResult:
     """
-    Search for flights between two airports.
-    
+    Search for flights between two airports from the CSV database.
+
     Args:
         departure: Departure airport code or city name
         destination: Destination airport code or city name
         date: Departure date in YYYY-MM-DD format
         max_results: Maximum number of flights to return
-        
+
     Returns:
         Dictionary containing flight search results with departure/destination info and list of flights
     """
     departure = normalize_location(departure)
     destination = normalize_location(destination)
-    
+
     if departure not in AIRPORTS or destination not in AIRPORTS:
         return {
             "error": f"Unknown airport code. Departure: {departure}, Destination: {destination}",
             "available_airports": list(AIRPORTS.keys())
         }
-    
-    distance: int = calculate_distance(departure, destination)
-    airlines: List[str] = ["AA", "BA", "LH", "AF", "EK", "TK", "JU"]
+
     flights: List[FlightData] = []
-    
-    for i in range(min(max_results, 5)):
-        airline: str = random.choice(airlines)
-        flight_num: str = f"{airline}{random.randint(100, 999)}"
-        base_duration_hours: float = distance / 550
-        duration_minutes: int = int(base_duration_hours * 60) + random.randint(-30, 30)
-        hours: int = duration_minutes // 60
-        minutes: int = duration_minutes % 60
-        
-        num_layovers: int
-        if distance > 4000:
-            num_layovers = random.choice([1, 2])
-        elif distance > 2000:
-            num_layovers = random.choice([0, 1])
-        else:
-            num_layovers = 0
-        
-        layover_cities: List[str] = []
-        if num_layovers > 0:
-            possible_hubs: List[str] = ["FRA", "AMS", "IST", "DXB"]
-            layover_cities = random.sample(
-                [code for code in possible_hubs if code not in [departure, destination]], 
-                num_layovers
-            )
-        
-        departure_hour: int = 6 + (i * 3)
-        departure_time: str = f"{departure_hour:02d}:{random.randint(0, 59):02d}"
-        arrival_hour: int = (departure_hour + hours + (num_layovers * 2)) % 24
-        arrival_time: str = f"{arrival_hour:02d}:{random.randint(0, 59):02d}"
-        base_price: float = distance * 0.15 + (num_layovers * 50)
-        price: float = round(base_price + random.uniform(-100, 100), 2)
-        
-        flights.append({
-            "flight_number": flight_num,
-            "airline": airline,
-            "departure_airport": departure,
-            "departure_city": AIRPORTS[departure]["city"],
-            "destination_airport": destination,
-            "destination_city": AIRPORTS[destination]["city"],
-            "departure_time": departure_time,
-            "arrival_time": arrival_time,
-            "date": date,
-            "distance_km": distance,
-            "duration": f"{hours}h {minutes}m",
-            "duration_minutes": duration_minutes,
-            "layovers": num_layovers,
-            "layover_airports": [AIRPORTS[code]["city"] for code in layover_cities],
-            "price_usd": price,
-            "available_seats": random.randint(5, 150)
-        })
-    
+
+    with open(FLIGHTS_CSV_PATH, "r", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if (row["departure_airport"] == departure and
+                row["destination_airport"] == destination and
+                row["date"] == date):
+
+                layover_airports = row["layover_airports"].split(";") if row["layover_airports"] else []
+
+                flights.append({
+                    "flight_number": row["flight_number"],
+                    "airline": row["airline"],
+                    "departure_airport": row["departure_airport"],
+                    "departure_city": row["departure_city"],
+                    "destination_airport": row["destination_airport"],
+                    "destination_city": row["destination_city"],
+                    "departure_time": row["departure_time"],
+                    "arrival_time": row["arrival_time"],
+                    "date": row["date"],
+                    "distance_km": int(row["distance_km"]),
+                    "duration": row["duration"],
+                    "duration_minutes": int(row["duration_minutes"]),
+                    "layovers": int(row["layovers"]),
+                    "layover_airports": layover_airports,
+                    "price_usd": float(row["price_usd"]),
+                    "available_seats": int(row["available_seats"])
+                })
+
     flights.sort(key=lambda x: x["price_usd"])
-    
+    flights = flights[:max_results]
+
     return {
         "departure": AIRPORTS[departure],
         "destination": AIRPORTS[destination],
@@ -234,55 +194,58 @@ def search_flights(
     }
 
 
-def get_flight_details(flight_number: str, date: str) -> FlightDetails:
+def book_flight(flight_number: str, date: str) -> Dict[str, Any]:
     """
-    Get detailed information about a specific flight.
-    
+    Book a flight by its flight number and date.
+
     Args:
-        flight_number: Flight number (e.g., 'AA123')
-        date: Flight date in YYYY-MM-DD format
-        
+        flight_number: The flight number to book
+        date: The date of the flight in YYYY-MM-DD format
+
     Returns:
-        Dictionary containing detailed flight information
+        Dictionary containing booking confirmation or error
     """
-    airline_code: str = ''.join(filter(str.isalpha, flight_number))
-    
-    flight_info: FlightDetails = {
+    # Search for the flight in the CSV
+    with open(FLIGHTS_CSV_PATH, "r", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row["flight_number"] == flight_number and row["date"] == date:
+                if int(row["available_seats"]) > 0:
+                    return {
+                        "status": "confirmed",
+                        "booking_reference": f"BK{random.randint(100000, 999999)}",
+                        "flight_number": flight_number,
+                        "date": date,
+                        "airline": row["airline"],
+                        "departure_airport": row["departure_airport"],
+                        "departure_city": row["departure_city"],
+                        "destination_airport": row["destination_airport"],
+                        "destination_city": row["destination_city"],
+                        "departure_time": row["departure_time"],
+                        "arrival_time": row["arrival_time"],
+                        "price_usd": float(row["price_usd"]),
+                        "message": "Flight booked successfully!"
+                    }
+                else:
+                    return {
+                        "status": "failed",
+                        "flight_number": flight_number,
+                        "date": date,
+                        "error": "No available seats on this flight"
+                    }
+
+    return {
+        "status": "failed",
         "flight_number": flight_number,
-        "airline": airline_code,
         "date": date,
-        "aircraft": random.choice(["Boeing 737-800", "Airbus A320", "Boeing 787-9", "Airbus A350"]),
-        "status": random.choice(["On Time", "Delayed 15 min", "Boarding", "Departed"]),
-        "departure": {
-            "airport": "JFK",
-            "terminal": random.choice(["1", "4", "8"]),
-            "gate": f"{random.choice(['A', 'B', 'C'])}{random.randint(1, 30)}",
-            "scheduled_time": "14:30",
-            "actual_time": "14:30"
-        },
-        "arrival": {
-            "airport": "LHR",
-            "terminal": random.choice(["2", "3", "5"]),
-            "gate": f"{random.choice(['A', 'B', 'C'])}{random.randint(1, 30)}",
-            "scheduled_time": "03:45",
-            "estimated_time": "03:45"
-        },
-        "baggage_claim": random.randint(1, 12),
-        "amenities": {
-            "wifi": True,
-            "entertainment": True,
-            "power_outlets": True,
-            "meal_service": True
-        }
+        "error": "Flight not found"
     }
-    
-    return flight_info
 
 
 # Available functions mapping
 available_functions: Dict[str, Any] = {
     "search_flights": search_flights,
-    "get_flight_details": get_flight_details
+    "book_flight": book_flight
 }
 
 
@@ -298,9 +261,9 @@ def setup_client(args: argparse.Namespace) -> Tuple[OpenAI, str]:
     """
     if args.model in ["gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo"]:
         # OpenAI model
-        api_key: Optional[str] = args.api_key or os.getenv("OPENAI_API_KEY")
+        api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            print("Error: OpenAI API key required. Set OPENAI_API_KEY env var or use --api-key")
+            print("Error: OpenAI API key required. Set OPENAI_API_KEY environment variable.")
             sys.exit(1)
         
         client: OpenAI = OpenAI(api_key=api_key)
@@ -322,80 +285,104 @@ def setup_client(args: argparse.Namespace) -> Tuple[OpenAI, str]:
 
 
 def run_conversation(
-    client: OpenAI, 
-    model_name: str, 
-    user_message: str, 
-    verbose: bool = False
+    client: OpenAI,
+    model_name: str,
+    user_message: str,
+    verbose: bool = False,
+    max_iterations: int = 5
 ) -> Messages:
     """
     Run a complete conversation with tool calling.
-    
+
     Args:
         client: OpenAI client instance
         model_name: Name of the model to use
         user_message: User's input message
         verbose: Whether to show detailed output
-        
+        max_iterations: Maximum number of iterations (model call -> tool execution -> model call)
+
     Returns:
         List of message dictionaries representing the conversation history
     """
     messages: Messages = [
         {
-            "role": "system", 
-            "content": "You are a helpful flight search assistant. You can help users find flights, compare options, and get flight details. Always provide clear, organized information about flights including prices, duration, and layovers."
+            "role": "system",
+            # "content": "You are a helpful flight search assistant. You can help users find flights, compare options, and get flight details. Always provide clear, organized information about flights including prices, duration, and layovers."
+            "content": """You are an AI assistant with access to a set of tools.
+When a user asks a question, determine if a tool should be called to help answer.
+If a tool is needed, respond with a tool call using the following format:
+Each tool function call should use json-like syntax, e.g., {"name": "speak", "arguments": {"name": "Hello"}}.
+If no tool is needed, answer the user directly.
+Always use the most relevant tool(s) for the user request.
+If a tool returns an error, explain the error to the user.
+Be concise and helpful.
+force json schema."""
         },
         {"role": "user", "content": user_message}
     ]
-    
+
     if verbose:
         print(f"\n{'='*80}")
         print(f"User: {user_message}")
         print(f"{'='*80}\n")
-    
-    # First API call
-    try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto",
-            temperature=0.7
-        )
-    except Exception as e:
-        print(f"❌ Error calling model: {e}")
-        return messages
-    
-    assistant_message = response.choices[0].message
-    messages.append(assistant_message)
-    
-    # Check if the model wants to call tools
-    if assistant_message.tool_calls:
+
+    for iteration in range(max_iterations):
+        # API call
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto",
+                # temperature=0.1,
+                # extra_body={
+                #     # "top_k": 20,
+                #     # "repetition_penalty": 1.05
+                # }
+            )
+        except Exception as e:
+            print(f"❌ Error calling model: {e}")
+            return messages
+
+        assistant_message = response.choices[0].message
+        messages.append(assistant_message)
+
+        # breakpoint()
+
+        # Check if the model wants to call tools
+        if not assistant_message.tool_calls:
+            # No tool calls - print final response and exit loop
+            if verbose:
+                print("💬 Assistant Response:\n")
+            print(assistant_message.content)
+            break
+
+        # Handle tool calls
         if verbose:
-            print("🔧 Tool Calls Requested\n")
-        
-        # Handle multiple tool calls
+            print(f"🔧 Tool Calls Requested (iteration {iteration + 1}/{max_iterations})\n")
+
         for tool_call in assistant_message.tool_calls:
             function_name: str = tool_call.function.name
             function_args: Dict[str, Any] = json.loads(tool_call.function.arguments)
-            
+
             if verbose:
                 print(f"  Function: {function_name}")
                 print(f"  Arguments: {json.dumps(function_args, indent=4)}")
-            
+
             # Execute the function
             function_to_call = available_functions.get(function_name)
             if not function_to_call:
                 print(f"⚠️  Unknown function: {function_name}")
                 continue
-                
-            function_response: Union[FlightSearchResult, FlightDetails] = function_to_call(**function_args)
-            
+
+            function_response: FlightSearchResult = function_to_call(**function_args)
+
             if verbose:
                 if 'flights' in function_response:
                     print(f"  ✓ Found {function_response.get('total_flights_found', 0)} flights\n")
                 else:
                     print(f"  ✓ Retrieved flight details\n")
-            
+
             # Add the function result to messages
             messages.append({
                 "role": "tool",
@@ -403,28 +390,7 @@ def run_conversation(
                 "name": function_name,
                 "content": json.dumps(function_response)
             })
-        
-        # Get final response from the model with tool results
-        try:
-            final_response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                tools=tools
-            )
-            
-            if verbose:
-                print("💬 Assistant Response:\n")
-            print(final_response.choices[0].message.content)
-            
-        except Exception as e:
-            print(f"❌ Error getting final response: {e}")
-        
-    else:
-        # No tool calls needed
-        if verbose:
-            print("💬 Assistant Response (No Tools Needed):\n")
-        print(assistant_message.content)
-    
+
     return messages
 
 
@@ -472,26 +438,23 @@ def main() -> None:
         epilog="""
 Examples:
   # Use OpenAI GPT-4
-  python flight-search.py --model gpt-4 --prompt "Find flights from NYC to London on 2026-03-15"
+  python flight_search.py --model gpt-4 --prompt "Find flights from NYC to London on 2026-03-15"
   
   # Use local model on default port (8080)
-  python flight-search.py --model lfm-1.2 --prompt "Search flights from Belgrade to Paris"
-  
-  # Use local model on custom port
-  python flight-search.py --model lfm-1.2 --port 8081 --prompt "Flight to Dubai"
+  python flight_search.py --port 8080 --prompt "Search flights from Belgrade to Paris"
   
   # Interactive mode with OpenAI
-  python flight-search.py --model gpt-4 --interactive
+  python flight_search.py --model gpt-4 --interactive
   
   # Interactive mode with local model
-  python flight-search.py --model lfm-1.2 --interactive
+  python flight_search.py --port 8080 --interactive
         """
     )
     
     parser.add_argument(
         "--model",
         type=str,
-        default="gpt-4",
+        # default="gpt-4",
         help="Model to use (e.g., 'gpt-4', 'gpt-4o', 'lfm-1.2'). Default: lfm-1.2"
     )
     
@@ -507,12 +470,6 @@ Examples:
         type=str,
         default="localhost",
         help="Host for local llama-server (default: localhost)"
-    )
-    
-    parser.add_argument(
-        "--api-key",
-        type=str,
-        help="OpenAI API key (or set OPENAI_API_KEY env var)"
     )
     
     parser.add_argument(
