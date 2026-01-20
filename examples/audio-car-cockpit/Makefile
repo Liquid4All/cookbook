@@ -66,6 +66,8 @@ LFM2-1.2B-Tool-GGUF: llama-server  ## Download tool calling model
 
 # ┌──────────────────────────────────────────────────────────┐
 # │       Prepare inference runner, platform specific        │
+# │              Required until this is merged:              │
+# │     https://github.com/ggml-org/llama.cpp/pull/18641     │
 # └──────────────────────────────────────────────────────────┘
 
 UNAME_S := $(shell uname -s)

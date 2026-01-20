@@ -1,11 +1,25 @@
-> WIP
+# Audio and tool calling with LFM2.5-Audio-1.5B and LFM2-1.2B-Tool
 
-TODO:
-- [ ] readme
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
-## STT + tool calling + TTS
+## What's inside?
 
-Combines [LFM2.5-Audio-1.5B](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF) and [LFM2-1.2B-Tool](https://huggingface.co/LiquidAI/LFM2-1.2B-Tool-GGUF) within a mockup of a car cockpit, letting the user control the car functionalities by voice.
+Combines [LFM2.5-Audio-1.5B](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF) in TTS and STT modes with [LFM2-1.2B-Tool](https://huggingface.co/LiquidAI/LFM2-1.2B-Tool-GGUF) within a mockup of a car cockpit, letting the user control the car functionalities by voice.  
+All running locally in real-time.
+
+![](./media/demo_with_subtitles.mp4)
+
+[Llama.cpp](https://github.com/ggml-org/llama.cpp) is used for both models inference, with a custom runner for the audio model. The car cockpit (UI) is vanilla js+html+css, and the communication with the backend is through messages over websocket, like a widely simplified [car CAN bus](https://en.wikipedia.org/wiki/CAN_bus).
+
+## Quick start
+
+> [!NOTE]
+> **Supported Platforms**
+> 
+> The following platforms are currently supported:
+> - macos-arm64
+> - ubuntu-arm64
+> - ubuntu-x64
 
 Usage:
 ```bash
