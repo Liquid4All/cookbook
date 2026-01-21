@@ -2,31 +2,35 @@
 
 [![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
-A Python CLI that monitors a folder for new invoice files and automatically extracts key information from them using
-two Liquid Foundational Models.
+A Python CLI that extracts payment details from invoice pdfs.
 
-This a practical example of building agentic workflows that run entirely on your local machine: no API keys, no cloud costs, no private data shared with third-parties.
+This a practical example of building local AI tools and apps with
+
+- No cloud costs
+- No network latency
+- No data privacy loss
+
 
 ## What's inside?
 
 In this example, you will learn how to:
 
-- **Chain multiple Liquid Foundational Models** to build a complete workflow that processes visual data (invoice images) and extracts structured information
 - **Set up local AI inference** using Ollama to run Liquid models entirely on your machine without requiring cloud services or API keys
 - **Build a file monitoring system** that automatically processes new files dropped into a directory
-- **Extract text from images** using the LFM2-VL-3B vision-language model for optical character recognition
-- **Transform unstructured text into structured data** using the LFM2-1.2B-Extract model for information extraction
-- **Create agentic workflows** that combine multiple AI models to solve real-world business problems while keeping your data private and secure
+- **Extract structured output from images** using LFM2-VL-3B, a small vision-language model.
 
 
 ## Understanding the architecture
 
-When you drop an invoice photo into a watched directory, the tool uses a chain with 2 Liquid Foundational Models:
+When you drop an invoice photo into a watched directory, the tool uses [LFM2-VL-3B](https://huggingface.co/LiquidAI/LFM2-VL-3B) to extract a structured record with the main information in the invoice, including
 
-1. [LFM2-VL-3B](https://huggingface.co/LiquidAI/LFM2-VL-3B) extracts a raw textual description from an invoice picture.
-2. [LFM2-1.2B-Extract](https://huggingface.co/LiquidAI/LFM2-1.2B-Extract) tranforms the raw textual description into a structured record. This record is appended to a CSV file.
+- The utility to pay
+- The amount to pay
+- The currency of the payment.
 
-![](./media/chain_diagram.gif)
+This record is appended to a CSV file.
+
+![](./media/diagram.jpg)
 
 
 ## Environment setup
@@ -93,7 +97,6 @@ Then, run the application using the invoices that are already in the repository:
 uv run python src/invoice_parser/main.py \
     --dir invoices/ \
     --image-model hf.co/LiquidAI/LFM2-VL-3B-GGUF:F16 \
-    --extractor-model hf.co/LiquidAI/LFM2-1.2B-Extract-GGUF:F16 \
     --process-existing
 ```
 
@@ -102,13 +105,12 @@ Feel free to modify the path to the invoices directory and the model IDs to suit
 
 > [!NOTE]
 >
-> You can use the 1.6B version of the VLM model and the 350M version of the extractor model as follows:
+> You can use the 1.6B version of the VLM model as follows:
 > 
 > ```sh
 > uv run python src/invoice_parser/main.py \
 >     --dir invoices/ \
 >     --image-model hf.co/LiquidAI/LFM2-VL-1.6B-GGUF:F16 \
->     --extractor-model hf.co/LiquidAI/LFM2-350M-Extract-GGUF:F16 \
 >     --process-existing
 > ```
 
@@ -131,31 +133,14 @@ Observations:
 - The first 3 invoices are properly extracted, with the correct amount and currency.
 - The fourth invoice is not properly extracted, where both amount and currency are not correct.
 
-## How to improve it?
+## Next steps
 
 We have a tool that works well 75% of the time on our sample of invoices, which is
 
 - good enough for a demo
 - not good enough for a production-ready application
 
-To improve the tool you need to:
-
-- Collect more invoices
-- Collect model input and outputs at each step of the pipeline, including
-    - the VLM model input and output
-    - the extractor model input and output
-- Flag and correct (input, output) pairs that are not properly extracted
-- Fine-tune the model(s) on the corrected (input, output) pairs
-
-> [!NOTE]
->
-> Our tool uses two Liquid Foundational Models:
-> - LFM2-VL-3B for vision-language understanding
-> - LFM2-1.2B-Extract for information extraction
-> 
-> LFM2-1.2B-Extract is a highly specialized model for structurd data extraction from text. So the problem is likely not here.
-> On the other hand, LFM2-VL-3B is a more general-purpose model for vision-language understanding,
-> which has not necessarily been trained on the task of invoice extraction. This is the first place to look for improvements.
+As a next step, before diving into prompt optimizations or fine-tuning, we will try to use the latest `LFM2.5-VL-1.6B` and compare results.
 
 If you are interested in learning more about model customization for Vision Language Models, we recommend you to check out the following example:
 
