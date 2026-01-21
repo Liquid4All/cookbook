@@ -1,0 +1,32 @@
+[project]
+name = "lfm2-thinking-demo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=1.12.0",
+    "fire>=0.7.1",
+    "huggingface-hub>=0.36.0",
+    "llama-cpp-python>=0.3.16",
+    "rich>=14.2.0",
+    "torch>=2.9.1",
+    "transformers>=4.57.5",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.0",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["I", "F401"]  # Enable isort rules and unused import detection
+fixable = ["I", "F401"]  # Allow ruff to fix import issues
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-single-line = false
+known-first-party = ["lfm2_thinking_demo"]
