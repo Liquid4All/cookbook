@@ -136,9 +136,10 @@ Working applications that demonstrate Liquid models in action.
 | Project | Repository |
 |---------|------------|
 | TranslatorLens: Building An Offline Translation Camera | [▶️ Go to the repo](https://github.com/linmx0130/TranslatorLens) ![GitHub Repo stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens) |
-| Food Images Fine-Tuning | [▶️ Go to the repo](https://github.com/benitomartin/food-images-finetuning) ![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning) |
-| Meeting Intelligence CLI | [▶️ Go to the repo](https://github.com/csanghvi-stripe/meeting-prompter) ![GitHub Repo stars](https://img.shields.io/github/stars/csanghvi-stripe/meeting-prompter) |
-| Private Doc Q&A: On-device document Q&A with RAG and voice input | [▶️ Go to the repo](https://github.com/csanghvi-stripe/private-doc-qa) ![GitHub Repo stars](https://img.shields.io/github/stars/csanghvi-stripe/private-doc-qa) |
+| Food Images Fine-tuning | [▶️ Go to the repo](https://github.com/benitomartin/food-images-finetuning) ![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning) |
+| Meeting Intelligence CLI | [▶️ Go to the repo](https://github.com/chintan-projects/meeting-prompter) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/meeting-prompter) |
+| Private Doc Q&A: On-device document Q&A with RAG and voice input | [▶️ Go to the repo](https://github.com/chintan-projects/private-doc-qa) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/private-doc-qa) |
+| Photo Triage Agent: Private photo library cleanup using LFM vision model | [▶️ Go to the repo](https://github.com/chintan-projects/photo-triage-agent) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/photo-triage-agent) | 
 | LFM-Scholar: Automated literature review agent capable of finding and citing papers | [▶️ Go to the repo](https://github.com/gyunggyung/LFM-Scholar) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar) |
 | LFM2-KoEn-Tuning: Fine-tuned LFM2 1.2B model specialized for Korean-English translation | [▶️ Go to the repo](https://github.com/gyunggyung/LFM2-KoEn-Tuning) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning) |
 
