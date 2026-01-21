@@ -1,11 +1,14 @@
-# Python CLI tool find and book cheap plane tickets using LFM2.5-1.2B-Thinking
+# Find and book plane tickets using LFM2.5-1.2B-Thinking
 
 [![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
 This is a minimal Python CLI that helps you find and book plane tickets using tool calling and reasoning to solve multi-step workflows.
 
+For example:
+```Book the cheapest flight from Barcelona to Belgrade on 2026-01-31```
+
 This project showcases the power of LFM2.5-1.2B-Thinking, a small Language Model that
-excells at tasks that require reasoning, logic and strong tool calling skills.
+excells at tasks that require reasoning, logic and strong tool calling skills. And the best part? The model can run on edge devices.
 
 ![See it in action](./media/demo.gif)
 
@@ -49,6 +52,8 @@ The model has access to 2 tools:
 
 - `search_flights` -> to retrieve contextual information
 - `book_flights` -> to act on the outside world
+
+> **Note:** The `search_flights` and `book_flight` functions are mocked using synthetic data for demonstration purposes. You can integrate with real flight data APIs (e.g., Amadeus, Skyscanner, or Kiwi) for production use.
 
 Given a user request, for example `Book the cheapest flight from Barcelona to Belgrade on 2026-01-31` the model iteratively
 
