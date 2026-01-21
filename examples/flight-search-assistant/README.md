@@ -15,6 +15,7 @@ excells at tasks that require reasoning, logic and strong tool calling skills. A
 ### Table of contents
 - [Quickstart](#quickstart)
 - [How does it work?](#how-does-it-work)
+- [Next steps](#next-steps)
 - [Need help?](#need-help)
 
 ## Quickstart
