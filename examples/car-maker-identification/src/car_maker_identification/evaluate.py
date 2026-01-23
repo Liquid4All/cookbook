@@ -203,6 +203,5 @@ if __name__ == "__main__":
             label = config.label_mapping[sample[config.label_column]]
         except KeyError:
             print("Error mapping label: ", sample[config.label_column])
-            breakpoint()
 
         print("--------------------------------")

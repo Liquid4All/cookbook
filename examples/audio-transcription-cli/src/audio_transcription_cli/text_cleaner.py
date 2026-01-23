@@ -104,7 +104,6 @@ class TextCleaner:
         except Exception as e:
             print(f"⚠️ Text cleaning failed: {e}")
             print("📝 Falling back to raw transcription")
-            breakpoint()
             return raw_text
 
     def _get_messages(self, raw_text: str) -> list[dict[str, str]]:

@@ -83,7 +83,6 @@ def test_click_in_browsergym(
             error = observation.error if observation.last_action_error else ""
 
             user_prompt = make_user_prompt(goal, step_num, axtree, error)
-            breakpoint()
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},

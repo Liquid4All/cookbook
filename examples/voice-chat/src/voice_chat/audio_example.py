@@ -49,7 +49,6 @@ def record(silence_duration: float = 2.0, silence_threshold: float = 0.01):
 
         # Get recorded audio
         audio_data = recorder.stop_recording()
-        breakpoint()
 
         if len(audio_data) == 0:
             print("\nNo audio recorded!")
