@@ -27,12 +27,15 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 
 - [Examples built by our growing community 🌟](#examples-built-by-our-community) that showcase what is possible with Liquid AI models.
 
+- [60-minute technical deep dives on all-things-efficient-AI]()
+
 ## Examples of local AI applications
 
 | Name | What's that? |  |
 |-------|-----------|---------------|
-| **invoice-parser** | A Python CLI that extracts structured data from bill pictures using a 2-step agentic workflow | [▶️ Go to the code](./examples/invoice-parser/) |
-| **audio-transcription-cli** | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [▶️ Go to the code](./examples/audio-transcription-cli/) |
+| 🧾 **invoice-parser** | A Python CLI that extracts structured data from invoice pdfiles using LFM2-VL-3B | [▶️ Go to the code](./examples/invoice-parser/) |
+| 🎙️ **audio-transcription-cli** | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [▶️ Go to the code](./examples/audio-transcription-cli/) |
+| ✈️ **flight-search-assistant** | A Python CLI that helps you find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling | [▶️ Go to the code](./examples/flight-search-assistant/) |
 
 
 ## Deployment to iOS and Android devices
@@ -89,5 +92,5 @@ We welcome contributions!
 
 ## Support 💬
 
-- 📖 [Liquid AI Documentation](https://leap.liquid.ai/docs)
+- 📖 [Liquid AI Documentation](https://docs.liquid.ai/)
 - 💬 [Join our community on Discord](https://discord.com/invite/liquid-ai)

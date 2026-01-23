@@ -1,9 +1,5 @@
 # Fine-tuning recipes for LFM2 models
 
-LFM2 is a generation of hybrid models, designed for on-device deployment, ranging from 350M up to 8B parameters.
-
-These models are particularly suited for agentic tasks, data extraction, RAG, creative writing, and multi-turn conversations. We do not recommend using them for tasks that are knowledge-intensive or require programming skills.
-
 We recommend you fine-tune LFM2 models if you are looking to improve the performance of a model for your specific use case.
 
 In this page you can find a collection of notebooks and examples to fine-tune LFM2 models using different techniques.
