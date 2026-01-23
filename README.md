@@ -18,16 +18,14 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 ## What are you looking for? 🔍
 
 - [Examples of local AI applications 🤖](#examples-of-local-ai-applications) that showcase the power of our LFM model family.
-
 - [Fine tuning notebooks and examples 🎯](./finetuning/README.md) to increase the performance of LFM2 models for your specific use case.
-
 - [Deployment to iOS and Android devices 📱](#deployment-to-ios-and-android-devices) with the LEAP SDK
 
 - [End-to-end tutorials 📚](#end-2-end-tutorials) that cover the whole path from data collection, evaluation, fine-tuning and deployment.
 
 - [Examples built by our growing community 🌟](#examples-built-by-our-community) that showcase what is possible with Liquid AI models.
 
-- [60-minute technical deep dives on all-things-efficient-AI]()
+- [60-minute technical deep dives on all-things-efficient-AI](#recorded-sessions-60-minute-technical-deep-dives-on-all-things-efficient-ai) every month in the [Liquid Discord community](https://discord.com/invite/liquid-ai).
 
 ## Examples of local AI applications
 
@@ -82,6 +80,18 @@ Working applications that demonstrate Liquid models in action.
 | Photo Triage Agent: Private photo library cleanup using LFM vision model | [▶️ Go to the repo](https://github.com/chintan-projects/photo-triage-agent) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/photo-triage-agent) | 
 | LFM-Scholar: Automated literature review agent capable of finding and citing papers | [▶️ Go to the repo](https://github.com/gyunggyung/LFM-Scholar) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar) |
 | LFM2-KoEn-Tuning: Fine-tuned LFM2 1.2B model specialized for Korean-English translation | [▶️ Go to the repo](https://github.com/gyunggyung/LFM2-KoEn-Tuning) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning) |
+
+## Recorded sessions: 60-minute technical deep dives on all-things-efficient-AI
+
+| Date | Topic |
+|---------|------------|
+| 2025-11-06 | [▶️ Fine-tuning LFM2-VL for image classification](https://www.youtube.com/watch?v=00IK9apncCg) |
+| 2025-11-27 | [▶️ Building a 100% local Audio-to-Speech CLI with LFM2-Audio](https://www.youtube.com/watch?v=yeu077gPmCA) |
+| 2025-12-26 | [▶️ Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
+| 2026-01-22 | [▶️ Local video-captioning with LFM2.5-VL-1.6B and WebGPU](https://www.youtube.com/watch?v=xsWARHFoA3E) |
+
+
+Wanna participate in the next session? [Join the Liquid Discord community](https://discord.com/invite/liquid-ai) and head to the `#live-events` channel!
 
 ## Contributing
 
