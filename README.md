@@ -80,6 +80,7 @@ Working applications that demonstrate Liquid models in action.
 | Photo Triage Agent: Private photo library cleanup using LFM vision model | [▶️ Go to the repo](https://github.com/chintan-projects/photo-triage-agent) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/photo-triage-agent) | 
 | LFM-Scholar: Automated literature review agent capable of finding and citing papers | [▶️ Go to the repo](https://github.com/gyunggyung/LFM-Scholar) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar) |
 | LFM2-KoEn-Tuning: Fine-tuned LFM2 1.2B model specialized for Korean-English translation | [▶️ Go to the repo](https://github.com/gyunggyung/LFM2-KoEn-Tuning) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning) |
+| Private Summarizer: 100% local text summarization with multi-language support | [▶️ Go to the repo](https://github.com/Private-Intelligence/private_summarizer) ![GitHub Repo stars](https://img.shields.io/github/stars/Private-Intelligence/private_summarizer) |
 
 ## Recorded sessions: 60-minute technical deep dives on all-things-efficient-AI
 
