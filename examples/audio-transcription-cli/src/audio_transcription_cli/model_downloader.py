@@ -143,7 +143,7 @@ class ModelDownloader:
         if not self.llama_cpp_binary_dir.exists():
             return False
 
-        if not Path(self.llama_binary_name / self.llama_cpp_binary_dir).exists():
+        if not (self.llama_cpp_binary_dir / self.llama_binary_name).exists():   
             return False
         
         return True
