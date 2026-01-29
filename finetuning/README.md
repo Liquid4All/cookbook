@@ -37,4 +37,4 @@ Models:
 
 | Fine-tuning technique | Link |
 |---|---|
-| Supervised fine-tuning (SFT) with LoRA | - [OCR with Unsloth](https://colab.research.google.com/drive/1FaR2HSe91YDe88TG97-JVxMygl-rL6vB?usp=sharing#scrollTo=vITh0KVJ10qX)<br> - [Medical Vision Fine-tuning with TRL](https://colab.research.google.com/drive/10530_jt_Joa5zH2wgYlyXosypq1R7PIz?usp=sharing) <br> - [Car image classification example](../examples/car-maker-identification/README.md) |
+| Supervised fine-tuning (SFT) with LoRA | - [OCR with Unsloth](./notebooks/sft_for_vision_language_model.ipynb)<br> - [Medical Vision Fine-tuning with TRL](https://colab.research.google.com/drive/10530_jt_Joa5zH2wgYlyXosypq1R7PIz?usp=sharing) <br> - [Car image classification example](../examples/car-maker-identification/README.md) |
