@@ -7,7 +7,7 @@ This is a minimal Python CLI that helps you find and book plane tickets using to
 For example:
 ```Book the cheapest flight from Barcelona to Belgrade on 2026-01-31```
 
-This project showcases the power of LFM2.5-1.2B-Thinking, a small Language Model that
+This project showcases the power of [LFM2.5-1.2B-Thinking](https://docs.liquid.ai/docs/models/lfm25-1.2b-thinking), a small Language Model that
 excells at tasks that require reasoning, logic and strong tool calling skills. And the best part? The model can run on edge devices.
 
 ![See it in action](./media/demo.gif)
