@@ -138,7 +138,6 @@ We will be using [LFM2-350M](https://huggingface.co/LiquidAI/LFM2-350M), which i
 - knowledge (MMLU, GPQA)
 - instruction following (IFEval, IFBench)
 - mathematical reasoning (GSM8K, MGSM), and
-- multimodal understanding (MMMU).
 
 To speed up training we will also add support for LoRA adapters, so we don't need a whole model fine-tune.
 

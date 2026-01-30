@@ -20,3 +20,4 @@ LFM2-Audio-1.5B-GGUF/
 *.env.local
 OpenEnv
 *.gguf
+LFM2.5-Audio-1.5B-transformers-js/

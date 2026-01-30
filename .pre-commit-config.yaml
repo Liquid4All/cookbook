@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: clean-finetuning-notebooks
+        name: Remove widget metadata from finetuning notebooks
+        entry: bash -c 'cd finetuning && uv run --with nbformat python remove_widget_metadata.py'
+        language: system
+        files: ^finetuning/notebooks/.*\.ipynb$
+        pass_filenames: false
