@@ -17,13 +17,6 @@ This repository contains **examples**, **tutorials**, and **applications** built
 
 Whether you're looking to customize models, deploy to laptops, edge devices, or build complete applications, you'll find resources here to get started:
 
-- 🤖 [Examples of local AI apps](#-examples-of-local-ai-apps) that showcase the power of our LFM model family.
-- 📱 [Mobile app deployment](#-mobile-app-deployment) with the LEAP SDK.
-- 🎯 [Fine-tuning notebooks](#-fine-tuning-notebooks) to increase the performance of LFM2 models for your specific use case.
-- 📚 [End-to-end tutorials](#-end-to-end-tutorials) that cover the whole path from data collection, evaluation, fine-tuning, and deployment.
-- 🌟 [Examples built by our community ](#-examples-built-by-our-community) that showcase what is possible with Liquid AI models.
-- 🕐 [60-minute technical deep dives](#-recorded-sessions-60-minute-technical-deep-dives) every month in the Liquid [Discord community](https://discord.com/invite/liquid-ai).
-
 ## 🤖 Examples of local AI apps
 
 | Name | Description |
@@ -73,7 +66,7 @@ Complete end-to-end tutorials that take you from setup to deployment.
 | Super fast and accurate image classification on edge devices | [Link](https://github.com/Paulescu/image-classification-with-local-vlms) ![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/image-classification-with-local-vlms) |
 | Let's build a Chess game using small and local Large Language Models | [Link](https://github.com/Paulescu/chess-game) ![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/chess-game) |
 
-## 🌟 Examples built by our community
+## 🌟 Community projects
 
 Working applications that demonstrate Liquid models in action.
 
@@ -90,7 +83,7 @@ Working applications that demonstrate Liquid models in action.
 | Private Summarizer: 100% local text summarization with multi-language support | [Link](https://github.com/Private-Intelligence/private_summarizer) ![GitHub Repo stars](https://img.shields.io/github/stars/Private-Intelligence/private_summarizer) |
 | Tiny-MoA: Running Mixture of Agents on CPU: LFM2.5 Brain (1.2B) + Multi-Agent | [Link](https://github.com/gyunggyung/Tiny-MoA) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/Tiny-MoA) |
 
-## 🕐 Recorded sessions: 60-minute technical deep dives
+## 🕐 60-minute technical deep dives
 
 | Date | Topic |
 |---------|------------|
@@ -103,9 +96,7 @@ Wanna participate in the next session? [Join the Liquid Discord community](https
 
 ## Contributing
 
-We welcome contributions!
-
-- Open a PR with a link to your project GitHub repo in the `Examples built by our community` section.
+We welcome contributions! Please open a PR with a link to your project GitHub repo in the `Community projects` section.
 
 ## Support
 
