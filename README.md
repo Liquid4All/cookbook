@@ -1,6 +1,6 @@
 <div align="center">
   <img 
-    src="https://cdn-uploads.huggingface.co/production/uploads/61b8e2ba285851687028d395/2b08LKpev0DNEk6DlnWkY.png" 
+    src="https://github.com/user-attachments/assets/e0f42ac6-822f-4b7b-a0ae-07b2a619258d" 
     alt="Liquid AI" 
     style="width: 100%; max-width: 100%; height: auto; display: inline-block; margin-bottom: 0.5em; margin-top: 0.5em;"
   />
