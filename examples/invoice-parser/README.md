@@ -2,68 +2,74 @@
 
 [![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
-A Python CLI that extracts payment details from invoice pdfs.
+A Python CLI that extracts payment details from invoice PDFs.
 
-This a practical example of building local AI tools and apps with
+![](./media/diagram.jpg)
+
+This is a practical example of building local AI tools and apps with
 
 - No cloud costs
 - No network latency
 - No data privacy loss
 
+## Table of contents
+
+- [What's inside?](#whats-inside)
+- [Understanding the architecture](#understanding-the-architecture)
+- [Environment setup](#environment-setup)
+  - [Install llama.cpp](#install-llamacpp)
+  - [Install UV](#install-uv)
+- [How to run it?](#how-to-run-it)
+  - [Watch mode](#watch-mode)
+  - [Process mode](#process-mode)
+- [Results](#results)
+- [Next steps](#next-steps)
+- [Need help?](#need-help)
 
 ## What's inside?
 
 In this example, you will learn how to:
 
-- **Set up local AI inference** using Ollama to run Liquid models entirely on your machine without requiring cloud services or API keys
+- **Set up local AI inference** using llama.cpp to run Liquid models entirely on your machine without requiring cloud services or API keys
 - **Build a file monitoring system** that automatically processes new files dropped into a directory
-- **Extract structured output from images** using LFM2-VL-3B, a small vision-language model.
-
-
-## Understanding the architecture
-
-When you drop an invoice photo into a watched directory, the tool uses [LFM2-VL-3B](https://huggingface.co/LiquidAI/LFM2-VL-3B) to extract a structured record with the main information in the invoice, including
-
-- The utility to pay
-- The amount to pay
-- The currency of the payment.
-
-This record is appended to a CSV file.
-
-![](./media/diagram.jpg)
+- **Extract structured output from images** using LFM2.5-VL-1.6B, a small vision-language model.
 
 
 ## Environment setup
 
 You will need
 
-- [Ollama](https://ollama.com/) to serve the Language Models locally.
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) to serve the Language Models locally.
 - [uv](https://docs.astral.sh/uv/) to manage Python dependencies and run the application efficiently without creating virtual environments manually.
 
-### Install Ollama
+### Install llama.cpp
 
 <details>
 <summary>Click to see installation instructions for your platform</summary>
 
 **macOS:**
 ```bash
-# Download and install from the website
-# Visit: https://ollama.ai/download
-
-# Or use Homebrew
-brew install ollama
+brew install llama.cpp
 ```
 
-**Linux:**
+**Linux (build from source):**
 ```bash
-curl -fsSL https://ollama.ai/install.sh | sh
+git clone https://github.com/ggerganov/llama.cpp.git
+cd llama.cpp
+cmake -B build
+cmake --build build --config Release
+# Add build/bin to your PATH
 ```
 
 **Windows:**
-Download the installer from [https://ollama.ai/download](https://ollama.ai/download)
+Follow the [instructions](https://github.com/ggml-org/llama.cpp/blob/master/docs/install.md) in the llama.cpp repository.
 
 </details>
 
+Verify that `llama-server` is available:
+```bash
+which llama-server
+```
 
 ### Install UV
 
@@ -92,63 +98,84 @@ git clone https://github.com/Liquid4All/cookbook.git
 cd cookbook/examples/invoice-parser
 ```
 
-Then, run the application using the invoices that are already in the repository:
+The tool supports two modes: **watch** (continuous monitoring) and **process** (one-shot).
+
+The tool automatically starts and stops `llama-server` for you — no need to run it separately.
+
+### Watch mode
+
+Run it as a background service that continuously monitors a directory and automatically parses invoice images as they land in the folder:
 ```sh
-uv run python src/invoice_parser/main.py \
+uv run python src/invoice_parser/main.py watch \
     --dir invoices/ \
-    --image-model hf.co/LiquidAI/LFM2-VL-3B-GGUF:F16 \
+    --image-model LiquidAI/LFM2.5-VL-1.6B-GGUF:Q8_0 \
+    --output bills.csv \
     --process-existing
 ```
 
+### Process mode
+
+Process specific files or folders and exit:
+```sh
+# Process an entire folder
+uv run python src/invoice_parser/main.py process \
+    --image-model LiquidAI/LFM2.5-VL-1.6B-GGUF:Q8_0 \
+    invoices/
+
+# Process specific files
+uv run python src/invoice_parser/main.py process \
+    --image-model LiquidAI/LFM2.5-VL-1.6B-GGUF:Q8_0 \
+    invoices/water_australia.png invoices/british_gas.png
+
+# Save results to a CSV file
+uv run python src/invoice_parser/main.py process \
+    --image-model LiquidAI/LFM2.5-VL-1.6B-GGUF:Q8_0 \
+    --output bills.csv \
+    invoices/
+```
 
 Feel free to modify the path to the invoices directory and the model IDs to suit your needs.
 
-> [!NOTE]
->
-> You can use the 1.6B version of the VLM model as follows:
-> 
-> ```sh
-> uv run python src/invoice_parser/main.py \
->     --dir invoices/ \
->     --image-model hf.co/LiquidAI/LFM2-VL-1.6B-GGUF:F16 \
->     --process-existing
-> ```
-
-If you have `make` installed, you can run the application with the following command:
+If you have `make` installed, you can run the application with the following commands:
 ```sh
-make run
+make run       # watch mode
+make process   # one-shot process mode
 ```
 
-The data extracted from the invoices is be saved in the same directory as the invoices, in a file called `bills.csv`.
-If you open the file, you will see the following data:
 
-| processed_at | file_path | utility | amount | currency |
-|--------------|-----------|---------|--------|----------|
-| 2025-10-31 11:25:47 | invoices/water_australia.png | electricity | 68.46 | AUD |
-| 2025-10-31 11:26:00 | invoices/Sample-electric-Bill-2023.jpg | electricity | 28.32 | USD |
-| 2025-10-31 11:26:09 | invoices/british_gas.png | electricity | 81.31 | GBP |
-| 2025-10-31 11:42:35 | invoices/castlewater1.png | electricity | 150.0 | USD |
+## Results
 
-Observations:
-- The first 3 invoices are properly extracted, with the correct amount and currency.
-- The fourth invoice is not properly extracted, where both amount and currency are not correct.
+You can run the tool with a sample of images under `invoices/` with
+
+```
+uv run python src/invoice_parser/main.py process \
+    --image-model LiquidAI/LFM2.5-VL-1.6B-GGUF:Q8_0 \
+    invoices/
+```
+or, if you have Make installed in your system, just do
+```
+make process
+```
+
+Results are then printed on console. The model correctly extracts all 4 out of 4 invoices:
+
+| File | Utility | Amount | Currency |
+|------|---------|--------|----------|
+| water_australia.png | water | 68.46 | AUD |
+| Sample-electric-Bill-2023.jpg | electricity | 28.32 | USD |
+| castlewater1.png | water | 436.55 | GBP |
+| british_gas.png | electricity | 81.31 | GBP |
+
+
 
 ## Next steps
 
-We have a tool that works well 75% of the time on our sample of invoices, which is
+The model works perfectly out-of-the-box on our sample of invoices. However, depending on your specific invoice formats and layouts, you may encounter cases where the extraction is not accurate enough.
 
-- good enough for a demo
-- not good enough for a production-ready application
-
-As a next step, before diving into prompt optimizations or fine-tuning, we will try to use the latest `LFM2.5-VL-1.6B` and compare results.
-
-If you are interested in learning more about model customization for Vision Language Models, we recommend you to check out the following example:
-
-- [Cats vs dogs identification from images](https://github.com/Paulescu/image-classification-with-local-vlms/tree/main)
+In those cases, you can fine-tune the model on your own dataset to improve accuracy. Check out the [fine-tuning notebook for Vision Language Models](../../finetuning/notebooks/sft_for_vision_language_model.ipynb) to learn how.
 
 
 ## Need help?
 
 Join the [Liquid AI Discord Community](https://discord.com/invite/liquid-ai) and ask.
 [![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
-
