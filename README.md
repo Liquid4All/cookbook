@@ -1,118 +1,110 @@
-<h1 align="center">Liquid AI Cookbook</h1>
-<p align="center"><em>Build with Liquid AI models and the Liquid Edge AI Platform</em></p>
+<div align="center">
+  <img 
+    src="https://github.com/user-attachments/assets/e0f42ac6-822f-4b7b-a0ae-07b2a619258d" 
+    alt="Liquid AI" 
+    style="width: 100%; max-width: 100%; height: auto; display: inline-block; margin-bottom: 0.5em; margin-top: 0.5em;"
+  />
+  <div style="display: flex; justify-content: center; gap: 0.5em;">
+    <a href="https://playground.liquid.ai/"><strong>Try LFM</strong></a> • 
+    <a href="https://docs.liquid.ai/lfm"><strong>Documentation</strong></a> • 
+    <a href="https://leap.liquid.ai/"><strong>LEAP</strong></a>
+  </div>
+  <br/>
+  <a href="https://discord.com/invite/liquid-ai"><img src="https://img.shields.io/discord/1385439864920739850?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2" alt="Join Discord"></a>
+</div>
+</br>
 
-<p align="center">
-    🌊 <a href="https://docs.liquid.ai/"><b>Liquid Docs</b></a>&nbsp&nbsp | &nbsp&nbsp🤗 <a href="https://huggingface.co/LiquidAI">Hugging Face</a>&nbsp&nbsp | &nbsp&nbsp🚀 <a href="https://leap.liquid.ai">Liquid Edge AI Platform</a>
-</p>
-<p align="center">
-    <a href="https://discord.com/invite/liquid-ai"><img src="https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white" alt="Join Discord"></a>&nbsp&nbsp</a>
-</p>
+**Examples**, **tutorials**, and **applications** to help you build with our open-weight [LFMs](https://huggingface.co/LiquidAI) and the [LEAP SDK](https://leap.liquid.ai/) on laptops, mobile, and edge devices.
 
+## 🤖 Local AI Apps
 
-## Welcome dear developer! 👋
+Ready-to-run applications showcasing agentic workflows and real-time inference on a local device.
 
-This repository contains **examples**, **tutorials**, and **applications** built with Liquid AI open-weight models (LFM) and the open-source LEAP SDK.
+| Name | Description | Link |
+|------|-------------|------|
+| Invoice Parser | Extract structured data from invoice images using LFM2-VL-3B | [Code](./examples/invoice-parser/README.md) |
+| Audio Transcription CLI | Real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [Code](./examples/audio-transcription-cli/) |
+| Flight Search Assistant | Find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling | [Code](./examples/flight-search-assistant/README.md) |
+| Audio Car Cockpit | Voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B with LFM2-1.2B-Tool | [Code](./examples/audio-car-cockpit/README.md) |
+| Audio WebGPU Demo | Run LFM2.5-Audio-1.5B entirely in your browser for speech recognition, TTS, and conversation | [Code](./examples/audio-webgpu-demo/README.md) |
+| Vision WebGPU Demo | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) |
 
-Whether you're looking to customize models, deploy to laptops, edge devices, or build complete applications, you'll find resources here to get started.
+## 📱 Mobile App Deployment
 
-## What are you looking for? 🔍
-
-- [Examples of local AI applications 🤖](#examples-of-local-ai-applications) that showcase the power of our LFM model family.
-- [Fine tuning notebooks and examples 🎯](./finetuning/README.md) to increase the performance of LFM2 models for your specific use case.
-- [Deployment to iOS and Android devices 📱](#deployment-to-ios-and-android-devices) with the LEAP SDK
-
-- [End-to-end tutorials 📚](#end-2-end-tutorials) that cover the whole path from data collection, evaluation, fine-tuning and deployment.
-
-- [Examples built by our growing community 🌟](#examples-built-by-our-community) that showcase what is possible with Liquid AI models.
-
-- [60-minute technical deep dives on all-things-efficient-AI](#recorded-sessions-60-minute-technical-deep-dives-on-all-things-efficient-ai) every month in the [Liquid Discord community](https://discord.com/invite/liquid-ai).
-
-## Examples of local AI applications
-
-| Name | What's that? |
-|-------|-----------|
-| 🧾 [**invoice-parser**](./examples/invoice-parser/README.md) | A Python CLI that extracts structured data from invoice pdfiles using LFM2-VL-3B |
-| 🎙️ [**audio-transcription-cli**](./examples/audio-transcription-cli/) | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp |
-| ✈️ [**flight-search-assistant**](./examples/flight-search-assistant/README.md) | A Python CLI that helps you find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling |
-| 🚗 [**audio-car-cockpit**](./examples/audio-car-cockpit/README.md) | A voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B (TTS/STT) with LFM2-1.2B-Tool for real-time local inference |
-| 🔊 [**audio-webgpu-demo**](./examples/audio-webgpu-demo/README.md) | Run LFM2.5-Audio-1.5B entirely in your browser with WebGPU for speech recognition, text-to-speech, and interleaved audio/text conversation |
-| 📹 [**vl-webgpu-demo**](./examples/vl-webgpu-demo/README.md) | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU |
-
-
-## Deployment to iOS and Android devices
-
-The [LEAP Edge SDK](https://leap.liquid.ai/docs/edge-sdk/overview) is our native framework for running LFM2 models on mobile devices.
-
-Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to make Small Language Model deployment as easy as calling a cloud LLM API endpoint, for any app developer.
+Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edge SDK](https://leap.liquid.ai/docs/edge-sdk/overview). Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to make Small Language Model deployment as easy as calling a cloud LLM API endpoint.
 
 ### Android
 
-| Example | Description |
-|---------|-------------|
-| [LeapChat](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) | A comprehensive chat application with real-time token streaming, persistent message history, and modern chat UI featuring message bubbles and typing indicators |
-| [SloganApp](./examples/leap-slogan-example-ios/README.md) | Single turn generation for marketing. The UI is implemented with Android Views. |
-| [ShareAI](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) | Website summary generator |
-| [Recipe Generator](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/RecipeGenerator) | Structured output generation with the LEAP SDK |
-| [Visual Language Model example](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/VLMExample) | Visual Language Model example |
+| Name | Description | Link |
+|------|-------------|------|
+| LeapChat | Chat app with real-time streaming, persistent history, and modern UI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
+| SloganApp | Single turn marketing slogan generation with Android Views | [Code](./examples/leap-slogan-example-ios/README.md) |
+| ShareAI | Website summary generator | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
+| Recipe Generator | Structured output generation with the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/RecipeGenerator) |
+| VLM Example | Visual Language Model integration | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/VLMExample) |
 
 ### iOS
 
-| Example | Description |
-|---------|-------------|
-| [LeapChat](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) | A comprehensive chat application demonstrating advanced LeapSDK features including real-time streaming, conversation management, and modern UI components. |
-| [LeapSloganExample](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) | A simple SwiftUI app demonstrating basic LeapSDK integration for text generation. |
-| [Recipe Generator](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) | Structured output generation |
-| [Audio demo](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) | A SwiftUI app demonstrating audio input and output with the LeapSDK for on-device AI inference. |
+| Name | Description | Link |
+|------|-------------|------|
+| LeapChat | Chat app with real-time streaming, conversation management, and SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
+| LeapSloganExample | Basic LeapSDK integration for text generation in SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
+| Recipe Generator | Structured output generation | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
+| Audio Demo | Audio input/output with LeapSDK for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) |
 
+## 🎯 Fine-Tuning Notebooks
 
+Colab notebooks and Python scripts for customizing LFM models with your own data.
 
-## End-2-end Tutorials
+| Name | Description | Link |
+|------|-------------|------|
+| GRPO (TRL) | Train reasoning models using Group Relative Policy Optimization with rule-based rewards | [Notebook](./finetuning/notebooks/grpo_for_verifiable_tasks.ipynb) |
+| VLM SFT (Unsloth) | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
 
-Complete end-to-end tutorials that take you from setup to deployment.
+## 📚 End-to-End Tutorials
 
-| Tutorial | Repository |
-|----------|------------|
-| Super fast and accurate image classification on edge devices | [▶️ Go to the repo](https://github.com/Paulescu/image-classification-with-local-vlms) ![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/image-classification-with-local-vlms) |
-| Let's build a Chess game using small and local Large Language Models | [▶️ Go to the repo](https://github.com/Paulescu/chess-game) ![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/chess-game) |
+Step-by-step guides that walk you through complete projects from setup to deployment.
 
+| Name | Description | Link |
+|------|-------------|------|
+| Image Classification on Edge | Super fast and accurate image classification using local VLMs | [![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/image-classification-with-local-vlms?style=social)](https://github.com/Paulescu/image-classification-with-local-vlms) |
+| Chess Game with LLMs | Build a Chess game using small and local language models | [![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/chess-game?style=social)](https://github.com/Paulescu/chess-game) |
 
-## Examples built by our community
+## 🌟 Community Projects
 
-Working applications that demonstrate Liquid models in action.
+Open-source projects built by the community showcasing LFMs with real use cases.
 
-| Project | Repository |
-|---------|------------|
-| TranslatorLens: Building An Offline Translation Camera | [▶️ Go to the repo](https://github.com/linmx0130/TranslatorLens) ![GitHub Repo stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens) |
-| Food Images Fine-tuning | [▶️ Go to the repo](https://github.com/benitomartin/food-images-finetuning) ![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning) |
-| Meeting Intelligence CLI | [▶️ Go to the repo](https://github.com/chintan-projects/meeting-prompter) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/meeting-prompter) |
-| Private Doc Q&A: On-device document Q&A with RAG and voice input | [▶️ Go to the repo](https://github.com/chintan-projects/private-doc-qa) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/private-doc-qa) |
-| Photo Triage Agent: Private photo library cleanup using LFM vision model | [▶️ Go to the repo](https://github.com/chintan-projects/photo-triage-agent) ![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/photo-triage-agent) | 
-| LFM-Scholar: Automated literature review agent capable of finding and citing papers | [▶️ Go to the repo](https://github.com/gyunggyung/LFM-Scholar) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar) |
-| LFM2-KoEn-Tuning: Fine-tuned LFM2 1.2B model specialized for Korean-English translation | [▶️ Go to the repo](https://github.com/gyunggyung/LFM2-KoEn-Tuning) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning) |
-| Chat with LEAP SDK on React Native | [▶️ Go to the repo](https://github.com/glody007/expo-leap-sdk) ![GitHub Repo stars](https://img.shields.io/github/stars/glody007/expo-leap-sdk) |
-| Private Summarizer: 100% local text summarization with multi-language support | [▶️ Go to the repo](https://github.com/Private-Intelligence/private_summarizer) ![GitHub Repo stars](https://img.shields.io/github/stars/Private-Intelligence/private_summarizer) |
-| Tiny-MoA: Running Mixture of Agents on CPU: LFM2.5 Brain (1.2B) + Multi-Agent | [▶️ Go to the repo](https://github.com/gyunggyung/Tiny-MoA) ![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/Tiny-MoA) |
+| Name | Description | Link |
+|------|-------------|------|
+| TranslatorLens | Offline translation camera for real-time text translation | [![GitHub Repo stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens?style=social)](https://github.com/linmx0130/TranslatorLens) |
+| Food Images Fine-tuning | Fine-tune LFM models on food image datasets | [![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning?style=social)](https://github.com/benitomartin/food-images-finetuning) |
+| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/meeting-prompter?style=social)](https://github.com/chintan-projects/meeting-prompter) |
+| Private Doc Q&A | On-device document Q&A with RAG and voice input | [![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/private-doc-qa?style=social)](https://github.com/chintan-projects/private-doc-qa) |
+| Photo Triage Agent | Private photo library cleanup using LFM vision model | [![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/photo-triage-agent?style=social)](https://github.com/chintan-projects/photo-triage-agent) |
+| LFM-Scholar | Automated literature review agent for finding and citing papers | [![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar?style=social)](https://github.com/gyunggyung/LFM-Scholar) |
+| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning?style=social)](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
+| Chat with LEAP SDK | LEAP SDK integration for React Native | [![GitHub Repo stars](https://img.shields.io/github/stars/glody007/expo-leap-sdk?style=social)](https://github.com/glody007/expo-leap-sdk) |
+| Private Summarizer | 100% local text summarization with multi-language support | [![GitHub Repo stars](https://img.shields.io/github/stars/Private-Intelligence/private_summarizer?style=social)](https://github.com/Private-Intelligence/private_summarizer) |
+| Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | [![GitHub Repo stars](https://img.shields.io/github/stars/gyunggyung/Tiny-MoA?style=social)](https://github.com/gyunggyung/Tiny-MoA) |
 
-## Recorded sessions: 60-minute technical deep dives on all-things-efficient-AI
+## 🕐 Technical Deep Dives
 
-| Date | Topic |
-|---------|------------|
-| 2025-11-06 | [▶️ Fine-tuning LFM2-VL for image classification](https://www.youtube.com/watch?v=00IK9apncCg) |
-| 2025-11-27 | [▶️ Building a 100% local Audio-to-Speech CLI with LFM2-Audio](https://www.youtube.com/watch?v=yeu077gPmCA) |
-| 2025-12-26 | [▶️ Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
-| 2026-01-22 | [▶️ Local video-captioning with LFM2.5-VL-1.6B and WebGPU](https://www.youtube.com/watch?v=xsWARHFoA3E) |
+Recorded sessions (~60 minutes) covering advanced topics and hands-on implementations.
 
+| Date | Topic | Link |
+|------|-------|------|
+| 2025-11-06 | Fine-tuning LFM2-VL for image classification | [Video](https://www.youtube.com/watch?v=00IK9apncCg) |
+| 2025-11-27 | Building a 100% local Audio-to-Speech CLI with LFM2-Audio | [Video](https://www.youtube.com/watch?v=yeu077gPmCA) |
+| 2025-12-26 | Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv | [Video](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
+| 2026-01-22 | Local video-captioning with LFM2.5-VL-1.6B and WebGPU | [Video](https://www.youtube.com/watch?v=xsWARHFoA3E) |
 
-Wanna participate in the next session? [Join the Liquid Discord community](https://discord.com/invite/liquid-ai) and head to the `#live-events` channel!
+Join the next session! Head to the `#live-events` channel on [Discord](https://discord.com/invite/liquid-ai).
 
 ## Contributing
 
-We welcome contributions!
+We welcome contributions! Open a PR with a link to your project GitHub repo in the Community Projects section.
 
-- Open a PR with a link to your project github repo in the `Examples built by our community` section.
-
-
-## Support 💬
+## Support
 
 - 📖 [Liquid AI Documentation](https://docs.liquid.ai/)
 - 💬 [Join our community on Discord](https://discord.com/invite/liquid-ai)
