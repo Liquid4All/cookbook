@@ -58,8 +58,17 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 
 | Name | Description | Link |
 |------|-------------|------|
-| GRPO (TRL) | Train reasoning models using Group Relative Policy Optimization with rule-based rewards | [Notebook](./finetuning/notebooks/grpo_for_verifiable_tasks.ipynb) |
-| VLM SFT (Unsloth) | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
+| **Supervised Fine-Tuning (SFT)** | | |
+| SFT with Unsloth | Memory-efficient SFT using Unsloth with LoRA for 2x faster training | [Notebook](./finetuning/notebooks/sft_with_unsloth.ipynb) |
+| SFT with TRL | Supervised fine-tuning using Hugging Face TRL library with parameter-efficient LoRA | [Notebook](./finetuning/notebooks/sft_with_trl.ipynb) |
+| **Reinforcement Learning** | | |
+| GRPO with Unsloth | Train reasoning models using Group Relative Policy Optimization for verifiable tasks | [Notebook](./finetuning/notebooks/grpo_with_unsloth.ipynb) |
+| GRPO with TRL | Train reasoning models using Group Relative Policy Optimization with rule-based rewards | [Notebook](./finetuning/notebooks/grpo_for_verifiable_tasks.ipynb) |
+| **Continued Pre-Training (CPT)** | | |
+| CPT for Translation | Adapt models to specific languages or translation domains using domain data | [Notebook](./finetuning/notebooks/cpt_translation_with_unsloth.ipynb) |
+| CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
+| **Vision-Language Models** | | |
+| VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
 
 ## 📚 End-to-End Tutorials
 
