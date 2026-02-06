@@ -70,21 +70,14 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
 
-## 📚 End-to-End Tutorials
-
-Step-by-step guides that walk you through complete projects from setup to deployment.
-
-| Name | Description | Link |
-|------|-------------|------|
-| Image Classification on Edge | Super fast and accurate image classification using local VLMs | [![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/image-classification-with-local-vlms?style=social)](https://github.com/Paulescu/image-classification-with-local-vlms) |
-| Chess Game with LLMs | Build a Chess game using small and local language models | [![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/chess-game?style=social)](https://github.com/Paulescu/chess-game) |
-
 ## 🌟 Community Projects
 
 Open-source projects built by the community showcasing LFMs with real use cases.
 
 | Name | Description | Link |
 |------|-------------|------|
+| Image Classification on Edge | End-to-end tutorial covering fine-tuning and deployment for super fast and accurate image classification using local VLMs | [![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/image-classification-with-local-vlms?style=social)](https://github.com/Paulescu/image-classification-with-local-vlms) |
+| Chess Game with LLMs | End-to-end tutorial covering fine-tuning and deployment to build a Chess game using small and local language models | [![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/chess-game?style=social)](https://github.com/Paulescu/chess-game) |
 | TranslatorLens | Offline translation camera for real-time text translation | [![GitHub Repo stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens?style=social)](https://github.com/linmx0130/TranslatorLens) |
 | Food Images Fine-tuning | Fine-tune LFM models on food image datasets | [![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning?style=social)](https://github.com/benitomartin/food-images-finetuning) |
 | Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [![GitHub Repo stars](https://img.shields.io/github/stars/chintan-projects/meeting-prompter?style=social)](https://github.com/chintan-projects/meeting-prompter) |
