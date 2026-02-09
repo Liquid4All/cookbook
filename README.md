@@ -38,7 +38,9 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | Name | Description | Link |
 |------|-------------|------|
 | LeapChat | Chat app with real-time streaming, persistent history, and modern UI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
-| SloganApp | Single turn marketing slogan generation with Android Views | [Code](./examples/leap-slogan-example-ios/README.md) |
+| LeapAudioDemo | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapAudioDemo) |
+| LeapKoogAgent | Integration with Koog framework for AI agent functionality | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapKoogAgent) |
+| SloganApp | Single turn marketing slogan generation with Android Views | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/SloganApp) |
 | ShareAI | Website summary generator | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
 | Recipe Generator | Structured output generation with the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/RecipeGenerator) |
 | VLM Example | Visual Language Model integration | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/VLMExample) |
@@ -48,7 +50,7 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | Name | Description | Link |
 |------|-------------|------|
 | LeapChat | Chat app with real-time streaming, conversation management, and SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
-| LeapSloganExample | Basic LeapSDK integration for text generation in SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
+| LeapSloganExample | Basic LeapSDK integration for text generation in SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapSloganExample) |
 | Recipe Generator | Structured output generation | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
 | Audio Demo | Audio input/output with LeapSDK for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) |
 
