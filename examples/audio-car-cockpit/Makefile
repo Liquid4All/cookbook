@@ -103,8 +103,8 @@ $(ZIP):
 	uv run --with "huggingface_hub" hf download "LiquidAI/LFM2.5-Audio-1.5B-GGUF" --local-dir ./ $@
 	unzip -q -o $@
 
-llama-liquid-audio/llama-liquid-audio-server:  ## Download pre-built llama-liquid-audio-server
-	ln -s $(DIR) llama-liquid-audio
+llama-liquid-audio/llama-liquid-audio-server: $(ZIP)  ## Download pre-built llama-liquid-audio-server
+	ln -sf $(DIR) llama-liquid-audio
 	@# Sanity check
 	./llama-liquid-audio/llama-liquid-audio-server --version
 
