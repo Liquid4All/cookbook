@@ -17,9 +17,27 @@ https://github.com/user-attachments/assets/f9b5a6fd-ed3b-4235-a856-6251441a1ada
 > **Supported Platforms**
 > 
 > The following platforms are currently supported:
-> - macos-arm64
+> - macos-arm64 (Apple Silicon)
+> - macos-x64 (Intel, requires [Vulkan SDK](https://vulkan.lunarg.com/sdk/home))
 > - ubuntu-arm64
 > - ubuntu-x64
+
+> [!WARNING]
+> **Intel Mac GPU Limitations**
+> 
+> **Tested configurations on macOS Intel:**
+> - ❌ **GPU + Vulkan**: FAILS with GPU timeout errors during inference
+>   ```
+>   VK_TIMEOUT: Lost VkDevice... Caused GPU Timeout Error (kIOAccelCommandBufferCallbackErrorTimeout)
+>   ```
+> - ✅ **CPU + Accelerate Framework**: WORKS (recommended for Intel Macs)
+> 
+> **To use CPU-only mode (recommended):**
+> ```bash
+> MACOS_X64_USE_CPU=1 make llama-liquid-audio/llama-liquid-audio-server
+> MACOS_X64_USE_CPU=1 make llama-server
+> make -j2 audioserver serve
+> ```
 
 Usage:
 ```bash

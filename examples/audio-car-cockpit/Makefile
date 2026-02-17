@@ -98,6 +98,42 @@ DIR := $(patsubst runners/%.zip,%,$(ZIP))
 
 llama-liquid-audio-runner: $(ZIP)
 
+# For macos-x64, pre-built binaries are not available - build from source
+# Tested configurations on Intel Mac:
+#   - GPU + Vulkan: FAILS with GPU timeout errors (VK_TIMEOUT: Lost VkDevice...)
+#   - CPU + Accelerate Framework: WORKS (recommended)
+# Use MACOS_X64_USE_CPU=1 to enable CPU-only mode with Accelerate framework
+# Note: -DGGML_NATIVE=OFF works around a compiler bug with -march=native on some Intel CPUs
+ifeq ($(OS)-$(ARCH),macos-x64)
+
+# Allow override to CPU-only mode via environment variable
+ifdef MACOS_X64_USE_CPU
+  GPU_FLAGS := -DGGML_METAL=OFF -DGGML_VULKAN=OFF -DGGML_BLAS=ON -DGGML_BLAS_VENDOR=Apple
+  $(info Building for macos-x64 with CPU + Accelerate framework (GPU disabled))
+else
+  GPU_FLAGS := -DGGML_METAL=OFF -DGGML_VULKAN=ON
+  $(warning ========================================================================)
+  $(warning Building for macos-x64 with Vulkan GPU support)
+  $(warning WARNING: Intel Iris Plus Graphics may cause GPU timeout errors!)
+  $(warning If you experience crashes, rebuild with: MACOS_X64_USE_CPU=1 make <target>)
+  $(warning ========================================================================)
+endif
+
+llama.cpp/build/bin/llama-liquid-audio-server: llama.cpp
+	cd llama.cpp && \
+		cmake -B build -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON \
+		$(GPU_FLAGS) -DGGML_NATIVE=OFF \
+		-DGGML_BUILD_TESTS=OFF -DGGML_BUILD_EXAMPLES=OFF && \
+		cmake --build build --config Release --target llama-liquid-audio-server -j 8
+
+llama-liquid-audio/llama-liquid-audio-server: llama.cpp/build/bin/llama-liquid-audio-server  ## Build llama-liquid-audio-server from source (macos-x64)
+	@mkdir -p llama-liquid-audio
+	cp llama.cpp/build/bin/llama-liquid-audio-server llama-liquid-audio/
+	@# Sanity check
+	./llama-liquid-audio/llama-liquid-audio-server --version
+
+else
+
 $(ZIP):
 	@mkdir -p runners
 	uv run --with "huggingface_hub" hf download "LiquidAI/LFM2.5-Audio-1.5B-GGUF" --local-dir ./ $@
@@ -107,6 +143,8 @@ llama-liquid-audio/llama-liquid-audio-server: $(ZIP)  ## Download pre-built llam
 	ln -sf $(DIR) llama-liquid-audio
 	@# Sanity check
 	./llama-liquid-audio/llama-liquid-audio-server --version
+
+endif
 
 
 # ┌──────────────────────────────────────────────────────────┐
@@ -118,11 +156,22 @@ llama.cpp:
 		cd llama.cpp && \
 		git checkout d03c45c9c56795af8b0e899762bf266c14fd2028
 
+# For macos-x64: Same GPU_FLAGS logic as llama-liquid-audio-server (GPU fails, CPU works)
+ifeq ($(OS)-$(ARCH),macos-x64)
+llama.cpp/build/bin/llama-server: llama.cpp
+	cd llama.cpp && \
+		export BUILD_TARGETS=llama-server && \
+		cmake -B build -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON \
+		$(GPU_FLAGS) -DGGML_NATIVE=OFF \
+		-DGGML_BUILD_TESTS=OFF -DGGML_BUILD_EXAMPLES=OFF && \
+		cmake --build build --config Release -j 8
+else
 llama.cpp/build/bin/llama-server: llama.cpp
 	cd llama.cpp && \
 		export BUILD_TARGETS=llama-server && \
 		cmake -B build -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON && \
 		cmake --build build --config Release -j 8
+endif
 
 llama-server:  ## Static build of llama-server
 	@# Make doesn't allow non-recursive dependencies, adding the check here instead
@@ -144,7 +193,7 @@ audioserver: llama-liquid-audio/llama-liquid-audio-server LFM2.5-Audio-1.5B-GGUF
 		-mm LFM2.5-Audio-1.5B-GGUF/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
 		-mv LFM2.5-Audio-1.5B-GGUF/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
 		--tts-speaker-file LFM2.5-Audio-1.5B-GGUF/tokenizer-LFM2.5-Audio-1.5B-Q8_0.gguf \
-	-t ${THREADS} --host 127.0.0.1 --port ${AUDIO_SERVER_PORT} &>/dev/null
+		-t ${THREADS} --host 127.0.0.1 --port ${AUDIO_SERVER_PORT}
 
 
 # ┌──────────────────────────────────────────────────────────┐
