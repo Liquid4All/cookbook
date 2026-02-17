@@ -246,9 +246,13 @@ async def websocket_audio_endpoint(websocket: WebSocket):
                 async for chunk in tts_stream:
                     delta = chunk.choices[0].delta
 
-                    if hasattr(delta, "audio_chunk") and delta.audio_chunk:
+                    # Check for audio (Intel/newer builds) or audio_chunk (ARM64/older builds)
+                    if hasattr(delta, "audio") and delta.audio:
+                        audio_data = delta.audio
+                        chunk_data = audio_data.get("data") if isinstance(audio_data, dict) else audio_data.data
+                        await websocket.send_json({"type": "audio", "data": chunk_data, "sample_rate": 24000})
+                    elif hasattr(delta, "audio_chunk") and delta.audio_chunk:
                         chunk_data = delta.audio_chunk["data"]
-                        # Send audio chunk immediately for low latency
                         await websocket.send_json({"type": "audio", "data": chunk_data, "sample_rate": 24000})
 
             await websocket.send_json({"type": "done"})

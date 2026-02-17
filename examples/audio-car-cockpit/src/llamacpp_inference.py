@@ -1,5 +1,6 @@
 import ast
 import json
+import platform
 import signal
 import subprocess
 from collections.abc import Generator
@@ -63,6 +64,10 @@ def spawn_embedding_runtime(
     host = "127.0.0.1"
     executable = str((Path.cwd() / "llama-server").resolve())
 
+    # Detect Intel Mac (x86_64) and use CPU-only mode to avoid Metal GPU crashes
+    is_intel_mac = platform.system() == "Darwin" and platform.machine() == "x86_64"
+    n_gpu_layers = "0" if is_intel_mac else "9999"
+
     command = [
         executable,
         "--host",
@@ -72,7 +77,7 @@ def spawn_embedding_runtime(
         "--log-disable",
         "--no-perf",
         "--n-gpu-layers",
-        "9999",
+        n_gpu_layers,
         "--mlock",
         "--ctx-size",
         "2048",

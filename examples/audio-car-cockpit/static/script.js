@@ -852,7 +852,13 @@
     queueAudioChunk(base64Data, sampleRate) {
       // Decode PCM data
       const pcmBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      const floatArray = new Float32Array(pcmBytes.buffer);
+      
+      // Convert int16 PCM to float32 (llama.cpp sends 16-bit signed PCM)
+      const int16Array = new Int16Array(pcmBytes.buffer);
+      const floatArray = new Float32Array(int16Array.length);
+      for (let i = 0; i < int16Array.length; i++) {
+        floatArray[i] = int16Array[i] / 32768.0; // Convert to -1.0 to 1.0 range
+      }
 
       // Calculate chunk duration in seconds
       const durationSec = floatArray.length / sampleRate;
@@ -887,6 +893,11 @@
         if (!this.audio.audioContext || this.audio.audioContext.sampleRate !== chunk.sampleRate) {
           this.audio.audioContext = new AudioContext({ sampleRate: chunk.sampleRate });
           this.audio.nextStartTime = 0;
+        }
+
+        // Resume AudioContext if suspended (required for browser autoplay policies)
+        if (this.audio.audioContext.state === 'suspended') {
+          this.audio.audioContext.resume();
         }
 
         // Initialize or update next start time
