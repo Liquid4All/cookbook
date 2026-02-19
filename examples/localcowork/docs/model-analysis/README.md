@@ -185,6 +185,10 @@ See [gpt-oss-20b.md](./gpt-oss-20b.md) for the complete taxonomy with evidence a
 - **[Dual-Model Orchestrator Performance](./dual-model-orchestrator-performance.md)** — Architecture (Flow A/B), the 11 fixes that made the orchestrator production-viable, A/B test methodology and results, head-to-head single-model vs dual-model comparison, and operational serving guides.
 - **[Fine-Tuning Results](./fine-tuning-results.md)** — Two iterations of LoRA fine-tuning on LFM2.5-1.2B-Instruct for tool routing. V1 vs V2 comparison, training data generation, live test results, failure analysis.
 
+### Roadmap
+
+- **[Accuracy Improvement Roadmap](./accuracy-improvement-roadmap.md)** — Strategic roadmap from 80% to 90%+ single-step and 26% to 60-75% multi-step. Covers hierarchical routing, dedicated embeddings, essential tool set, multi-step interventions (M1-M5), and GRPO reinforcement learning — with a phased implementation sequence.
+
 ### Architecture decisions driven by these findings
 
 - **[ADR-008: Tool-Calling Optimization Strategy](../architecture-decisions/008-tool-calling-optimization-strategy.md)** — 4-layer optimization stack (grammar, few-shot, sampling, model evaluation)
