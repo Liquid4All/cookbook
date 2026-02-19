@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────────
+# LocalCowork — Pre-Push Hook (Smoke Test Gate)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# PURPOSE: Run the smoke test suite before pushing to remote. Unlike the
+# pre-commit hook (soft warning), this one BLOCKS the push if tests fail.
+#
+# This ensures no broken code reaches the remote repository.
+#
+# BYPASS (emergency only): git push --no-verify
+#
+# INSTALL: Handled by setup-dev.sh (git config core.hooksPath .git-hooks)
+# ─────────────────────────────────────────────────────────────────────────────
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SMOKE_SCRIPT="$PROJECT_ROOT/scripts/smoke-test.sh"
+
+echo ""
+echo -e "${BOLD}═══════════════════════════════════════════════════${NC}"
+echo -e "${BOLD}  Pre-Push: Running Smoke Tests${NC}"
+echo -e "${BOLD}═══════════════════════════════════════════════════${NC}"
+echo ""
+
+# Check if the smoke test runner exists
+if [ ! -x "$SMOKE_SCRIPT" ]; then
+    echo -e "${YELLOW}⚠️  Smoke test runner not found at scripts/smoke-test.sh${NC}"
+    echo -e "${YELLOW}   Skipping smoke tests. Run setup-dev.sh to fix.${NC}"
+    echo ""
+    exit 0
+fi
+
+# Run smoke tests with --save to record results
+if "$SMOKE_SCRIPT" --save; then
+    echo ""
+    echo -e "${GREEN}${BOLD}Smoke tests passed. Pushing...${NC}"
+    echo ""
+    exit 0
+else
+    exit_code=$?
+
+    if [ $exit_code -eq 2 ]; then
+        # No tests found — allow push but warn
+        echo ""
+        echo -e "${YELLOW}⚠️  No smoke tests found. Push allowed, but consider adding tests.${NC}"
+        echo ""
+        exit 0
+    fi
+
+    # Tests failed — block the push
+    echo ""
+    echo -e "${RED}═══════════════════════════════════════════════════${NC}"
+    echo -e "${RED}  ❌ PUSH BLOCKED: Smoke tests failed${NC}"
+    echo -e "${RED}═══════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "  Fix the failing tests, then try pushing again."
+    echo -e "  To see details:  ${BOLD}./scripts/smoke-test.sh${NC}"
+    echo -e "  Emergency bypass: ${YELLOW}git push --no-verify${NC} (not recommended)"
+    echo ""
+    exit 1
+fi

@@ -1,0 +1,19 @@
+SERVICE AGREEMENT
+
+Parties: Acme Corp (Provider) and Widget Inc (Client)
+Effective Date: January 1, 2026
+
+Section 1: Scope of Work
+The Provider shall deliver monthly consulting services including strategic planning, market analysis, quarterly reviews, and bi-weekly status reports.
+
+Section 2: Compensation
+The Client shall pay $6,500 per month, due on the first business day of each month. Late payments incur a 2% monthly penalty.
+
+Section 3: Term
+This agreement is valid for 24 months from the effective date, with automatic renewal unless either party provides 60 days written notice.
+
+Section 4: Confidentiality
+Both parties agree to maintain confidentiality of proprietary information shared during the engagement.
+
+Section 5: Liability
+The Provider liability is limited to the total fees paid in the preceding 12 months.

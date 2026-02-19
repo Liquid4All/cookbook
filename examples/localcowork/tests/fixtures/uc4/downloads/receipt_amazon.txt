@@ -1,0 +1,6 @@
+RECEIPT
+Vendor: Amazon.com
+Date: 2026-02-01
+Amount: $89.99
+Item: USB-C Hub (Anker)
+Order: #112-7654321-9876543

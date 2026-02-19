@@ -1,0 +1,31 @@
+{
+  "models": [
+    {
+      "name": "gpt-oss-20b",
+      "endpoint": "http://localhost:11434/v1",
+      "systemPromptFile": "system-prompts/gpt-oss-system-prompt.txt",
+      "temperature": 0.1,
+      "notes": "Development baseline via Ollama (closest to LFM2.5-24B target)"
+    },
+    {
+      "name": "lfm2.5-24b",
+      "endpoint": "http://localhost:8080/v1",
+      "systemPromptFile": "system-prompts/lfm25-system-prompt.txt",
+      "temperature": 0.1,
+      "notes": "Production target via LEAP SDK"
+    },
+    {
+      "name": "qwen2.5-32b",
+      "endpoint": "http://localhost:11434/v1",
+      "systemPromptFile": "system-prompts/qwen-system-prompt.txt",
+      "temperature": 0.1,
+      "notes": "Legacy dev proxy — kept for regression comparison"
+    }
+  ],
+  "thresholds": {
+    "tool_selection_min_accuracy": 0.9,
+    "chain_completion_min_rate": 0.8,
+    "edge_case_min_accuracy": 0.85,
+    "max_regression_from_baseline": 0.05
+  }
+}

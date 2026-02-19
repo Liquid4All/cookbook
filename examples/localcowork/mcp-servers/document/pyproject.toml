@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "localcowork-mcp-document"
+version = "0.1.0"
+description = "MCP server — document extraction, conversion, diff, and PDF generation"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6.0",
+    "python-docx>=1.1.0",
+    "pypdf>=4.0.0",
+    "python-pptx>=0.6.23",
+    "openpyxl>=3.1.0",
+    "markdown>=3.5.0",
+    "weasyprint>=62.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "mypy>=1.9.0",
+    "ruff>=0.3.0",
+    "black>=24.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

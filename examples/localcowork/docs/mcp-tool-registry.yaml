@@ -1,0 +1,1031 @@
+# MCP Tool Registry — LocalCowork
+# Extracted from PRD Appendix. This is the implementation contract.
+# Every MCP server must implement tools matching these signatures exactly.
+#
+# Schema per tool:
+#   name: server.tool_name
+#   description: what it does
+#   params: { name: { type, required, default?, description } }
+#   returns: { field: type }
+#   confirmation_required: bool
+#   undo_supported: bool
+#   notes: implementation guidance
+
+servers:
+
+  # ═══════════════════════════════════════════════════════════
+  # FILESYSTEM SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  filesystem:
+    language: typescript
+    description: Core file operations with sandboxed access
+    tools:
+
+      - name: filesystem.list_dir
+        description: List contents of a directory
+        params:
+          path: { type: string, required: true, description: "Absolute path to directory" }
+          recursive: { type: boolean, required: false, default: false, description: "List recursively" }
+          filter: { type: string, required: false, description: "Glob pattern filter" }
+        returns: "FileInfo[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: filesystem.read_file
+        description: Read contents of a file
+        params:
+          path: { type: string, required: true, description: "Absolute path to file" }
+          encoding: { type: string, required: false, default: "utf-8", description: "File encoding" }
+        returns: "{ content: string, size: number }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: filesystem.write_file
+        description: Write content to a file
+        params:
+          path: { type: string, required: true, description: "Absolute path to write" }
+          content: { type: string, required: true, description: "Content to write" }
+          encoding: { type: string, required: false, default: "utf-8", description: "File encoding" }
+        returns: "{ success: boolean, path: string }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: filesystem.move_file
+        description: Move a file from source to destination. Requires user confirmation.
+        params:
+          source: { type: string, required: true, description: "Absolute path of file to move" }
+          destination: { type: string, required: true, description: "Absolute path of destination" }
+          create_dirs: { type: boolean, required: false, default: true, description: "Create parent directories if missing" }
+        returns: "{ success: boolean, original_path: string, new_path: string }"
+        confirmation_required: true
+        undo_supported: true
+
+      - name: filesystem.copy_file
+        description: Copy a file to a new location
+        params:
+          source: { type: string, required: true, description: "Absolute path of file to copy" }
+          destination: { type: string, required: true, description: "Absolute path of destination" }
+        returns: "{ success: boolean, path: string }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: filesystem.delete_file
+        description: Delete a file. Moves to .localcowork/trash/ for recovery.
+        params:
+          path: { type: string, required: true, description: "Absolute path of file to delete" }
+        returns: "{ success: boolean }"
+        confirmation_required: true  # destructive — requires typed confirmation
+        undo_supported: true  # recoverable from trash
+
+      - name: filesystem.search_files
+        description: Search for files matching a pattern
+        params:
+          path: { type: string, required: true, description: "Root directory to search" }
+          pattern: { type: string, required: true, description: "Search pattern (glob or regex)" }
+          type: { type: string, required: false, description: "Filter by file type (file, dir, symlink)" }
+          max_results: { type: number, required: false, default: 100, description: "Maximum results to return" }
+        returns: "FileInfo[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: filesystem.get_metadata
+        description: Get detailed metadata for a file
+        params:
+          path: { type: string, required: true, description: "Absolute path to file" }
+        returns: "{ size: number, created: string, modified: string, accessed: string, type: string, permissions: string, exif?: object }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: filesystem.watch_folder
+        description: Register a filesystem watcher on a directory
+        params:
+          path: { type: string, required: true, description: "Absolute path to watch" }
+          patterns: { type: "string[]", required: false, description: "Glob patterns to filter events" }
+          callback_id: { type: string, required: true, description: "Unique ID for callback routing" }
+        returns: "{ watcher_id: string }"
+        confirmation_required: true  # first time only
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # OCR SERVER (Python)
+  # ═══════════════════════════════════════════════════════════
+  ocr:
+    language: python
+    description: OCR text extraction using Tesseract and PaddleOCR
+    tools:
+
+      - name: ocr.extract_text_from_image
+        description: Extract text from an image file using OCR
+        params:
+          path: { type: string, required: true, description: "Path to image file" }
+          language: { type: string, required: false, default: "eng", description: "OCR language" }
+        returns: "{ text: string, confidence: number }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Use PaddleOCR for receipts/structured docs, Tesseract as fallback"
+
+      - name: ocr.extract_text_from_pdf
+        description: Extract text from a PDF using OCR (for scanned PDFs)
+        params:
+          path: { type: string, required: true, description: "Path to PDF file" }
+          pages: { type: "number[]", required: false, description: "Specific pages to OCR (default: all)" }
+        returns: "{ pages: Array<{ page: number, text: string }> }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: ocr.extract_structured_data
+        description: Extract structured data from OCR text using the LLM
+        params:
+          text: { type: string, required: true, description: "OCR text to extract from" }
+          schema: { type: object, required: true, description: "JSON Schema defining expected fields" }
+        returns: "{ data: Record<string, any>, confidence: Record<string, number> }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Uses the LLM via model-gateway to extract structured JSON from raw OCR text"
+
+      - name: ocr.extract_table
+        description: Extract tabular data from an image or PDF page
+        params:
+          path: { type: string, required: true, description: "Path to image or PDF" }
+          page: { type: number, required: false, description: "Page number (for PDFs)" }
+        returns: "{ headers: string[], rows: string[][] }"
+        confirmation_required: false
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # DOCUMENT SERVER (Python)
+  # ═══════════════════════════════════════════════════════════
+  document:
+    language: python
+    description: Document extraction, conversion, diffing, and PDF generation
+    tools:
+
+      - name: document.extract_text
+        description: Extract plain text from a document (PDF, DOCX, HTML, etc.)
+        params:
+          path: { type: string, required: true, description: "Path to document" }
+        returns: "{ text: string, format: string, pages?: number }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: document.convert_format
+        description: Convert a document between formats
+        params:
+          path: { type: string, required: true, description: "Path to source document" }
+          target_format: { type: string, required: true, description: "Target format (pdf, docx, html, md, txt)" }
+          output_path: { type: string, required: false, description: "Output path (auto-generated if omitted)" }
+        returns: "{ path: string }"
+        confirmation_required: true
+        undo_supported: false
+        notes: "Uses Pandoc for lightweight conversions, LibreOffice headless for complex ones"
+
+      - name: document.diff_documents
+        description: Produce a structured diff between two documents
+        params:
+          path_a: { type: string, required: true, description: "Path to first document" }
+          path_b: { type: string, required: true, description: "Path to second document" }
+          granularity: { type: string, required: false, default: "paragraph", description: "Diff level: paragraph, sentence, or word" }
+        returns: "{ changes: Change[], summary: string }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Diff at paragraph level (not line level). Use sentence-level difflib with context windowing."
+
+      - name: document.create_pdf
+        description: Create a PDF from markdown content using a template
+        params:
+          content: { type: string, required: true, description: "Markdown content for the PDF" }
+          template: { type: string, required: false, description: "Template name from ~/.localcowork/templates/" }
+          output_path: { type: string, required: true, description: "Where to save the PDF" }
+        returns: "{ path: string, pages: number }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: document.fill_pdf_form
+        description: Fill fields in a PDF form
+        params:
+          path: { type: string, required: true, description: "Path to PDF form" }
+          fields: { type: object, required: true, description: "Map of field names to values" }
+          output_path: { type: string, required: true, description: "Where to save filled PDF" }
+        returns: "{ path: string, fields_filled: number }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: document.merge_pdfs
+        description: Merge multiple PDFs into one
+        params:
+          paths: { type: "string[]", required: true, description: "Paths to PDFs to merge (in order)" }
+          output_path: { type: string, required: true, description: "Where to save merged PDF" }
+        returns: "{ path: string, total_pages: number }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: document.create_docx
+        description: Create a Word document from structured content
+        params:
+          content: { type: string, required: true, description: "Markdown content" }
+          template: { type: string, required: false, description: "Template path" }
+          output_path: { type: string, required: true, description: "Where to save" }
+        returns: "{ path: string }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: document.read_spreadsheet
+        description: Read data from an Excel or CSV spreadsheet
+        params:
+          path: { type: string, required: true, description: "Path to spreadsheet" }
+          sheet: { type: string, required: false, description: "Sheet name (for multi-sheet files)" }
+        returns: "{ headers: string[], rows: Record<string, any>[], total_rows: number }"
+        confirmation_required: false
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # SECURITY SERVER (Python)
+  # ═══════════════════════════════════════════════════════════
+  security:
+    language: python
+    description: PII detection, secrets scanning, duplicate finding, encryption
+    tools:
+
+      - name: security.scan_for_pii
+        description: Scan files for personally identifiable information
+        params:
+          path: { type: string, required: true, description: "File or directory path to scan" }
+          types: { type: "string[]", required: false, description: "PII types to scan for: ssn, credit_card, email, phone" }
+        returns: "{ findings: Finding[] }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Regex + rules-based detection (not model-based) for speed and determinism"
+
+      - name: security.scan_for_secrets
+        description: Scan files for exposed secrets (API keys, private keys, passwords)
+        params:
+          path: { type: string, required: true, description: "File or directory path to scan" }
+        returns: "{ findings: Finding[] }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Use patterns from trufflehog database"
+
+      - name: security.find_duplicates
+        description: Find duplicate files in a directory
+        params:
+          path: { type: string, required: true, description: "Directory to scan" }
+          method: { type: string, required: false, default: "hash", description: "Comparison method: hash, name, or content" }
+        returns: "{ groups: FileInfo[][] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: security.propose_cleanup
+        description: Generate cleanup proposals for security findings
+        params:
+          findings: { type: "Finding[]", required: true, description: "Security findings to generate proposals for" }
+        returns: "{ actions: ProposedAction[] }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Just proposes actions — execution is separate with user confirmation"
+
+      - name: security.encrypt_file
+        description: Encrypt a file using age encryption
+        params:
+          path: { type: string, required: true, description: "Path to file to encrypt" }
+          output_path: { type: string, required: false, description: "Output path (defaults to path + .age)" }
+        returns: "{ path: string, identity_public_key: string }"
+        confirmation_required: true
+        undo_supported: false
+        notes: "Use age (not GPG) for simplicity. Store identity in system keychain."
+
+      - name: security.decrypt_file
+        description: Decrypt an age-encrypted file
+        params:
+          path: { type: string, required: true, description: "Path to .age encrypted file" }
+          output_path: { type: string, required: false, description: "Output path" }
+        returns: "{ path: string }"
+        confirmation_required: true
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # MEETING SERVER (Python)
+  # ═══════════════════════════════════════════════════════════
+  meeting:
+    language: python
+    description: Audio transcription, action item extraction, meeting minutes
+    tools:
+
+      - name: meeting.transcribe_audio
+        description: Transcribe audio to text using Whisper.cpp
+        params:
+          path: { type: string, required: true, description: "Path to audio file" }
+          language: { type: string, required: false, default: "en", description: "Language code" }
+          diarize: { type: boolean, required: false, default: false, description: "Enable speaker diarization" }
+        returns: "{ transcript: Segment[], duration_seconds: number }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Use large-v3 model. On Apple Silicon, use Core ML variant. Diarization via pyannote-audio."
+
+      - name: meeting.extract_action_items
+        description: Extract action items from a meeting transcript
+        params:
+          transcript: { type: string, required: true, description: "Meeting transcript text" }
+        returns: "{ items: ActionItem[] }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "ActionItem = { assignee, task, deadline, context, priority }"
+
+      - name: meeting.extract_commitments
+        description: Extract commitments, decisions, and open questions from a transcript
+        params:
+          transcript: { type: string, required: true, description: "Meeting transcript text" }
+        returns: "{ commitments: Commitment[], decisions: Decision[], open_questions: string[] }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Use few-shot examples in system prompt for structured extraction"
+
+      - name: meeting.generate_minutes
+        description: Generate formatted meeting minutes document
+        params:
+          transcript: { type: string, required: true, description: "Meeting transcript text" }
+          template: { type: string, required: false, description: "Minutes template name" }
+          output_path: { type: string, required: true, description: "Where to save minutes" }
+        returns: "{ path: string }"
+        confirmation_required: true
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # KNOWLEDGE SERVER (Python)
+  # ═══════════════════════════════════════════════════════════
+  knowledge:
+    language: python
+    description: Local vector store RAG pipeline using SQLite-vec
+    tools:
+
+      - name: knowledge.index_folder
+        description: Index a folder of documents for semantic search
+        params:
+          path: { type: string, required: true, description: "Folder path to index" }
+          recursive: { type: boolean, required: false, default: true, description: "Index subdirectories" }
+          file_types: { type: "string[]", required: false, description: "File extensions to include" }
+        returns: "{ documents_indexed: number, chunks_created: number }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Chunk documents, generate embeddings with sentence-transformers, store in SQLite-vec"
+
+      - name: knowledge.search_documents
+        description: Semantic search across indexed documents
+        params:
+          query: { type: string, required: true, description: "Search query" }
+          top_k: { type: number, required: false, default: 5, description: "Number of results" }
+          filter_path: { type: string, required: false, description: "Restrict to documents under this path" }
+        returns: "{ results: SearchResult[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: knowledge.ask_about_files
+        description: Ask a question and get an answer grounded in indexed documents
+        params:
+          question: { type: string, required: true, description: "Question to answer" }
+          context_docs: { type: number, required: false, default: 5, description: "Number of context docs to retrieve" }
+        returns: "{ answer: string, sources: Source[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: knowledge.update_index
+        description: Update index for changed/new files
+        params:
+          path: { type: string, required: true, description: "Folder path to re-index" }
+        returns: "{ added: number, updated: number, removed: number }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: knowledge.get_related_chunks
+        description: Find chunks related to a specific document or passage
+        params:
+          text: { type: string, required: true, description: "Reference text" }
+          top_k: { type: number, required: false, default: 5, description: "Number of results" }
+        returns: "{ chunks: Chunk[] }"
+        confirmation_required: false
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # CALENDAR SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  calendar:
+    language: typescript
+    description: Local calendar management via .ics files and system API
+    tools:
+
+      - name: calendar.list_events
+        description: List calendar events in a date range
+        params:
+          start_date: { type: string, required: true, description: "Start date (ISO 8601)" }
+          end_date: { type: string, required: true, description: "End date (ISO 8601)" }
+          calendar: { type: string, required: false, description: "Calendar name (default: all)" }
+        returns: "Event[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: calendar.create_event
+        description: Create a new calendar event
+        params:
+          title: { type: string, required: true, description: "Event title" }
+          start: { type: string, required: true, description: "Start time (ISO 8601)" }
+          end: { type: string, required: true, description: "End time (ISO 8601)" }
+          description: { type: string, required: false, description: "Event description" }
+          calendar: { type: string, required: false, description: "Target calendar" }
+        returns: "{ event_id: string }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: calendar.find_free_slots
+        description: Find available time blocks in a day
+        params:
+          date: { type: string, required: true, description: "Date to check (ISO 8601)" }
+          min_duration_minutes: { type: number, required: false, default: 30, description: "Minimum slot duration" }
+        returns: "{ slots: TimeSlot[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: calendar.create_time_block
+        description: Create a focused time block on the calendar
+        params:
+          title: { type: string, required: true, description: "Block title" }
+          date: { type: string, required: true, description: "Date (ISO 8601)" }
+          duration_minutes: { type: number, required: true, description: "Duration in minutes" }
+          preferred_time: { type: string, required: false, description: "Preferred time of day: morning, afternoon, evening" }
+        returns: "{ event_id: string, scheduled_at: string }"
+        confirmation_required: true
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # EMAIL SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  email:
+    language: typescript
+    description: Local email reading, drafting, and sending via MBOX/Maildir + SMTP
+    tools:
+
+      - name: email.draft_email
+        description: Create an email draft
+        params:
+          to: { type: "string[]", required: true, description: "Recipient email addresses" }
+          subject: { type: string, required: true, description: "Email subject" }
+          body: { type: string, required: true, description: "Email body (markdown)" }
+          cc: { type: "string[]", required: false, description: "CC recipients" }
+        returns: "{ draft_id: string, preview: string }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: email.list_drafts
+        description: List saved email drafts
+        params:
+          limit: { type: number, required: false, default: 20, description: "Max drafts to return" }
+        returns: "Draft[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: email.search_emails
+        description: Search local email archive
+        params:
+          query: { type: string, required: true, description: "Search query" }
+          folder: { type: string, required: false, description: "Email folder (inbox, sent, etc.)" }
+          limit: { type: number, required: false, default: 20, description: "Max results" }
+        returns: "EmailSummary[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: email.summarize_thread
+        description: Summarize an email thread
+        params:
+          thread_id: { type: string, required: true, description: "Thread identifier" }
+        returns: "{ summary: string, participants: string[], key_points: string[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: email.send_draft
+        description: Send a previously created draft via SMTP
+        params:
+          draft_id: { type: string, required: true, description: "Draft to send" }
+        returns: "{ success: boolean, message_id: string }"
+        confirmation_required: true  # always confirm before sending
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # TASK SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  task:
+    language: typescript
+    description: Local task database with priorities and daily briefings
+    tools:
+
+      - name: task.create_task
+        description: Create a new task
+        params:
+          title: { type: string, required: true, description: "Task title" }
+          description: { type: string, required: false, description: "Task details" }
+          source: { type: string, required: false, description: "Origin: meeting, email, manual, clipboard" }
+          priority: { type: number, required: false, default: 3, description: "1=urgent, 5=someday" }
+          due_date: { type: string, required: false, description: "Due date (ISO 8601)" }
+        returns: "{ task_id: number }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: task.list_tasks
+        description: List tasks with optional filters
+        params:
+          status: { type: string, required: false, description: "Filter: pending, completed, overdue" }
+          priority: { type: number, required: false, description: "Filter by priority" }
+          limit: { type: number, required: false, default: 50, description: "Max results" }
+        returns: "Task[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: task.update_task
+        description: Update an existing task
+        params:
+          task_id: { type: number, required: true, description: "Task ID" }
+          updates: { type: object, required: true, description: "Fields to update (partial Task)" }
+        returns: "{ success: boolean }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: task.get_overdue
+        description: Get all overdue tasks
+        params: {}
+        returns: "Task[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: task.daily_briefing
+        description: Generate a daily briefing combining tasks, events, and emails
+        params:
+          date: { type: string, required: false, description: "Date for briefing (default: today)" }
+        returns: "{ briefing: string, events: Event[], tasks: Task[], overdue: Task[] }"
+        confirmation_required: false
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # DATA SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  data:
+    language: typescript
+    description: CSV and SQLite data operations
+    tools:
+
+      - name: data.write_csv
+        description: Write structured data to a CSV file
+        params:
+          data: { type: "Record<string, any>[]", required: true, description: "Array of row objects" }
+          output_path: { type: string, required: true, description: "Where to save CSV" }
+          headers: { type: "string[]", required: false, description: "Column headers (auto-detected if omitted)" }
+        returns: "{ path: string, rows: number }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: data.write_sqlite
+        description: Write structured data to a SQLite table
+        params:
+          data: { type: "Record<string, any>[]", required: true, description: "Array of row objects" }
+          table: { type: string, required: true, description: "Table name" }
+          db_path: { type: string, required: true, description: "Path to SQLite database" }
+        returns: "{ rows_inserted: number }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: data.query_sqlite
+        description: Run a read-only SQL query against a SQLite database
+        params:
+          query: { type: string, required: true, description: "SQL SELECT query" }
+          db_path: { type: string, required: true, description: "Path to SQLite database" }
+        returns: "{ results: Record<string, any>[], columns: string[] }"
+        confirmation_required: false  # read-only queries only
+        undo_supported: false
+
+      - name: data.deduplicate_records
+        description: Find and flag duplicate records in a dataset
+        params:
+          data: { type: "Record<string, any>[]", required: true, description: "Input records" }
+          match_fields: { type: "string[]", required: true, description: "Fields to match on" }
+          threshold: { type: number, required: false, default: 0.85, description: "Similarity threshold (0-1)" }
+        returns: "{ unique: Record<string, any>[], duplicates: Record<string, any>[][] }"
+        confirmation_required: false
+        undo_supported: false
+        notes: "Levenshtein similarity on string fields, exact match on numbers/dates"
+
+      - name: data.summarize_anomalies
+        description: Detect anomalies in a dataset based on rules
+        params:
+          data: { type: "Record<string, any>[]", required: true, description: "Input records" }
+          rules: { type: "Rule[]", required: false, description: "Custom anomaly rules" }
+        returns: "{ anomalies: Anomaly[] }"
+        confirmation_required: false
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # AUDIT SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  audit:
+    language: typescript
+    description: Audit log reader and compliance report generator
+    tools:
+
+      - name: audit.get_tool_log
+        description: Retrieve tool execution log entries
+        params:
+          session_id: { type: string, required: false, description: "Filter by session" }
+          start_time: { type: string, required: false, description: "Start of time range (ISO 8601)" }
+          end_time: { type: string, required: false, description: "End of time range (ISO 8601)" }
+          tool_name: { type: string, required: false, description: "Filter by tool name" }
+        returns: "AuditEntry[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: audit.get_session_summary
+        description: Aggregate summary for a session
+        params:
+          session_id: { type: string, required: true, description: "Session ID" }
+        returns: "{ documents_touched: FileHash[], tools_called: ToolSummary[], confirmations: number, rejections: number }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: audit.generate_audit_report
+        description: Generate a text audit report for a session
+        params:
+          session_id: { type: string, required: true, description: "Session ID" }
+          template: { type: string, required: false, description: "Report template name" }
+        returns: "{ report: string }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: audit.export_audit_pdf
+        description: Export audit report as a signed PDF
+        params:
+          session_id: { type: string, required: true, description: "Session ID" }
+          output_path: { type: string, required: true, description: "Where to save PDF" }
+          sign: { type: boolean, required: false, default: false, description: "Digitally sign the PDF" }
+        returns: "{ path: string }"
+        confirmation_required: true
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # CLIPBOARD SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  clipboard:
+    language: typescript
+    description: OS clipboard access via Tauri bridge
+    tools:
+
+      - name: clipboard.get_clipboard
+        description: Get current clipboard contents
+        params: {}
+        returns: "{ content: string, type: string }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: clipboard.set_clipboard
+        description: Set clipboard contents
+        params:
+          content: { type: string, required: true, description: "Content to copy to clipboard" }
+        returns: "{ success: boolean }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: clipboard.clipboard_history
+        description: Get recent clipboard entries
+        params:
+          limit: { type: number, required: false, default: 20, description: "Max entries to return" }
+        returns: "{ entries: ClipboardEntry[] }"
+        confirmation_required: false
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # SYSTEM SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  system:
+    language: typescript
+    description: OS-level operations via Tauri commands
+    tools:
+
+      - name: system.get_system_info
+        description: Get system hardware and OS information
+        params: {}
+        returns: "{ os: string, arch: string, cpu: string, ram_gb: number, gpu?: string, npu?: boolean }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system.open_application
+        description: Open an application by name
+        params:
+          app_name: { type: string, required: true, description: "Application name or path" }
+        returns: "{ success: boolean, pid?: number }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: system.take_screenshot
+        description: Capture a screenshot
+        params:
+          region: { type: object, required: false, description: "Region { x, y, width, height } (default: full screen)" }
+        returns: "{ path: string, width: number, height: number }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system.list_processes
+        description: List running processes
+        params:
+          filter: { type: string, required: false, description: "Process name filter" }
+        returns: "Process[]"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system.open_file_with
+        description: Open a file with a specific application
+        params:
+          path: { type: string, required: true, description: "File path" }
+          app: { type: string, required: false, description: "Application to open with (default: system default)" }
+        returns: "{ success: boolean }"
+        confirmation_required: true
+        undo_supported: false
+
+      - name: system.get_memory_usage
+        description: Get system memory (RAM) and swap usage statistics
+        params: {}
+        returns: "{ total_gb: number, used_gb: number, free_gb: number, swap_total_gb: number, swap_used_gb: number, usage_percent: number }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system.get_disk_usage
+        description: Get disk capacity and free space for all mounted volumes
+        params: {}
+        returns: "{ volumes: DiskVolume[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system.get_cpu_usage
+        description: Get CPU core count, model, load average, and per-core utilization
+        params: {}
+        returns: "{ cores: number, model: string, load_average: number[], per_core_percent: number[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system.get_network_info
+        description: Get active network interfaces with IP and MAC addresses
+        params: {}
+        returns: "{ interfaces: NetworkInterface[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system.kill_process
+        description: Terminate a running process by PID
+        params:
+          pid: { type: number, required: true, description: "Process ID to terminate" }
+          signal: { type: string, required: false, description: "Signal to send (SIGTERM, SIGKILL, SIGINT). Default: SIGTERM" }
+        returns: "{ success: boolean, pid: number, signal: string }"
+        confirmation_required: true
+        undo_supported: false
+
+  # ═══════════════════════════════════════════════════════════
+  # SYSTEM-SETTINGS SERVER (TypeScript)
+  # ═══════════════════════════════════════════════════════════
+  system-settings:
+    language: typescript
+    description: OS display, audio, power, and default app settings via Tauri bridge
+    tools:
+
+      - name: system-settings.get_display_settings
+        description: Get display sleep timer, brightness, and resolution
+        params: {}
+        returns: "{ sleep_minutes: number, brightness?: number, resolution?: string }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system-settings.set_display_sleep
+        description: Set the display sleep timer in minutes (0 = never sleep)
+        params:
+          minutes: { type: number, required: true, description: "Minutes before display sleeps (0 = never), range 0-480" }
+        returns: "{ success: boolean, previous_value?: number, new_value?: number }"
+        confirmation_required: true
+        undo_supported: true
+
+      - name: system-settings.get_audio_settings
+        description: Get audio output volume, input volume, mute status, and output device
+        params: {}
+        returns: "{ output_volume: number, input_volume: number, muted: boolean, output_device?: string }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system-settings.set_audio_volume
+        description: Set the system audio output volume (0-100)
+        params:
+          volume: { type: number, required: true, description: "Volume level 0-100" }
+        returns: "{ success: boolean, previous_value?: number, new_value?: number }"
+        confirmation_required: true
+        undo_supported: true
+
+      - name: system-settings.get_default_apps
+        description: Get default browser, email client, and PDF viewer assignments
+        params: {}
+        returns: "{ browser?: string, email?: string, pdf_viewer?: string }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system-settings.set_default_browser
+        description: Set the default web browser for opening HTTP/HTTPS links
+        params:
+          browser: { type: string, required: true, description: "Browser name (Safari, Google Chrome, Firefox, Microsoft Edge, etc.)" }
+        returns: "{ success: boolean, previous_value?: string, new_value?: string }"
+        confirmation_required: true
+        undo_supported: true
+
+      - name: system-settings.get_power_settings
+        description: Get display sleep, system sleep, disk sleep timers, and wake-on-network status
+        params: {}
+        returns: "{ display_sleep_minutes: number, system_sleep_minutes: number, disk_sleep_minutes: number, wake_on_network: boolean }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: system-settings.toggle_do_not_disturb
+        description: Enable or disable Do Not Disturb / Focus mode
+        params:
+          enable: { type: boolean, required: true, description: "true to enable, false to disable" }
+        returns: "{ success: boolean, previous_value?: boolean, new_value?: boolean }"
+        confirmation_required: true
+        undo_supported: true
+
+  # ═══════════════════════════════════════════════════════════
+  # SCREENSHOT-PIPELINE SERVER (Python)
+  # ═══════════════════════════════════════════════════════════
+  screenshot-pipeline:
+    language: python
+    description: Screenshot capture, OCR text extraction, UI element detection, and action suggestion
+    tools:
+
+      - name: screenshot.capture_and_extract
+        description: Capture a screenshot and extract text using OCR
+        params:
+          region: { type: object, required: false, description: "Region { x, y, width, height } for partial capture (default: full screen)" }
+          language: { type: string, required: false, description: "OCR language code (default: eng)" }
+        returns: "{ screenshot_path: string, text: string, confidence: number }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: screenshot.extract_ui_elements
+        description: Extract UI elements (buttons, text fields, labels, links) from a screenshot
+        params:
+          image_path: { type: string, required: true, description: "Path to screenshot image file" }
+        returns: "{ elements: UIElement[] }"
+        confirmation_required: false
+        undo_supported: false
+
+      - name: screenshot.suggest_actions
+        description: Analyze screenshot text and UI elements to suggest possible user actions
+        params:
+          text: { type: string, required: true, description: "Extracted text from the screenshot" }
+          elements: { type: "UIElement[]", required: false, description: "Detected UI elements from the screenshot" }
+        returns: "{ suggestions: ActionSuggestion[] }"
+        confirmation_required: false
+        undo_supported: false
+
+# ═══════════════════════════════════════════════════════════
+# SHARED TYPES
+# ═══════════════════════════════════════════════════════════
+types:
+
+  FileInfo:
+    fields:
+      name: string
+      path: string
+      type: "file | dir | symlink"
+      size: number
+      modified: string
+      created: string
+
+  Finding:
+    fields:
+      type: string  # "ssn", "credit_card", "api_key", etc.
+      severity: "critical | high | medium | low"
+      file_path: string
+      line_number: number
+      context: string
+      confidence: number
+
+  ProposedAction:
+    fields:
+      action: "encrypt | delete | move | ignore"
+      finding: Finding
+      target_path: string
+      reason: string
+
+  Event:
+    fields:
+      id: string
+      title: string
+      start: string
+      end: string
+      description: string
+      calendar: string
+
+  TimeSlot:
+    fields:
+      start: string
+      end: string
+      duration_minutes: number
+
+  Task:
+    fields:
+      id: number
+      title: string
+      description: string
+      source: string
+      source_ref: string
+      priority: number
+      due_date: string
+      completed_at: string
+      created_at: string
+
+  ActionItem:
+    fields:
+      assignee: string
+      task: string
+      deadline: string
+      context: string
+      priority: "high | medium | low"
+
+  Commitment:
+    fields:
+      person: string
+      commitment: string
+      deadline: string
+      context: string
+
+  Decision:
+    fields:
+      decision: string
+      made_by: string
+      context: string
+
+  Segment:
+    fields:
+      start_time: number
+      end_time: number
+      speaker: string
+      text: string
+
+  SearchResult:
+    fields:
+      chunk_text: string
+      document_path: string
+      score: number
+      page: number
+
+  AuditEntry:
+    fields:
+      id: number
+      session_id: string
+      timestamp: string
+      tool_name: string
+      arguments: object
+      result: object
+      result_status: "success | error | rejected_by_user"
+      user_confirmed: boolean
+      execution_time_ms: number
+
+  ClipboardEntry:
+    fields:
+      content: string
+      type: string
+      timestamp: string
+
+  Process:
+    fields:
+      pid: number
+      name: string
+      cpu_percent: number
+      memory_mb: number
+
+  DiskVolume:
+    fields:
+      mount_point: string
+      filesystem: string
+      total_gb: number
+      used_gb: number
+      free_gb: number
+      usage_percent: number
+
+  NetworkInterface:
+    fields:
+      name: string
+      ip4: string
+      ip6: string
+      mac: string
+      internal: boolean
+
+  UIElement:
+    fields:
+      type: "button | text_field | label | link | icon | checkbox"
+      text: string
+      bounds: "{ x: number, y: number, width: number, height: number }"
+      confidence: number
+
+  ActionSuggestion:
+    fields:
+      action: string
+      description: string
+      confidence: number
+      tool_chain: "string[]"

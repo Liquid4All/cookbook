@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(black *)",
+      "Bash(prettier *)",
+      "Bash(eslint *)",
+      "Bash(ollama *)",
+      "Bash(./scripts/*)",
+      "Bash(pip install *)",
+      "Bash(rustup *)",
+      "Bash(tauri *)",
+      "Bash(cargo tauri *)"
+    ]
+  }
+}

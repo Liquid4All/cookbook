@@ -1,0 +1,1016 @@
+{
+  "suite": "tool-selection",
+  "description": "100 prompts mapped to expected single tool calls",
+  "version": "1.0.0",
+  "tests": [
+    {
+      "id": "ts-001",
+      "prompt": "Show me what is in my Documents folder",
+      "expectedTool": "filesystem.list_dir",
+      "expectedParams": {
+        "path": "/Users/me/Documents"
+      },
+      "tags": [
+        "filesystem",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-002",
+      "prompt": "Read the contents of /tmp/notes.txt",
+      "expectedTool": "filesystem.read_file",
+      "expectedParams": {
+        "path": "/tmp/notes.txt"
+      },
+      "tags": [
+        "filesystem",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-003",
+      "prompt": "Create a new file at /tmp/hello.txt with the content Hello World",
+      "expectedTool": "filesystem.write_file",
+      "expectedParams": {
+        "path": "/tmp/hello.txt",
+        "content": "Hello World"
+      },
+      "tags": [
+        "filesystem",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-004",
+      "prompt": "Move report.pdf from Downloads to Documents",
+      "expectedTool": "filesystem.move_file",
+      "expectedParams": {},
+      "tags": [
+        "filesystem",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-005",
+      "prompt": "Copy the budget spreadsheet to a backup folder",
+      "expectedTool": "filesystem.copy_file",
+      "expectedParams": {},
+      "tags": [
+        "filesystem",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-006",
+      "prompt": "Delete the temporary file at /tmp/scratch.txt",
+      "expectedTool": "filesystem.delete_file",
+      "expectedParams": {
+        "path": "/tmp/scratch.txt"
+      },
+      "tags": [
+        "filesystem",
+        "destructive"
+      ]
+    },
+    {
+      "id": "ts-007",
+      "prompt": "Search for all PDF files in my home directory",
+      "expectedTool": "filesystem.search_files",
+      "expectedParams": {},
+      "tags": [
+        "filesystem",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-008",
+      "prompt": "Get the file size and modification date of contract.pdf",
+      "expectedTool": "filesystem.get_metadata",
+      "expectedParams": {},
+      "tags": [
+        "filesystem",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-009",
+      "prompt": "Watch my Downloads folder for new files",
+      "expectedTool": "filesystem.watch_folder",
+      "expectedParams": {},
+      "tags": [
+        "filesystem",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-010",
+      "prompt": "Extract the text from this scanned receipt image",
+      "expectedTool": "ocr.extract_text_from_image",
+      "expectedParams": {},
+      "tags": [
+        "ocr",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-011",
+      "prompt": "Extract text from this PDF that has scanned pages",
+      "expectedTool": "ocr.extract_text_from_pdf",
+      "expectedParams": {},
+      "tags": [
+        "ocr",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-012",
+      "prompt": "Extract the table from this image of a spreadsheet",
+      "expectedTool": "ocr.extract_table",
+      "expectedParams": {},
+      "tags": [
+        "ocr",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-013",
+      "prompt": "Pull out the structured data like vendor name amount and date from this receipt",
+      "expectedTool": "ocr.extract_structured_data",
+      "expectedParams": {},
+      "tags": [
+        "ocr",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-014",
+      "prompt": "Extract the text content from this Word document",
+      "expectedTool": "document.extract_text",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-015",
+      "prompt": "Convert this markdown file to PDF",
+      "expectedTool": "document.convert_format",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-016",
+      "prompt": "Show me the differences between these two contracts",
+      "expectedTool": "document.diff_documents",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-017",
+      "prompt": "Create a PDF report from this data",
+      "expectedTool": "document.create_pdf",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-018",
+      "prompt": "Fill in this PDF form with the provided data",
+      "expectedTool": "document.fill_pdf_form",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-019",
+      "prompt": "Merge these three PDFs into one document",
+      "expectedTool": "document.merge_pdfs",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-020",
+      "prompt": "Create a Word document with the meeting notes",
+      "expectedTool": "document.create_docx",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-021",
+      "prompt": "Read this Excel spreadsheet and show me the data",
+      "expectedTool": "document.read_spreadsheet",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-022",
+      "prompt": "Write this data to a CSV file",
+      "expectedTool": "data.write_csv",
+      "expectedParams": {},
+      "tags": [
+        "data",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-023",
+      "prompt": "Store these records in a SQLite database",
+      "expectedTool": "data.write_sqlite",
+      "expectedParams": {},
+      "tags": [
+        "data",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-024",
+      "prompt": "Run a SQL query to find all expenses over 500 dollars",
+      "expectedTool": "data.query_sqlite",
+      "expectedParams": {},
+      "tags": [
+        "data",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-025",
+      "prompt": "Remove duplicate entries from this dataset",
+      "expectedTool": "data.deduplicate_records",
+      "expectedParams": {},
+      "tags": [
+        "data",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-026",
+      "prompt": "Find any anomalies or outliers in this expense data",
+      "expectedTool": "data.summarize_anomalies",
+      "expectedParams": {},
+      "tags": [
+        "data",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-027",
+      "prompt": "Show me the audit log for the last hour",
+      "expectedTool": "audit.get_tool_log",
+      "expectedParams": {},
+      "tags": [
+        "audit",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-028",
+      "prompt": "Give me a summary of this session",
+      "expectedTool": "audit.get_session_summary",
+      "expectedParams": {},
+      "tags": [
+        "audit",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-029",
+      "prompt": "Generate a full audit report for this week",
+      "expectedTool": "audit.generate_audit_report",
+      "expectedParams": {},
+      "tags": [
+        "audit",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-030",
+      "prompt": "Export the audit report as a PDF",
+      "expectedTool": "audit.export_audit_pdf",
+      "expectedParams": {},
+      "tags": [
+        "audit",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-031",
+      "prompt": "Index all files in my project folder for search",
+      "expectedTool": "knowledge.index_folder",
+      "expectedParams": {},
+      "tags": [
+        "knowledge",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-032",
+      "prompt": "Search my indexed documents for information about quarterly revenue",
+      "expectedTool": "knowledge.search_documents",
+      "expectedParams": {},
+      "tags": [
+        "knowledge",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-033",
+      "prompt": "What do my files say about the Johnson contract terms",
+      "expectedTool": "knowledge.ask_about_files",
+      "expectedParams": {},
+      "tags": [
+        "knowledge",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-034",
+      "prompt": "Update the search index with newly added files",
+      "expectedTool": "knowledge.update_index",
+      "expectedParams": {},
+      "tags": [
+        "knowledge",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-035",
+      "prompt": "Find related chunks of text about this topic across my documents",
+      "expectedTool": "knowledge.get_related_chunks",
+      "expectedParams": {},
+      "tags": [
+        "knowledge",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-036",
+      "prompt": "Scan this document for any personal information like SSNs or phone numbers",
+      "expectedTool": "security.scan_for_pii",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-037",
+      "prompt": "Check this file for any API keys or passwords",
+      "expectedTool": "security.scan_for_secrets",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-038",
+      "prompt": "Find duplicate files in my Documents folder",
+      "expectedTool": "security.find_duplicates",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-039",
+      "prompt": "Suggest what files I can clean up to free space",
+      "expectedTool": "security.propose_cleanup",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-040",
+      "prompt": "Encrypt this sensitive file with a password",
+      "expectedTool": "security.encrypt_file",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-041",
+      "prompt": "Decrypt the encrypted file so I can read it",
+      "expectedTool": "security.decrypt_file",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-042",
+      "prompt": "Create a new task: Review the Q4 budget by Friday",
+      "expectedTool": "task.create_task",
+      "expectedParams": {},
+      "tags": [
+        "task",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-043",
+      "prompt": "Show me all my current tasks",
+      "expectedTool": "task.list_tasks",
+      "expectedParams": {},
+      "tags": [
+        "task",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-044",
+      "prompt": "Mark the budget review task as completed",
+      "expectedTool": "task.update_task",
+      "expectedParams": {},
+      "tags": [
+        "task",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-045",
+      "prompt": "What tasks are overdue",
+      "expectedTool": "task.get_overdue",
+      "expectedParams": {},
+      "tags": [
+        "task",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-046",
+      "prompt": "Give me my daily briefing",
+      "expectedTool": "task.daily_briefing",
+      "expectedParams": {},
+      "tags": [
+        "task",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-047",
+      "prompt": "Show me my calendar events for this week",
+      "expectedTool": "calendar.list_events",
+      "expectedParams": {},
+      "tags": [
+        "calendar",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-048",
+      "prompt": "Schedule a meeting with the team next Tuesday at 2pm",
+      "expectedTool": "calendar.create_event",
+      "expectedParams": {},
+      "tags": [
+        "calendar",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-049",
+      "prompt": "When am I free this week for a 1-hour meeting",
+      "expectedTool": "calendar.find_free_slots",
+      "expectedParams": {},
+      "tags": [
+        "calendar",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-050",
+      "prompt": "Block out 2 hours tomorrow morning for deep work",
+      "expectedTool": "calendar.create_time_block",
+      "expectedParams": {},
+      "tags": [
+        "calendar",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-051",
+      "prompt": "Draft an email to John about the project update",
+      "expectedTool": "email.draft_email",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-052",
+      "prompt": "Show me my draft emails",
+      "expectedTool": "email.list_drafts",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-053",
+      "prompt": "Search my emails for messages from Sarah about the contract",
+      "expectedTool": "email.search_emails",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-054",
+      "prompt": "Summarize this email thread about the budget discussion",
+      "expectedTool": "email.summarize_thread",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-055",
+      "prompt": "Send the draft email I just wrote",
+      "expectedTool": "email.send_draft",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-056",
+      "prompt": "Transcribe this audio recording of the meeting",
+      "expectedTool": "meeting.transcribe_audio",
+      "expectedParams": {},
+      "tags": [
+        "meeting",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-057",
+      "prompt": "Extract the action items from the meeting transcript",
+      "expectedTool": "meeting.extract_action_items",
+      "expectedParams": {},
+      "tags": [
+        "meeting",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-058",
+      "prompt": "What commitments were made in this meeting",
+      "expectedTool": "meeting.extract_commitments",
+      "expectedParams": {},
+      "tags": [
+        "meeting",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-059",
+      "prompt": "Generate formal meeting minutes from the transcript",
+      "expectedTool": "meeting.generate_minutes",
+      "expectedParams": {},
+      "tags": [
+        "meeting",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-060",
+      "prompt": "What is on my clipboard right now",
+      "expectedTool": "clipboard.get_clipboard",
+      "expectedParams": {},
+      "tags": [
+        "clipboard",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-061",
+      "prompt": "Copy this text to my clipboard: Hello World",
+      "expectedTool": "clipboard.set_clipboard",
+      "expectedParams": {},
+      "tags": [
+        "clipboard",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-062",
+      "prompt": "Show me my recent clipboard history",
+      "expectedTool": "clipboard.clipboard_history",
+      "expectedParams": {},
+      "tags": [
+        "clipboard",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-063",
+      "prompt": "What is my system information CPU memory disk space",
+      "expectedTool": "system.get_system_info",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-064",
+      "prompt": "Open the Calculator app",
+      "expectedTool": "system.open_application",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-065",
+      "prompt": "Take a screenshot of my current screen",
+      "expectedTool": "system.take_screenshot",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-066",
+      "prompt": "Show me what processes are running",
+      "expectedTool": "system.list_processes",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-067",
+      "prompt": "Open this file with the default application",
+      "expectedTool": "system.open_file_with",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-068",
+      "prompt": "Find all markdown files that mention quarterly review",
+      "expectedTool": "filesystem.search_files",
+      "expectedParams": {},
+      "tags": [
+        "filesystem",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-069",
+      "prompt": "What are the key differences between the old and new contract",
+      "expectedTool": "document.diff_documents",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-070",
+      "prompt": "Read the data from this CSV file",
+      "expectedTool": "document.read_spreadsheet",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-071",
+      "prompt": "How many receipts do I have from Amazon this year",
+      "expectedTool": "data.query_sqlite",
+      "expectedParams": {},
+      "tags": [
+        "data",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-072",
+      "prompt": "Scan my project for accidentally committed credentials",
+      "expectedTool": "security.scan_for_secrets",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-073",
+      "prompt": "Create a task to follow up with the client by end of week",
+      "expectedTool": "task.create_task",
+      "expectedParams": {},
+      "tags": [
+        "task",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-074",
+      "prompt": "What meetings do I have tomorrow",
+      "expectedTool": "calendar.list_events",
+      "expectedParams": {},
+      "tags": [
+        "calendar",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-075",
+      "prompt": "Write an email reply to the vendor about pricing",
+      "expectedTool": "email.draft_email",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-076",
+      "prompt": "Who said what in the meeting recording",
+      "expectedTool": "meeting.transcribe_audio",
+      "expectedParams": {},
+      "tags": [
+        "meeting",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-077",
+      "prompt": "Paste the text I just copied into a new file",
+      "expectedTool": "clipboard.get_clipboard",
+      "expectedParams": {},
+      "tags": [
+        "clipboard",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-078",
+      "prompt": "Is my disk running low on space",
+      "expectedTool": "system.get_system_info",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-079",
+      "prompt": "Extract the vendor name and total from this receipt photo",
+      "expectedTool": "ocr.extract_structured_data",
+      "expectedParams": {},
+      "tags": [
+        "ocr",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-080",
+      "prompt": "Create a new PDF summarizing the key contract terms",
+      "expectedTool": "document.create_pdf",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-081",
+      "prompt": "Index my research papers folder for later search",
+      "expectedTool": "knowledge.index_folder",
+      "expectedParams": {},
+      "tags": [
+        "knowledge",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-082",
+      "prompt": "Check if there is any sensitive personal data in this resume",
+      "expectedTool": "security.scan_for_pii",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-083",
+      "prompt": "What is the status of all my open tasks",
+      "expectedTool": "task.list_tasks",
+      "expectedParams": {},
+      "tags": [
+        "task",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-084",
+      "prompt": "Find a 30-minute slot for a call this week",
+      "expectedTool": "calendar.find_free_slots",
+      "expectedParams": {},
+      "tags": [
+        "calendar",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-085",
+      "prompt": "Search for the email from HR about the new policy",
+      "expectedTool": "email.search_emails",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-086",
+      "prompt": "What action items came from yesterday standup",
+      "expectedTool": "meeting.extract_action_items",
+      "expectedParams": {},
+      "tags": [
+        "meeting",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-087",
+      "prompt": "Open Visual Studio Code",
+      "expectedTool": "system.open_application",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-088",
+      "prompt": "Show me everything done in the last session",
+      "expectedTool": "audit.get_session_summary",
+      "expectedParams": {},
+      "tags": [
+        "audit",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-089",
+      "prompt": "Rename the report file from draft to final version",
+      "expectedTool": "filesystem.move_file",
+      "expectedParams": {},
+      "tags": [
+        "filesystem",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-090",
+      "prompt": "Convert this Word document to a plain text file",
+      "expectedTool": "document.convert_format",
+      "expectedParams": {},
+      "tags": [
+        "document",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-091",
+      "prompt": "What are the most recent things I have copied",
+      "expectedTool": "clipboard.clipboard_history",
+      "expectedParams": {},
+      "tags": [
+        "clipboard",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-092",
+      "prompt": "How much RAM is currently being used",
+      "expectedTool": "system.get_system_info",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-093",
+      "prompt": "Lock down this file with encryption before sharing",
+      "expectedTool": "security.encrypt_file",
+      "expectedParams": {},
+      "tags": [
+        "security",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-094",
+      "prompt": "Show me what my documents say about vacation policy",
+      "expectedTool": "knowledge.ask_about_files",
+      "expectedParams": {},
+      "tags": [
+        "knowledge",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-095",
+      "prompt": "Create a time block for focused writing tomorrow 9 to 11am",
+      "expectedTool": "calendar.create_time_block",
+      "expectedParams": {},
+      "tags": [
+        "calendar",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-096",
+      "prompt": "Give me a complete audit trail as a PDF",
+      "expectedTool": "audit.export_audit_pdf",
+      "expectedParams": {},
+      "tags": [
+        "audit",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-097",
+      "prompt": "Summarize the long email thread about the product launch",
+      "expectedTool": "email.summarize_thread",
+      "expectedParams": {},
+      "tags": [
+        "email",
+        "read"
+      ]
+    },
+    {
+      "id": "ts-098",
+      "prompt": "Remove duplicates from my expense data",
+      "expectedTool": "data.deduplicate_records",
+      "expectedParams": {},
+      "tags": [
+        "data",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-099",
+      "prompt": "Generate meeting minutes from the all-hands recording",
+      "expectedTool": "meeting.generate_minutes",
+      "expectedParams": {},
+      "tags": [
+        "meeting",
+        "write"
+      ]
+    },
+    {
+      "id": "ts-100",
+      "prompt": "Take a snapshot of what is on my screen right now",
+      "expectedTool": "system.take_screenshot",
+      "expectedParams": {},
+      "tags": [
+        "system",
+        "read"
+      ]
+    }
+  ]
+}

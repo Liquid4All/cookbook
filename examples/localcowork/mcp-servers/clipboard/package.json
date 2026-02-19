@@ -1,0 +1,26 @@
+{
+  "name": "@localcowork/mcp-clipboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server — OS clipboard access via Tauri bridge",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ --ext .ts"
+  },
+  "dependencies": {
+    "@localcowork/mcp-shared": "*",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.11.0",
+    "vitest": "^1.4.0"
+  }
+}
