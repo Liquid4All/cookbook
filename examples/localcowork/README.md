@@ -80,7 +80,7 @@ Every tool execution follows the human-in-the-loop pattern: non-destructive acti
 |-------|-------------|--------------|------|----------|---------|------|
 | **LFM2-24B-A2B** | **Hybrid MoE** | **~2B** | **~14.5 GB** | **80%** | **385ms** | **Active — production model** |
 | LFM2.5-VL-1.6B | Hybrid | 1.6B | ~1.8 GB | — | — | Vision OCR engine ([download](https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF)) |
-| GPT-OSS-20B | Dense | 20B | 14 GB | 51% | 2,303ms | Development proxy (optional) |
+| GPT-OSS-20B | MoE | ~3.6B | 14 GB | 51% | 2,303ms | Development proxy (optional) |
 | Qwen3-30B-A3B | MoE | ~3B | 19 GB | 44% | 5,938ms | Lightweight fallback |
 
 **LFM2-24B-A2B** is a Liquid AI hybrid MoE model (24B total, ~2B active per token via 64 experts). It scores **80% single-step tool accuracy** across all 67 tools at **385ms per response** — 94% of the best dense model's accuracy at 3% of the latency. Benchmarked against 5 comparison models on Apple M4 Max (see [full results](docs/model-analysis/tool-calling-benchmark-results.md)). Download from [HuggingFace](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) (gated — request access).
@@ -89,7 +89,7 @@ All text models use a 32k token context window. Model configuration lives in `_m
 
 ## What We Learned: Small Model Tool-Calling
 
-> **The era of "throw all tools at a big model" is over for on-device deployment.** Architecture, filtering, and infrastructure matter more than parameter count. A well-instrumented 2B-active model outperforms naive 20-32B dense models by a wide margin.
+> **The era of "throw all tools at a big model" is over for on-device deployment.** Architecture, filtering, and infrastructure matter more than parameter count. A well-instrumented 2B-active hybrid MoE outperforms both dense models and standard MoE models with 2-16x more active parameters.
 
 We benchmarked 6 models (2B to 32B active parameters) against 67 tools on the same Apple M4 Max hardware and found:
 
@@ -99,13 +99,13 @@ We benchmarked 6 models (2B to 32B active parameters) against 67 tools on the sa
 | Gemma 3 27B | 27B (dense) | 91% | 24,088ms | 48% |
 | Mistral-Small-24B | 24B (dense) | 85% | 1,239ms | 66% |
 | Qwen3 32B | 32B (dense) | ~70% | 28,385ms | — |
-| GPT-OSS-20B | 20B (dense) | 51% | 2,303ms | 0% |
+| GPT-OSS-20B | ~3.6B (MoE) | 51% | 2,303ms | 0% |
 | Qwen3-30B-A3B | ~3B (MoE) | 44% | 5,938ms | 4% |
 
 **Key findings:**
 
 - **Architecture > parameter count.** LFM2-24B-A2B (2B active, hybrid MoE) scores 80% at 385ms — 94% of the best dense model's accuracy at 3% of the latency, fitting in 14.5 GB on consumer hardware
-- **MoE alone isn't enough.** Qwen3-30B-A3B (MoE, ~3B active) scores 44% at 5.9s. Same MoE concept, similar active params, but LFM2's hybrid conv+attn architecture is 1.8x more accurate at 15x the speed
+- **MoE alone isn't enough.** Two other MoE models — GPT-OSS-20B (~3.6B active, 51%) and Qwen3-30B-A3B (~3B active, 44%) — both underperform LFM2 (~2B active, 80%) despite having more active parameters. LFM2's hybrid conv+attn block design is the differentiator, not just sparsity
 - **Latency is the deciding factor on consumer hardware.** Gemma leads accuracy (91%) but at 24s per response it's unusable for interactive desktop agents. Only LFM2 at 385ms enables real-time human-in-the-loop UX
 - **Every model fails at cross-server transitions** (e.g., filesystem → OCR). This is the universal barrier, not a model-specific deficiency
 - **24B models are good dispatchers, not autonomous agents.** Design UX around single-turn tool calls with human confirmation — that turns 80% accuracy into near-100% effective accuracy

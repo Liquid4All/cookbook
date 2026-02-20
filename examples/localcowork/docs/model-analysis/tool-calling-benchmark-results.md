@@ -1,6 +1,6 @@
 # Instruct-Model Tool-Calling Comparison
 
-> LFM2-24B-A2B (2B active params) vs five comparison models (3B-32B active params)
+> LFM2-24B-A2B (~2B active params) vs five comparison models (~3B-32B active params)
 > on 67 MCP tools, Apple M4 Max hardware.
 > **Core finding: LFM2 achieves 94% of the best dense model's accuracy at 3% of the latency.**
 
@@ -8,7 +8,7 @@
 
 ## Purpose
 
-This document compares LFM2-24B-A2B (Liquid AI's sparse MoE hybrid model) against five comparison models on the LocalCowork tool-calling benchmark. The models span three categories: dense instruct-only transformers (Gemma, Mistral, Qwen3 32B, GPT-OSS-20B), and a lightweight MoE (Qwen3-30B-A3B). The goal is to quantify the scaling advantage of sparse activation — achieving competitive accuracy with dramatically fewer active parameters per token.
+This document compares LFM2-24B-A2B (Liquid AI's sparse MoE hybrid model) against five comparison models on the LocalCowork tool-calling benchmark. The models span two categories: dense instruct-only transformers (Gemma, Mistral, Qwen3 32B), and MoE models (GPT-OSS-20B, Qwen3-30B-A3B). The goal is to quantify the scaling advantage of LFM2's hybrid conv+attn architecture — achieving competitive accuracy with dramatically fewer active parameters per token.
 
 The comparison is relevant for anyone deploying local AI agents on consumer hardware (16-36 GB unified memory), where inference latency and memory footprint directly constrain product viability.
 
@@ -18,12 +18,24 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 
 - **Hardware:** Apple M4 Max, 36 GB unified memory, 32 GPU cores
 - **Test suite:** 100 single-step tool selection prompts, 50 multi-step chains (3-6 steps each), 67 tools across 13 MCP servers
-- **Inference parameters:** Temperature 0.1, top_p 0.1, max_tokens 512
-- **LFM2-24B-A2B:** Served via llama-server (Q4_K_M GGUF), flash attention enabled
-- **All other models:** Served via Ollama (native quantizations), native OpenAI function calling
+- **Eval dataset:** Custom domain-specific benchmark for LocalCowork's MCP tool set — not a standard benchmark (e.g., BFCL). Test definitions in `tests/model-behavior/tool-selection/` and `tests/model-behavior/multi-step-chains-*.ts`.
+- **Inference parameters:** Temperature 0.1, top_p 0.1, top_k 50, repetition_penalty 1.05, max_tokens 512
+- **Sampling note:** Parameters are near-greedy but not fully deterministic (temp=0 would be greedy). Single run per model, N=100 for single-step, N=50 for multi-step. Results may vary slightly across runs.
 - **Tool format:** LFM2 uses bracket format `[server.tool(args)]`; Ollama models use native JSON function calling
 - **Qwen3 32B note:** 40/100 single-step tests completed before benchmark was stopped due to extreme latency. Results extrapolated proportionally; multi-step not tested.
+- **Qwen3-30B-A3B note:** Ollama ships the **original Qwen3-30B-A3B release** (with `<think>` mode), not the later `-Instruct-2507` variant which specifically improved tool calling and removed `<think>` block generation. The 51% no-tool-call rate is largely from `<think>` blocks consuming the response budget.
 - **All benchmarks run same session:** Fresh runs on identical hardware, same test suite, same day.
+
+### Model IDs and Quantization
+
+| Model | HuggingFace ID | Ollama Tag | Runtime | Quantization |
+|-------|---------------|-----------|---------|-------------|
+| LFM2-24B-A2B | `LiquidAI/LFM2-24B-A2B-Preview` | N/A | llama-server | Q4_K_M (GGUF) |
+| Mistral-Small-24B | `mistralai/Mistral-Small-24B-Instruct-2501` | `mistral-small:24b` | Ollama | Q4_K_M |
+| Gemma 3 27B | `google/gemma-3-27b-it` | `gemma3:27b` | Ollama | Q4_K_M |
+| Qwen3 32B | `Qwen/Qwen3-32B` | `qwen3:32b` | Ollama | Q4_K_M |
+| GPT-OSS-20B | `openai/gpt-oss-20b` | `gpt-oss:20b` | Ollama | MXFP4 (native, ~4.25 bits/param) |
+| Qwen3-30B-A3B | `Qwen/Qwen3-30B-A3B` | `qwen3:30b-a3b` | Ollama | Q4_K_M |
 
 ---
 
@@ -37,7 +49,7 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 | Mistral-Small-24B | Dense transformer | 24B | 85% (85/100) | 1,239ms | 14 GB |
 | **LFM2-24B-A2B** | **Hybrid MoE (conv+attn)** | **~2B** | **80%** (80/100) | **385ms** | **~14.5 GB** |
 | Qwen3 32B | Dense transformer | 32B | ~70% (28/40)* | 28,385ms | 21 GB |
-| GPT-OSS-20B | Dense transformer | 20B | 51% (51/100) | 2,303ms | 14 GB |
+| GPT-OSS-20B | MoE transformer | ~3.6B | 51% (51/100) | 2,303ms | 14 GB |
 | Qwen3-30B-A3B | MoE transformer | ~3B | 44% (44/100) | 5,938ms | 19 GB |
 
 *Qwen3 32B: 40 of 100 tests completed; accuracy extrapolated from partial run.
@@ -156,13 +168,13 @@ Latency is the critical differentiator on consumer hardware. All models ran on t
 
 ## Efficiency Analysis: Accuracy vs Compute Cost
 
-LFM2-24B-A2B achieves 80% accuracy with only ~2B active parameters per token — comparable to dense models 12-16x its active size, at a fraction of the compute cost.
+LFM2-24B-A2B achieves 80% accuracy with only ~2B active parameters per token — outperforming other MoE models with similar active params and competing with dense models 12-16x its active size, at a fraction of the compute cost.
 
 | Model | Active Params | Accuracy | Latency | VRAM |
 |-------|--------------|----------|---------|------|
 | **LFM2-24B-A2B** | **~2B** | **80%** | **385ms** | **~14.5 GB** |
 | Qwen3-30B-A3B | ~3B | 44% | 5,938ms | 19 GB |
-| GPT-OSS-20B | 20B | 51% | 2,303ms | 14 GB |
+| GPT-OSS-20B | ~3.6B | 51% | 2,303ms | 14 GB |
 | Mistral-Small-24B | 24B | 85% | 1,239ms | 14 GB |
 | Gemma 3 27B | 27B | 91% | 24,088ms | 19 GB |
 | Qwen3 32B | 32B | ~70% | 28,385ms | 21 GB |
@@ -250,7 +262,7 @@ Mistral-Small-24B is the only dense model that delivers both competitive accurac
 
 ### 3. Sparse MoE enables consumer-hardware deployment
 
-LFM2-24B-A2B achieves 80% accuracy with only ~2B active parameters — compared to 24-32B for the dense models. This means comparable accuracy at 385ms instead of 1-24 seconds, which is the difference between a real-time interactive agent and a batch processor. It also fits in 14.5 GB VRAM — consumer MacBook territory rather than server-class hardware.
+LFM2-24B-A2B achieves 80% accuracy with only ~2B active parameters — outperforming two other MoE models (GPT-OSS ~3.6B, Qwen3-A3B ~3B) and competing with dense models (24-32B active). This means comparable accuracy at 385ms instead of 1-24 seconds, which is the difference between a real-time interactive agent and a batch processor. It also fits in 14.5 GB VRAM — consumer MacBook territory rather than server-class hardware.
 
 ### 4. Qwen3's reasoning-first design hurts tool calling
 
@@ -264,9 +276,9 @@ Gemma leads single-step (91%) but drops to 48% on chains. Mistral is second in s
 
 Qwen3-30B-A3B (~3B active, MoE transformer) scores 44% at 5.9s latency. LFM2-24B-A2B (~2B active, hybrid MoE conv+attn) scores 80% at 385ms. Both are MoE models with similar active parameter counts, but LFM2 delivers **1.8x the accuracy at 15x the speed**. The difference is the block architecture: LFM2's convolution blocks appear more efficient at parsing structured tool schemas than Qwen3's transformer-only attention blocks.
 
-### 7. Dense 20B models with native function calling aren't enough
+### 7. MoE with native function calling isn't enough either
 
-GPT-OSS-20B (dense, 20B active, native OpenAI function calling) scores 51% — better than the ~36% estimated in earlier testing, but still well below the 80% threshold for production use. With 40% wrong-tool rate and 0% multi-step chains, having native function calling format doesn't compensate for the model's inability to discriminate among 67 tools.
+GPT-OSS-20B (MoE, ~3.6B active, native OpenAI function calling) scores 51% — better than the ~36% estimated in earlier testing, but still well below the 80% threshold for production use. With 40% wrong-tool rate and 0% multi-step chains, having native function calling format doesn't compensate for the model's inability to discriminate among 67 tools.
 
 ---
 
@@ -274,15 +286,15 @@ GPT-OSS-20B (dense, 20B active, native OpenAI function calling) scores 51% — b
 
 | Metric | LFM2-24B-A2B | Mistral-Small-24B | Gemma 3 27B | GPT-OSS-20B | Qwen3-30B-A3B | Qwen3 32B |
 |--------|-------------|-------------------|-------------|-------------|---------------|-----------|
-| Architecture | Hybrid MoE | Dense | Dense | Dense | MoE | Dense |
-| Total params | 24B | 24B | 27B | 20B | 30B | 32B |
-| Active params/token | ~2B | 24B | 27B | 20B | ~3B | 32B |
+| Architecture | Hybrid MoE | Dense | Dense | MoE | MoE | Dense |
+| Total params | 24B | 24B | 27B | 21B | 30B | 32B |
+| Active params/token | ~2B | 24B | 27B | ~3.6B | ~3B | 32B |
 | Single-step accuracy | 80% | 85% | **91%** | 51% | 44% | ~70%* |
 | Multi-step chains | 26% | **66%** | 48% | 0% | 4% | — |
 | Avg latency | **385ms** | 1,239ms | 24,088ms | 2,303ms | 5,938ms | 28,385ms |
 | Memory (GPU) | **~14.5 GB** | 14 GB | 19 GB | 14 GB | 19 GB | 21 GB |
 | Interactive on MacBook | **Yes** | Borderline | No | No | No | No |
-| Accuracy per active B | **40%/B** | 3.5%/B | 3.4%/B | 2.6%/B | 14.7%/B | ~2.2%/B |
+| Accuracy per active B | **40%/B** | 3.5%/B | 3.4%/B | 14.2%/B | 14.7%/B | ~2.2%/B |
 
 *Qwen3 32B: 40/100 tests completed; extrapolated.
 

@@ -25,7 +25,7 @@ This directory documents what we learned across 5 models, 150+ benchmark scenari
 | **LFM2-24B-A2B** | **Hybrid MoE conv+attn** | **~2B** | **~14.5 GB** | **80%** | **26%** | **385ms** | 94% of best accuracy at 3% of latency; fits consumer hardware |
 | Qwen3 32B | Dense transformer | 32B | 21 GB | ~70%* | — | 28,385ms | Reasoning-first training hurts tool dispatch |
 | Qwen2.5-32B | Dense transformer | 32B | ~20 GB | ~85% (est.) | Not benchmarked | ~40 tok/s | Dev proxy; too large for 16 GB target hardware |
-| GPT-OSS-20B | Dense transformer | 20B | 14 GB | 51% | 0% | 2,303ms | Namespace confusion; 0% multi-step (pure deflection) |
+| GPT-OSS-20B | MoE transformer | ~3.6B | 14 GB | 51% | 0% | 2,303ms | Namespace confusion; 0% multi-step (pure deflection) |
 | Qwen3-30B-A3B | MoE transformer | ~3B | 19 GB | 44% | 4% | 5,938ms | 51% no-tool-call rate; MoE ≠ efficient tool calling |
 
 *Qwen3 32B: 40/100 tests completed; extrapolated from partial run.
@@ -76,9 +76,9 @@ K=15 is the Pareto-optimal point. Below it, the filter misses the correct tool t
 
 ### 1. Architecture matters more than parameter count
 
-LFM2-24B-A2B activates ~2B parameters per token through its hybrid Mixture-of-Experts architecture (convolution blocks + grouped query attention). GPT-OSS-20B is a dense transformer activating all 20B parameters per token.
+LFM2-24B-A2B activates ~2B parameters per token through its hybrid Mixture-of-Experts architecture (convolution blocks + grouped query attention). GPT-OSS-20B is also MoE (32 experts, top-4 routing) activating ~3.6B parameters per token.
 
-Result: the 2B-active model scores **80%** while the 20B-active model scores **~36%**. That's a 44 percentage point gap in favor of the model with 10x fewer active parameters.
+Result: the ~2B-active hybrid MoE scores **80%** while the ~3.6B-active standard MoE scores **51%** (updated from earlier ~36% estimate). Similar active param counts, same MoE concept, but LFM2's hybrid conv+attn block design is the differentiator.
 
 The hypothesis: Liquid AI's convolution-heavy hybrid architecture processes structured tool schemas differently from pure transformer attention. Convolution blocks may be more efficient at pattern-matching over JSON-structured tool definitions.
 
@@ -301,7 +301,7 @@ Fine-tuning (#11) is the highest-confidence path: the training data already exis
 
 - **Larger K values (K > 20)** — accuracy drops due to choice overload, even though filter coverage improves
 - **More tools** — adding tools makes the problem worse; every 10 additional tools costs ~2-3pp accuracy
-- **Scaling the same architecture** — GPT-OSS-20B (dense, 20B active) scored 36% vs LFM2-24B-A2B (MoE, 2B active) at 80%. Parameter count alone doesn't solve the structural problem
+- **Scaling the same architecture** — GPT-OSS-20B (MoE, ~3.6B active) scored 51% vs LFM2-24B-A2B (hybrid MoE, ~2B active) at 80%. More active parameters with a standard MoE architecture doesn't close the gap
 - **Longer system prompts with more examples** — pushes tool definitions further from the decision point, worsening the "lost in the middle" effect
 - **Autonomous multi-step without decomposition** — error compounds geometrically (0.80^n), so a 5-step chain has 33% success even at 80% per-step
 

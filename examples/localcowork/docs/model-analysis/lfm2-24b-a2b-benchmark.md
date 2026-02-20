@@ -201,7 +201,7 @@ See [Dual-Model Orchestrator Performance](./dual-model-orchestrator-performance.
 
 | Model            | Active params | Single-step (67 tools) | Multi-step chains | VRAM   |
 | ---------------- | ------------- | ---------------------- | ----------------- | ------ |
-| GPT-OSS-20B      | 20B (dense)   | ~36%                   | ~0% (deflection)  | 14 GB  |
+| GPT-OSS-20B      | ~3.6B (MoE)   | ~36%                   | ~0% (deflection)  | 14 GB  |
 | Qwen3-30B-A3B    | ~3B (MoE)     | ~36%                   | ~0% (fixation)    | 5 GB   |
 | LFM2-1.2B-Tool   | 1.2B          | 36%                    | 8%                | 2.3 GB |
 | **LFM2-24B-A2B** | **~2B (MoE)** | **80%**                | **26%**           | **13 GB** |
@@ -230,7 +230,7 @@ See [Dual-Model Orchestrator Performance](./dual-model-orchestrator-performance.
 
 ### Hypothesis validation
 
-1. **H1: VALIDATED.** LFM2-24B-A2B with ~2B active params dramatically outperforms both GPT-OSS-20B (20B dense) and Qwen3-30B-A3B (~3B MoE) on single-step tool selection — 80% vs 36%. The hybrid convolution + attention architecture handles structured tool schemas significantly better than pure transformer architectures at comparable active parameter counts.
+1. **H1: VALIDATED.** LFM2-24B-A2B with ~2B active params dramatically outperforms both GPT-OSS-20B (~3.6B MoE) and Qwen3-30B-A3B (~3B MoE) on single-step tool selection — 80% vs 51%/44%. The hybrid convolution + attention architecture handles structured tool schemas significantly better than standard MoE transformer architectures at comparable active parameter counts.
 
 2. **H2: PARTIALLY VALIDATED.** LFM2-24B-A2B shows the first cross-server transition success in multi-step chains (47% simple chain completion, 26% overall). Previous models all scored ~0% on chains requiring cross-server transitions. However, complex chains (6+ steps) still largely fail (7%), indicating the improvement is real but incomplete.
 
@@ -240,7 +240,7 @@ See [Dual-Model Orchestrator Performance](./dual-model-orchestrator-performance.
 
 ### Key takeaways
 
-1. **Architecture matters more than parameter count.** LFM2-24B-A2B (~2B active) beats GPT-OSS-20B (20B active) by 44 percentage points. The hybrid convolution + attention architecture is fundamentally better at structured tool selection than pure transformers.
+1. **Architecture matters more than parameter count.** LFM2-24B-A2B (~2B active) beats GPT-OSS-20B (~3.6B active MoE) by 29 percentage points and is 6x faster. The hybrid convolution + attention architecture is fundamentally better at structured tool selection than standard MoE transformers.
 
 2. **The 67-tool problem is solvable without decomposition.** 80% single-step accuracy with all 67 tools means the "tool overload" failure mode (FM-11) is not an inherent limitation — it's a model capability issue. The right architecture handles it natively.
 

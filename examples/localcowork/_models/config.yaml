@@ -187,9 +187,9 @@ models:
       - text
       - tool_calling
 
-  # ─── Benchmark comparison models (instruct-only, dense transformers) ────
+  # ─── Benchmark comparison models ────────────────────────────────────────
   # These models are benchmarked against LFM2-24B-A2B to demonstrate
-  # scaling efficiency: ~2B active params (MoE) vs 24-32B active (dense).
+  # scaling efficiency of hybrid MoE conv+attn vs dense and standard MoE.
   # All use native OpenAI function calling format via Ollama.
 
   # Mistral-Small-24B-Instruct — direct 24B-to-24B param count comparison

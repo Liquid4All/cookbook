@@ -27,7 +27,7 @@ We tested five models against 83 tools. Every model failed at cross-server tool 
 
 | Model | Active Params | VRAM | Single-step (67 tools) | Multi-step | Key Failure Mode |
 |---|---|---|---|---|---|
-| GPT-OSS-20B | 20B (dense) | ~14 GB | ~36% | ~0% | Conversational deflection (80% of tasks) |
+| GPT-OSS-20B | ~3.6B (MoE) | ~14 GB | ~36% | ~0% | Conversational deflection (80% of tasks) |
 | Qwen2.5-32B | 32B (dense) | ~20 GB | ~36% | ~0% | Same cross-server failures |
 | Qwen3-30B-A3B | ~3B (MoE) | ~5 GB | ~36% | ~0% | Tool fixation loops (repeats wrong tool 4x) |
 | LFM2-1.2B-Tool | 1.2B | ~2.3 GB | 78% (K=15) | 8% | Wrong tool under context pressure |
