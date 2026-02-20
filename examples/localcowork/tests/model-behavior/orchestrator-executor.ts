@@ -26,23 +26,55 @@ const ROUTER_SYSTEM_PROMPT =
 
 // ─── Prior Result Interpolation ────────────────────────────────────────────
 
-/** Replace "step N" references with actual prior results. Mirrors Rust interpolate_prior_results(). */
+/**
+ * Enhanced prior result interpolation (M3). Mirrors Rust interpolate_prior_results().
+ * Three mechanisms:
+ * 1. Always forward predecessor (step N-1) result
+ * 2. Forward explicitly referenced steps ("step M")
+ * 3. Dedup so no step is forwarded twice
+ */
 export function interpolatePriorResults(
+  stepNumber: number,
   description: string,
   priorResults: OrchestratorStepResult[],
 ): string {
-  let result = description;
-  for (const prior of priorResults) {
-    if (prior.status !== 'passed') continue;
-    const stepRef = `step ${prior.stepIndex + 1}`;
-    if (result.toLowerCase().includes(stepRef)) {
-      const truncated = prior.mockResult.length > 2000
-        ? `${prior.mockResult.slice(0, 2000)}... [truncated]`
-        : prior.mockResult;
-      result = `${result}\n\n[Context from previous ${stepRef}]:\n${truncated}`;
+  if (priorResults.length === 0) return description;
+
+  const includedSteps: number[] = [];
+  const lines: string[] = [];
+
+  // 1. Always forward predecessor (step N-1) if it succeeded
+  const predecessorIdx = stepNumber - 1;
+  if (predecessorIdx >= 0 && predecessorIdx < priorResults.length) {
+    const pred = priorResults[predecessorIdx];
+    if (pred.status === 'passed') {
+      const summary = condenseMockResult(pred);
+      lines.push(`[Result from step ${predecessorIdx + 1}]: ${summary}`);
+      includedSteps.push(predecessorIdx);
     }
   }
-  return result;
+
+  // 2. Explicit "step N" references in description
+  const descLower = description.toLowerCase();
+  for (const prior of priorResults) {
+    if (prior.status !== 'passed') continue;
+    if (includedSteps.includes(prior.stepIndex)) continue;
+    const stepRef = `step ${prior.stepIndex + 1}`;
+    if (descLower.includes(stepRef)) {
+      const summary = condenseMockResult(prior);
+      lines.push(`[Result from ${stepRef}]: ${summary}`);
+      includedSteps.push(prior.stepIndex);
+    }
+  }
+
+  if (lines.length === 0) return description;
+  return `${description}\n\n[Prior step context]:\n${lines.join('\n')}`;
+}
+
+/** Condense a step result for forwarding — keep short results intact, truncate long ones. */
+function condenseMockResult(result: OrchestratorStepResult): string {
+  if (result.mockResult.length <= 200) return result.mockResult;
+  return `${result.mockResult.slice(0, 150)}... (${result.mockResult.length} chars total)`;
 }
 
 // ─── Single Step Execution ─────────────────────────────────────────────────
@@ -53,13 +85,14 @@ export async function executeStep(
   stepIndex: number,
   priorResults: OrchestratorStepResult[],
   routerEndpoint: string,
+  routerModel: string,
   toolIndex: ToolEmbeddingIndex,
   topK: number,
   stepRetries: number,
   expectedTools: readonly string[],
 ): Promise<OrchestratorStepResult> {
   const startTime = Date.now();
-  const description = interpolatePriorResults(step.description, priorResults);
+  const description = interpolatePriorResults(stepIndex, step.description, priorResults);
 
   // RAG pre-filter
   let filteredNames: string[];
@@ -105,16 +138,19 @@ export async function executeStep(
 
     let content: string;
     try {
+      const body: Record<string, unknown> = {
+        messages,
+        temperature: 0.1,
+        top_p: 0.1,
+        max_tokens: 512,
+        stream: false,
+      };
+      if (routerModel) body.model = routerModel;
+
       const response = await fetch(`${routerEndpoint}/v1/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages,
-          temperature: 0.1,
-          top_p: 0.1,
-          max_tokens: 512,
-          stream: false,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) continue;
@@ -192,6 +228,7 @@ export async function executeAllSteps(
   testSteps: readonly MultiStepEntry[],
   mapping: StepMapping,
   routerEndpoint: string,
+  routerModel: string,
   toolIndex: ToolEmbeddingIndex,
   topK: number,
   stepRetries: number,
@@ -203,7 +240,7 @@ export async function executeAllSteps(
     const expectedTools = mapping.planExpected.get(planIdx) ?? [];
 
     const result = await executeStep(
-      step, planIdx, results, routerEndpoint, toolIndex,
+      step, planIdx, results, routerEndpoint, routerModel, toolIndex,
       topK, stepRetries, expectedTools,
     );
 

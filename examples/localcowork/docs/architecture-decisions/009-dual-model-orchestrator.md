@@ -82,6 +82,29 @@ Tested with 3 messages of increasing complexity. Full results in [Orchestrator P
 
 Fits on 16 GB systems (Apple M-series with unified memory, RTX 4060+).
 
+## Model Compatibility
+
+The orchestrator is **LFM-family only**. Both the planner and router depend on bracket-format tool calling (`[server.tool(args)]`), which is hardcoded in three places:
+
+| Component | Hardcoded Format | Why |
+|-----------|-----------------|-----|
+| `PLANNER_SYSTEM_PROMPT` | Bracket: `[plan.add_step(...)]` | LFM2-24B-A2B had 94% JSON parse failure; bracket is its native format |
+| `build_router_system_prompt()` | Bracket: `[server.tool(param="value")]` | Fine-tuned router was trained on this exact format |
+| Tool delivery | Text list in system prompt (not OpenAI `tools` param) | 1.2B router accuracy drops to 0% with chat-template-reformatted tools |
+
+**Non-LFM models (GPT-OSS, Qwen, etc.):** The orchestrator will fail at the plan phase — the model won't produce parseable bracket-format plans — and fall back to the single-model agent loop. This fallback is graceful (no crash, no data loss), but wastes ~2-3s on the failed planner call.
+
+**For non-LFM models, set `orchestrator.enabled: false`** to skip the orchestrator entirely.
+
+**The single-model agent loop (`chat.rs`) is fully format-portable.** It sends tools via the standard OpenAI `tools` JSON parameter and parses responses using the model's configured `tool_call_format` (native_json, pythonic, or bracket). GPT-OSS and Qwen work correctly in single-model mode.
+
+| Mode | LFM2 (bracket) | GPT-OSS / Qwen (native_json) |
+|------|----------------|------------------------------|
+| Single-model agent loop | ✅ Works | ✅ Works |
+| Orchestrator (plan-execute-synthesize) | ✅ Works | ❌ Falls back to single-model |
+
+Making the orchestrator format-agnostic is tracked as a future improvement (format-aware planner prompts + JSON plan parser + OpenAI tools parameter for router). Not prioritized because the orchestrator's value is tightly coupled to the fine-tuned LFM router anyway.
+
 ## Rollback
 
 Set `orchestrator.enabled: false` in `_models/config.yaml`. The single-model agent loop

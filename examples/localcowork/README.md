@@ -22,7 +22,7 @@ graph TD
         Runtimes["Ollama · llama.cpp · MLX · vLLM"]
     end
 
-    subgraph Servers["MCP Servers — 68 tools across 14 servers"]
+    subgraph Servers["MCP Servers — 75 tools across 14 servers"]
         TS["8 TypeScript servers\nfilesystem · calendar · email · task\ndata · audit · clipboard · system"]
         PY["6 Python servers\ndocument · ocr · knowledge\nmeeting · security · screenshot"]
     end
@@ -34,7 +34,7 @@ graph TD
 
 The agent core communicates with the inference layer exclusively via the OpenAI chat completions API. Changing the model is a config change, not a code change.
 
-## MCP Servers (13 total, 68 tools)
+## MCP Servers (14 servers, 75 tools)
 
 The model never writes code. It calls pre-built, sandboxed tools through MCP servers:
 
@@ -45,14 +45,15 @@ The model never writes code. It calls pre-built, sandboxed tools through MCP ser
 | **ocr** | Python | 4 | Text extraction (LFM Vision primary, Tesseract fallback) |
 | **knowledge** | Python | 5 | SQLite-vec RAG pipeline, semantic search |
 | **meeting** | Python | 4 | Whisper.cpp transcription + diarization |
-| **security** | Python | 7 | PII/secrets scanning + encryption |
+| **security** | Python | 6 | PII/secrets scanning + encryption |
 | **calendar** | TypeScript | 4 | .ics parsing + system calendar API |
 | **email** | TypeScript | 5 | MBOX/Maildir parsing + SMTP |
 | **task** | TypeScript | 5 | Local SQLite task database |
 | **data** | TypeScript | 5 | CSV + SQLite operations |
 | **audit** | TypeScript | 4 | Audit log reader + compliance reports |
 | **clipboard** | TypeScript | 3 | OS clipboard (Tauri bridge) |
-| **system** | TypeScript | 5 | OS APIs — notifications, open, screenshots |
+| **system** | TypeScript | 10 | OS APIs — sysinfo, processes, screenshots, disk, network |
+| **screenshot-pipeline** | Python | 3 | Capture, UI element extraction, action suggestion |
 
 ## Use Cases
 
@@ -75,22 +76,41 @@ Every tool execution follows the human-in-the-loop pattern: non-destructive acti
 
 ## Models
 
-| Model | Runtime | VRAM | Accuracy | Role |
-|-------|---------|------|----------|------|
-| **LFM2-24B-A2B** | llama.cpp | ~16 GB | **80%** | **Active — production model** |
-| LFM2.5-VL-1.6B | llama.cpp | ~1.8 GB | — | Vision OCR engine ([download](https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF)) |
-| GPT-OSS-20B | Ollama | ~14 GB | ~36% | Development proxy (optional) |
-| Qwen3-30B-A3B (MoE) | Ollama | ~4 GB | ~36% | Lightweight fallback |
+| Model | Architecture | Active Params | VRAM | Accuracy | Latency | Role |
+|-------|-------------|--------------|------|----------|---------|------|
+| **LFM2-24B-A2B** | **Hybrid MoE** | **~2B** | **~14.5 GB** | **80%** | **385ms** | **Active — production model** |
+| LFM2.5-VL-1.6B | Hybrid | 1.6B | ~1.8 GB | — | — | Vision OCR engine ([download](https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF)) |
+| GPT-OSS-20B | Dense | 20B | 14 GB | 51% | 2,303ms | Development proxy (optional) |
+| Qwen3-30B-A3B | MoE | ~3B | 19 GB | 44% | 5,938ms | Lightweight fallback |
 
-**LFM2-24B-A2B** is a Liquid AI hybrid MoE model (24B total, ~2B active per token). It scores **80% single-step tool accuracy** across all 67 tools — outperforming the 20B dense transformer by 44 percentage points. Served via llama.cpp. Download from [HuggingFace](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) (gated — request access).
+**LFM2-24B-A2B** is a Liquid AI hybrid MoE model (24B total, ~2B active per token via 64 experts). It scores **80% single-step tool accuracy** across all 67 tools at **385ms per response** — 94% of the best dense model's accuracy at 3% of the latency. Benchmarked against 5 comparison models on Apple M4 Max (see [full results](docs/model-analysis/tool-calling-benchmark-results.md)). Download from [HuggingFace](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) (gated — request access).
 
 All text models use a 32k token context window. Model configuration lives in `_models/config.yaml`. Model files (GGUF) are stored in `~/Projects/_models/` (override with `LOCALCOWORK_MODELS_DIR`).
 
 ## What We Learned: Small Model Tool-Calling
 
-> **The era of "throw all tools at a big model" is over for on-device deployment.** Architecture, filtering, and infrastructure matter more than parameter count. A well-instrumented 2B-active model outperforms a naive 20B dense model by a wide margin.
+> **The era of "throw all tools at a big model" is over for on-device deployment.** Architecture, filtering, and infrastructure matter more than parameter count. A well-instrumented 2B-active model outperforms naive 20-32B dense models by a wide margin.
 
-We benchmarked 5 models (1.2B to 32B) against 67+ tools and found three interventions that actually work — each with measured impact:
+We benchmarked 6 models (2B to 32B active parameters) against 67 tools on the same Apple M4 Max hardware and found:
+
+| Model | Active Params | Accuracy | Latency | Multi-Step |
+|-------|-------------|----------|---------|-----------|
+| **LFM2-24B-A2B** | **~2B (MoE)** | **80%** | **385ms** | **26%** |
+| Gemma 3 27B | 27B (dense) | 91% | 24,088ms | 48% |
+| Mistral-Small-24B | 24B (dense) | 85% | 1,239ms | 66% |
+| Qwen3 32B | 32B (dense) | ~70% | 28,385ms | — |
+| GPT-OSS-20B | 20B (dense) | 51% | 2,303ms | 0% |
+| Qwen3-30B-A3B | ~3B (MoE) | 44% | 5,938ms | 4% |
+
+**Key findings:**
+
+- **Architecture > parameter count.** LFM2-24B-A2B (2B active, hybrid MoE) scores 80% at 385ms — 94% of the best dense model's accuracy at 3% of the latency, fitting in 14.5 GB on consumer hardware
+- **MoE alone isn't enough.** Qwen3-30B-A3B (MoE, ~3B active) scores 44% at 5.9s. Same MoE concept, similar active params, but LFM2's hybrid conv+attn architecture is 1.8x more accurate at 15x the speed
+- **Latency is the deciding factor on consumer hardware.** Gemma leads accuracy (91%) but at 24s per response it's unusable for interactive desktop agents. Only LFM2 at 385ms enables real-time human-in-the-loop UX
+- **Every model fails at cross-server transitions** (e.g., filesystem → OCR). This is the universal barrier, not a model-specific deficiency
+- **24B models are good dispatchers, not autonomous agents.** Design UX around single-turn tool calls with human confirmation — that turns 80% accuracy into near-100% effective accuracy
+
+Three interventions that compound:
 
 | Intervention | Impact | Cost |
 |---|---|---|
@@ -98,14 +118,7 @@ We benchmarked 5 models (1.2B to 32B) against 67+ tools and found three interven
 | **LoRA fine-tuned router** | 78% → 84%, 100% at K=25 | $5, 6 min on H100 |
 | **Dual-model orchestrator** | 100% on 1-2 step tasks, zero pathologies, 2.5x faster | 2 models, ~14.5 GB VRAM |
 
-**Key findings:**
-
-- **Architecture > parameter count.** LFM2-24B-A2B (2B active, hybrid MoE) scores 80% — outperforming a 20B dense transformer by 44pp
-- **Every model fails at cross-server transitions** (e.g., filesystem → OCR). This is the universal barrier, not a model-specific deficiency
-- **Decomposition beats scale.** A dual-model orchestrator (plan → execute → synthesize) eliminates 5 behavioral pathologies and delivers clean execution on 1-2 step workflows
-- **24B models are good dispatchers, not autonomous agents.** Design UX around single-turn tool calls with human confirmation — that turns 80% accuracy into near-100% effective accuracy
-
-The full benchmark study — 5 models, 150+ scenarios, 12 failure modes, and a production orchestrator — is in [`docs/model-analysis/`](docs/model-analysis/). If you're building a local AI agent with tool calling, start with [Getting Maximum Leverage](docs/model-analysis/README.md#getting-maximum-leverage-from-24b-class-models).
+The full benchmark study — 6 models, 150+ scenarios, 12 failure modes, and a production orchestrator — is in [`docs/model-analysis/`](docs/model-analysis/). Start with the [Tool-Calling Benchmark Results](docs/model-analysis/tool-calling-benchmark-results.md) for the complete comparison, or [Getting Maximum Leverage](docs/model-analysis/README.md#getting-maximum-leverage-from-24b-class-models) for actionable recommendations.
 
 ## Prerequisites
 
@@ -117,7 +130,7 @@ The full benchmark study — 5 models, 150+ scenarios, 12 failure modes, and a p
 | **Rust** | 1.77+ | Tauri backend, Agent Core ([install via rustup](https://rustup.rs)) |
 | **llama.cpp** | latest | Serves LFM2 models (`brew install llama.cpp` or [build from source](https://github.com/ggml-org/llama.cpp)) |
 | **Tesseract** | 5.x | Fallback OCR engine (`brew install tesseract` / `apt install tesseract-ocr`) — optional |
-| **Ollama** | latest | Alternative model runtime ([ollama.ai](https://ollama.ai)) — optional, for GPT-OSS-20B |
+| **Ollama** | latest | Alternative model runtime ([ollama.ai](https://ollama.ai)) — optional, for dev proxy and benchmarking |
 
 ## Quick Start
 
@@ -211,7 +224,7 @@ cargo tauri build
 
 On first launch, the onboarding wizard guides you through hardware detection, model download, working directory selection, and MCP server configuration.
 
-**MCP servers start automatically** — the Tauri backend spawns all configured MCP server processes at app startup using the definitions in `src-tauri/mcp-servers.json`. No manual server startup is needed.
+**MCP servers start automatically** — the Tauri backend auto-discovers MCP servers by scanning `mcp-servers/` at startup. An optional `mcp-servers.json` can override discovery settings. No manual server startup is needed.
 
 ### Vision OCR
 
@@ -298,7 +311,7 @@ Breakdown: 100 tool-selection tests + 50 multi-step chain tests + 30 edge cases.
 
 ### 4. Model Swap Validation
 
-Compares tool-calling accuracy between baseline (GPT-OSS-20B) and candidate (LFM2.5-24B) models.
+Compares tool-calling accuracy between baseline (GPT-OSS-20B) and candidate (LFM2-24B-A2B) models.
 
 ```bash
 # Structural validation (no model needed — 20 tests + 1 skipped)
@@ -405,7 +418,7 @@ localCoWork/
 ├── tests/
 │   ├── integration/            #   UC-1 through UC-10 end-to-end tests
 │   ├── model-behavior/         #   180 prompt → tool test definitions
-│   ├── model-swap/             #   GPT-OSS vs LFM2.5 comparison framework
+│   ├── model-swap/             #   GPT-OSS vs LFM2-24B-A2B comparison framework
 │   ├── cross-platform/         #   macOS + Windows smoke tests + benchmarks
 │   ├── helpers/                #   TestHarness, Python tool wrapper
 │   └── fixtures/               #   Sample data for each UC
@@ -439,11 +452,11 @@ localCoWork/
 | Document | Purpose |
 |----------|---------|
 | `docs/PRD.md` | Full product requirements (source of truth) |
-| `docs/mcp-tool-registry.yaml` | Machine-readable tool definitions for all 68 tools |
+| `docs/mcp-tool-registry.yaml` | Machine-readable tool definitions for all 75 tools |
 | `docs/architecture-decisions/` | ADRs for significant design choices |
 | `docs/patterns/` | Implementation patterns (MCP server, error handling, HITL) |
 | `PROGRESS.yaml` | Development progress checkpoint (session-to-session state) |
-| `docs/model-analysis/` | Benchmark study: 5 models × 67 tools, failure taxonomy, architecture findings |
+| `docs/model-analysis/` | Benchmark study: 6 models × 67 tools (13 servers), failure taxonomy, architecture findings |
 | `CLAUDE.md` | AI assistant guidance for working in this codebase |
 
 ## Known Limitations

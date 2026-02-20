@@ -36,8 +36,19 @@ Rules:
 5. For steps needing a prior result, write: "Using the result from step N, ..."
 6. Maximum 10 steps.
 
+DECOMPOSITION RULES (critical):
+- Each step calls EXACTLY ONE tool from ONE server. Never combine multiple operations.
+- If the user says "scan for SSNs and API keys", that is TWO steps: one for PII scanning, one for secrets scanning.
+- If the user says "do X and then create a task", that is at least TWO steps: the action + task creation.
+- If scanning multiple files, create one step to list/discover them, then steps to scan each file type.
+- Keywords that signal separate steps: "and", "then", "also", "follow up", "create a task".
+- NEVER collapse a multi-server workflow into one step. When in doubt, create MORE steps.
+
 JSON schema:
-{"needs_tools":bool,"direct_response":string|null,"steps":[{"step_number":int,"description":"...","expected_server":"..."|null,"hint_params":{...}|null}]}`;
+{"needs_tools":bool,"direct_response":string|null,"steps":[{"step_number":int,"description":"...","expected_server":"..."|null,"hint_params":{...}|null}]}
+
+Example (3 steps):
+{"needs_tools":true,"direct_response":null,"steps":[{"step_number":1,"description":"List all files in the sample_files/ directory","expected_server":"filesystem"},{"step_number":2,"description":"Using the file list from step 1, scan each file for PII such as SSNs and phone numbers","expected_server":"security"},{"step_number":3,"description":"Using the scan results from step 2, create a remediation task listing flagged files","expected_server":"task"}]}`;
 
 // ─── Planner Call ──────────────────────────────────────────────────────────
 
@@ -51,6 +62,7 @@ export interface PlanResult {
 /** Call the planner model to decompose a scenario into steps. */
 export async function callPlanner(
   plannerEndpoint: string,
+  plannerModel: string,
   scenario: string,
 ): Promise<PlanResult> {
   const messages: ChatMessage[] = [
@@ -61,16 +73,19 @@ export async function callPlanner(
   const startTime = Date.now();
 
   try {
+    const body: Record<string, unknown> = {
+      messages,
+      temperature: 0.1,
+      top_p: 0.2,
+      max_tokens: 4096,
+      stream: false,
+    };
+    if (plannerModel) body.model = plannerModel;
+
     const response = await fetch(`${plannerEndpoint}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages,
-        temperature: 0.1,
-        top_p: 0.2,
-        max_tokens: 4096,
-        stream: false,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

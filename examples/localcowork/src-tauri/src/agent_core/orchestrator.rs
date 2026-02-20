@@ -110,23 +110,39 @@ pub async fn orchestrate_dual_model(
         "orchestrator: starting dual-model pipeline"
     );
 
+    // ── Phase 0: Template match (M1) ────────────────────────────────────
+    // Check if the user's message matches a known use case pattern.
+    // If matched, skip the planner entirely — use the pre-built plan.
+    let mut plan_is_template = false;
+
     // ── Phase 1: Plan ───────────────────────────────────────────────────
-    let mut plan = match plan_steps(&mut planner, user_message, conversation_history).await {
-        Ok(plan) => plan,
-        Err(e) => {
-            tracing::warn!(error = %e, "orchestrator: plan failed — falling back");
-            return Ok(OrchestrationResult {
-                step_results: Vec::new(),
-                synthesis: String::new(),
-                all_steps_succeeded: false,
-                fell_back: true,
-            });
+    let mut plan = if let Some(template_plan) =
+        crate::agent_core::plan_templates::try_template_match(user_message)
+    {
+        tracing::info!(
+            steps = template_plan.steps.len(),
+            "orchestrator: using template-matched plan (skipping planner)"
+        );
+        plan_is_template = true;
+        template_plan
+    } else {
+        match plan_steps(&mut planner, user_message, conversation_history).await {
+            Ok(plan) => plan,
+            Err(e) => {
+                tracing::warn!(error = %e, "orchestrator: plan failed — falling back");
+                return Ok(OrchestrationResult {
+                    step_results: Vec::new(),
+                    synthesis: String::new(),
+                    all_steps_succeeded: false,
+                    fell_back: true,
+                });
+            }
         }
     };
 
-    // Post-plan decomposition check (Fix F11): if the user message has compound
-    // signals but the planner only produced 1 step, re-plan with stronger instructions.
-    if plan_needs_decomposition(&plan, user_message) {
+    // Post-plan decomposition check (Fix F11): only for model-generated plans.
+    // Template plans are pre-decomposed and don't need this check.
+    if !plan_is_template && plan_needs_decomposition(&plan, user_message) {
         tracing::info!(
             original_steps = plan.steps.len(),
             "orchestrator: plan under-decomposed — re-planning with stronger prompt"
@@ -393,6 +409,30 @@ Multi-server workflow (filesystem + security + task):
 [plan.add_step(step=2, server="security", description="Using the result from step 1, scan each file found for PII (SSNs, phone numbers, addresses)")]
 [plan.add_step(step=3, server="security", description="Using the result from step 1, scan each file found for secrets (API keys, passwords, tokens)")]
 [plan.add_step(step=4, server="task", description="Using the results from steps 2 and 3, create a follow-up task to remediate any sensitive files found, including the file paths and findings in the description")]
+[plan.done()]
+
+Document analysis with knowledge search and email (filesystem + document + knowledge + email):
+[plan.add_step(step=1, server="filesystem", description="List all PDF and DOCX files in /Users/chintan/Documents/Contracts/")]
+[plan.add_step(step=2, server="document", description="Using the result from step 1, extract text from the contract file found")]
+[plan.add_step(step=3, server="knowledge", description="Using the extracted text from step 2, search the knowledge base for similar clauses or related documents")]
+[plan.add_step(step=4, server="email", description="Using the findings from steps 2 and 3, draft an email summarizing the key contract points and any related precedents found")]
+[plan.done()]
+
+File scan with OCR, PII detection, and remediation (filesystem + ocr + security + task + email):
+[plan.add_step(step=1, server="filesystem", description="List all files in /Users/chintan/Downloads/ including PDFs and images")]
+[plan.add_step(step=2, server="ocr", description="Using the result from step 1, extract text from any image files found (PNG, JPG, screenshots)")]
+[plan.add_step(step=3, server="security", description="Using the results from steps 1 and 2, scan all extracted content for PII (SSNs, credit card numbers, phone numbers)")]
+[plan.add_step(step=4, server="task", description="Using the results from step 3, create a remediation task listing each file with PII findings and recommended actions")]
+[plan.add_step(step=5, server="email", description="Using the results from steps 3 and 4, draft a notification email summarizing the PII scan findings and the remediation task created")]
+[plan.done()]
+
+Meeting processing with tasks, calendar, and follow-up (meeting + task + calendar + knowledge + email):
+[plan.add_step(step=1, server="meeting", description="Transcribe the audio file /Users/chintan/Recordings/standup-2026-02-19.m4a")]
+[plan.add_step(step=2, server="meeting", description="Using the transcript from step 1, extract action items and commitments from the meeting")]
+[plan.add_step(step=3, server="task", description="Using the action items from step 2, create a task for each commitment with the assigned person and due date")]
+[plan.add_step(step=4, server="calendar", description="Using the tasks from step 3, find free time slots this week to schedule focused work blocks for the high-priority tasks")]
+[plan.add_step(step=5, server="knowledge", description="Using the transcript from step 1, index the meeting notes in the knowledge base for future search")]
+[plan.add_step(step=6, server="email", description="Using the action items from step 2 and tasks from step 3, draft a meeting summary email to attendees with the action items and deadlines")]
 [plan.done()]
 
 For non-tool requests:
@@ -736,7 +776,7 @@ fn extract_param_value(
 /// 1. Explicit paths (starting with `/` or `~/`)
 /// 2. Backtick-quoted paths
 /// 3. Well-known directory references ("Downloads folder")
-fn extract_path_from_text(text: &str) -> Option<String> {
+pub(crate) fn extract_path_from_text(text: &str) -> Option<String> {
     // Priority 1: Backtick-quoted paths (most explicit)
     let mut search_from = 0;
     while let Some(start) = text[search_from..].find('`') {
@@ -982,7 +1022,8 @@ async fn execute_step(
     config: &OrchestratorConfig,
     mcp_state: &TokioMutex<McpClient>,
 ) -> StepExecutionResult {
-    let description = interpolate_prior_results(&step.description, prior_results);
+    let description =
+        interpolate_prior_results(step.step_number, &step.description, prior_results);
 
     // Adaptive tool selection: server hint → RAG fill (Improvement I1)
     let filtered_names = {
@@ -1247,34 +1288,83 @@ async fn execute_step(
     }
 }
 
-/// Replace "result from step N" references with actual prior results.
+/// Condense a step execution result into a 1-2 line summary.
+///
+/// Extracts the key information (tool name, outcome, key data) rather than
+/// dumping the full result text. Keeps the router's context clean and focused.
+fn condense_step_result(result: &StepExecutionResult) -> String {
+    let tool = result.tool_called.as_deref().unwrap_or("unknown");
+
+    match &result.tool_result {
+        Some(text) if result.success => {
+            let summary = if text.len() <= 200 {
+                text.clone()
+            } else {
+                format!("{}... ({} chars total)", &text[..150], text.len())
+            };
+            format!("Step {} ({}) succeeded: {}", result.step_number, tool, summary)
+        }
+        _ if !result.success => {
+            let err = result.error.as_deref().unwrap_or("unknown error");
+            format!("Step {} ({}) failed: {}", result.step_number, tool, err)
+        }
+        _ => {
+            format!("Step {} ({}) succeeded", result.step_number, tool)
+        }
+    }
+}
+
+/// Enhance the step description with prior step results (M3).
+///
+/// Three forwarding mechanisms:
+/// 1. **Immediate predecessor**: Step N always gets step N-1's condensed result,
+///    regardless of whether the description references it explicitly.
+/// 2. **Explicit references**: If the description mentions "step M", that step's
+///    condensed result is also included (preserving existing behavior).
+/// 3. **Deduplication**: Each step's result appears at most once in the context block.
 fn interpolate_prior_results(
+    step_number: u32,
     description: &str,
     prior_results: &[StepExecutionResult],
 ) -> String {
-    let mut result = description.to_string();
+    if prior_results.is_empty() {
+        return description.to_string();
+    }
 
-    for prior in prior_results {
-        if !prior.success {
-            continue;
-        }
-        let step_ref = format!("step {}", prior.step_number);
-        if result.to_lowercase().contains(&step_ref) {
-            if let Some(ref tool_result) = prior.tool_result {
-                // Truncate large results to keep context clean
-                let truncated = if tool_result.len() > 2000 {
-                    format!("{}... [truncated]", &tool_result[..2000])
-                } else {
-                    tool_result.clone()
-                };
-                result = format!(
-                    "{result}\n\n[Context from previous {step_ref}]:\n{truncated}"
-                );
-            }
+    let mut context_lines: Vec<String> = Vec::new();
+    let mut included_steps: Vec<u32> = Vec::new();
+
+    // 1. Always include the immediately preceding step's result
+    if let Some(prev) = prior_results.iter().rfind(|r| r.step_number == step_number - 1) {
+        if prev.success {
+            context_lines.push(condense_step_result(prev));
+            included_steps.push(prev.step_number);
         }
     }
 
-    result
+    // 2. Include any explicitly referenced steps (e.g., "step 2" in step 5's description)
+    let lower_desc = description.to_lowercase();
+    for prior in prior_results {
+        if !prior.success || included_steps.contains(&prior.step_number) {
+            continue;
+        }
+        let step_ref = format!("step {}", prior.step_number);
+        if lower_desc.contains(&step_ref) {
+            context_lines.push(condense_step_result(prior));
+            included_steps.push(prior.step_number);
+        }
+    }
+
+    // 3. Build enhanced description with a clean [Prior step context] block
+    if context_lines.is_empty() {
+        description.to_string()
+    } else {
+        format!(
+            "{}\n\n[Prior step context]:\n{}",
+            description,
+            context_lines.join("\n")
+        )
+    }
 }
 
 // ─── Phase 3: Synthesize ────────────────────────────────────────────────────
@@ -1385,14 +1475,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn interpolate_no_references() {
+    fn interpolate_no_prior_results() {
         let desc = "List files in /tmp";
-        let result = interpolate_prior_results(desc, &[]);
+        let result = interpolate_prior_results(1, desc, &[]);
         assert_eq!(result, desc);
     }
 
     #[test]
-    fn interpolate_with_step_reference() {
+    fn interpolate_with_explicit_step_reference() {
         let desc = "Using the result from step 1, extract text from image";
         let prior = vec![StepExecutionResult {
             step_number: 1,
@@ -1403,8 +1493,8 @@ mod tests {
             success: true,
             error: None,
         }];
-        let result = interpolate_prior_results(desc, &prior);
-        assert!(result.contains("[Context from previous step 1]"));
+        let result = interpolate_prior_results(2, desc, &prior);
+        assert!(result.contains("[Prior step context]"));
         assert!(result.contains("file1.png"));
     }
 
@@ -1420,8 +1510,141 @@ mod tests {
             success: false,
             error: Some("timeout".into()),
         }];
-        let result = interpolate_prior_results(desc, &prior);
-        assert!(!result.contains("[Context from previous"));
+        let result = interpolate_prior_results(2, desc, &prior);
+        assert!(!result.contains("[Prior step context]"));
+    }
+
+    #[test]
+    fn interpolate_always_forwards_predecessor() {
+        // Step 2 should get step 1's result even without explicit "step 1" reference
+        let desc = "Extract text from the document";
+        let prior = vec![StepExecutionResult {
+            step_number: 1,
+            description: "List files".into(),
+            tool_called: Some("filesystem.list_dir".into()),
+            tool_arguments: None,
+            tool_result: Some("[\"report.pdf\", \"notes.txt\"]".into()),
+            success: true,
+            error: None,
+        }];
+        let result = interpolate_prior_results(2, desc, &prior);
+        assert!(result.contains("[Prior step context]"), "should include context block");
+        assert!(result.contains("report.pdf"), "should include predecessor result");
+    }
+
+    #[test]
+    fn interpolate_deduplicates_predecessor_and_explicit() {
+        // Step 2 references "step 1" explicitly, and step 1 is also the predecessor.
+        // The result should appear only ONCE.
+        let desc = "Using the result from step 1, extract text";
+        let prior = vec![StepExecutionResult {
+            step_number: 1,
+            description: "List files".into(),
+            tool_called: Some("filesystem.list_dir".into()),
+            tool_arguments: None,
+            tool_result: Some("[\"a.txt\"]".into()),
+            success: true,
+            error: None,
+        }];
+        let result = interpolate_prior_results(2, desc, &prior);
+        let context_count = result.matches("filesystem.list_dir").count();
+        assert_eq!(context_count, 1, "predecessor + explicit should not duplicate");
+    }
+
+    #[test]
+    fn interpolate_includes_explicit_and_predecessor() {
+        // Step 3 references "step 1" explicitly; step 2 is the predecessor.
+        // Both should appear.
+        let desc = "Using the results from step 1, create a task";
+        let prior = vec![
+            StepExecutionResult {
+                step_number: 1,
+                description: "Scan files".into(),
+                tool_called: Some("security.scan_for_pii".into()),
+                tool_arguments: None,
+                tool_result: Some("Found 3 files with SSNs".into()),
+                success: true,
+                error: None,
+            },
+            StepExecutionResult {
+                step_number: 2,
+                description: "Scan secrets".into(),
+                tool_called: Some("security.scan_for_secrets".into()),
+                tool_arguments: None,
+                tool_result: Some("Found 1 API key".into()),
+                success: true,
+                error: None,
+            },
+        ];
+        let result = interpolate_prior_results(3, desc, &prior);
+        assert!(result.contains("Found 1 API key"), "should include step 2 (predecessor)");
+        assert!(result.contains("Found 3 files"), "should include step 1 (referenced)");
+    }
+
+    #[test]
+    fn interpolate_skips_failed_predecessor() {
+        let desc = "Continue processing";
+        let prior = vec![StepExecutionResult {
+            step_number: 1,
+            description: "Failed step".into(),
+            tool_called: None,
+            tool_arguments: None,
+            tool_result: None,
+            success: false,
+            error: Some("timeout".into()),
+        }];
+        let result = interpolate_prior_results(2, desc, &prior);
+        assert!(!result.contains("[Prior step context]"));
+    }
+
+    #[test]
+    fn condense_short_result_includes_full_text() {
+        let step = StepExecutionResult {
+            step_number: 1,
+            description: "List files".into(),
+            tool_called: Some("filesystem.list_dir".into()),
+            tool_arguments: None,
+            tool_result: Some("[\"a.txt\", \"b.pdf\"]".into()),
+            success: true,
+            error: None,
+        };
+        let condensed = condense_step_result(&step);
+        assert!(condensed.contains("filesystem.list_dir"));
+        assert!(condensed.contains("succeeded"));
+        assert!(condensed.contains("a.txt"));
+    }
+
+    #[test]
+    fn condense_long_result_truncates() {
+        let long_text = "x".repeat(500);
+        let step = StepExecutionResult {
+            step_number: 2,
+            description: "Extract text".into(),
+            tool_called: Some("document.extract_text".into()),
+            tool_arguments: None,
+            tool_result: Some(long_text),
+            success: true,
+            error: None,
+        };
+        let condensed = condense_step_result(&step);
+        assert!(condensed.len() < 300, "condensed should be much shorter than 500");
+        assert!(condensed.contains("500 chars total"));
+    }
+
+    #[test]
+    fn condense_failed_result() {
+        let step = StepExecutionResult {
+            step_number: 3,
+            description: "Scan PII".into(),
+            tool_called: Some("security.scan_for_pii".into()),
+            tool_arguments: None,
+            tool_result: None,
+            success: false,
+            error: Some("file not found".into()),
+        };
+        let condensed = condense_step_result(&step);
+        assert!(condensed.contains("failed"));
+        assert!(condensed.contains("file not found"));
     }
 
     #[test]

@@ -20,12 +20,17 @@ This directory documents what we learned across 5 models, 150+ benchmark scenari
 
 | Model | Architecture | Active Params | VRAM | Single-Step Accuracy | Multi-Step Chains | Latency | Key Finding |
 |-------|-------------|--------------|------|---------------------|-------------------|---------|-------------|
+| Gemma 3 27B | Dense transformer | 27B | 19 GB | 91% | 48% | 24,088ms | Highest accuracy but impractical latency on MacBook |
+| Mistral-Small-24B | Dense transformer | 24B | 14 GB | 85% | 66% | 1,239ms | Best dense competitor; strong multi-step coherence |
+| **LFM2-24B-A2B** | **Hybrid MoE conv+attn** | **~2B** | **~14.5 GB** | **80%** | **26%** | **385ms** | 94% of best accuracy at 3% of latency; fits consumer hardware |
+| Qwen3 32B | Dense transformer | 32B | 21 GB | ~70%* | — | 28,385ms | Reasoning-first training hurts tool dispatch |
 | Qwen2.5-32B | Dense transformer | 32B | ~20 GB | ~85% (est.) | Not benchmarked | ~40 tok/s | Dev proxy; too large for 16 GB target hardware |
-| GPT-OSS-20B | Dense transformer | 20B | ~14 GB | ~36% | ~0% | 5-21s/turn | Conversational deflection on 80% of multi-step tasks |
-| Qwen3-30B-A3B | MoE transformer | ~3B | ~5 GB | ~36% | ~0% | 22-34s/turn | Tool fixation loops (repeats same wrong tool 4x) |
-| **LFM2-24B-A2B** | **Hybrid MoE conv+attn** | **~2B** | **~13 GB** | **80%** | **26%** | **395ms** | First model to cross server boundaries |
+| GPT-OSS-20B | Dense transformer | 20B | 14 GB | 51% | 0% | 2,303ms | Namespace confusion; 0% multi-step (pure deflection) |
+| Qwen3-30B-A3B | MoE transformer | ~3B | 19 GB | 44% | 4% | 5,938ms | 51% no-tool-call rate; MoE ≠ efficient tool calling |
 
-**Benchmark conditions:** 100 single-step prompts and 50 multi-step chains against all 67 tools (unfiltered), using the same test suite across all models. Tests run on Apple Silicon (M-series) via llama-server or Ollama.
+*Qwen3 32B: 40/100 tests completed; extrapolated from partial run.
+
+**Benchmark conditions:** 100 single-step prompts and 50 multi-step chains against all 67 tools (unfiltered), using the same test suite across all models. Tests run on Apple M4 Max (36 GB unified memory) via llama-server (LFM2) or Ollama (all others). See [Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md) for detailed results.
 
 ### What the numbers mean
 
@@ -173,6 +178,10 @@ See [gpt-oss-20b.md](./gpt-oss-20b.md) for the complete taxonomy with evidence a
 ### Start here
 
 - **[Project Learnings and Recommendations](./project-learnings-and-recommendations.md)** — 5 models, 12 failure modes, and the 3 interventions that work (filtering, fine-tuning, orchestration) — with measured impact for each.
+
+### Competitive comparison
+
+- **[Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md)** — LFM2-24B-A2B (2B active) vs 5 models: Mistral-Small-24B, Gemma 3 27B, Qwen3 32B, GPT-OSS-20B, and Qwen3-30B-A3B. Same 67-tool benchmark, same Apple M4 Max hardware. Latency, accuracy, memory, and efficiency-per-parameter analysis.
 
 ### Per-model deep dives
 

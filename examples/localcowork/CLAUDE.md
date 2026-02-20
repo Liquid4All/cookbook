@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working on the LocalCowork proje
 
 ## Project Overview
 
-LocalCowork is a desktop AI agent that runs entirely on-device. It delivers a Claude Cowork-style experience powered by a locally-hosted LLM (dev: Qwen2.5-32B, production: LFM2.5-24B). The model calls pre-built tools via MCP — it never writes code. The user confirms every mutable action.
+LocalCowork is a desktop AI agent that runs entirely on-device. It delivers a Claude Cowork-style experience powered by a locally-hosted LLM (dev: GPT-OSS-20B via Ollama, production: LFM2-24B-A2B via llama.cpp). The model calls pre-built tools via MCP — it never writes code. The user confirms every mutable action.
 
 **Source of truth:** `docs/PRD.md` (the full product requirements document).
 **Tool contract:** `docs/mcp-tool-registry.yaml` (machine-readable tool definitions extracted from the PRD Appendix).
@@ -25,11 +25,11 @@ The Agent Core communicates with the inference layer exclusively via the OpenAI 
 
 When enabled, a plan-execute-synthesize pipeline runs two models cooperatively:
 
-1. **Plan** — Qwen3-30B-A3B (MoE, ~3B active) decomposes requests into self-contained steps (no tool defs sent)
-2. **Execute** — LFM2-1.2B-Tool selects one tool per step with RAG pre-filtered tools (K=15)
-3. **Synthesize** — Qwen3-30B-A3B streams a user-facing summary from accumulated results
+1. **Plan** — LFM2-24B-A2B decomposes requests into self-contained steps (bracket-format plans, no tool defs sent)
+2. **Execute** — LFM2.5-1.2B-Router-FT-v2 selects one tool per step with RAG pre-filtered tools (K=15)
+3. **Synthesize** — LFM2-24B-A2B streams a user-facing summary from accumulated results
 
-The orchestrator is opt-in (`_models/config.yaml` → `orchestrator.enabled`). If it fails at any phase, control falls through to the single-model agent loop. Requires ~7-8 GB VRAM (MoE planner ~4-5 GB + router 2.3 GB). See `docs/architecture-decisions/009-dual-model-orchestrator.md`.
+The orchestrator is opt-in (`_models/config.yaml` → `orchestrator.enabled`). If it fails at any phase, control falls through to the single-model agent loop. Requires ~14.5 GB VRAM (planner ~13 GB + router ~1.5 GB). See `docs/architecture-decisions/009-dual-model-orchestrator.md`.
 
 ## Key Paths
 
@@ -37,7 +37,7 @@ The orchestrator is opt-in (`_models/config.yaml` → `orchestrator.enabled`). I
 docs/PRD.md                        # Product requirements (SOURCE OF TRUTH)
 docs/mcp-tool-registry.yaml        # Tool specifications (machine-readable)
 docs/architecture-decisions/       # ADRs for significant choices
-docs/model-analysis/              # Model benchmarks and analysis (5 models, 67 tools)
+docs/model-analysis/              # Model benchmarks and analysis (6 models, 67 tools)
 docs/patterns/                     # Implementation patterns
 
 src-tauri/src/                     # Rust backend
@@ -55,14 +55,15 @@ src/                               # React + TypeScript frontend
 ├── hooks/                         # Custom hooks
 └── types/                         # Shared TypeScript types
 
-mcp-servers/                       # All 13 MCP server implementations
+mcp-servers/                       # All 14 MCP server implementations
 ├── _shared/                       # Shared base classes (TS + Python)
 ├── filesystem/                    # TypeScript — file CRUD, watch, search
 ├── document/                      # Python — extraction, conversion, diff, PDF
-├── ocr/                           # Python — Tesseract + PaddleOCR
+├── ocr/                           # Python — LFM Vision + Tesseract fallback
 ├── knowledge/                     # Python — SQLite-vec RAG pipeline
 ├── meeting/                       # Python — Whisper.cpp + diarization
 ├── security/                      # Python — PII/secrets scan + encryption
+├── screenshot-pipeline/           # Python — capture, OCR, action suggestion
 ├── calendar/                      # TypeScript — .ics + system calendar API
 ├── email/                         # TypeScript — MBOX/Maildir + SMTP
 ├── task/                          # TypeScript — local SQLite task DB

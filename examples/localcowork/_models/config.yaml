@@ -187,6 +187,61 @@ models:
       - text
       - tool_calling
 
+  # ─── Benchmark comparison models (instruct-only, dense transformers) ────
+  # These models are benchmarked against LFM2-24B-A2B to demonstrate
+  # scaling efficiency: ~2B active params (MoE) vs 24-32B active (dense).
+  # All use native OpenAI function calling format via Ollama.
+
+  # Mistral-Small-24B-Instruct — direct 24B-to-24B param count comparison
+  # Same total params as LFM2-24B-A2B but 12x more active params per token.
+  mistral-small-24b:
+    display_name: "Mistral-Small-24B-Instruct"
+    runtime: ollama
+    model_name: "mistral-small:24b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    tool_temperature: 0.1
+    max_tokens: 4096
+    estimated_vram_gb: 16
+    capabilities:
+      - text
+      - tool_calling
+
+  # Gemma 3 27B — Google's latest instruct model, widely recognized baseline
+  gemma3-27b:
+    display_name: "Gemma 3 27B Instruct"
+    runtime: ollama
+    model_name: "gemma3:27b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    tool_temperature: 0.1
+    max_tokens: 4096
+    estimated_vram_gb: 18
+    capabilities:
+      - text
+      - tool_calling
+
+  # Qwen3 32B Instruct — dense variant (NOT the A3B MoE already tested)
+  # 16x more active params per token than LFM2-24B-A2B.
+  qwen3-32b:
+    display_name: "Qwen3 32B Instruct"
+    runtime: ollama
+    model_name: "qwen3:32b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    tool_temperature: 0.1
+    max_tokens: 4096
+    estimated_vram_gb: 20
+    capabilities:
+      - text
+      - tool_calling
+
 # Runtime configurations
 runtimes:
   ollama:
@@ -218,6 +273,18 @@ fallback_chain:
 # LFM2.5-1.2B-Instruct executes each step independently with RAG pre-filtered tools.
 # LFM2-24B-A2B as planner + LFM2.5-1.2B-Instruct as router ≈ 18 GB total.
 # Falls back to single-model mode if disabled or if orchestration fails.
+#
+# MODEL COMPATIBILITY:
+#   The orchestrator requires LFM-family models (bracket tool_call_format).
+#   Both planner and router use bracket-format prompts and parsing
+#   ([plan.add_step(...)], [server.tool(args)]) that are hardcoded to LFM's
+#   native output format. Models with native_json or pythonic formats
+#   (GPT-OSS, Qwen, etc.) will fail the plan phase and fall back to the
+#   single-model agent loop, which IS fully format-portable.
+#
+#   If you are using a non-LFM model as active_model, set enabled: false
+#   to skip the orchestrator entirely and avoid the ~2-3s wasted planner call.
+#   See ADR-009 for full details.
 orchestrator:
   enabled: true  # Requires llama-server with --embeddings flag for RAG pre-filter
   planner_model: lfm2-24b-a2b

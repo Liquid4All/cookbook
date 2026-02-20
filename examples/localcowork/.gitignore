@@ -47,6 +47,9 @@ LocalCowork_PRD.md
 CLAUDE.local.md
 .claude/settings.local.json
 
+# ─── Local-only scripts (not shared) ─────────────────────────────────────
+scripts/sync-to-cookbook.sh
+
 # ─── Environment ─────────────────────────────────────────────────────────
 .env
 .env.local

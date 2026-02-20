@@ -1,6 +1,6 @@
 # Roadmap: Tool-Calling Accuracy from 80% to 90%+
 
-**Last Updated:** 2026-02-18
+**Last Updated:** 2026-02-19
 **Status:** Strategic roadmap — not yet implemented
 **Current Baseline:** 80% single-step, 26% multi-step (LFM2-24B-A2B)
 
@@ -16,11 +16,167 @@
 | **Planner under-decomposition** | 100% of 4+ step failures | Collapses "scan + create task + email" into 1 step |
 | **Data-operations gap** | 60% accuracy (weakest category) | Training data underrepresents SQL/CSV patterns |
 
+### The critical insight: multi-step is the biggest gap
+
+Single-step at 80% with human confirmation is effectively ~100%. Multi-step at 26% is unusable. Every intervention is ranked by its impact on multi-step chaining.
+
+All multi-step interventions (M1-M6) operate within the **dual-model orchestrator** (ADR-009). The orchestrator's plan-execute-synthesize architecture is the right foundation — the planner is the bottleneck, not the architecture.
+
 ---
 
-## 1. Hierarchical Routing: Server-Scoped Tool Selection
+## Interventions (ranked by priority)
 
-### The core idea
+### M2. Few-Shot Decomposition Examples (do first — free)
+
+**The problem:** The planner gets rules ("if multiple actions, create one step per action") but rules don't work at 1-2B scale. The model needs to *see* correct decomposition, not just be told about it.
+
+**The fix:** Add 5 few-shot examples of correct multi-step decomposition to `PLANNER_SYSTEM_PROMPT`. Cover: 2-step, 3-step, 4-step, cross-server, and dependent-chain patterns.
+
+**Why first:** Zero cost, zero risk, immediate signal. If this alone pushes decomposition from 60% to 80%, it tells us the problem is prompt quality, not model capacity.
+
+| Metric | Before | After (expected) |
+|---|---|---|
+| Decomposition rate (4+ steps) | ~0% | 60-80% |
+| Multi-step overall | 26% | ~35% |
+
+**Cost:** System prompt change. **Risk:** None. **Time:** Hours.
+
+---
+
+### M1. Template-Based Decomposition (parallel with M2)
+
+Hard-code decomposition for the 10 validated use cases. Pattern match user input -> inject pre-built plan, bypassing the planner entirely.
+
+```
+UC-1 (Receipt Reconciliation): list_dir -> extract_text -> query_sqlite -> create_task
+UC-4 (Download Triage):        list_dir -> extract_text -> scan_pii -> move_file -> create_task
+UC-7 (Contract Copilot):       extract_text -> search_documents -> draft_email
+```
+
+**Why parallel with M2:** Templates give 100% decomposition for known patterns regardless of planner quality. They're the safety net while we improve the planner's general decomposition.
+
+| Metric | Before | After |
+|---|---|---|
+| Templated UC multi-step | 26% | ~100% |
+| Non-templated multi-step | 26% | 26% (no change) |
+
+**Cost:** ~1 day. **Risk:** None — templates are a pure fallback. **Time:** 1 day.
+
+---
+
+### M3. Step-Result Forwarding
+
+Each step currently gets a clean context (no prior results). Step 2 can't reference step 1's output. Fix: pass 1-2 line condensed summary of prior step results.
+
+```
+Step 1: list_dir("/Downloads") → "Found 14 PDF files, 3 CSV files"
+Step 2: extract_text(file="...") → now knows WHICH files to extract from
+```
+
+**Why here in priority:** Without this, even perfect decomposition fails on dependent chains. Step 2 needs step 1's output. This is the difference between "plan correctly" and "execute correctly."
+
+**Expected:** Unlocks dependent chains. Cost: one summarization call per step (~200ms).
+
+---
+
+### ⏸ BENCHMARK GATE: Measure M2 + M1 + M3 Combined
+
+After implementing M2, M1, and M3, benchmark multi-step performance on:
+- 20 compound prompts (4+ steps) for decomposition rate
+- 10 validated use cases (UC-1 through UC-10) for end-to-end completion
+- 50 multi-step scenarios from `tests/model-behavior/benchmark-multi-step.ts`
+
+| Metric | Baseline | Target |
+|---|---|---|
+| Decomposition rate (4+ steps) | ~0% | > 70% |
+| Multi-step overall | 26% | > 45% |
+| Templated UC completion | 26% | ~100% |
+
+**Decision:** If multi-step > 50% → skip M6, go to Phase 2 (router improvements). If multi-step < 40% and decomposition is the bottleneck → try M6 (thinking model). If decomposition is fine but execution fails → skip to M4 (iterative re-planning).
+
+---
+
+### M6. Thinking Model as Planner (contingent — only if M2+M1+M3 plateau)
+
+**The hypothesis:** If planner under-decomposition persists after few-shot examples, it's a *reasoning* failure, not a prompt quality issue. A thinking model that generates chain-of-thought traces before committing to a plan should decompose more reliably.
+
+**The candidate:** [LFM2.5-1.2B-Thinking](https://www.liquid.ai/blog/lfm2-5-1-2b-thinking-on-device-reasoning-under-1gb)
+
+| Spec | LFM2-24B-A2B (current planner) | LFM2.5-1.2B-Thinking |
+|---|---|---|
+| Active params | ~2B (from 24B MoE) | 1.2B |
+| VRAM | ~13 GB | ~900 MB |
+| BFCLv3 (tool use) | N/A (not benchmarked) | 57% |
+| Multi-IF (instruction following) | N/A | 69% (vs 61% instruct) |
+| MATH-500 (reasoning proxy) | N/A | 88% (vs 63% instruct) |
+| Context window | 32K | 32K |
+| GGUF available | Yes | Yes (llama.cpp, MLX, vLLM) |
+| Doom-loop rate | N/A | 0.36% (RL-fixed from 15.7%) |
+
+**Why it fits the planner role specifically:**
+
+1. **Planning doesn't need 83 tools in context.** The planner sees server capability summaries (~1200 tokens), not tool definitions. A 1.2B model has plenty of capacity for this.
+2. **Thinking traces produce step-by-step reasoning.** This is exactly what `parse_bracket_plan()` needs to extract — the model reasons through "the user wants X *and* Y *and* Z" before committing to a bracket-format plan.
+3. **VRAM savings are massive.** Freeing ~12 GB means the router and planner can coexist comfortably, or the headroom can be used for the dedicated embedding model.
+4. **The format is compatible.** LFM2.5-1.2B-Thinking uses the same Liquid AI architecture family. Bracket-format output should work with minimal prompt tuning. The thinking tokens appear before the plan output and don't interfere with parsing (strip `<think>...</think>` prefix).
+
+**Why it might not work:**
+
+1. **1.2B may lack world knowledge** for complex decomposition. "Reconcile receipts against bank statement" requires understanding what reconciliation *means* across multiple servers. The 24B model has more latent knowledge even if only 2B params are active per token.
+2. **Thinking traces consume context.** Budget ~200-500 tokens per planning call. Current planner uses ~6,700 of 32K — headroom is fine, but worth monitoring.
+3. **Not fine-tuned on bracket format.** Will need prompt engineering to produce `[plan.add_step(...)]` output reliably. May require a short SFT pass on 50-100 planning examples.
+
+**Integration point:** Config-only change in `_models/config.yaml`:
+
+```yaml
+orchestrator:
+  planner_model: lfm25-1.2b-thinking   # Was: lfm2-24b-a2b
+  router_model: lfm25-1.2b-router-ft   # Unchanged
+```
+
+Plus a new model entry with `base_url`, `context_window`, `tool_call_format: bracket`. The `InferenceClient::from_config_with_model()` constructor handles the rest.
+
+**Experiment design:**
+
+1. Use the M2+M1+M3 benchmark results as baseline.
+2. Swap planner to LFM2.5-1.2B-Thinking with the same few-shot prompt. Re-run the same benchmark suite.
+3. Compare: if thinking model improves decomposition by >10% over 24B planner → adopt it. If equal or worse → the bottleneck is knowledge, not reasoning → skip to M4.
+
+| Metric | After M2+M1+M3 | After M6 (expected) |
+|---|---|---|
+| Decomposition rate (4+ steps) | 60-80% | 80-95% |
+| Multi-step overall | ~40-50% | ~55-65% |
+| Planner VRAM | 13 GB | ~900 MB |
+
+**Cost:** Model download (~900 MB GGUF) + prompt tuning (~1 day). **Risk:** Medium — format compatibility untested. **Time:** 2-3 days including benchmarking.
+
+---
+
+### M4. Iterative Re-Planning (backstop — plan 1 step -> execute -> re-plan)
+
+Instead of producing all steps upfront, produce one step at a time. The planner can always do 1 step. After execution, re-plan with the result. Chain length limited by step counter (max 8).
+
+**Why this is the backstop:** If M2 + M1 + M3 (and optionally M6) still can't decompose 4+ step requests reliably, iterative re-planning eliminates the problem entirely. The planner never needs to produce more than 1 step. But it adds ~3-5s latency per step, so we try cheaper options first.
+
+| Metric | Before | After (expected) |
+|---|---|---|
+| Multi-step overall | 26% | 50-65% |
+| Decomposition rate | ~0% for 4+ | 100% (by construction) |
+| Latency per step | ~2s | ~5-8s (plan + execute) |
+
+**Cost:** Medium engineering effort. **Risk:** Latency penalty. **Time:** 1-2 weeks.
+
+---
+
+### M5. Mid-Chain Context Eviction
+
+After each step, check context usage. If >80% of 32K, evict oldest step summaries.
+
+**Expected:** Enables 8-10 step chains. Required for long workflows but only matters once 4-step chains work.
+
+---
+
+### 1. Hierarchical Routing: Server-Scoped Tool Selection
 
 Don't make one hard 83-way decision. Make two easy ones.
 
@@ -72,7 +228,7 @@ Already validated in training data generation (`scripts/generate_training_data_v
 
 ---
 
-## 2. Dedicated Embedding Model for Pre-Filter
+### 2. Dedicated Embedding Model for Pre-Filter
 
 ### The problem
 
@@ -93,7 +249,7 @@ Run as separate llama-server on port 8085. Zero code changes in `tool_prefilter.
 
 ---
 
-## 3. Essential Tool Set: 5 Tools x 3 Servers
+### 3. Essential Tool Set: 5 Tools x 3 Servers
 
 ### What normal people do daily on their computers
 
@@ -131,67 +287,7 @@ Run as separate llama-server on port 8085. Zero code changes in `tool_prefilter.
 
 ---
 
-## 4. Multi-Step: Why 26% Is So Bad and What Fixes It
-
-### Three stacked failures
-
-**A. Error compounding:** 80%^4 = 41% theoretical, actual is 7%. Wrong tool in step 2 corrupts context for step 3.
-
-**B. Context accumulation:** By step 5, ~21K of 32K tokens consumed. Decision capacity halves.
-
-**C. Planner under-decomposition:** Orchestrator fixes A and B by isolating each step. But the planner collapses 4-step requests into 1 step.
-
-### The orchestrator architecture is right, the planner is the bottleneck
-
-- 1-step: 100% (clean)
-- 2-step: 100% (planner decomposes correctly)
-- 4+ step: fails (planner won't produce 4 steps)
-
-### Five interventions
-
-**M1. Template-based decomposition (bypass the planner for known UCs)**
-
-Hard-code decomposition for the 10 validated use cases. Pattern match user input -> inject pre-built plan.
-
-Expected: 100% decomposition for known UCs. Cost: ~1 day.
-
-**M2. Few-shot decomposition examples (free)**
-
-The planner gets rules ("if multiple actions, create one step per action") but rules don't work. Add 5 few-shot examples of correct multi-step decomposition.
-
-Expected: 60% -> 80% decomposition. Cost: system prompt change.
-
-**M3. Step-result forwarding**
-
-Each step currently gets a clean context (no prior results). Step 2 can't reference step 1's output. Fix: pass 1-2 line condensed summary of prior results.
-
-Expected: unlocks dependent chains. Cost: one summarization call per step.
-
-**M4. Iterative re-planning (plan 1 step -> execute -> re-plan)**
-
-Instead of producing all steps upfront, produce one step at a time. The planner can always do 1 step. Chain length limited by step counter (max 8).
-
-Expected: eliminates under-decomposition entirely, 26% -> 50-65%. Cost: ~3-5s latency per step.
-
-**M5. Mid-chain context eviction**
-
-After each step, check context usage. If >80% of 32K, evict oldest step summaries.
-
-Expected: enables 8-10 step chains.
-
-### Projected improvement
-
-| Intervention combo | Multi-step |
-|---|---|
-| Current baseline | 26% |
-| M2 alone (free) | ~35% |
-| M1 + M3 + M4 combined | **60-75%** |
-
-At 60-70% with human confirmation on each step, multi-step is usable.
-
----
-
-## 5. GRPO: What It Is
+### 4. GRPO: Reinforcement Learning on Router
 
 ### SFT vs GRPO
 
@@ -215,27 +311,36 @@ Reward hacking, catastrophic forgetting, untested on LFM2 architecture.
 ## Recommended sequence
 
 ```
-Phase 1 (1-2 weeks, low risk):
-  -> 5-tool starter mode (validate 95%+)
-  -> Few-shot planner examples (M2, free)
-  -> Template decomposition for UC-1, UC-4, UC-7 (M1)
-  -> Tool schema audit (83 -> ~74 tools)
-  Expected: 95%+ single-step, ~35% multi-step, ~100% templated UCs
+Phase 1 — Fix the planner (1-2 weeks, low risk):
+  -> M2: Few-shot decomposition examples (free, do first, hours)
+  -> M1: Template decomposition for UC-1, UC-4, UC-7 (parallel, 1 day)
+  -> M3: Step-result forwarding (unlocks dependent chains, days)
+  -> BENCHMARK: measure decomposition rate + multi-step completion
+  -> M6: Thinking model experiment (ONLY if benchmark shows decomposition gap)
+  Expected: ~40-55% multi-step, ~100% templated UCs
 
-Phase 2 (2-4 weeks, medium risk):
+Phase 2 — Fix the router (2-4 weeks, medium risk):
   -> Hierarchical routing (server-scoped candidates)
   -> Dedicated embedding model (nomic-embed-text-v1.5)
-  -> Step-result forwarding (M3)
+  -> 5-tool starter mode (validate 95%+ single-step)
+  -> Tool schema audit (83 -> ~74 tools)
   -> V3 fine-tune with cross-server contrastive data
-  Expected: 93-95% single-step, ~50% multi-step
+  Expected: 93-95% single-step, ~55-65% multi-step
 
-Phase 3 (4-6 weeks, highest ceiling):
-  -> Iterative re-planning (M4)
+Phase 3 — Ceiling push (4-6 weeks, highest ceiling):
+  -> M4: Iterative re-planning (backstop if decomposition still < 70%)
+  -> M5: Mid-chain context eviction (enables 8-10 step chains)
   -> GRPO on router ($5-10)
   -> Templates for remaining UCs
   -> Progressive tool expansion (5 -> 8 -> 12 -> full)
   Expected: 95%+ single-step, 60-75% multi-step
 ```
+
+### Decision gates
+
+- **After M2+M1+M3 benchmark:** If multi-step > 50% → skip M6, go to Phase 2. If decomposition < 70% → try M6 (thinking model). If decomposition is fine but execution fails → skip to Phase 2 + M4.
+- **After M6 (if run):** If decomposition improves >10% → adopt thinking model. If not → problem is knowledge not reasoning, go to M4.
+- **After Phase 2:** If multi-step > 60% → ship it. If < 50% → Phase 3 is mandatory.
 
 ---
 
@@ -247,6 +352,7 @@ Phase 3 (4-6 weeks, highest ceiling):
 - Prompt engineering alone (proven ceiling ~80%)
 - More retries (errors compound: 0.80^n)
 - Just improving single-step (0.95^4 = 81%; multi-step needs architecture)
+- Thinking model as router (BFCLv3 at 57% is below fine-tuned router's 83.7%)
 
 ---
 
@@ -258,3 +364,4 @@ Phase 3 (4-6 weeks, highest ceiling):
 - [Project Learnings](./project-learnings-and-recommendations.md)
 - [ADR-009: Dual-Model Orchestrator](../architecture-decisions/009-dual-model-orchestrator.md)
 - [ADR-010: RAG Pre-Filter](../architecture-decisions/010-rag-prefilter-benchmark-analysis.md)
+- [LFM2.5-1.2B-Thinking Blog Post](https://www.liquid.ai/blog/lfm2-5-1-2b-thinking-on-device-reasoning-under-1gb)

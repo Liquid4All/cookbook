@@ -50,8 +50,10 @@ function getArg(name: string): string | undefined {
   return idx >= 0 && idx + 1 < args.length ? args[idx + 1] : undefined;
 }
 
-const PLANNER_ENDPOINT = getArg('planner-endpoint') ?? 'http://localhost:11434/v1';
+const PLANNER_ENDPOINT = getArg('planner-endpoint') ?? 'http://localhost:11434';
+const PLANNER_MODEL = getArg('planner-model') ?? 'qwen3:30b-a3b';
 const ROUTER_ENDPOINT = getArg('router-endpoint') ?? 'http://localhost:8082';
+const ROUTER_MODEL = getArg('router-model') ?? '';
 const TOP_K = parseInt(getArg('top-k') ?? '15', 10);
 const DIFFICULTY = getArg('difficulty') as 'easy' | 'medium' | 'hard' | 'all' | undefined;
 const MAX_PLAN_STEPS = parseInt(getArg('max-plan-steps') ?? '10', 10);
@@ -317,7 +319,7 @@ async function main(): Promise<void> {
     const prefix = `[${i + 1}/${tests.length}]`;
 
     // Phase 1: Plan
-    const planResult = await callPlanner(PLANNER_ENDPOINT, test.scenario);
+    const planResult = await callPlanner(PLANNER_ENDPOINT, PLANNER_MODEL, test.scenario);
 
     if (!planResult.plan) {
       console.log(`${prefix} ✗ PLAN_ERROR  ${test.id} — ${planResult.error ?? 'null plan'}`);
@@ -368,7 +370,7 @@ async function main(): Promise<void> {
     // Phase 3: Execute all steps
     const stepResults = await executeAllSteps(
       planResult.plan, test.steps, mapping,
-      ROUTER_ENDPOINT, toolIndex, TOP_K, STEP_RETRIES,
+      ROUTER_ENDPOINT, ROUTER_MODEL, toolIndex, TOP_K, STEP_RETRIES,
     );
 
     // Phase 4: Evaluate with bag-of-tools

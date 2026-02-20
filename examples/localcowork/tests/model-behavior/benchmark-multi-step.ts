@@ -9,6 +9,7 @@
  *
  * Usage:
  *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:8082
+ *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:11434 --model mistral-small:24b
  *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:8082 --top-k 15
  *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:8082 --difficulty simple
  */
@@ -38,19 +39,23 @@ function getArg(name: string): string | undefined {
 }
 
 const ENDPOINT = getArg('endpoint') ?? 'http://localhost:8082';
+const MODEL = getArg('model');
 const TOP_K = getArg('top-k') ? parseInt(getArg('top-k')!, 10) : 0;
 const DIFFICULTY = getArg('difficulty') as 'simple' | 'medium' | 'complex' | undefined;
 
 // ── Model query (local — different signature from shared queryModel) ──────
 
-async function queryModelLocal(endpoint: string, messages: ChatMessage[]): Promise<string> {
-  const body = {
+async function queryModelLocal(endpoint: string, messages: ChatMessage[], model?: string): Promise<string> {
+  const body: Record<string, unknown> = {
     messages,
     temperature: 0.1,
     top_p: 0.1,
     max_tokens: 512,
     stream: false,
   };
+  if (model) {
+    body.model = model;
+  }
 
   const response = await fetch(`${endpoint}/v1/chat/completions`, {
     method: 'POST',
@@ -104,7 +109,7 @@ Available tools: ${Object.entries(TOOL_DESCRIPTIONS).map(([k, v]) => `${k}: ${v}
 
       let content: string;
       try {
-        content = await queryModelLocal(endpoint, messages);
+        content = await queryModelLocal(endpoint, messages, MODEL);
       } catch (e) {
         stepResults.push({
           stepIndex: s,
@@ -293,6 +298,7 @@ async function main(): Promise<void> {
       {
         runId: `ms-${Date.now()}`,
         timestamp: new Date().toISOString(),
+        model: MODEL ?? 'unknown',
         endpoint: ENDPOINT,
         topK: TOP_K,
         difficulty: DIFFICULTY ?? 'all',

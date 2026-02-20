@@ -14,6 +14,7 @@
  *
  *   # Options:
  *   --endpoint URL     Model endpoint (default: http://localhost:8082)
+ *   --model NAME       Model name for Ollama (e.g., "mistral-small:24b")
  *   --timeout MS       Per-request timeout (default: 30000)
  *   --top-k N          Enable RAG pre-filter with top-K tools (0 = disabled)
  *
@@ -55,6 +56,7 @@ interface CliArgs {
   endpoint: string;
   timeoutMs: number;
   topK: number;
+  model: string | undefined;
 }
 
 function parseArgs(): CliArgs {
@@ -62,6 +64,7 @@ function parseArgs(): CliArgs {
   let endpoint = DEFAULT_ENDPOINT;
   let timeoutMs = DEFAULT_TIMEOUT_MS;
   let topK = 0;
+  let model: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--endpoint' && args[i + 1]) {
@@ -70,10 +73,12 @@ function parseArgs(): CliArgs {
       timeoutMs = parseInt(args[++i], 10);
     } else if (args[i] === '--top-k' && args[i + 1]) {
       topK = parseInt(args[++i], 10);
+    } else if (args[i] === '--model' && args[i + 1]) {
+      model = args[++i];
     }
   }
 
-  return { endpoint, timeoutMs, topK };
+  return { endpoint, timeoutMs, topK, model };
 }
 
 // ─── Model Communication ───────────────────────────────────────────────────
@@ -97,6 +102,7 @@ async function queryModel(
   userPrompt: string,
   context: readonly string[],
   timeoutMs: number,
+  model?: string,
 ): Promise<{ tools: string[]; rawContent: string; durationMs: number }> {
   const messages: Array<{ role: string; content: string }> = [
     { role: 'system', content: systemPrompt },
@@ -114,18 +120,23 @@ async function queryModel(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const startTime = Date.now();
 
+  const body: Record<string, unknown> = {
+    messages,
+    temperature: 0.1,
+    top_k: 50,
+    top_p: 0.1,
+    repetition_penalty: 1.05,
+    max_tokens: 512,
+  };
+  if (model) {
+    body.model = model;
+  }
+
   try {
     const response = await fetch(`${endpoint}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages,
-        temperature: 0.1,
-        top_k: 50,
-        top_p: 0.1,
-        repetition_penalty: 1.05,
-        max_tokens: 512,
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
 
@@ -184,6 +195,7 @@ async function runBenchmark(
   timeoutMs: number,
   topK: number,
   toolIndex: ToolEmbeddingIndex | null,
+  model?: string,
 ): Promise<BenchmarkResult> {
   const allToolDefs = buildToolDefinitions();
   const tests = allToolSelectionTests;
@@ -249,7 +261,7 @@ IMPORTANT RULES:
 Available tools: [${toolsJson.slice(1, -1)}]`;
 
       const { tools: actualTools, rawContent, durationMs } = await queryModel(
-        endpoint, systemPrompt, test.prompt, test.context ?? [], timeoutMs,
+        endpoint, systemPrompt, test.prompt, test.context ?? [], timeoutMs, model,
       );
 
       totalLatency += durationMs;
@@ -341,7 +353,7 @@ Available tools: [${toolsJson.slice(1, -1)}]`;
   const result: BenchmarkResult = {
     runId: `lfm-${mode}-k${topK}-${Date.now()}`,
     timestamp: new Date().toISOString(),
-    model: 'LFM2-1.2B-Tool-F16',
+    model: model ?? 'LFM2-1.2B-Tool-F16',
     endpoint,
     mode,
     topK,
@@ -439,7 +451,7 @@ function saveResults(result: BenchmarkResult): string {
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { endpoint, timeoutMs, topK } = parseArgs();
+  const { endpoint, timeoutMs, topK, model } = parseArgs();
 
   // Verify model is reachable
   try {
@@ -475,7 +487,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const result = await runBenchmark(endpoint, timeoutMs, topK, toolIndex);
+  const result = await runBenchmark(endpoint, timeoutMs, topK, toolIndex, model);
 
   printSummary(result);
 

@@ -18,6 +18,7 @@ pub mod database;
 pub mod errors;
 pub mod orchestrator;
 pub mod plan_parser;
+pub mod plan_templates;
 pub mod permissions;
 pub mod response_analysis;
 pub mod tokens;
