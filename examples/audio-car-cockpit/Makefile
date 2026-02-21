@@ -65,9 +65,7 @@ LFM2-1.2B-Tool-GGUF: llama-server  ## Download tool calling model
 
 
 # ┌──────────────────────────────────────────────────────────┐
-# │       Prepare inference runner, platform specific        │
-# │              Required until this is merged:              │
-# │     https://github.com/ggml-org/llama.cpp/pull/18641     │
+# │              Platform detection and ROCm                 │
 # └──────────────────────────────────────────────────────────┘
 
 UNAME_S := $(shell uname -s)
@@ -93,6 +91,54 @@ else
   $(error Unsupported arch: $(UNAME_M))
 endif
 
+HAS_ROCM := $(shell test -d /opt/rocm && echo 1)
+
+LLAMA_CPP_REPO   := https://github.com/ggml-org/llama.cpp.git
+LLAMA_CPP_PR     := 18641
+LLAMA_CPP_COMMIT := d03c45c9c56795af8b0e899762bf266c14fd2028
+
+
+# ┌──────────────────────────────────────────────────────────┐
+# │           Build configuration (ROCm vs CPU)              │
+# └──────────────────────────────────────────────────────────┘
+
+ifdef HAS_ROCM
+  $(info ROCm detected at /opt/rocm — building with HIP GPU acceleration)
+
+  HIP_ARCH   ?= gfx1150
+  CMAKE_ARGS := -DGGML_HIP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_HIP_ARCHITECTURES="$(HIP_ARCH)"
+
+  # ROCm: clone PR #18641 which includes liquid-audio tools
+  llama.cpp:
+	git clone $(LLAMA_CPP_REPO) && \
+		cd llama.cpp && \
+		git fetch origin pull/$(LLAMA_CPP_PR)/head:pr-$(LLAMA_CPP_PR) && \
+		git checkout pr-$(LLAMA_CPP_PR)
+
+  AUDIO_SERVER := ./llama-liquid-audio-server
+
+else
+  $(info ROCm not found — building CPU-only, downloading pre-built audio runner)
+
+  CMAKE_ARGS := -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON
+
+  # No ROCm: clone llama.cpp at a known-good commit on main
+  llama.cpp:
+	git clone $(LLAMA_CPP_REPO) && \
+		cd llama.cpp && \
+		git checkout $(LLAMA_CPP_COMMIT)
+
+  AUDIO_SERVER := ./llama-liquid-audio/llama-liquid-audio-server
+
+endif
+
+
+# ┌──────────────────────────────────────────────────────────┐
+# │     Pre-built audio runner (fallback without ROCm)       │
+# │         Required until this is merged:                   │
+# │   https://github.com/ggml-org/llama.cpp/pull/18641       │
+# └──────────────────────────────────────────────────────────┘
+
 ZIP := runners/llama-liquid-audio-$(OS)-$(ARCH).zip
 DIR := $(patsubst runners/%.zip,%,$(ZIP))
 
@@ -103,32 +149,38 @@ $(ZIP):
 	uv run --with "huggingface_hub" hf download "LiquidAI/LFM2.5-Audio-1.5B-GGUF" --local-dir ./ $@
 	unzip -q -o $@
 
-llama-liquid-audio/llama-liquid-audio-server: $(ZIP)  ## Download pre-built llama-liquid-audio-server
-	ln -sf $(DIR) llama-liquid-audio
+llama-liquid-audio/llama-liquid-audio-server: $(ZIP)  ## Download pre-built llama-liquid-audio-server (CPU)
+	ln -sfn $(DIR) llama-liquid-audio
 	@# Sanity check
 	./llama-liquid-audio/llama-liquid-audio-server --version
 
 
 # ┌──────────────────────────────────────────────────────────┐
-# │                    Build llama-server                    │
+# │                Build llama.cpp from source                │
 # └──────────────────────────────────────────────────────────┘
-
-llama.cpp:
-	git clone https://github.com/ggml-org/llama.cpp.git && \
-		cd llama.cpp && \
-		git checkout d03c45c9c56795af8b0e899762bf266c14fd2028
 
 llama.cpp/build/bin/llama-server: llama.cpp
 	cd llama.cpp && \
-		export BUILD_TARGETS=llama-server && \
-		cmake -B build -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON -DGGML_HIP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON && \
-		cmake --build build --config Release -j 8
+		cmake -B build $(CMAKE_ARGS) && \
+		cmake --build build --config Release -t llama-server -j 8
 
-llama-server:  ## Static build of llama-server
+llama-server:  ## Build llama-server (auto-detects ROCm)
 	@# Make doesn't allow non-recursive dependencies, adding the check here instead
 	test -e $@ || $(MAKE) llama.cpp/build/bin/llama-server && \
 		cp llama.cpp/build/bin/llama-server $@
 	touch llama-server
+
+ifdef HAS_ROCM
+llama.cpp/build/bin/llama-liquid-audio-server: llama.cpp
+	cd llama.cpp && \
+		cmake -B build $(CMAKE_ARGS) && \
+		cmake --build build --config Release -t llama-liquid-audio-server -j 8
+
+llama-liquid-audio-server:  ## Build llama-liquid-audio-server with ROCm/HIP (from PR #18641)
+	test -e $@ || $(MAKE) llama.cpp/build/bin/llama-liquid-audio-server && \
+		cp llama.cpp/build/bin/llama-liquid-audio-server $@
+	touch llama-liquid-audio-server
+endif
 
 
 # ┌──────────────────────────────────────────────────────────┐
@@ -138,8 +190,8 @@ llama-server:  ## Static build of llama-server
 serve: llama-server  ## Start FastAPI server
 	uv run --frozen server.py
 
-audioserver: llama-liquid-audio/llama-liquid-audio-server LFM2.5-Audio-1.5B-GGUF  ## Start audio server
-	$< \
+audioserver: LFM2.5-Audio-1.5B-GGUF  ## Start audio server
+	$(AUDIO_SERVER) \
 		-m LFM2.5-Audio-1.5B-GGUF/LFM2.5-Audio-1.5B-Q8_0.gguf \
 		-mm LFM2.5-Audio-1.5B-GGUF/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
 		-mv LFM2.5-Audio-1.5B-GGUF/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
