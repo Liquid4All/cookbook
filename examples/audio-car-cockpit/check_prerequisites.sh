@@ -15,10 +15,11 @@ CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m'
 
+PASSED=0
 ERRORS=0
 WARNINGS=0
 
-pass()  { echo -e "  ${GREEN}✔${NC} $1"; }
+pass()  { echo -e "  ${GREEN}✔${NC} $1"; PASSED=$((PASSED + 1)); }
 warn()  { echo -e "  ${YELLOW}⚠${NC} $1"; WARNINGS=$((WARNINGS + 1)); }
 fail()  { echo -e "  ${RED}✘${NC} $1"; ERRORS=$((ERRORS + 1)); }
 info()  { echo -e "  ${CYAN}→${NC} $1"; }
@@ -188,6 +189,9 @@ fi
 header "Summary"
 # ─────────────────────────────────────────────────────────
 
+TOTAL=$((PASSED + ERRORS + WARNINGS))
+echo ""
+echo -e "  ${GREEN}$PASSED passed${NC}, ${RED}$ERRORS failed${NC}, ${YELLOW}$WARNINGS warning(s)${NC}  (${TOTAL} total)"
 echo ""
 if [[ $ERRORS -eq 0 && $WARNINGS -eq 0 ]]; then
     echo -e "${GREEN}${BOLD}All checks passed.${NC} You are ready to run: make setup"
