@@ -3,6 +3,13 @@
  *
  * Manages directory tree state: root path, expanded folders, selected
  * file, and lazy-loaded directory contents from Tauri IPC commands.
+ *
+ * Also manages the **working directory** — the folder that file operations
+ * (scans, searches) scope to. This mirrors Claude Cowork's "project
+ * directory" pattern: the product provides context, not the model.
+ *
+ * When `workingDirectory` is null, security scan presets are disabled
+ * and the user is prompted to select a folder first.
  */
 
 import { invoke } from "@tauri-apps/api/core";
@@ -26,6 +33,14 @@ interface FileBrowserState {
   error: string | null;
   /** Whether the sidebar is visible. */
   isVisible: boolean;
+  /**
+   * The active working directory for file operations.
+   *
+   * Null until the user explicitly selects a folder. Preset prompts
+   * that need a path resolve `{cwd}` from this value. When null,
+   * those presets are disabled with a "select a folder" hint.
+   */
+  workingDirectory: string | null;
 }
 
 /** Actions for the file browser. */
@@ -44,6 +59,10 @@ interface FileBrowserActions {
   toggleSidebar: () => void;
   /** Clear any error. */
   clearError: () => void;
+  /** Set a folder as the working directory for file operations. */
+  setWorkingDirectory: (path: string) => void;
+  /** Clear the working directory. */
+  clearWorkingDirectory: () => void;
 }
 
 type FileBrowserStore = FileBrowserState & FileBrowserActions;
@@ -57,6 +76,7 @@ export const useFileBrowserStore = create<FileBrowserStore>((set, get) => ({
   loadingPaths: new Set<string>(),
   error: null,
   isVisible: true,
+  workingDirectory: null,
 
   // ─── Actions ──────────────────────────────────────────────────────────
 
@@ -145,5 +165,13 @@ export const useFileBrowserStore = create<FileBrowserStore>((set, get) => ({
 
   clearError: (): void => {
     set({ error: null });
+  },
+
+  setWorkingDirectory: (path: string): void => {
+    set({ workingDirectory: path });
+  },
+
+  clearWorkingDirectory: (): void => {
+    set({ workingDirectory: null });
   },
 }));

@@ -22,10 +22,14 @@ interface DirectoryTreeProps {
   readonly selectedPath: string | null;
   /** Set of paths currently being loaded. */
   readonly loadingPaths: ReadonlySet<string>;
+  /** The active working directory (null if not set). */
+  readonly workingDirectory: string | null;
   /** Callback to toggle a directory's expanded state. */
   readonly onToggle: (path: string) => void;
   /** Callback to select a path. */
   readonly onSelect: (path: string) => void;
+  /** Callback to set a directory as the working folder. */
+  readonly onSetWorkingDir: (path: string) => void;
 }
 
 export function DirectoryTree({
@@ -35,8 +39,10 @@ export function DirectoryTree({
   expandedDirs,
   selectedPath,
   loadingPaths,
+  workingDirectory,
   onToggle,
   onSelect,
+  onSetWorkingDir,
 }: DirectoryTreeProps): React.JSX.Element {
   const entries = directoryContents[dirPath];
 
@@ -51,6 +57,7 @@ export function DirectoryTree({
         const isExpanded = expandedDirs.has(entry.path);
         const isSelected = entry.path === selectedPath;
         const isLoading = loadingPaths.has(entry.path);
+        const isWorkingDir = entry.path === workingDirectory;
 
         return (
           <div key={entry.path}>
@@ -60,8 +67,10 @@ export function DirectoryTree({
               isExpanded={isExpanded}
               isSelected={isSelected}
               isLoading={isLoading}
+              isWorkingDir={isWorkingDir}
               onToggle={onToggle}
               onSelect={onSelect}
+              onSetWorkingDir={onSetWorkingDir}
             />
             {/* Recursively render children of expanded directories */}
             {isDir && isExpanded && (
@@ -72,8 +81,10 @@ export function DirectoryTree({
                 expandedDirs={expandedDirs}
                 selectedPath={selectedPath}
                 loadingPaths={loadingPaths}
+                workingDirectory={workingDirectory}
                 onToggle={onToggle}
                 onSelect={onSelect}
+                onSetWorkingDir={onSetWorkingDir}
               />
             )}
           </div>

@@ -51,9 +51,10 @@ enabled_tools:
   - security.find_duplicates
   - security.propose_cleanup
   - security.encrypt_file
-  # system — screenshots and system info (2 tools, 80%)
-  - system.take_screenshot
+  # system — system info and disk usage (3 tools, 80%)
   - system.get_system_info
+  - system.get_disk_usage
+  - system.take_screenshot
   # clipboard — copy/paste (3 tools, 80%)
   - clipboard.get_clipboard
   - clipboard.set_clipboard
@@ -407,4 +408,4 @@ orchestrator:
 # ~15 category meta-tools (~1,500 tokens) instead of all 67 tools (~8,670 tokens).
 # The model selects 2-3 categories, then subsequent turns use only those tools.
 # Saves ~7,170 tokens per turn and eliminates cross-server confusion.
-two_pass_tool_selection: true  # Enabled for live testing with LFM2-24B-A2B
+two_pass_tool_selection: true  # Active only when >30 tools registered; 21 curated tools use flat mode

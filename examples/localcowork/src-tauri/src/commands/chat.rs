@@ -11,7 +11,10 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::agent_core::permissions::{PermissionScope, PermissionStatus, PermissionStore};
-use crate::agent_core::response_analysis::{is_deflection_response, is_incomplete_response};
+// NOTE: response_analysis functions (is_incomplete_response, is_deflection_response)
+// remain in the codebase and are tested, but are no longer called from the agent loop.
+// They are available for the Orchestrator (ADR-009) or re-enablement via config.
+// Tests below still exercise them for regression coverage.
 use crate::agent_core::tokens::truncate_utf8;
 use crate::agent_core::tool_router::{generate_preview, is_destructive_action};
 use crate::agent_core::{AuditStatus, ConfirmationRequest, ConfirmationResponse};
@@ -47,7 +50,10 @@ enum ToolSelectionPhase {
 
 /// Minimum number of registered tools to activate two-pass mode.
 /// Below this threshold, flat mode is used regardless of config.
-const TWO_PASS_MIN_TOOLS: usize = 20;
+/// Set to 30 because category meta-tools confuse LFM2-24B-A2B at ≤21 tools
+/// (model responds with text instead of calling tools). Two-pass is only
+/// worthwhile at 67+ tools where it saves ~7k tokens/turn.
+const TWO_PASS_MIN_TOOLS: usize = 30;
 
 // ─── Response Types ─────────────────────────────────────────────────────────
 
@@ -173,13 +179,6 @@ const MAX_TOOL_ROUNDS: usize = 10;
 /// it's stuck (likely due to context confusion or timeout). We inject a
 /// summary prompt to force text output.
 const MAX_EMPTY_RETRIES: usize = 2;
-
-/// Maximum deflection retries before accepting the model's text response.
-///
-/// When the model deflects (FM-3: asks the user instead of calling a tool),
-/// we inject a continuation prompt. If the model deflects this many times in
-/// a row, it genuinely cannot proceed — let the response through.
-const MAX_DEFLECTION_RETRIES: usize = 3;
 
 /// Maximum consecutive rounds with ALL tool calls failing before injecting
 /// a corrective hint.
@@ -609,7 +608,8 @@ fn truncate_tool_result(result: &str, tool_name: &str) -> String {
 }
 
 // `is_incomplete_response` and `is_deflection_response` are now in
-// `agent_core::response_analysis` — imported at the top of this file.
+// `agent_core::response_analysis` — no longer called from the agent loop,
+// but still tested for regression coverage and available for the Orchestrator.
 
 /// Detect when a model's final text claims task completion but tool history
 /// disagrees — i.e., the model confabulated a summary.
@@ -617,8 +617,12 @@ fn truncate_tool_result(result: &str, tool_name: &str) -> String {
 /// This catches the pattern where the model says "I've successfully renamed
 /// all 9 files" but `move_file` never appeared in `tool_call_history`.
 ///
-/// Returns `true` when the response looks like a confabulated completion
-/// and the agent loop should inject a continuation prompt instead of exiting.
+/// Returns `true` when the response looks like a confabulated completion.
+///
+/// NOTE: Currently only used by tests. The agent loop no longer calls this
+/// (continuation heuristics were removed in favour of trusting the model).
+/// Retained for the Orchestrator (ADR-009) and regression test coverage.
+#[cfg(test)]
 fn has_unverified_completion(text: &str, tool_call_history: &[String]) -> bool {
     let lower = text.to_lowercase();
 
@@ -1179,6 +1183,7 @@ pub async fn start_session(
 pub async fn send_message(
     session_id: String,
     content: String,
+    working_directory: Option<String>,
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, Mutex<ConversationManager>>,
     mcp_state: tauri::State<'_, TokioMutex<McpClient>>,
@@ -1216,6 +1221,72 @@ pub async fn send_message(
         mgr.build_chat_messages(&session_id)
             .map_err(|e| format!("Failed to build messages: {e}"))?
     };
+
+    // 1b. Inject working directory context + file listing into the system message.
+    //     This is a per-request overlay — not persisted in the DB — so it
+    //     automatically reflects the user's current folder selection.
+    //     Including the actual file listing is a product-level optimization:
+    //     same pattern as Cowork's project indexing — the model sees concrete
+    //     file names without needing to call list_dir first.
+    const MAX_FOLDER_ENTRIES: usize = 50;
+
+    if let Some(ref dir) = working_directory {
+        let mut file_count: usize = 0;
+        if let Some(system_msg) = messages.first_mut() {
+            if system_msg.role == crate::inference::types::Role::System {
+                if let Some(ref mut content) = system_msg.content {
+                    let mut folder_ctx = format!("\n\nWORKING FOLDER: {dir}");
+
+                    // List directory contents (skip hidden files, cap at 50)
+                    if let Ok(entries) = std::fs::read_dir(dir) {
+                        let mut files: Vec<String> = entries
+                            .filter_map(|e| e.ok())
+                            .filter(|e| {
+                                !e.file_name()
+                                    .to_string_lossy()
+                                    .starts_with('.')
+                            })
+                            .map(|e| {
+                                let full_path =
+                                    e.path().to_string_lossy().into_owned();
+                                if e.path().is_dir() {
+                                    format!("- {full_path}/")
+                                } else {
+                                    format!("- {full_path}")
+                                }
+                            })
+                            .collect();
+                        files.sort();
+
+                        let total = files.len();
+                        file_count = total;
+                        if total > MAX_FOLDER_ENTRIES {
+                            files.truncate(MAX_FOLDER_ENTRIES);
+                            files.push(format!(
+                                "  (and {} more files...)",
+                                total - MAX_FOLDER_ENTRIES
+                            ));
+                        }
+                        if !files.is_empty() {
+                            folder_ctx.push_str("\nFiles in this folder:\n");
+                            folder_ctx.push_str(&files.join("\n"));
+                        }
+                    }
+
+                    folder_ctx.push_str(&format!(
+                        "\nWhen the user refers to files, use absolute paths \
+                         from this directory (e.g., {dir}/<filename>)."
+                    ));
+                    content.push_str(&folder_ctx);
+                }
+            }
+        }
+        tracing::info!(
+            working_directory = %dir,
+            file_count,
+            "injected working folder into system prompt"
+        );
+    }
 
     // 2. Create inference client and build merged tool list
     let cwd = std::env::current_dir().unwrap_or_default();
@@ -1351,7 +1422,6 @@ pub async fn send_message(
     // Skip entirely if the orchestrator already produced a response.
     if full_response.is_empty() {
 
-    let mut deflection_count: usize = 0;
     // Track (tool_name, arguments) pairs to detect duplicate calls
     let mut tool_call_signatures: Vec<(String, String)> = Vec::new();
     let mut consecutive_error_rounds: usize = 0;
@@ -1476,8 +1546,7 @@ pub async fn send_message(
 
             // Inject a nudge prompt instead of retrying with identical messages.
             // Retrying unchanged context causes the same stall. A new user message
-            // gives the model fresh input to work from — same pattern as the
-            // `is_incomplete_response` continuation at lines 841–870.
+            // gives the model fresh input to work from.
             let nudge = if tool_call_history.is_empty() {
                 "You returned an empty response. Please answer the user's question \
                  or call the appropriate tool now."
@@ -1509,118 +1578,24 @@ pub async fn send_message(
         // Reset empty counter on any successful response
         empty_response_count = 0;
 
-        // If model returned text and no tool calls, check if task is complete.
-        // A 20B local model often "fatigues" mid-task and emits a partial summary
-        // after processing 3-4 files out of 7+. If we detect the task is incomplete,
-        // inject an ephemeral continuation prompt to keep going.
+        // ── Text response (0 tool calls) — accept and exit ─────────
+        // When the model returns text without tool calls, it has decided
+        // the task is complete. Trust the model's judgment and exit.
         //
-        // EPHEMERAL: Neither the partial text nor the continuation prompt are
-        // persisted to the database. They exist only in the in-memory `messages`
-        // vec for the current LLM call. This prevents history pollution with
-        // "You stopped before finishing..." messages that accumulate across rounds.
+        // This is the same pattern as Claude Code: model produces text →
+        // loop ends. If the user wants more, they say "continue."
+        //
+        // Previously, heuristic detectors (is_incomplete_response,
+        // has_unverified_completion, is_deflection_response) would
+        // second-guess the model and inject continuation prompts. These
+        // caused more harm than good — a valid 324-char system info
+        // summary would trigger "FM-3 deflection" because it contained
+        // "let me know", causing the model to spiral into unnecessary
+        // tool calls and produce a worse answer.
+        //
+        // Multi-step tasks that need continuation belong in the
+        // Orchestrator (ADR-009), not in heuristic string-matching.
         if tool_calls_detected.is_empty() {
-            // Determine if the model should keep going, and which prompt to use.
-            let continuation_prompt: Option<&str> =
-                if round > 0 && is_incomplete_response(&round_text) {
-                    tracing::info!(
-                        round = round,
-                        text_len = round_text.len(),
-                        "model produced mid-task text — injecting ephemeral continuation"
-                    );
-                    Some(
-                        "You stopped before finishing. Continue processing the \
-                         remaining files. Call the next tool now.",
-                    )
-                } else if round > 0
-                    && has_unverified_completion(&round_text, &tool_call_history)
-                {
-                    // The model claims success (e.g., "all files renamed") but
-                    // tool history shows no mutable operations ever succeeded.
-                    // This is a confabulated summary — override the exit.
-                    tracing::warn!(
-                        session_id = %session_id,
-                        round = round,
-                        text_len = round_text.len(),
-                        tool_calls_total = tool_call_history.len(),
-                        "model confabulated completion — no mutable tools in history"
-                    );
-                    Some(
-                        "Your summary claims files were modified, but no \
-                         mutable tool calls (move_file, write_file, etc.) \
-                         succeeded. Do not summarize — continue processing. \
-                         Call the next tool now.",
-                    )
-                } else {
-                    None
-                };
-
-            if let Some(prompt) = continuation_prompt {
-                // Clear streamed partial text — the continuation will produce
-                // the real response.
-                let _ = app_handle.emit("stream-clear", ());
-
-                // Append the partial text as an assistant message (in-memory only)
-                messages.push(crate::inference::types::ChatMessage {
-                    role: crate::inference::types::Role::Assistant,
-                    content: Some(round_text),
-                    tool_call_id: None,
-                    tool_calls: None,
-                });
-
-                // Append continuation prompt (in-memory only — not persisted)
-                messages.push(crate::inference::types::ChatMessage {
-                    role: crate::inference::types::Role::User,
-                    content: Some(prompt.to_string()),
-                    tool_call_id: None,
-                    tool_calls: None,
-                });
-
-                continue;
-            }
-
-            // ── FM-3 deflection detection ─────────────────────────────
-            // The model returned text with 0 tool calls and it's NOT an
-            // incomplete-task signal. Check if it's conversational deflection:
-            // the model asks the user what to do instead of calling the next
-            // tool. If so, inject a task-aware continuation prompt.
-            //
-            // EPHEMERAL: same pattern as the incomplete-response handler above.
-            if is_deflection_response(&round_text, round, tool_call_history.len())
-                && deflection_count < MAX_DEFLECTION_RETRIES
-            {
-                deflection_count += 1;
-                tracing::info!(
-                    round = round,
-                    text_len = round_text.len(),
-                    tools_completed = tool_call_history.len(),
-                    deflection_count = deflection_count,
-                    "FM-3 deflection detected — injecting task continuation"
-                );
-                let _ = app_handle.emit("stream-clear", ());
-
-                // Append deflection as assistant message (in-memory only)
-                messages.push(crate::inference::types::ChatMessage {
-                    role: crate::inference::types::Role::Assistant,
-                    content: Some(round_text),
-                    tool_call_id: None,
-                    tool_calls: None,
-                });
-
-                // Inject task-aware continuation (in-memory only)
-                messages.push(crate::inference::types::ChatMessage {
-                    role: crate::inference::types::Role::User,
-                    content: Some(
-                        "Do not ask questions. Continue executing the task. \
-                         Call the next tool now to process the next item."
-                            .to_string(),
-                    ),
-                    tool_call_id: None,
-                    tool_calls: None,
-                });
-
-                continue;
-            }
-
             full_response.push_str(&round_text);
             break;
         }
@@ -2349,6 +2324,7 @@ pub async fn respond_to_confirmation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_core::response_analysis::is_incomplete_response;
 
     #[test]
     fn test_unwrap_tool_result_json_extracts_text() {

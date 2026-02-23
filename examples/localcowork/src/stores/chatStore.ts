@@ -15,6 +15,7 @@ import type {
   ConfirmationResponse,
   ContextBudget,
 } from "../types";
+import { useFileBrowserStore } from "./fileBrowserStore";
 
 // ─── Backend Response Types ─────────────────────────────────────────────────
 
@@ -159,10 +160,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
 
     try {
-      // Send message to backend — response will come via streaming events
+      // Send message to backend — response will come via streaming events.
+      // Include the current working directory so the model knows which folder
+      // the user is operating in (Cowork-style folder context).
+      const workingDirectory =
+        useFileBrowserStore.getState().workingDirectory;
       await invoke("send_message", {
         sessionId,
         content,
+        workingDirectory,
       });
     } catch (e) {
       set({

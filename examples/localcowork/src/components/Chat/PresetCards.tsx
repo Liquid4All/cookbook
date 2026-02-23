@@ -1,53 +1,73 @@
 /**
- * PresetCards — demo-aligned starter prompt cards shown on the empty chat state.
+ * PresetCards — starter prompt cards shown on the empty chat state.
  *
- * Each card maps to a verified demo workflow from `docs/demo/lfm2-24b-demo.md`.
- * Prompts use absolute paths resolved from the user's home directory at mount time.
+ * Each card fires a single tool call against a verified, real implementation:
+ * - Scan for leaked secrets   → security.scan_for_secrets (90%)
+ * - What's on my clipboard?   → clipboard.get_clipboard   (80%)
+ * - Tell me about my system   → system.get_system_info     (100%)
+ * - Find personal data         → security.scan_for_pii     (90%)
+ * - Organize my Downloads      → filesystem.list_dir       (80%)
+ *
+ * Security scan presets use `{cwd}` resolved from the file browser's
+ * **working directory**. When no working directory is set, clicking a
+ * scan card opens the native OS folder picker — pick a folder and the
+ * scan starts immediately. Nothing is uploaded or copied; the agent is
+ * just pointed at a local folder.
  *
  * Shows 3 randomly-selected cards at a time. A shuffle button re-randomizes.
- * Clicking a card fires `sendMessage` immediately with the resolved prompt.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import { useChatStore } from "../../stores/chatStore";
+import { useFileBrowserStore } from "../../stores/fileBrowserStore";
 
 interface Preset {
   readonly icon: string;
   readonly title: string;
   readonly description: string;
-  /** Prompt template — `{home}` is replaced with the user's home directory. */
+  /**
+   * Prompt template with placeholders:
+   * - `{home}` → user's home directory
+   * - `{cwd}`  → file browser's working directory
+   */
   readonly promptTemplate: string;
+  /** Whether this preset requires a working directory ({cwd}). */
+  readonly needsCwd: boolean;
 }
 
 const ALL_PRESETS: readonly Preset[] = [
   {
     icon: "\u{1F50D}",
     title: "Scan for leaked secrets",
-    description: "Find exposed API keys and passwords on your Desktop",
+    description: "Find exposed API keys and passwords",
     promptTemplate:
-      "Scan {home}/Desktop for any exposed API keys, passwords, or secrets",
+      "Scan {cwd} for any exposed API keys, passwords, or secrets",
+    needsCwd: true,
   },
   {
-    icon: "\u{1F4C4}",
-    title: "Compare two documents",
-    description: "Diff two files and summarize the changes",
-    promptTemplate:
-      "List the files in {home}/Documents and help me compare two of them",
+    icon: "\u{1F4CB}",
+    title: "What's on my clipboard?",
+    description: "Show the current contents of your system clipboard",
+    promptTemplate: "Show me what's currently on my clipboard",
+    needsCwd: false,
   },
   {
-    icon: "\u{1F4F8}",
-    title: "Capture my screen",
-    description: "Take a screenshot of what's on screen right now",
-    promptTemplate: "Take a screenshot of my screen",
+    icon: "\u{1F5A5}\uFE0F",
+    title: "Tell me about my system",
+    description: "Hardware, OS, memory, and disk usage at a glance",
+    promptTemplate:
+      "Show me my system information \u2014 hardware, OS, memory, and disk usage",
+    needsCwd: false,
   },
   {
     icon: "\u{1F6E1}\uFE0F",
     title: "Find personal data",
-    description: "Scan for SSNs, emails, and suggest a cleanup plan",
+    description: "Scan for SSNs, emails, and credit card numbers",
     promptTemplate:
-      "Scan {home}/Desktop for personal data like SSNs, credit card numbers, and emails, then suggest a cleanup plan",
+      "Scan {cwd} for personal data like SSNs, credit card numbers, and emails",
+    needsCwd: true,
   },
   {
     icon: "\u{1F4C2}",
@@ -55,6 +75,7 @@ const ALL_PRESETS: readonly Preset[] = [
     description: "List Downloads and suggest how to organize the files",
     promptTemplate:
       "List what's in {home}/Downloads and suggest how to organize it by file type",
+    needsCwd: false,
   },
 ] as const;
 
@@ -70,10 +91,29 @@ function pickRandom(total: number, count: number): readonly number[] {
   return indices.slice(0, count);
 }
 
+/**
+ * Open the native OS folder picker and return the selected path.
+ * Returns null if the user cancels or the plugin is unavailable.
+ */
+async function pickFolder(): Promise<string | null> {
+  try {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const selected = await open({ directory: true, multiple: false });
+    if (selected && typeof selected === "string") {
+      return selected;
+    }
+  } catch {
+    // Plugin unavailable — fall through
+  }
+  return null;
+}
+
 export function PresetCards(): React.JSX.Element {
   const sendMessage = useChatStore((s) => s.sendMessage);
   const isGenerating = useChatStore((s) => s.isGenerating);
   const sessionId = useChatStore((s) => s.sessionId);
+  const workingDir = useFileBrowserStore((s) => s.workingDirectory);
+  const setWorkingDir = useFileBrowserStore((s) => s.setWorkingDirectory);
 
   const [homeDir, setHomeDir] = useState<string>("");
   const [visibleIndices, setVisibleIndices] = useState<readonly number[]>(() =>
@@ -92,19 +132,41 @@ export function PresetCards(): React.JSX.Element {
     [visibleIndices],
   );
 
-  /** Replace `{home}` placeholder with the actual home directory. */
+  /** Replace `{home}` and `{cwd}` placeholders with resolved paths. */
   const resolvePrompt = useCallback(
-    (template: string): string => template.replaceAll("{home}", homeDir),
+    (template: string, cwd: string): string =>
+      template.replaceAll("{home}", homeDir).replaceAll("{cwd}", cwd),
     [homeDir],
   );
 
+  /** Handle clicking a preset card. */
   const handleClick = useCallback(
-    (template: string): void => {
-      if (!isGenerating && sessionId && homeDir) {
-        void sendMessage(resolvePrompt(template));
+    async (preset: Preset): Promise<void> => {
+      if (isGenerating || !sessionId || !homeDir) {
+        return;
       }
+
+      let cwd = workingDir;
+
+      // If the preset needs a working directory and none is set,
+      // open the native folder picker. If the user picks a folder,
+      // set it as working dir and immediately send the prompt.
+      if (preset.needsCwd && cwd == null) {
+        const picked = await pickFolder();
+        if (picked == null) {
+          return; // User cancelled the picker
+        }
+        setWorkingDir(picked);
+        cwd = picked;
+      }
+
+      if (preset.needsCwd && cwd == null) {
+        return;
+      }
+
+      void sendMessage(resolvePrompt(preset.promptTemplate, cwd ?? ""));
     },
-    [isGenerating, sessionId, homeDir, sendMessage, resolvePrompt],
+    [isGenerating, sessionId, homeDir, workingDir, setWorkingDir, sendMessage, resolvePrompt],
   );
 
   const handleShuffle = useCallback((): void => {
@@ -126,23 +188,35 @@ export function PresetCards(): React.JSX.Element {
         </button>
       </div>
       <div className="preset-card-list">
-        {visiblePresets.map((preset) => (
-          <button
-            key={preset.title}
-            className="preset-card"
-            disabled={isGenerating || !sessionId || !homeDir}
-            onClick={() => {
-              handleClick(preset.promptTemplate);
-            }}
-            type="button"
-          >
-            <span className="preset-card-icon">{preset.icon}</span>
-            <div className="preset-card-text">
-              <span className="preset-card-title">{preset.title}</span>
-              <span className="preset-card-desc">{preset.description}</span>
-            </div>
-          </button>
-        ))}
+        {visiblePresets.map((preset) => {
+          const needsDir = preset.needsCwd && workingDir == null;
+          return (
+            <button
+              key={preset.title}
+              className={`preset-card${needsDir ? " preset-card-needs-folder" : ""}`}
+              disabled={isGenerating || !sessionId || !homeDir}
+              onClick={() => {
+                void handleClick(preset);
+              }}
+              type="button"
+              title={
+                needsDir
+                  ? "Click to choose a folder, then scan starts automatically"
+                  : undefined
+              }
+            >
+              <span className="preset-card-icon">{preset.icon}</span>
+              <div className="preset-card-text">
+                <span className="preset-card-title">{preset.title}</span>
+                <span className="preset-card-desc">
+                  {needsDir
+                    ? "Choose a folder to scan"
+                    : preset.description}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

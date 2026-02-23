@@ -41,7 +41,7 @@ This directory documents what we learned across 5 models, 150+ benchmark scenari
 - Qwen3-30B-A3B (original) — replaced by Instruct-2507 variant
 - Qwen2.5-32B — dev proxy, too large for target hardware
 
-**Benchmark conditions:** 100 single-step prompts and 50 multi-step chains against all 67 tools (unfiltered), using the same test suite across all models. Tests run on Apple M4 Max (36 GB unified memory) via llama-server (LFM2) or Ollama (all others). Greedy sampling (temp=0) for all results unless noted. See [Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md) for detailed results.
+**Benchmark conditions:** 100 single-step prompts and 50 multi-step chains against all 67 tools (unfiltered), using the same test suite across all models. Tests run on Apple M4 Max (36 GB unified memory) via llama-server (LFM2) or Ollama (all others). Greedy sampling (temp=0) for all results unless noted. See [Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md) for detailed results. For instructions on running these benchmarks and viewing results, see [Benchmark Infrastructure](#benchmark-infrastructure) below.
 
 ### Quality benchmark (LFM2-24B-A2B vs Llama 3.2 3B)
 

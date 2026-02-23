@@ -1,17 +1,17 @@
-# LFM2-24B-A2B Demo: 20 Tools That Work Every Time
+# LFM2-24B-A2B Demo: 21 Tools That Work Every Time
 
-## Why 20 Tools?
+## Why 21 Tools?
 
 The full LocalCowork agent has 67 tools across 13 servers. LFM2-24B-A2B scored 80%
 single-step accuracy across all 67 — impressive for a local model. But for a live demo,
 80% means 1-in-5 wrong picks. That's fine in a human-in-the-loop agent (correction is
 sub-second), but it's not "works like a charm, every time."
 
-This curated set picks the **20 tools from 6 servers that score 80%+ individually and
+This curated set picks the **21 tools from 6 servers that score 80%+ individually and
 participate in passing multi-step chains**. These are the tools where LFM2 consistently
 dispatches correctly on the first try.
 
-## Tool Set (20 tools, 6 servers)
+## Tool Set (21 tools, 6 servers)
 
 | Server | Tools | Count | Accuracy |
 |--------|-------|-------|----------|
@@ -19,11 +19,38 @@ dispatches correctly on the first try.
 | **audit** | get_tool_log, generate_audit_report, export_audit_pdf | 3 | 100% |
 | **document** | extract_text, diff_documents, create_pdf, create_docx | 4 | 83% |
 | **filesystem** | list_dir, read_file, search_files | 3 | 80% |
-| **system** | take_screenshot, get_system_info | 2 | 80% |
+| **system** | take_screenshot, get_system_info, get_disk_usage | 3 | 80% |
 | **clipboard** | get_clipboard, set_clipboard, clipboard_history | 3 | 80% |
 
 **Config:** `_models/config.yaml` has `enabled_servers` (6 servers) and `enabled_tools`
-(20 tools). The app logs confirm: `running_servers=6 total_tools=20`.
+(21 tools). The app logs confirm: `running_servers=6 total_tools=21`.
+
+---
+
+## Working Folder Pattern (Claude Cowork Style)
+
+Security scan presets use the **working folder** — a directory the user selects in the
+file browser panel. This mirrors Claude Cowork's "project directory" pattern: the
+**product** provides context, not the model. A 20B local model doesn't reliably ask
+clarifying questions, so the app ensures the path is always provided.
+
+**How it works:**
+1. In the file browser (left panel), click the 📂 button on any folder to set it
+   as the working folder. A blue badge shows the active folder name.
+2. Security scan presets ("Scan for leaked secrets", "Find personal data") resolve
+   `{cwd}` to the working folder path. These presets are **disabled** until a
+   working folder is set.
+3. Non-path presets (clipboard, system info, Downloads) work without a working folder.
+
+**Demo setup:**
+1. Navigate to `tests/fixtures/uc3/sample_files` in the file browser
+2. Click the 📂 button next to `sample_files` to set it as working folder
+3. Click "Scan for leaked secrets" → sends full absolute path → model executes
+
+**Why this is reliable:**
+- The model always receives a complete absolute path — no guessing, no asking
+- Scanning an empty Desktop is impossible — the user must explicitly choose a folder
+- Works with any model size (no instruction-following requirements)
 
 ---
 
@@ -35,7 +62,7 @@ your machine — no secrets ever leave the device.
 
 | Step | Prompt | Expected Tool |
 |------|--------|---------------|
-| 1 | "Scan tests/fixtures/uc3/sample_files for exposed API keys" | `security.scan_for_secrets` |
+| 1 | Set working folder → click "Scan for leaked secrets" | `security.scan_for_secrets` |
 | 2 | "Show me the audit log of what you just did" | `audit.get_tool_log` |
 | 3 | "Generate an audit report" | `audit.generate_audit_report` |
 | 4 | "Export the report as a PDF" | `audit.export_audit_pdf` |
@@ -47,6 +74,7 @@ your machine — no secrets ever leave the device.
 ### Fallback prompts (if needed)
 
 - Step 1 alt: "Check this folder for leaked secrets and passwords: tests/fixtures/uc3/sample_files"
+- Step 1 direct: "Scan tests/fixtures/uc3/sample_files for exposed API keys" (skips interactive step)
 - Step 2 alt: "What tool calls were just made?"
 - Step 3 alt: "Create a summary report of the security findings"
 
@@ -109,7 +137,7 @@ folders. Scan for PII, find duplicates, get a cleanup plan, and encrypt the sens
 
 | Step | Prompt | Expected Tool |
 |------|--------|---------------|
-| 1 | "Scan tests/fixtures/uc3/sample_files for personal data like SSNs and emails" | `security.scan_for_pii` |
+| 1 | Set working folder → click "Find personal data" | `security.scan_for_pii` |
 | 2 | "Check for duplicate files in that folder" | `security.find_duplicates` |
 | 3 | "Suggest a cleanup plan for the findings" | `security.propose_cleanup` |
 | 4 | "Encrypt the file that contains SSN data" | `security.encrypt_file` |
@@ -120,7 +148,7 @@ folders. Scan for PII, find duplicates, get a cleanup plan, and encrypt the sens
 
 ### Fallback prompts
 
-- Step 1 alt: "Find files containing social security numbers in tests/fixtures/uc3/sample_files"
+- Step 1 alt: "Find files containing social security numbers in tests/fixtures/uc3/sample_files" (skips interactive step)
 - Step 4 alt: "Encrypt tests/fixtures/uc3/sample_files/has_ssn.txt"
 
 ---
@@ -168,8 +196,8 @@ tail -f ~/Library/Application\ Support/com.localcowork.app/agent.log
 **Verify in logs:**
 ```
 filtered MCP servers by enabled_servers allowlist before=15 after=6
-filtered tool registry by enabled_tools allowlist before=40 after=20
-MCP client initialized running_servers=6 total_tools=20
+filtered tool registry by enabled_tools allowlist before=40 after=21
+MCP client initialized running_servers=6 total_tools=21
 ```
 
 ### Recommended Demo Order
@@ -205,7 +233,7 @@ MCP client initialized running_servers=6 total_tools=20
 # Full 67-tool benchmark (blog numbers)
 npx tsx tests/model-behavior/benchmark-lfm.ts --greedy --endpoint http://localhost:8080
 
-# Focused 20-tool benchmark (demo set)
+# Focused 21-tool benchmark (demo set)
 ./scripts/benchmark-demo.sh --endpoint http://localhost:8080
 
 # Results in tests/model-behavior/.results/
