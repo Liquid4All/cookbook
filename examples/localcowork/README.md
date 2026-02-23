@@ -123,7 +123,7 @@ git clone <repo-url> && cd localCoWork
 pip install huggingface-hub
 python3 -c "
 from huggingface_hub import hf_hub_download
-hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',
+hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview-GGUF',
                 'LFM2-24B-A2B-Preview-Q4_K_M.gguf',
                 local_dir='$HOME/Projects/_models/')
 "
