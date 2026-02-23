@@ -8,23 +8,20 @@ Non-destructive: no confirmation required.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
+from mcp_base import ErrorCodes, MCPError, MCPResult, MCPTool
 from pydantic import BaseModel, Field
-
-from mcp_base import MCPError, MCPResult, MCPTool, ErrorCodes
 from validation import assert_absolute_path, assert_sandboxed
 
 from patterns import (
     ALLOWED_PII_TYPES,
-    Finding,
     PII_PATTERNS,
-    is_binary_file,
+    Finding,
     luhn_check,
     mask_sensitive_value,
+    safe_collect_files,
 )
-
 
 # ─── Params / Result Models ────────────────────────────────────────────────
 
@@ -68,8 +65,8 @@ class ScanForPii(MCPTool[Params, Result]):
         # Determine which PII types to scan for
         scan_types = _resolve_scan_types(params.types)
 
-        # Collect files to scan
-        files = _collect_files(target)
+        # Collect files to scan (with safe limits on depth/count/dir exclusions)
+        files = safe_collect_files(target)
 
         # Scan each file
         findings: list[Finding] = []
@@ -94,22 +91,6 @@ def _resolve_scan_types(types: list[str] | None) -> set[str]:
         if normalized in ALLOWED_PII_TYPES:
             resolved.add(normalized)
     return resolved if resolved else set(ALLOWED_PII_TYPES)
-
-
-def _collect_files(target: Path) -> list[Path]:
-    """Collect scannable files from a path (file or directory)."""
-    if target.is_file():
-        if is_binary_file(str(target)):
-            return []
-        return [target]
-
-    files: list[Path] = []
-    for root, _dirs, filenames in os.walk(str(target)):
-        for fname in filenames:
-            full_path = Path(root) / fname
-            if not is_binary_file(str(full_path)):
-                files.append(full_path)
-    return files
 
 
 def _scan_file_for_pii(file_path: Path, scan_types: set[str]) -> list[Finding]:

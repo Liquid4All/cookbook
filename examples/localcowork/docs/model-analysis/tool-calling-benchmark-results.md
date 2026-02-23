@@ -19,8 +19,9 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 - **Hardware:** Apple M4 Max, 36 GB unified memory, 32 GPU cores
 - **Test suite:** 100 single-step tool selection prompts, 50 multi-step chains (3-6 steps each), 67 tools across 13 MCP servers
 - **Eval dataset:** Custom domain-specific benchmark for LocalCowork's MCP tool set — not a standard benchmark (e.g., BFCL). Test definitions in `tests/model-behavior/tool-selection/` and `tests/model-behavior/multi-step-chains-*.ts`.
-- **Inference parameters:** Temperature 0.1, top_p 0.1, top_k 50, repetition_penalty 1.05, max_tokens 512
-- **Sampling note:** Parameters are near-greedy but not fully deterministic (temp=0 would be greedy). Single run per model, N=100 for single-step, N=50 for multi-step. Results may vary slightly across runs.
+- **Inference parameters (original — near-greedy):** Temperature 0.1, top_p 0.1, top_k 50, repetition_penalty 1.05, max_tokens 512
+- **Inference parameters (re-run — greedy):** Temperature 0, top_p 1.0, top_k 0, repetition_penalty 1.0, max_tokens 512
+- **Sampling note:** The original run used near-greedy parameters. The greedy re-run (see below) uses fully deterministic sampling (temp=0) as recommended by Liquid AI's head of post-training. Single run per model, N=100 for single-step, N=50 for multi-step.
 - **Tool format:** LFM2 uses bracket format `[server.tool(args)]`; Ollama models use native JSON function calling
 - **Qwen3 32B note:** 40/100 single-step tests completed before benchmark was stopped due to extreme latency. Results extrapolated proportionally; multi-step not tested.
 - **Qwen3-30B-A3B note:** Ollama ships the **original Qwen3-30B-A3B release** (with `<think>` mode), not the later `-Instruct-2507` variant which specifically improved tool calling and removed `<think>` block generation. The 51% no-tool-call rate is largely from `<think>` blocks consuming the response budget.
@@ -28,14 +29,30 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 
 ### Model IDs and Quantization
 
+**Tier 1 — Desktop-class (13-27 GB VRAM):**
+
 | Model | HuggingFace ID | Ollama Tag | Runtime | Quantization |
 |-------|---------------|-----------|---------|-------------|
 | LFM2-24B-A2B | `LiquidAI/LFM2-24B-A2B-Preview` | N/A | llama-server | Q4_K_M (GGUF) |
 | Mistral-Small-24B | `mistralai/Mistral-Small-24B-Instruct-2501` | `mistral-small:24b` | Ollama | Q4_K_M |
 | Gemma 3 27B | `google/gemma-3-27b-it` | `gemma3:27b` | Ollama | Q4_K_M |
-| Qwen3 32B | `Qwen/Qwen3-32B` | `qwen3:32b` | Ollama | Q4_K_M |
 | GPT-OSS-20B | `openai/gpt-oss-20b` | `gpt-oss:20b` | Ollama | MXFP4 (native, ~4.25 bits/param) |
-| Qwen3-30B-A3B | `Qwen/Qwen3-30B-A3B` | `qwen3:30b-a3b` | Ollama | Q4_K_M |
+| Qwen3-30B-A3B-Instruct-2507 | `Qwen/Qwen3-30B-A3B-Instruct-2507` | `qwen3:30b-a3b-instruct-2507-q4_K_M` | Ollama | Q4_K_M |
+
+**Tier 2 — Small model class (2-4 GB VRAM):**
+
+| Model | HuggingFace ID | Ollama Tag | Runtime | Quantization |
+|-------|---------------|-----------|---------|-------------|
+| Llama 3.2 3B | `meta-llama/Llama-3.2-3B-Instruct` | `llama3.2:3b` | Ollama | Q4_K_M |
+| Phi-4-mini | `microsoft/phi-4-mini` | `phi4-mini` | Ollama | Q4_K_M |
+| Qwen3-4B | `Qwen/Qwen3-4B` | `qwen3:4b` | Ollama | Q4_K_M |
+
+**Dropped from greedy re-run:**
+
+| Model | HuggingFace ID | Ollama Tag | Reason |
+|-------|---------------|-----------|--------|
+| Qwen3 32B | `Qwen/Qwen3-32B` | `qwen3:32b` | Only had partial run (40/100 tests), extreme latency (~28s/query) |
+| Qwen3-30B-A3B (original) | `Qwen/Qwen3-30B-A3B` | `qwen3:30b-a3b` | Replaced by Instruct-2507 variant |
 
 ---
 
@@ -282,7 +299,7 @@ GPT-OSS-20B (MoE, ~3.6B active, native OpenAI function calling) scores 51% — b
 
 ---
 
-## Summary Table
+## Summary Table (Near-Greedy — Original Run)
 
 | Metric | LFM2-24B-A2B | Mistral-Small-24B | Gemma 3 27B | GPT-OSS-20B | Qwen3-30B-A3B | Qwen3 32B |
 |--------|-------------|-------------------|-------------|-------------|---------------|-----------|
@@ -296,7 +313,118 @@ GPT-OSS-20B (MoE, ~3.6B active, native OpenAI function calling) scores 51% — b
 | Interactive on MacBook | **Yes** | Borderline | No | No | No | No |
 | Accuracy per active B | **40%/B** | 3.5%/B | 3.4%/B | 14.2%/B | 14.7%/B | ~2.2%/B |
 
-*Qwen3 32B: 40/100 tests completed; extrapolated.
+*Qwen3 32B: 40/100 tests completed; extrapolated. Dropped from greedy re-run.
+
+---
+
+## Greedy Sampling Re-Run
+
+Greedy sampling (temperature=0, top_p=1.0, top_k=0, repetition_penalty=1.0) was recommended by Liquid AI's head of post-training to eliminate variance from near-greedy sampling. All benchmarks below use `--greedy` flag.
+
+**Changes from original lineup:**
+- **Replaced** Qwen3-30B-A3B (original) with **Qwen3-30B-A3B-Instruct-2507** — removes `<think>` mode that caused 51% no-tool-call rate
+- **Dropped** Qwen3 32B — was only a partial run (40/100 tests)
+- **Added** 3 Tier 2 small models for active-parameter-class comparison (CEO request)
+
+### Tier 1: Greedy vs Near-Greedy Comparison
+
+| Model | Single-step (near-greedy) | Single-step (greedy) | Δ | Multi-step (near-greedy) | Multi-step (greedy) | Δ |
+|-------|--------------------------|---------------------|---|-------------------------|--------------------|----|
+| LFM2-24B-A2B | 80% | 80% | 0pp | 26% | 26% | 0pp |
+| Mistral-Small-24B | 85% | 85% | 0pp | 66% | 66% | 0pp |
+| Gemma 3 27B | 91% | 91% | 0pp | 48% | 48% | 0pp |
+| GPT-OSS-20B | 51% | 51% | 0pp | 0% | 0% | 0pp |
+| Qwen3-30B-A3B-Instruct-2507 | N/A (new model) | 71% | | N/A | 42% | |
+
+**Finding:** All five Tier 1 models produce identical results under greedy vs near-greedy sampling (0pp delta across all models and both benchmarks). This confirms the near-greedy config (temp=0.1) was already fully deterministic for N=100 single-run benchmarks.
+
+### Tier 2: Small Model Active-Parameter Comparison (Greedy Only)
+
+These models match LFM2-24B-A2B's ~2B active compute budget. Tests whether hybrid MoE architecture outperforms dense models at similar per-token cost.
+
+| Model | Total Params | Active Params | Architecture | Single-step | Multi-step | Avg Latency | VRAM | Tool Call Rate |
+|-------|-------------|--------------|-------------|-------------|-----------|-------------|------|---------------|
+| **Llama 3.2 3B** | 3B | 3B | Dense | **82%** | **52%** | **305ms** | ~2.0 GB | 96% |
+| Phi-4-mini (3.8B) | 3.8B | 3.8B | Dense | 60% | 14% | 549ms | ~2.5 GB | 94% |
+| Qwen3-4B | 4B | 4B | Dense | 20% | 0% | 5,837ms | ~2.5 GB | 21% |
+| **LFM2-24B-A2B** | **24B** | **~2B (MoE)** | **Hybrid MoE** | **80%** | **26%** | **390ms** | **~14.5 GB** | **94%** |
+
+### Greedy Results — Full Single-Step Table
+
+| Model | Architecture | Active Params | Accuracy | Avg Latency | Memory (GPU) | Tool Call Rate | Wrong Tool Rate |
+|-------|-------------|--------------|----------|-------------|-------------|---------------|----------------|
+| **Gemma 3 27B** | Dense transformer | 27B | **91%** | 21,464ms | 19 GB | 99% | 8% |
+| Mistral-Small-24B | Dense transformer | 24B | 85% | 1,425ms | 14 GB | 97% | 12% |
+| Llama 3.2 3B | Dense transformer | 3B | 82% | 305ms | ~2.0 GB | 96% | 14% |
+| LFM2-24B-A2B | Hybrid MoE (conv+attn) | ~2B | 80% | 390ms | ~14.5 GB | 94% | 14% |
+| Qwen3-30B-A3B-Instruct-2507 | MoE transformer | ~3B | 71% | 610ms | 19 GB | 97% | 26% |
+| Phi-4-mini | Dense transformer | 3.8B | 60% | 549ms | ~2.5 GB | 94% | 34% |
+| GPT-OSS-20B | MoE transformer | ~3.6B | 51% | 2,221ms | 14 GB | 92% | 41% |
+| Qwen3-4B | Dense transformer | 4B | 20% | 5,837ms | ~2.5 GB | 21% | 1% |
+
+### Greedy Results — Full Multi-Step Table
+
+| Model | Chain Completion | Step Completion | Avg Steps/Chain | Chains Passed |
+|-------|-----------------|----------------|-----------------|---------------|
+| **Mistral-Small-24B** | **66%** | 74% | 3.3 | 33/50 |
+| Llama 3.2 3B | 52% | 61% | 2.7 | 26/50 |
+| Gemma 3 27B | 48% | 57% | 2.5 | 24/50 |
+| Qwen3-30B-A3B-Instruct-2507 | 42% | 50% | 2.2 | 21/50 |
+| LFM2-24B-A2B | 26% | 31% | 1.4 | 13/50 |
+| Phi-4-mini | 14% | 34% | 1.5 | 7/50 |
+| GPT-OSS-20B | 0% | 0% | 0.0 | 0/50 |
+| Qwen3-4B | 0% | 5% | 0.2 | 0/50 |
+
+---
+
+## Experiment: Prompt Optimization + RAG Pre-Filter (Stashed)
+
+> **Status:** Code stashed (`git stash@{0}`), not merged. Results documented here for reference.
+
+We tested whether prompt engineering and RAG pre-filtering could improve LFM2-24B-A2B accuracy. Three optimizations were applied simultaneously:
+
+1. **System prompt strengthening** — expanded from 4/5 rules to 8/9 rules, added 3 few-shot examples targeting top failure patterns (list_dir fallback, data-server deflection, overdue-task confusion)
+2. **Tool description sharpening** — 13 descriptions rewritten with contrastive negative guidance ("Do NOT use X — use Y instead") targeting 3 confusion clusters
+3. **RAG pre-filtering for multi-step** — wired `--top-k 15` per-step filtering into the multi-step runner using the existing shared embedding infrastructure
+
+### Results (LFM2-24B-A2B, greedy sampling)
+
+| Benchmark | Baseline | Post-Optimization | Delta |
+|-----------|----------|-------------------|-------|
+| Single-step (all 67 tools) | **80%** | 77% | **-3pp** |
+| Multi-step (all 67 tools) | **26%** | 24% | -2pp |
+| Multi-step (`--top-k 15`) | n/a | **34%** | +8pp vs baseline |
+
+### Multi-step with `--top-k 15` breakdown
+
+| Difficulty | Baseline (no filter) | Post-Opt (no filter) | Post-Opt (K=15) |
+|------------|---------------------|---------------------|-----------------|
+| Easy (15) | 60% | 60% | 53% |
+| Medium (20) | 10% | 10% | 30% |
+| Hard (15) | 7% | 7% | 20% |
+
+Filter metrics: 84% hit rate (102/121 steps), 15.0 avg tools/step, 19 filter misses.
+
+### Key findings
+
+1. **Prompt-only changes didn't help** — the strengthened system prompt and sharpened descriptions had no measurable impact on multi-step (26% → 24%, within noise) and slightly hurt single-step (80% → 77%). The additional few-shot examples may have introduced new confusions while fixing targeted ones.
+
+2. **RAG pre-filtering works but has a ceiling** — reducing 67 → 15 tools per step improved multi-step from 24% → 34% (+10pp). Medium chains saw the biggest gain (10% → 30%). But the 84% filter hit rate means 16% of steps are guaranteed failures regardless of model quality.
+
+3. **Single-step regression is concerning** — 3 new wrong-tool failures appeared that weren't in the baseline. The contrastive descriptions ("Do NOT use X") may confuse MoE routing by increasing attention to the wrong tool.
+
+4. **Deflection remains stubborn** — 20-24% deflection rate across all configurations. Prompt-level anti-deflection rules didn't reduce it. The model's tendency to ask clarifying questions instead of calling tools is a deeper behavioral pattern.
+
+### Why stashed
+
+- Net negative on single-step accuracy (-3pp) — the most important metric for production
+- Multi-step gains (+8pp with filtering) fall far short of the 45-55% target
+- Prompt-level fixes can't overcome fundamental tool cognitive overload
+- The architectural fix (dual-model orchestrator, M1/M2 interventions) is the right path forward
+
+### Lesson learned
+
+Benchmark-level prompt engineering is not the lever for LFM2-24B-A2B accuracy improvement. The model's 26% multi-step ceiling is an architectural problem (too many tools, MoE routing limitations, context dilution) that requires structural solutions: the dual-model orchestrator for multi-step, and fine-tuning or model selection for single-step.
 
 ---
 
@@ -305,10 +433,28 @@ GPT-OSS-20B (MoE, ~3.6B active, native OpenAI function calling) scores 51% — b
 - **Single-step runner:** `tests/model-behavior/benchmark-lfm.ts`
 - **Multi-step runner:** `tests/model-behavior/benchmark-multi-step.ts`
 - **Results (JSON):** `tests/model-behavior/.results/`
+
+**Near-greedy run (original):**
   - LFM2-24B-A2B: `lfm-unfiltered-k0-1771567058836.json`, `lfm-multistep-all-1771567127881.json`
   - Mistral-Small-24B: `lfm-unfiltered-k0-1771547409737.json`, `lfm-multistep-all-1771547680720.json`
   - Gemma 3 27B: `lfm-unfiltered-k0-1771550120786.json`, `lfm-multistep-all-1771564213834.json`
   - GPT-OSS-20B: `lfm-unfiltered-k0-1771567704182.json`, `lfm-multistep-all-1771567828367.json`
   - Qwen3-30B-A3B: `lfm-unfiltered-k0-1771568436811.json`, `lfm-multistep-all-1771568941941.json`
   - Qwen3 32B: Partial run (40 tests captured in transcript, no JSON file)
+
+**Greedy re-run:**
+  - Mistral-Small-24B: `lfm-unfiltered-k0-1771613037719.json`, `lfm-multistep-all-1771613286797.json`
+  - GPT-OSS-20B: `lfm-unfiltered-k0-1771613522386.json`, `lfm-multistep-all-1771613649881.json`
+  - Qwen3-30B-A3B-Instruct-2507: `lfm-unfiltered-k0-1771612796614.json`, `lfm-multistep-all-1771612882476.json`
+  - Llama 3.2 3B: `lfm-unfiltered-k0-1771612666277.json`, `lfm-multistep-all-1771612721761.json`
+  - Phi-4-mini: `lfm-unfiltered-k0-1771612565716.json`, `lfm-multistep-all-1771612623842.json`
+  - Qwen3-4B: `lfm-unfiltered-k0-1771612139331.json`, `lfm-multistep-all-1771612493546.json`
+  - LFM2-24B-A2B: `lfm-unfiltered-k0-1771625543192.json`, `lfm-multistep-all-1771625704065.json`
+  - Gemma 3 27B: `lfm-unfiltered-k0-1771622888382.json`, `lfm-multistep-all-1771623851751.json`
+
+**Post-optimization experiment (stashed):**
+  - LFM2-24B-A2B single-step: `lfm-unfiltered-k0-1771648679219.json`
+  - LFM2-24B-A2B multi-step (no filter): `lfm-multistep-all-1771648749381.json`
+  - LFM2-24B-A2B multi-step (K=15): `lfm-multistep-all-1771648926635.json`
+
 - **Model config:** `_models/config.yaml`

@@ -31,6 +31,25 @@ const MESSAGE_OVERHEAD_TOKENS: u32 = 4;
 /// Overhead for tool call JSON structure (per call).
 const TOOL_CALL_OVERHEAD_TOKENS: u32 = 10;
 
+// ─── UTF-8 Safe Truncation ──────────────────────────────────────────────────
+
+/// Truncate a string to at most `max_bytes` bytes on a valid UTF-8 char boundary.
+///
+/// Returns a `&str` that is always valid UTF-8 and at most `max_bytes` long.
+/// If the byte at `max_bytes` is inside a multi-byte character, the slice is
+/// shortened to the preceding character boundary.
+pub(crate) fn truncate_utf8(s: &str, max_bytes: usize) -> &str {
+    if s.len() <= max_bytes {
+        return s;
+    }
+    // Walk backward to find a valid char boundary
+    let mut end = max_bytes;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    &s[..end]
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /// Estimate the token count for a string of natural language text.
@@ -112,7 +131,7 @@ pub fn summarize_tool_result(tool_name: &str, result: &serde_json::Value) -> Str
         format!("[{tool_name} returned: {result_str}]")
     } else {
         // Summarize to one line
-        let preview = &result_str[..result_str.len().min(100)];
+        let preview = truncate_utf8(&result_str, 100);
         format!(
             "[{tool_name} returned ~{token_count} tokens: {preview}...]"
         )
@@ -126,17 +145,17 @@ pub fn summarize_turn(role: &Role, content: Option<&str>) -> String {
     match role {
         Role::User => {
             let text = content.unwrap_or("[empty]");
-            let preview = &text[..text.len().min(80)];
+            let preview = truncate_utf8(text, 80);
             format!("User: {preview}")
         }
         Role::Assistant => {
             let text = content.unwrap_or("[tool calls]");
-            let preview = &text[..text.len().min(80)];
+            let preview = truncate_utf8(text, 80);
             format!("Assistant: {preview}")
         }
         Role::Tool => {
             let text = content.unwrap_or("[result]");
-            let preview = &text[..text.len().min(60)];
+            let preview = truncate_utf8(text, 60);
             format!("Tool result: {preview}")
         }
         Role::System => "System prompt".to_string(),
@@ -234,5 +253,39 @@ mod tests {
     fn test_summarize_turn_assistant_none() {
         let summary = summarize_turn(&Role::Assistant, None);
         assert_eq!(summary, "Assistant: [tool calls]");
+    }
+
+    #[test]
+    fn test_truncate_utf8_ascii() {
+        assert_eq!(truncate_utf8("hello world", 5), "hello");
+    }
+
+    #[test]
+    fn test_truncate_utf8_within_multibyte() {
+        // '═' is U+2550, encoded as 3 bytes: 0xE2, 0x95, 0x90
+        let text = "═══"; // 9 bytes total
+        // Cutting at byte 4 lands inside the second '═' (bytes 3..6)
+        assert_eq!(truncate_utf8(text, 4), "═");
+        // Cutting at byte 6 is exactly at a boundary
+        assert_eq!(truncate_utf8(text, 6), "══");
+    }
+
+    #[test]
+    fn test_truncate_utf8_no_truncation_needed() {
+        assert_eq!(truncate_utf8("short", 100), "short");
+    }
+
+    #[test]
+    fn test_summarize_tool_result_unicode_no_panic() {
+        // Reproduces the crash: audit report with box-drawing chars
+        let report = format!(
+            "{}{}",
+            "═".repeat(50),
+            "AUDIT REPORT — Session test-session"
+        );
+        let result = serde_json::json!({"report": report});
+        // This must NOT panic
+        let summary = summarize_tool_result("audit.generate_audit_report", &result);
+        assert!(summary.contains("audit.generate_audit_report"));
     }
 }

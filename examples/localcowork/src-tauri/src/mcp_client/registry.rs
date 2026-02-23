@@ -123,6 +123,21 @@ impl ToolRegistry {
             .count()
     }
 
+    /// Retain only tools whose fully-qualified names appear in the allowlist.
+    ///
+    /// Removes all tools not in the set. Used by `enabled_tools` config to
+    /// curate a tight, high-accuracy tool surface for specific deployments.
+    pub fn retain_tools(&mut self, allowed: &std::collections::HashSet<String>) {
+        let before = self.tools.len();
+        self.tools.retain(|name, _| allowed.contains(name));
+        let after = self.tools.len();
+        tracing::info!(
+            before,
+            after,
+            "filtered tool registry by enabled_tools allowlist"
+        );
+    }
+
     /// Return all unique server names.
     pub fn server_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self

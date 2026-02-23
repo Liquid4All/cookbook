@@ -55,8 +55,10 @@ pub fn is_incomplete_response(text: &str) -> bool {
 /// where the model received tool results but responds with a question or
 /// narration instead of calling the next tool.
 ///
-/// Two detection layers:
-/// - **Layer A**: Explicit deflection/narration phrases (15 patterns).
+/// Three detection layers:
+/// - **Result presentation guard**: text presenting tool results without
+///   a question is NOT deflection (e.g., "Here are the files in your folder").
+/// - **Layer A**: Explicit deflection phrases — model asks user instead of acting.
 /// - **Layer B**: Short-question heuristic for novel formulations.
 ///
 /// Gated on `round > 0 AND tool_call_count > 0` so that round-0 text
@@ -72,9 +74,9 @@ pub fn is_deflection_response(text: &str, round: usize, tool_call_count: usize) 
         return false;
     }
 
-    // After 5+ successful tool calls, the model has done real work.
-    // Its text response is a summary, not a deflection. Let it through.
-    if tool_call_count >= 5 {
+    // Trust gate: after 3+ tool calls the model has done meaningful work.
+    // Its text response is a summary or answer, not a deflection.
+    if tool_call_count >= 3 {
         return false;
     }
 
@@ -82,6 +84,13 @@ pub fn is_deflection_response(text: &str, round: usize, tool_call_count: usize) 
 
     // If the response is a genuine completion summary, don't flag it
     if is_completion_summary(&lower) {
+        return false;
+    }
+
+    // Result presentation guard: if the model is presenting tool results
+    // (file listings, scan findings, data summaries) WITHOUT asking a
+    // question or deferring to the user, this is expected behavior.
+    if is_presenting_results(&lower) && !text.contains('?') && !has_deferral(&lower) {
         return false;
     }
 
@@ -110,14 +119,14 @@ pub fn is_deflection_response(text: &str, round: usize, tool_call_count: usize) 
         }
     }
 
-    // Layer A extension: Narration patterns — model describes what it sees
+    // Layer A extension: Pure narration with no substance — model describes
+    // what it sees without presenting actionable results. Patterns that
+    // present results ("i found the following", "here are the files") are
+    // handled by the result-presentation guard above, not here.
     let narration_patterns = [
         "i see the files",
         "i see the following",
-        "i found the following",
         "i notice",
-        "here are the files",
-        "i can see",
     ];
 
     for pattern in &narration_patterns {
@@ -131,6 +140,69 @@ pub fn is_deflection_response(text: &str, round: usize, tool_call_count: usize) 
     // already executed tools, the model is likely asking instead of acting.
     if text.len() < 300 && text.contains('?') {
         return true;
+    }
+
+    false
+}
+
+/// Check if text contains deferral phrases that hand control back to the user.
+///
+/// These phrases indicate the model is waiting for instructions rather than
+/// proceeding autonomously. Used alongside the result-presentation guard
+/// to catch "I found X files. Let me know which ones you want." patterns.
+fn has_deferral(lower: &str) -> bool {
+    let deferral_phrases = [
+        "let me know",
+        "please let me know",
+        "would you like",
+        "shall i",
+        "do you want",
+        "which one",
+        "which files",
+        "which of",
+    ];
+
+    for phrase in &deferral_phrases {
+        if lower.contains(phrase) {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Check if a model's text is presenting tool results to the user.
+///
+/// This distinguishes "Here are the files in your Downloads folder: ..."
+/// (presenting results — correct behavior) from "I see files on your Desktop.
+/// What would you like me to do?" (deflection — incorrect).
+///
+/// Called by [`is_deflection_response`] to guard against false positives when
+/// the model is doing exactly what the user asked: calling a tool and
+/// reporting the results.
+fn is_presenting_results(lower: &str) -> bool {
+    let result_patterns = [
+        "here is",          // "Here is what I found"
+        "here are",         // "Here are the files"
+        "here's what",      // "Here's what the scan found"
+        "i found",          // "I found 5 files"
+        "the scan found",   // "The scan found 2 secrets"
+        "the scan shows",   // "The scan shows no issues"
+        "the results",      // "The results show"
+        "contains",         // "The folder contains"
+        "total of",         // "A total of 12 files"
+        "no files",         // "No files found"
+        "no results",       // "No results"
+        "the folder is",    // "The folder is empty"
+        "the directory",    // "The directory contains"
+        "found in",         // "Found in the folder"
+        "listed below",     // "Files listed below"
+    ];
+
+    for p in &result_patterns {
+        if lower.contains(p) {
+            return true;
+        }
     }
 
     false
@@ -178,12 +250,14 @@ mod tests {
 
     #[test]
     fn deflection_question_after_tool() {
+        // Model asks the user what to do — clear deflection
         let text = "I see the files on your Desktop. How would you like me to process them?";
         assert!(is_deflection_response(text, 1, 1));
     }
 
     #[test]
-    fn deflection_narration_after_tool() {
+    fn deflection_narration_with_question() {
+        // Narration + question = deflection (the "?" makes it past result guard)
         let text = "I found the following files in your Downloads folder. \
                     Let me know which ones you'd like to rename.";
         assert!(is_deflection_response(text, 1, 1));
@@ -227,6 +301,64 @@ mod tests {
                     2. Schedule a follow-up with the design team. \
                     3. Review the updated budget spreadsheet and send comments.";
         assert!(!is_deflection_response(text, 1, 1));
+    }
+
+    // ── Result presentation — NOT deflection ─────────────────────────
+
+    #[test]
+    fn no_deflection_when_presenting_file_listing() {
+        // This is exactly the Test 1 scenario: model lists files after list_dir
+        let text = "Here are the files in your Downloads folder: \
+                    DEMO CARD styles.png, benchmark_results.csv, \
+                    Liquid AI Notes.pdf, and 12 others.";
+        assert!(!is_deflection_response(text, 1, 1));
+    }
+
+    #[test]
+    fn no_deflection_when_reporting_scan_results() {
+        // Model reports scan findings without asking a question
+        let text = "The scan found 2 files containing secrets: \
+                    .env (AWS key), config.yaml (API token).";
+        assert!(!is_deflection_response(text, 1, 1));
+    }
+
+    #[test]
+    fn no_deflection_when_folder_empty() {
+        let text = "No files were found matching your criteria in the folder.";
+        assert!(!is_deflection_response(text, 1, 1));
+    }
+
+    #[test]
+    fn no_deflection_here_is_what_i_found() {
+        let text = "Here is what I found in your Documents folder: 3 PDF files, \
+                    2 spreadsheets, and 1 text file containing notes.";
+        assert!(!is_deflection_response(text, 1, 1));
+    }
+
+    #[test]
+    fn deflection_result_plus_question() {
+        // Presenting results BUT also asking a question — still deflection
+        let text = "I found 5 files. Which ones should I process?";
+        assert!(is_deflection_response(text, 1, 1));
+    }
+
+    // ── Trust gate tests ─────────────────────────────────────────────
+
+    #[test]
+    fn no_deflection_after_three_tool_calls() {
+        // After 3+ tool calls, model has done real work — trust it
+        let text = "I found the following text in your screenshots: ...";
+        assert!(!is_deflection_response(text, 4, 3));
+        assert!(!is_deflection_response(text, 8, 5));
+        assert!(!is_deflection_response(text, 14, 13));
+    }
+
+    #[test]
+    fn deflection_still_fires_with_few_tool_calls() {
+        // With 1-2 tool calls, deflection detection still active for questions
+        let text = "I found the following files. Which ones should I process?";
+        assert!(is_deflection_response(text, 1, 1));
+        assert!(is_deflection_response(text, 2, 2));
     }
 
     // ── is_incomplete_response tests ──────────────────────────────────
@@ -276,21 +408,29 @@ mod tests {
         assert!(!is_completion_summary("i see the files on your desktop"));
     }
 
-    // ── Deflection trust gate tests ──────────────────────────────────
+    // ── is_presenting_results tests ──────────────────────────────────
 
     #[test]
-    fn no_deflection_after_many_tool_calls() {
-        // After 5+ tool calls, the model has done real work — trust its summary
-        let text = "I found the following text in your screenshots: ...";
-        assert!(!is_deflection_response(text, 8, 5));
-        assert!(!is_deflection_response(text, 14, 13));
+    fn presenting_file_list() {
+        assert!(is_presenting_results(
+            "here are the files in your downloads folder"
+        ));
     }
 
     #[test]
-    fn deflection_still_fires_on_early_rounds() {
-        // With few tool calls, deflection detection still works
-        let text = "I found the following files. Which ones should I process?";
-        assert!(is_deflection_response(text, 1, 1));
-        assert!(is_deflection_response(text, 2, 3));
+    fn presenting_scan_findings() {
+        assert!(is_presenting_results("the scan found 2 secrets"));
+    }
+
+    #[test]
+    fn presenting_empty_results() {
+        assert!(is_presenting_results("no files matching your criteria"));
+    }
+
+    #[test]
+    fn not_presenting_pure_question() {
+        assert!(!is_presenting_results(
+            "what would you like me to do with these"
+        ));
     }
 }

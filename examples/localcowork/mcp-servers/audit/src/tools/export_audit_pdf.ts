@@ -2,6 +2,7 @@
  * audit.export_audit_pdf — Export audit report as a PDF.
  *
  * Mutable: requires user confirmation (writes a file).
+ * Reads from the Agent Core's agent.db (audit_log table).
  */
 
 import * as fs from 'fs/promises';
@@ -44,7 +45,9 @@ export const exportAuditPdf: MCPTool<Params> = {
 
       const entries = db
         .prepare(
-          `SELECT * FROM audit_log
+          `SELECT id, session_id, timestamp, tool_name, arguments,
+                  result, result_status, user_confirmed, execution_time_ms
+           FROM audit_log
            WHERE session_id = ?
            ORDER BY timestamp ASC`,
         )
@@ -58,20 +61,15 @@ export const exportAuditPdf: MCPTool<Params> = {
       }
 
       // Generate text content for the PDF
-      // NOTE: Full PDF generation will use the document server's generate_pdf tool
-      // or a library like pdfkit. For now, we write a structured text file with
-      // .pdf extension that can later be upgraded to proper PDF rendering.
       const lines: string[] = [];
-      lines.push(`AUDIT REPORT — Session ${params.session_id}`);
+      lines.push(`AUDIT REPORT -- Session ${params.session_id}`);
       lines.push(`Generated: ${new Date().toISOString()}`);
       lines.push(`Entries: ${entries.length}`);
       lines.push('');
 
       for (const entry of entries) {
-        lines.push(`[${entry.timestamp}] ${entry.tool_name} — ${entry.status ?? 'executed'}`);
-        if (entry.file_path) {
-          lines.push(`  File: ${entry.file_path}`);
-        }
+        const duration = entry.execution_time_ms ? ` (${entry.execution_time_ms}ms)` : '';
+        lines.push(`[${entry.timestamp}] ${entry.tool_name} -- ${entry.result_status}${duration}`);
       }
 
       if (params.sign) {

@@ -2,6 +2,7 @@
  * audit.generate_audit_report — Generate a text audit report for a session.
  *
  * Non-destructive: executes immediately, no confirmation needed.
+ * Reads from the Agent Core's agent.db (audit_log table).
  */
 
 import { z } from 'zod';
@@ -22,10 +23,13 @@ type Params = z.infer<typeof paramsSchema>;
 
 function formatDefaultReport(sessionId: string, entries: AuditEntry[]): string {
   const lines: string[] = [];
-  lines.push('═══════════════════════════════════════════════════');
-  lines.push(`  AUDIT REPORT — Session ${sessionId}`);
+  // NOTE: Use only ASCII characters in tool output. Multi-byte Unicode
+  // (box-drawing, em-dashes) can trigger panics in the Rust string truncation
+  // code and wastes tokens the model has to process.
+  lines.push('===================================================');
+  lines.push(`  AUDIT REPORT -- Session ${sessionId}`);
   lines.push(`  Generated: ${new Date().toISOString()}`);
-  lines.push('═══════════════════════════════════════════════════');
+  lines.push('===================================================');
   lines.push('');
 
   if (entries.length === 0) {
@@ -35,33 +39,32 @@ function formatDefaultReport(sessionId: string, entries: AuditEntry[]): string {
 
   // Summary
   const toolCounts = new Map<string, number>();
-  let confirmed = 0;
-  let rejected = 0;
-  const filesSet = new Set<string>();
+  let userConfirmed = 0;
+  let succeeded = 0;
+  let failed = 0;
 
   for (const entry of entries) {
     toolCounts.set(entry.tool_name, (toolCounts.get(entry.tool_name) ?? 0) + 1);
-    if (entry.status === 'confirmed') confirmed++;
-    if (entry.status === 'rejected') rejected++;
-    if (entry.file_path) filesSet.add(entry.file_path);
+    if (entry.user_confirmed) userConfirmed++;
+    if (entry.result_status === 'success') succeeded++;
+    if (entry.result_status === 'error') failed++;
   }
 
   lines.push(`Total tool calls: ${entries.length}`);
-  lines.push(`Confirmed: ${confirmed}  |  Rejected: ${rejected}`);
-  lines.push(`Files touched: ${filesSet.size}`);
+  lines.push(`Succeeded: ${succeeded} | Failed: ${failed} | User-confirmed: ${userConfirmed}`);
   lines.push('');
 
-  lines.push('─── Tool Usage ───');
+  lines.push('--- Tool Usage ---');
   for (const [tool, count] of toolCounts) {
     lines.push(`  ${tool}: ${count} calls`);
   }
   lines.push('');
 
-  lines.push('─── Timeline ───');
+  lines.push('--- Timeline ---');
   for (const entry of entries) {
     const time = entry.timestamp.substring(11, 19);
-    const status = entry.status ? ` [${entry.status}]` : '';
-    lines.push(`  ${time}  ${entry.tool_name}${status}`);
+    const duration = entry.execution_time_ms ? ` (${entry.execution_time_ms}ms)` : '';
+    lines.push(`  ${time}  ${entry.tool_name} [${entry.result_status}]${duration}`);
   }
 
   return lines.join('\n');
@@ -82,7 +85,9 @@ export const generateAuditReport: MCPTool<Params> = {
 
       const entries = db
         .prepare(
-          `SELECT * FROM audit_log
+          `SELECT id, session_id, timestamp, tool_name, arguments,
+                  result, result_status, user_confirmed, execution_time_ms
+           FROM audit_log
            WHERE session_id = ?
            ORDER BY timestamp ASC`,
         )

@@ -39,6 +39,8 @@ All multi-step interventions (M1-M6) operate within the **dual-model orchestrato
 | Decomposition rate (4+ steps) | ~0% | 60-80% |
 | Multi-step overall | 26% | ~35% |
 
+> **⚠️ Tested (2026-02-20):** We tried benchmark-level few-shot examples (3 examples + 9 rules + contrastive tool descriptions) in the benchmark system prompt. Result: single-step regressed 80% → 77%, multi-step unchanged at 24%. The few-shot approach didn't work at the benchmark/tool-selection layer. This reinforces that M2 must operate at the **orchestrator planner level** (decomposing multi-step plans), not at the tool-selection level (picking the right tool). The planner is the bottleneck, not tool selection per step. Code stashed: `git stash@{0}`. See `tool-calling-benchmark-results.md` → "Experiment: Prompt Optimization" section.
+
 **Cost:** System prompt change. **Risk:** None. **Time:** Hours.
 
 ---

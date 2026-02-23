@@ -9,21 +9,18 @@ Non-destructive: no confirmation required.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
+from mcp_base import ErrorCodes, MCPError, MCPResult, MCPTool
 from pydantic import BaseModel, Field
-
-from mcp_base import MCPError, MCPResult, MCPTool, ErrorCodes
 from validation import assert_absolute_path, assert_sandboxed
 
 from patterns import (
-    Finding,
     SECRET_PATTERNS,
-    is_binary_file,
+    Finding,
     mask_sensitive_value,
+    safe_collect_files,
 )
-
 
 # ─── Params / Result Models ────────────────────────────────────────────────
 
@@ -60,8 +57,8 @@ class ScanForSecrets(MCPTool[Params, Result]):
         if not target.exists():
             raise MCPError(ErrorCodes.FILE_NOT_FOUND, f"Path not found: {params.path}")
 
-        # Collect files to scan
-        files = _collect_files(target)
+        # Collect files to scan (with safe limits on depth/count/dir exclusions)
+        files = safe_collect_files(target)
 
         # Scan each file
         findings: list[Finding] = []
@@ -73,22 +70,6 @@ class ScanForSecrets(MCPTool[Params, Result]):
 
 
 # ─── Helper Functions ──────────────────────────────────────────────────────
-
-
-def _collect_files(target: Path) -> list[Path]:
-    """Collect scannable files from a path (file or directory)."""
-    if target.is_file():
-        if is_binary_file(str(target)):
-            return []
-        return [target]
-
-    files: list[Path] = []
-    for root, _dirs, filenames in os.walk(str(target)):
-        for fname in filenames:
-            full_path = Path(root) / fname
-            if not is_binary_file(str(full_path)):
-                files.append(full_path)
-    return files
 
 
 def _scan_file_for_secrets(file_path: Path) -> list[Finding]:

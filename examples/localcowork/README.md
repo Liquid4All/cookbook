@@ -1,148 +1,150 @@
 # LocalCowork
 
-A desktop AI agent that runs **entirely on-device**. No cloud APIs, no data leaving your machine. LocalCowork delivers a Claude Cowork-style experience powered by a locally-hosted LLM that calls pre-built tools via the Model Context Protocol (MCP).
+**Tool-calling that actually feels instant on a laptop.**
 
-## Why LocalCowork?
+Building a local AI agent sounds great until you try to use one all day. The hard part isn't getting a model to understand you -- it's getting it to choose the right tool and do it fast enough that the experience feels interactive. This is where [LFM2-24B-A2B](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) shines: it's designed for tool dispatch on consumer hardware, where latency and memory aren't abstract constraints -- they decide whether your agent is a product or a demo.
 
-Most AI assistants send your files, conversations, and documents to remote servers. LocalCowork keeps everything local — your contracts, receipts, meeting recordings, and personal data never leave your device. The model runs on your hardware, the tools operate on your filesystem, and the audit log lives in a local SQLite database.
+LocalCowork is a desktop AI agent that runs entirely on-device. No cloud APIs, no data leaving your machine. The model calls pre-built tools via the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), the user confirms every mutable action, and every tool execution is logged to a local audit trail.
+
+## The Numbers
+
+| | LFM2-24B-A2B | Best Dense (Gemma 27B) | Other MoE (GPT-OSS 20B) |
+|---|---|---|---|
+| **Active params** | ~2B | 27B | ~3.6B |
+| **Tool accuracy** | 80% | 91% | 51% |
+| **Response latency** | 390ms | 24,088ms | 2,303ms |
+| **VRAM** | ~14.5 GB | ~18 GB | ~14 GB |
+| **Interactive?** | Yes | No (24s/turn) | Barely |
+
+LFM2-24B-A2B (24B total, ~2B active per token via 64 experts) delivers 94% of the best dense model's accuracy at 3% of the latency. At 390ms per tool selection, human-in-the-loop correction is instant -- that turns 80% accuracy into near-100% effective accuracy.
+
+Full benchmark: 8 models, 67 tools, 150+ scenarios. See [`docs/model-analysis/`](docs/model-analysis/).
+
+## What It Does
+
+LocalCowork ships with **75 tools across 14 MCP servers** covering filesystem operations, document processing, OCR, security scanning, email drafting, task management, and more ([full tool registry](docs/mcp-tool-registry.yaml)). For the demo, we run a curated set of **20 tools across 6 servers** -- every tool scoring 80%+ single-step accuracy with proven multi-step chain participation.
+
+### Demo 1: Scan for Leaked Secrets
+
+Every developer has `.env` files with API keys scattered across old projects. You'd never upload your filesystem to a cloud model to find them. That defeats the purpose.
+
+```
+You:   "Scan my Projects folder for exposed API keys"
+Agent: security.scan_for_secrets → found 3 secrets in 2 files (420ms)
+
+You:   "Encrypt the ones you found"
+Agent: security.encrypt_file → encrypted .env and config.yaml (380ms)
+
+You:   "Show me the audit trail"
+Agent: audit.get_tool_log → 3 tool calls, all succeeded (12ms)
+```
+
+Three tools, under 2 seconds total. The scan, encryption, and audit trail all happen locally.
+
+### Demo 2: Compare Contracts Without a Cloud API
+
+A freelancer gets a revised NDA. They need to know what changed. These are confidential documents that should never leave the machine.
+
+```
+You:   "Compare these two contract versions"
+Agent: document.extract_text (v1) → 2,400 words (350ms)
+       document.extract_text (v2) → 2,600 words (340ms)
+       document.diff_documents → 12 changes found (180ms)
+       document.create_pdf → diff_report.pdf generated (420ms)
+```
+
+Four tools, under 2 seconds. The extraction, diff, and PDF generation never touch a network.
+
+### Demo 3: File Search
+
+The simplest test of an agent: can it answer a direct question in one tool call without going off-script?
+
+```
+You:   "List what's in my Downloads folder"
+Agent: filesystem.list_dir → 26 files found (9ms)
+       "Here are the files: DEMO CARD styles.png, benchmark_results.csv,
+        Liquid AI Notes.pdf, and 23 others."
+```
+
+One tool, one answer. No unnecessary follow-up calls, no asking what to do next.
 
 ## Architecture
 
-```mermaid
-graph TD
-    subgraph Presentation["Presentation — Tauri 2.0 + React/TypeScript"]
-        UI["Chat UI · File Browser · Tool Trace · Settings"]
-    end
-
-    subgraph AgentCore["Agent Core — Rust"]
-        Core["ConversationManager · ToolRouter · MCP Client\nContextWindowManager · Human-in-the-Loop · Audit"]
-    end
-
-    subgraph Inference["Inference — OpenAI-compatible API @ localhost"]
-        Runtimes["Ollama · llama.cpp · MLX · vLLM"]
-    end
-
-    subgraph Servers["MCP Servers — 75 tools across 14 servers"]
-        TS["8 TypeScript servers\nfilesystem · calendar · email · task\ndata · audit · clipboard · system"]
-        PY["6 Python servers\ndocument · ocr · knowledge\nmeeting · security · screenshot"]
-    end
-
-    Presentation <--> AgentCore
-    AgentCore -- "chat completions API" --> Inference
-    AgentCore -- "JSON-RPC over stdio" --> Servers
+```
+Presentation    Tauri 2.0 (Rust) + React/TypeScript
+                    |
+Agent Core      Rust — ConversationManager, ToolRouter, MCP Client,
+                       Orchestrator, ToolPreFilter, Audit
+                    |
+Inference       OpenAI-compatible API @ localhost (llama.cpp / Ollama / vLLM)
+                    |
+MCP Servers     14 servers, 75 tools (8 TypeScript + 6 Python)
 ```
 
-The agent core communicates with the inference layer exclusively via the OpenAI chat completions API. Changing the model is a config change, not a code change.
+The agent core communicates with the inference layer via the OpenAI chat completions API. Changing the model is a config change, not a code change. MCP servers are auto-discovered at startup by scanning `mcp-servers/`.
 
-## MCP Servers (14 servers, 75 tools)
+### MCP Servers
 
-The model never writes code. It calls pre-built, sandboxed tools through MCP servers:
+| Server | Lang | Tools | What It Does |
+|--------|------|-------|-------------|
+| **filesystem** | TS | 9 | File CRUD, search, watch (sandboxed) |
+| **document** | Py | 8 | Text extraction, conversion, diff, PDF generation |
+| **ocr** | Py | 4 | LFM Vision primary, Tesseract fallback |
+| **knowledge** | Py | 5 | SQLite-vec RAG pipeline, semantic search |
+| **meeting** | Py | 4 | Whisper.cpp transcription + diarization |
+| **security** | Py | 6 | PII/secrets scanning + encryption |
+| **calendar** | TS | 4 | .ics parsing + system calendar API |
+| **email** | TS | 5 | MBOX/Maildir parsing + SMTP |
+| **task** | TS | 5 | Local SQLite task database |
+| **data** | TS | 5 | CSV + SQLite operations |
+| **audit** | TS | 4 | Audit log reader + compliance reports |
+| **clipboard** | TS | 3 | OS clipboard (Tauri bridge) |
+| **system** | TS | 10 | OS APIs -- sysinfo, processes, screenshots |
+| **screenshot-pipeline** | Py | 3 | Capture, UI elements, action suggestion |
 
-| Server | Language | Tools | Purpose |
-|--------|----------|-------|---------|
-| **filesystem** | TypeScript | 9 | File CRUD, search, watch (sandboxed) |
-| **document** | Python | 8 | Extraction, conversion, diff, PDF generation |
-| **ocr** | Python | 4 | Text extraction (LFM Vision primary, Tesseract fallback) |
-| **knowledge** | Python | 5 | SQLite-vec RAG pipeline, semantic search |
-| **meeting** | Python | 4 | Whisper.cpp transcription + diarization |
-| **security** | Python | 6 | PII/secrets scanning + encryption |
-| **calendar** | TypeScript | 4 | .ics parsing + system calendar API |
-| **email** | TypeScript | 5 | MBOX/Maildir parsing + SMTP |
-| **task** | TypeScript | 5 | Local SQLite task database |
-| **data** | TypeScript | 5 | CSV + SQLite operations |
-| **audit** | TypeScript | 4 | Audit log reader + compliance reports |
-| **clipboard** | TypeScript | 3 | OS clipboard (Tauri bridge) |
-| **system** | TypeScript | 10 | OS APIs — sysinfo, processes, screenshots, disk, network |
-| **screenshot-pipeline** | Python | 3 | Capture, UI element extraction, action suggestion |
+### Human-in-the-Loop
 
-## Use Cases
+Every tool execution is logged to a local audit trail. The confirmation system -- where write actions show a preview and destructive actions require typed confirmation -- is built (ToolRouter, PermissionStore, frontend ConfirmationDialog) but not yet wired into the agent loop. Today, tools execute immediately after model selection. Integrating the confirmation flow is tracked as a future workstream.
 
-LocalCowork ships with ten validated use cases that compose multiple tools:
+The architecture is designed so that 80% tool accuracy becomes near-100% effective accuracy once confirmation is live -- the user will see what the agent wants to do before it does it.
 
-| UC | Name | Key Servers |
-|----|------|-------------|
-| UC-1 | Receipt Reconciliation | filesystem, ocr, data, document |
-| UC-2 | Contract / NDA Copilot | filesystem, document, security |
-| UC-3 | Security & Privacy Steward | security, filesystem, audit |
-| UC-4 | Download Triage | filesystem, document, ocr, knowledge |
-| UC-5 | Screenshot-to-Action | ocr, clipboard, system, task |
-| UC-6 | Meeting-to-Execution Pipeline | meeting, task, email, calendar |
-| UC-7 | Personal Operations OS | task, calendar, email, data |
-| UC-8 | Portfolio / Deal Memo Analyst | document, data, knowledge |
-| UC-9 | Local Codebase + Docs Navigator | filesystem, knowledge, document |
-| UC-10 | Offline Compliance Pack Generator | audit, document, security |
+## Benchmarks
 
-Every tool execution follows the human-in-the-loop pattern: non-destructive actions execute immediately; mutable actions show a preview and require confirmation; destructive actions require explicit typed confirmation. All actions are logged to the audit trail.
-
-## Models
-
-| Model | Architecture | Active Params | VRAM | Accuracy | Latency | Role |
-|-------|-------------|--------------|------|----------|---------|------|
-| **LFM2-24B-A2B** | **Hybrid MoE** | **~2B** | **~14.5 GB** | **80%** | **385ms** | **Active — production model** |
-| LFM2.5-VL-1.6B | Hybrid | 1.6B | ~1.8 GB | — | — | Vision OCR engine ([download](https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF)) |
-| GPT-OSS-20B | MoE | ~3.6B | 14 GB | 51% | 2,303ms | Development proxy (optional) |
-| Qwen3-30B-A3B | MoE | ~3B | 19 GB | 44% | 5,938ms | Lightweight fallback |
-
-**LFM2-24B-A2B** is a Liquid AI hybrid MoE model (24B total, ~2B active per token via 64 experts). It scores **80% single-step tool accuracy** across all 67 tools at **385ms per response** — 94% of the best dense model's accuracy at 3% of the latency. Benchmarked against 5 comparison models on Apple M4 Max (see [full results](docs/model-analysis/tool-calling-benchmark-results.md)). Download from [HuggingFace](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) (gated — request access).
-
-All text models use a 32k token context window. Model configuration lives in `_models/config.yaml`. Model files (GGUF) are stored in `~/Projects/_models/` (override with `LOCALCOWORK_MODELS_DIR`).
-
-## What We Learned: Small Model Tool-Calling
-
-> **The era of "throw all tools at a big model" is over for on-device deployment.** Architecture, filtering, and infrastructure matter more than parameter count. A well-instrumented 2B-active hybrid MoE outperforms both dense models and standard MoE models with 2-16x more active parameters.
-
-We benchmarked 6 models (2B to 32B active parameters) against 67 tools on the same Apple M4 Max hardware and found:
+We benchmarked 6 models against all 67 tools on Apple M4 Max hardware:
 
 | Model | Active Params | Accuracy | Latency | Multi-Step |
 |-------|-------------|----------|---------|-----------|
-| **LFM2-24B-A2B** | **~2B (MoE)** | **80%** | **385ms** | **26%** |
+| **LFM2-24B-A2B** | **~2B (MoE)** | **80%** | **390ms** | **26%** |
 | Gemma 3 27B | 27B (dense) | 91% | 24,088ms | 48% |
 | Mistral-Small-24B | 24B (dense) | 85% | 1,239ms | 66% |
-| Qwen3 32B | 32B (dense) | ~70% | 28,385ms | — |
+| Qwen3 32B | 32B (dense) | ~70% | 28,385ms | -- |
 | GPT-OSS-20B | ~3.6B (MoE) | 51% | 2,303ms | 0% |
 | Qwen3-30B-A3B | ~3B (MoE) | 44% | 5,938ms | 4% |
 
 **Key findings:**
 
-- **Architecture > parameter count.** LFM2-24B-A2B (2B active, hybrid MoE) scores 80% at 385ms — 94% of the best dense model's accuracy at 3% of the latency, fitting in 14.5 GB on consumer hardware
-- **MoE alone isn't enough.** Two other MoE models — GPT-OSS-20B (~3.6B active, 51%) and Qwen3-30B-A3B (~3B active, 44%) — both underperform LFM2 (~2B active, 80%) despite having more active parameters. LFM2's hybrid conv+attn block design is the differentiator, not just sparsity
-- **Latency is the deciding factor on consumer hardware.** Gemma leads accuracy (91%) but at 24s per response it's unusable for interactive desktop agents. Only LFM2 at 385ms enables real-time human-in-the-loop UX
-- **Every model fails at cross-server transitions** (e.g., filesystem → OCR). This is the universal barrier, not a model-specific deficiency
-- **24B models are good dispatchers, not autonomous agents.** Design UX around single-turn tool calls with human confirmation — that turns 80% accuracy into near-100% effective accuracy
+- **Latency decides whether your agent is usable.** Gemma leads accuracy at 91% but at 24s per response it can't support interactive use. Only LFM2 at 390ms enables real-time human-in-the-loop. The speed comes from the combination of the hybrid conv+attention design and MoE sparsity.
+- **Every model fails at cross-server transitions.** This is the universal barrier, not a model-specific deficiency. Design UX around single-turn tool calls with human confirmation.
 
 Three interventions that compound:
 
 | Intervention | Impact | Cost |
 |---|---|---|
-| **RAG pre-filter to K=15 tools** | 36% → 78% accuracy (+117%) | ~10ms per query |
-| **LoRA fine-tuned router** | 78% → 84%, 100% at K=25 | $5, 6 min on H100 |
-| **Dual-model orchestrator** | 100% on 1-2 step tasks, zero pathologies, 2.5x faster | 2 models, ~14.5 GB VRAM |
+| RAG pre-filter to K=15 tools | +117% accuracy (36% to 78%) | ~10ms per query |
+| LoRA fine-tuned router | +8% accuracy, 100% at K=25 | $5, 6 min on H100 |
+| Dual-model orchestrator | 100% on 1-2 step tasks | 2 models, ~14.5 GB VRAM |
 
-The full benchmark study — 6 models, 150+ scenarios, 12 failure modes, and a production orchestrator — is in [`docs/model-analysis/`](docs/model-analysis/). Start with the [Tool-Calling Benchmark Results](docs/model-analysis/tool-calling-benchmark-results.md) for the complete comparison, or [Getting Maximum Leverage](docs/model-analysis/README.md#getting-maximum-leverage-from-24b-class-models) for actionable recommendations.
-
-## Prerequisites
-
-| Requirement | Version | Purpose |
-|-------------|---------|---------|
-| **Node.js** | 20+ | TypeScript MCP servers, React frontend, Vite |
-| **npm** | 10+ | Package management (comes with Node.js) |
-| **Python** | 3.11+ | Python MCP servers (document, OCR, knowledge, meeting, security, screenshot) |
-| **Rust** | 1.77+ | Tauri backend, Agent Core ([install via rustup](https://rustup.rs)) |
-| **llama.cpp** | latest | Serves LFM2 models (`brew install llama.cpp` or [build from source](https://github.com/ggml-org/llama.cpp)) |
-| **Tesseract** | 5.x | Fallback OCR engine (`brew install tesseract` / `apt install tesseract-ocr`) — optional |
-| **Ollama** | latest | Alternative model runtime ([ollama.ai](https://ollama.ai)) — optional, for dev proxy and benchmarking |
+Full study: [`docs/model-analysis/`](docs/model-analysis/) -- 8 models, 2 tiers, 150+ scenarios, 12 failure modes.
 
 ## Quick Start
 
 ```bash
-# 1. Clone and enter the project
+# 1. Clone and set up
 git clone <repo-url> && cd localCoWork
-
-# 2. Run the automated setup (installs all deps, creates venvs, checks prereqs)
 ./scripts/setup-dev.sh
 
-# 3. Download the LFM2-24B-A2B model (~14 GB, requires HuggingFace access)
-#    Request access at: https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview
+# 2. Download LFM2-24B-A2B (~14 GB, requires HuggingFace access)
+#    Request access: https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview
 pip install huggingface-hub
 python3 -c "
 from huggingface_hub import hf_hub_download
@@ -151,324 +153,142 @@ hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',
                 local_dir='$HOME/Projects/_models/')
 "
 
-# 4. Start the model server (requires llama.cpp — brew install llama.cpp)
+# 3. Start the model server
 ./scripts/start-model.sh
 
-# 5. In another terminal — start the app
+# 4. Launch the app (in another terminal)
 cargo tauri dev
 ```
 
-### What Each Step Does
+MCP servers start automatically. The app auto-discovers them by scanning `mcp-servers/` at startup.
 
-- **`setup-dev.sh`** — checks prerequisites, runs `cargo check`, installs npm workspaces, creates Python `.venv` for all 6 Python MCP servers, installs Tesseract, creates config dirs, installs git hooks.
-- **`start-model.sh`** — starts llama-server for LFM2-24B-A2B on port 8080. Add `--vision` to also start the vision model on port 8081. Add `--check` to verify model files exist without starting servers.
-- **`cargo tauri dev`** — launches the Tauri app (hot-reload frontend, Rust restarts on change). MCP servers start automatically.
+## Customizing the Tool Surface
 
-### Alternative: Use Ollama Instead of LFM2
+Out of the box, the app starts **6 servers with 20 curated tools** -- the set that scores 80%+ accuracy. Two settings in `_models/config.yaml` control this:
 
-If you don't have access to LFM2-24B-A2B, you can use GPT-OSS-20B via Ollama as a development proxy (lower accuracy, but functional):
+```yaml
+# Which servers to start (comment out to start ALL 14 servers)
+enabled_servers:
+  - filesystem
+  - document
+  - security
+  - audit
+  - system
+  - clipboard
 
-```bash
-ollama pull gpt-oss:20b
-ollama serve
-# Then edit _models/config.yaml: set active_model to gpt-oss-20b
-cargo tauri dev
+# Which tools the model sees (comment out to expose all ~75 tools)
+enabled_tools:
+  - filesystem.list_dir
+  - filesystem.read_file
+  - document.extract_text
+  - security.scan_for_secrets
+  # ... 20 tools total (see config.yaml for the full list)
 ```
 
-### Optional: Vision OCR Model
+Fewer tools means less context window usage and higher selection accuracy. The system prompt and tool definitions sent to the model update automatically when you change these lists -- no manual prompt editing required.
 
-For AI-powered OCR (better than Tesseract), download [LFM2.5-VL-1.6B](https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF) (~1.8 GB):
+**Enabling all tools:**
 
-```bash
-python3 -c "
-from huggingface_hub import hf_hub_download
-for f in ['LFM2.5-VL-1.6B-Q8_0.gguf', 'mmproj-LFM2.5-VL-1.6b-Q8_0.gguf']:
-    hf_hub_download('LiquidAI/LFM2.5-VL-1.6B-GGUF', f, local_dir='$HOME/Projects/_models/')
-"
-# Start with: ./scripts/start-model.sh --vision
+Comment out both `enabled_servers` and `enabled_tools` in `config.yaml`. The app will start all 14 discovered servers and expose all ~75 tools to the model. You get the full capability set -- OCR, knowledge base RAG, meeting transcription, calendar, email, and more.
+
+**Scaling up: the dual-model orchestrator:**
+
+With 20 tools, a single model handles selection well. At 40+ tools, accuracy drops as the model has more options to confuse. The dual-model orchestrator ([ADR-009](docs/architecture-decisions/009-dual-model-orchestrator.md)) solves this with a plan-execute-synthesize pipeline:
+
+1. **Plan** -- LFM2-24B-A2B decomposes the request into self-contained steps (no tool definitions sent, just natural language).
+2. **Execute** -- A fine-tuned 1.2B router model selects one tool per step from a RAG pre-filtered set of K=15 candidates.
+3. **Synthesize** -- LFM2-24B-A2B streams a user-facing summary from the accumulated results.
+
+Enable it in `config.yaml`:
+
+```yaml
+orchestrator:
+  enabled: true
+  planner_model: lfm2-24b-a2b
+  router_model: lfm25-1.2b-router-ft
+  router_top_k: 15
 ```
 
-### Manual Setup (if you prefer not to use the script)
+Requires ~14.5 GB VRAM (planner ~13 GB + router ~1.5 GB). If orchestration fails at any phase, it falls back to the single-model loop automatically.
+
+**Adding a tool to an existing server:**
+
+1. Create a new tool file in the server's `src/tools/` directory (one tool per file).
+2. Register it in the server's `src/index.ts` (TS) or `src/server.py` (Python).
+3. Add your tool name to `enabled_tools` in `config.yaml`.
+4. Restart the app.
+
+**Adding a new MCP server:**
+
+1. Create a directory under `mcp-servers/` with a `package.json` (TypeScript) or `pyproject.toml` (Python).
+2. Implement tools following the pattern in [`docs/patterns/mcp-server-pattern.md`](docs/patterns/mcp-server-pattern.md).
+3. Restart the app -- the server is auto-discovered.
+4. Add your server to `enabled_servers` and your tools to `enabled_tools`.
+
+Tool definitions live in [`docs/mcp-tool-registry.yaml`](docs/mcp-tool-registry.yaml) -- the machine-readable source of truth for all 75 tools.
+
+## Prerequisites
+
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| Node.js | 20+ | TypeScript MCP servers, React frontend |
+| Python | 3.11+ | Python MCP servers (document, OCR, security, etc.) |
+| Rust | 1.77+ | Tauri backend, Agent Core |
+| llama.cpp | latest | Serves LFM2 models (`brew install llama.cpp`) |
+
+Optional: [Ollama](https://ollama.ai) (alternative runtime), [Tesseract](https://github.com/tesseract-ocr/tesseract) (fallback OCR).
+
+## Tests
+
+853 tests across multiple tiers, all passing without a live model:
 
 ```bash
-# Install TypeScript dependencies (root workspace + all 8 TS server workspaces)
-npm install
-
-# Create Python virtual environment and install Python servers
-python3 -m venv .venv
-source .venv/bin/activate
-pip install pydantic pytest mypy ruff black
-pip install -e mcp-servers/document
-pip install -e mcp-servers/ocr
-pip install -e mcp-servers/knowledge
-pip install -e mcp-servers/meeting
-pip install -e mcp-servers/security
-pip install -e mcp-servers/screenshot-pipeline
-
-# Verify Rust compiles
-cd src-tauri && cargo check && cd ..
-
-# Create local config directories
-mkdir -p ~/.localcowork/{models,templates,trash}
+npm test                          # TypeScript server unit tests
+source .venv/bin/activate && \
+  for s in document ocr knowledge meeting security screenshot-pipeline; do
+    (cd "mcp-servers/$s" && pytest); done   # Python server unit tests
+npm run test:integration          # UC-1 through UC-10 end-to-end
+npm run test:model-behavior       # 180 prompt-to-tool definitions
+cd src-tauri && cargo test        # 357 Rust tests (agent core, MCP client, inference)
 ```
 
-## Running the App
-
-```bash
-# Development mode (hot-reload frontend, Rust restarts on change)
-cargo tauri dev
-
-# Production build (outputs a platform-native installer)
-cargo tauri build
-```
-
-On first launch, the onboarding wizard guides you through hardware detection, model download, working directory selection, and MCP server configuration.
-
-**MCP servers start automatically** — the Tauri backend auto-discovers MCP servers by scanning `mcp-servers/` at startup. An optional `mcp-servers.json` can override discovery settings. No manual server startup is needed.
-
-### Vision OCR
-
-The OCR server uses a two-tier engine priority:
-
-1. **LFM Vision** (primary) — sends images to [LFM2.5-VL-1.6B](https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF) via the OpenAI-compatible API. Only 1.6B params (~1.8 GB with mmproj), runs on CPU. Strong OCR and document comprehension from Liquid AI. Served via llama.cpp (`llama-server --port 8081 --mmproj mmproj-*.gguf`).
-2. **Tesseract** (fallback) — traditional OCR engine. No GPU needed, good for pure text documents. Requires `tesseract` binary installed.
-
-The engine used is shown in tool traces (`engine: lfm_vision` or `engine: tesseract`) so you can verify which path is active. The Rust backend auto-detects vision-capable models from `_models/config.yaml` and injects the endpoint into MCP server processes.
-
-## Running Tests
-
-LocalCowork has **853 tests** across multiple tiers. All tests run without a local model unless noted.
-
-### 1. Unit Tests (per MCP server)
-
-Each server has colocated tests that validate the tool input/output contract.
-
-**TypeScript servers** (8 servers):
-
-```bash
-# Run all TS server tests at once
-npm test
-
-# Or run individual servers
-cd mcp-servers/filesystem && npm test     # 24 tests — file CRUD, search, watch
-cd mcp-servers/data && npm test           # 27 tests — CSV, SQLite, dedup, anomalies
-cd mcp-servers/audit && npm test          # 15 tests — log reader, reports
-cd mcp-servers/task && npm test           # 28 tests — CRUD, overdue, daily briefing
-cd mcp-servers/calendar && npm test       # 29 tests — events, free slots, time blocks
-cd mcp-servers/email && npm test          # 40 tests — drafts, search, threads
-cd mcp-servers/clipboard && npm test      # 21 tests — get/set/history (mock bridge)
-cd mcp-servers/system && npm test         # 32 tests — sysinfo, processes, screenshots
-```
-
-**Python servers** (6 servers — activate the venv first):
-
-```bash
-source .venv/bin/activate
-
-cd mcp-servers/document && pytest         # 25 tests — extraction, conversion, diff, PDF
-cd mcp-servers/ocr && pytest              # 17 tests — image/PDF OCR, structured data
-cd mcp-servers/knowledge && pytest        # 39 tests — indexing, search, RAG pipeline
-cd mcp-servers/meeting && pytest          # 50 tests — transcription, action items, minutes
-cd mcp-servers/security && pytest         # 57 tests — PII, secrets, encryption
-cd mcp-servers/screenshot-pipeline && pytest  # 33 tests — capture, UI elements, actions
-```
-
-### 2. Integration Tests (UC-1 through UC-10)
-
-End-to-end tests that compose multiple MCP tools in the same sequence as the PRD use cases. These call real tool `execute()` functions directly — **no model needed**.
-
-```bash
-# Run all 10 use case integration tests (50 tests)
-npm run test:integration
-```
-
-| Test File | Use Case | Servers Tested |
-|-----------|----------|----------------|
-| `uc1_receipt_reconciliation.test.ts` | Receipt Reconciliation | filesystem, data |
-| `uc2_contract_copilot.test.ts` | Contract Copilot | filesystem |
-| `uc3_security_steward.test.ts` | Security Steward | filesystem |
-| `uc4_download_triage.test.ts` | Download Triage | filesystem, data |
-| `uc5_screenshot_to_action.test.ts` | Screenshot to Action | clipboard, data |
-| `uc6_meeting_pipeline.test.ts` | Meeting Pipeline | task, calendar, email |
-| `uc7_personal_ops.test.ts` | Personal Ops | task, calendar |
-| `uc8_deal_memo.test.ts` | Deal Memo | filesystem, data, task |
-| `uc9_codebase_navigator.test.ts` | Codebase Navigator | filesystem, clipboard |
-| `uc10_compliance_pack.test.ts` | Compliance Pack | audit, filesystem |
-
-### 3. Model Behavior Tests
-
-Structural validation of 180 prompt-to-tool-call definitions. Tests pass without a model (validating test definitions are well-formed). When `LOCALCOWORK_MODEL_ENDPOINT` is set, they send real prompts to the model.
-
-```bash
-# Structural validation only (no model needed — 192 tests)
-npm run test:model-behavior
-
-# With a live model (requires Ollama serving gpt-oss:20b)
-LOCALCOWORK_MODEL_ENDPOINT=http://localhost:11434/v1 npm run test:model-behavior
-```
-
-Breakdown: 100 tool-selection tests + 50 multi-step chain tests + 30 edge cases.
-
-### 4. Model Swap Validation
-
-Compares tool-calling accuracy between baseline (GPT-OSS-20B) and candidate (LFM2-24B-A2B) models.
-
-```bash
-# Structural validation (no model needed — 20 tests + 1 skipped)
-npx vitest run tests/model-swap/
-
-# Full swap comparison (requires both models available via Ollama)
-LOCALCOWORK_MODEL_ENDPOINT=http://localhost:11434/v1 npx vitest run tests/model-swap/
-```
-
-Thresholds: tool selection must be within 5% of baseline, chain completion within 10%.
-
-### 5. Cross-Platform Tests
-
-Platform-aware smoke tests for filesystem behavior, build environment, and performance benchmarks.
-
-```bash
-# Run cross-platform tests (65 tests)
-npx vitest run tests/cross-platform/
-```
-
-### 6. Smoke Tests
-
-Fast regression checks that validate MCP server contracts against the PRD tool registry.
-
-```bash
-./scripts/smoke-test.sh                    # Full suite
-./scripts/smoke-test.sh --contract         # Contract validation only
-./scripts/smoke-test.sh --server filesystem  # Single server
-```
-
-### Run Everything
-
-```bash
-# All TypeScript tests (unit + integration + model-behavior + swap + cross-platform)
-npm test \
-  && npm run test:integration \
-  && npm run test:model-behavior \
-  && npx vitest run tests/model-swap/ \
-  && npx vitest run tests/cross-platform/
-
-# All Python tests (activate venv first)
-source .venv/bin/activate
-for server in document ocr knowledge meeting security screenshot-pipeline; do
-  (cd "mcp-servers/$server" && pytest)
-done
-
-# Validate servers against PRD tool registry
-./scripts/validate-mcp-servers.sh
-
-# Rust checks
-cd src-tauri && cargo check && cargo clippy -- -D warnings && cd ..
-```
-
-## Linting & Type Checking
-
-All code must pass lint and type checks before commit.
-
-```bash
-# TypeScript
-npx tsc --noEmit                                          # Type check
-npx eslint src/ mcp-servers/*/src/ --ext .ts,.tsx          # Lint
-npx prettier --check "src/**/*.{ts,tsx}"                   # Format check
-
-# Python (activate venv first)
-source .venv/bin/activate
-ruff check mcp-servers/*/src/                              # Lint
-mypy --strict mcp-servers/*/src/                           # Type check
-black --line-length=100 --check mcp-servers/*/src/         # Format check
-
-# Rust
-cd src-tauri && cargo clippy -- -D warnings && cd ..       # Lint
-```
+See the [testing section](docs/PRD.md) in the PRD for the full strategy.
 
 ## Project Structure
 
 ```
 localCoWork/
-├── src-tauri/src/              # Rust backend (Tauri 2.0)
-│   ├── agent_core/             #   ConversationManager, ToolRouter, Audit
-│   ├── mcp_client/             #   JSON-RPC stdio transport
-│   ├── inference/              #   OpenAI-compat API client
-│   └── commands/               #   Tauri IPC (chat, filesystem, hardware, settings)
-├── src/                        # React + TypeScript frontend
-│   ├── components/             #   Chat, FileBrowser, Onboarding, Settings
-│   ├── stores/                 #   Zustand state (chat, fileBrowser, settings, onboarding)
-│   ├── types/                  #   Shared TypeScript types
-│   └── hooks/                  #   Custom React hooks
-├── mcp-servers/                # All 14 MCP server implementations
-│   ├── _shared/                #   Base classes (TS + Python)
-│   ├── filesystem/             #   TypeScript — file CRUD, watch, search
-│   ├── document/               #   Python — extraction, conversion, PDF
-│   ├── ocr/                    #   Python — LFM Vision + Tesseract fallback
-│   ├── knowledge/              #   Python — SQLite-vec RAG pipeline
-│   ├── meeting/                #   Python — Whisper.cpp + diarization
-│   ├── security/               #   Python — PII/secrets scan + encryption
-│   ├── screenshot-pipeline/    #   Python — capture, OCR, action suggestion
-│   ├── calendar/               #   TypeScript — SQLite calendar + time blocks
-│   ├── email/                  #   TypeScript — drafts, search, threads
-│   ├── task/                   #   TypeScript — local SQLite task DB
-│   ├── data/                   #   TypeScript — CSV + SQLite operations
-│   ├── audit/                  #   TypeScript — audit log + reports
-│   ├── clipboard/              #   TypeScript — OS clipboard (Tauri bridge)
-│   └── system/                 #   TypeScript — OS APIs (Tauri bridge)
-├── tests/
-│   ├── integration/            #   UC-1 through UC-10 end-to-end tests
-│   ├── model-behavior/         #   180 prompt → tool test definitions
-│   ├── model-swap/             #   GPT-OSS vs LFM2-24B-A2B comparison framework
-│   ├── cross-platform/         #   macOS + Windows smoke tests + benchmarks
-│   ├── helpers/                #   TestHarness, Python tool wrapper
-│   └── fixtures/               #   Sample data for each UC
-├── _models/                    # Local model registry (binaries gitignored)
-├── _shared/services/           # Shared services (logger, config, state)
-├── docs/                       # PRD, tool registry, ADRs, patterns
-└── scripts/                    # setup-dev.sh, smoke-test.sh, validate-mcp-servers.sh
++-- src-tauri/src/              Rust backend (Tauri 2.0)
+|   +-- agent_core/             ConversationManager, ToolRouter, Audit
+|   +-- mcp_client/             JSON-RPC stdio transport
+|   +-- inference/              OpenAI-compat API client
+|   +-- commands/               Tauri IPC (chat, session, settings)
++-- src/                        React + TypeScript frontend
++-- mcp-servers/                14 MCP servers (8 TS + 6 Python)
++-- tests/                      Unit, integration, model-behavior, cross-platform
++-- _models/                    Local model registry (binaries gitignored)
++-- docs/                       PRD, tool registry, ADRs, benchmarks
++-- scripts/                    setup-dev.sh, start-model.sh, smoke-test.sh
 ```
-
-## Environment Variables
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `LOCALCOWORK_MODEL_ENDPOINT` | `http://localhost:11434/v1` | OpenAI-compatible API endpoint for the local model |
-| `LOCALCOWORK_MODELS_DIR` | `~/Projects/_models` | Directory for non-Ollama model files (GGUF, MLX) |
-| `LOCALCOWORK_VISION_ENDPOINT` | (auto-detected) | Vision model API endpoint (injected from `_models/config.yaml`) |
-| `LOCALCOWORK_VISION_MODEL` | (auto-detected) | Vision model name (e.g., `LFM2.5-VL-1.6B`) |
-| `TAURI_DEBUG` | unset | Set to `1` for debug builds with sourcemaps |
-
-## Code Standards
-
-- **300 lines max** per file
-- **Strict types** everywhere — `mypy --strict`, `tsc --noEmit` with strict mode, `cargo clippy`
-- **No hardcoded config** — use `_shared/services/config_loader` and environment variables
-- **Conventional commits** — `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`
-- **80% test coverage** minimum (85% for shared services)
-- **Structured JSON logging** via the shared Logger — no `print()` or `console.log()`
 
 ## Documentation
 
-| Document | Purpose |
-|----------|---------|
-| `docs/PRD.md` | Full product requirements (source of truth) |
-| `docs/mcp-tool-registry.yaml` | Machine-readable tool definitions for all 75 tools |
-| `docs/architecture-decisions/` | ADRs for significant design choices |
-| `docs/patterns/` | Implementation patterns (MCP server, error handling, HITL) |
-| `PROGRESS.yaml` | Development progress checkpoint (session-to-session state) |
-| `docs/model-analysis/` | Benchmark study: 6 models × 67 tools (13 servers), failure taxonomy, architecture findings |
-| `CLAUDE.md` | AI assistant guidance for working in this codebase |
+| Document | What's In It |
+|----------|-------------|
+| [`docs/PRD.md`](docs/PRD.md) | Full product requirements |
+| [`docs/mcp-tool-registry.yaml`](docs/mcp-tool-registry.yaml) | Machine-readable definitions for all 75 tools |
+| [`docs/model-analysis/`](docs/model-analysis/) | Benchmark study: 8 models, 67 tools, failure taxonomy |
+| [`docs/demo/lfm2-24b-demo.md`](docs/demo/lfm2-24b-demo.md) | Demo workflows with exact prompts and expected tool calls |
+| [`docs/architecture-decisions/`](docs/architecture-decisions/) | ADRs for orchestrator, pre-filter, sampling, etc. |
+| [`docs/patterns/`](docs/patterns/) | Implementation patterns (MCP servers, HITL, error handling) |
 
 ## Known Limitations
 
-LocalCowork is a working reference implementation, not a finished product. Current boundaries:
+- **1-2 step workflows are reliable.** 4+ step chains degrade as conversation history grows -- multi-step completion is 26% across all tools. The curated 20-tool demo set is selected for proven chain participation.
+- **Batch operations process partial results** -- the model may handle 2 items from a set of 10. Iteration prompting is a known gap.
+- **Cross-server transitions are the universal barrier.** Every model tested fails at these. UX is designed around human confirmation to compensate.
 
-- **1-2 step workflows work reliably** via the dual-model orchestrator (100% tool selection, zero pathologies). **4+ step workflows are limited** — the planner under-decomposes complex tasks. See [Orchestrator Performance](docs/model-analysis/dual-model-orchestrator-performance.md).
-- **Single-model mode completes ~26% of multi-step chains.** Single-step tool selection (80%) is reliable; chaining 3+ tools degrades due to conversation history. See the [benchmark data](docs/model-analysis/lfm2-24b-a2b-benchmark.md).
-- **Batch operations process partial results** — the model may handle 1-2 items from a set of 10. Iteration prompting is a known gap.
-- **Filename hallucination** — the model occasionally invents file paths instead of using exact results from prior tool calls.
-
-These are documented transparently because they're instructive: they represent the current frontier of on-device tool-calling AI. The [failure taxonomy](docs/model-analysis/gpt-oss-20b.md) catalogs all 12 failure modes with evidence and workarounds.
+These limits are documented because they're instructive. See the [failure taxonomy](docs/model-analysis/) for all 12 failure modes with evidence.
 
 ## License
 

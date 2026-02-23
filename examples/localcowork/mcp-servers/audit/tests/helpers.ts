@@ -2,6 +2,7 @@
  * Test helpers for the audit MCP server.
  *
  * Provides in-memory SQLite database setup with seed data.
+ * Schema matches the Agent Core's agent.db audit_log table.
  */
 
 import Database from 'better-sqlite3';
@@ -26,9 +27,15 @@ export function setupTestDb(opts?: SeedOptions): Database.Database {
   const sessionId = opts?.sessionId ?? 'test-session-001';
   const count = opts?.entryCount ?? 5;
 
+  // Seed the sessions table (required by foreign key)
+  db.prepare(
+    `INSERT INTO sessions (id) VALUES (?)`,
+  ).run(sessionId);
+
   const insert = db.prepare(`
-    INSERT INTO audit_log (session_id, timestamp, tool_name, status, file_path, file_hash, duration_ms)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO audit_log
+      (session_id, timestamp, tool_name, arguments, result, result_status, user_confirmed, execution_time_ms)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const tools = [
@@ -41,23 +48,24 @@ export function setupTestDb(opts?: SeedOptions): Database.Database {
 
   for (let i = 0; i < count; i++) {
     const tool = tools[i % tools.length];
-    const status = tool.includes('write') ? 'confirmed' : 'executed';
+    const userConfirmed = tool.includes('write') ? 1 : 0;
     const hour = String(10 + i).padStart(2, '0');
     const timestamp = `2026-02-12T${hour}:00:00Z`;
-    const filePath = i % 2 === 0 ? `/home/user/docs/file${i}.txt` : null;
-    const fileHash = filePath ? `sha256-${i}abc` : null;
+    const args = JSON.stringify({ path: `/home/user/docs/file${i}.txt` });
+    const result = JSON.stringify({ success: true });
 
-    insert.run(sessionId, timestamp, tool, status, filePath, fileHash, 100 + i * 50);
+    insert.run(sessionId, timestamp, tool, args, result, 'success', userConfirmed, 100 + i * 50);
   }
 
-  // Add a rejected entry
+  // Add a failed entry
   insert.run(
     sessionId,
     '2026-02-12T15:00:00Z',
     'filesystem.delete_file',
-    'rejected',
-    '/home/user/docs/important.txt',
-    'sha256-important',
+    JSON.stringify({ path: '/home/user/docs/important.txt' }),
+    null,
+    'error',
+    0,
     20,
   );
 

@@ -17,14 +17,14 @@ describe('audit.get_tool_log', () => {
   it('should return all entries when no filter', async () => {
     const result = await getToolLog.execute({});
     expect(result.success).toBe(true);
-    // 5 seed entries + 1 rejected = 6
+    // 5 seed entries + 1 Error = 6
     expect(result.data.length).toBeGreaterThanOrEqual(5);
   });
 
   it('should filter by session_id', async () => {
     const result = await getToolLog.execute({ session_id: 'sess-log-001' });
     expect(result.success).toBe(true);
-    expect(result.data.length).toBe(6); // 5 + 1 rejected
+    expect(result.data.length).toBe(6); // 5 Success + 1 Error
   });
 
   it('should filter by tool_name', async () => {

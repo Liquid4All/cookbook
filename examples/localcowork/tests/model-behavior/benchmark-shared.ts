@@ -311,18 +311,22 @@ interface ChatCompletionResponse {
 export async function queryModel(
   endpoint: string,
   messages: ChatMessage[],
-  options?: { temperature?: number; topP?: number; maxTokens?: number },
+  options?: { temperature?: number; topP?: number; maxTokens?: number; model?: string },
 ): Promise<{ content: string; toolCalls: string[] }> {
+  const body: Record<string, unknown> = {
+    messages,
+    temperature: options?.temperature ?? 0.1,
+    top_p: options?.topP ?? 0.1,
+    max_tokens: options?.maxTokens ?? 512,
+    stream: false,
+  };
+  if (options?.model) {
+    body.model = options.model;
+  }
   const response = await fetch(`${endpoint}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages,
-      temperature: options?.temperature ?? 0.1,
-      top_p: options?.topP ?? 0.1,
-      max_tokens: options?.maxTokens ?? 512,
-      stream: false,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

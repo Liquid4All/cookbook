@@ -1,8 +1,8 @@
 # Small Model Tool-Calling: A Benchmark Study
 
-> We tested 5 models (1.2B to 32B parameters) against 67 MCP tools and found that
-> architecture matters more than parameter count. A 2B-active hybrid model
-> outperformed a 20B dense model by 44 percentage points.
+> We tested 8 models (3B to 27B parameters) across two tiers against 67 MCP tools.
+> The combination of hybrid architecture and MoE sparsity delivers the best latency-to-accuracy
+> trade-off — but a 3B dense model (Llama 3.2) proved surprisingly competitive with much larger models.
 
 ---
 
@@ -18,25 +18,51 @@ This directory documents what we learned across 5 models, 150+ benchmark scenari
 
 ## The Models We Tested
 
-| Model | Architecture | Active Params | VRAM | Single-Step Accuracy | Multi-Step Chains | Latency | Key Finding |
+### Tier 1 — Desktop-class (13-27 GB VRAM)
+
+| Model | Architecture | Active Params | VRAM | Single-Step (greedy) | Multi-Step (greedy) | Latency | Key Finding |
 |-------|-------------|--------------|------|---------------------|-------------------|---------|-------------|
-| Gemma 3 27B | Dense transformer | 27B | 19 GB | 91% | 48% | 24,088ms | Highest accuracy but impractical latency on MacBook |
-| Mistral-Small-24B | Dense transformer | 24B | 14 GB | 85% | 66% | 1,239ms | Best dense competitor; strong multi-step coherence |
-| **LFM2-24B-A2B** | **Hybrid MoE conv+attn** | **~2B** | **~14.5 GB** | **80%** | **26%** | **385ms** | 94% of best accuracy at 3% of latency; fits consumer hardware |
-| Qwen3 32B | Dense transformer | 32B | 21 GB | ~70%* | — | 28,385ms | Reasoning-first training hurts tool dispatch |
-| Qwen2.5-32B | Dense transformer | 32B | ~20 GB | ~85% (est.) | Not benchmarked | ~40 tok/s | Dev proxy; too large for 16 GB target hardware |
-| GPT-OSS-20B | MoE transformer | ~3.6B | 14 GB | 51% | 0% | 2,303ms | Namespace confusion; 0% multi-step (pure deflection) |
-| Qwen3-30B-A3B | MoE transformer | ~3B | 19 GB | 44% | 4% | 5,938ms | 51% no-tool-call rate; MoE ≠ efficient tool calling |
+| Mistral-Small-24B | Dense transformer | 24B | 14 GB | **85%** | **66%** | 1,425ms | Best overall; stable across sampling configs |
+| **LFM2-24B-A2B** | **Hybrid MoE conv+attn** | **~2B** | **~14.5 GB** | **80%** | **26%** | **390ms** | Production model; 0pp delta greedy vs near-greedy |
+| Gemma 3 27B | Dense transformer | 27B | 19 GB | 91% | 48% | 21,464ms | Highest accuracy but impractical latency; 0pp delta |
+| Qwen3-30B-A3B-Instruct-2507 | MoE transformer | ~3B | 19 GB | 71% | 42% | 610ms | Massive improvement over original A3B (44%→71%) |
+| GPT-OSS-20B | MoE transformer | ~3.6B | 14 GB | 51% | 0% | 2,221ms | Namespace confusion; 0% multi-step (pure deflection) |
 
-*Qwen3 32B: 40/100 tests completed; extrapolated from partial run.
+### Tier 2 — Small model class (2-4 GB VRAM)
 
-**Benchmark conditions:** 100 single-step prompts and 50 multi-step chains against all 67 tools (unfiltered), using the same test suite across all models. Tests run on Apple M4 Max (36 GB unified memory) via llama-server (LFM2) or Ollama (all others). See [Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md) for detailed results.
+| Model | Architecture | Active Params | VRAM | Single-Step (greedy) | Multi-Step (greedy) | Latency | Key Finding |
+|-------|-------------|--------------|------|---------------------|-------------------|---------|-------------|
+| **Llama 3.2 3B** | Dense transformer | 3B | ~2.0 GB | **82%** | **52%** | **305ms** | Best small model; beats several 20B+ models |
+| Phi-4-mini (3.8B) | Dense transformer | 3.8B | ~2.5 GB | 60% | 14% | 549ms | Good tool call rate (94%), high wrong-tool rate (34%) |
+| Qwen3-4B | Dense transformer | 4B | ~2.5 GB | 20% | 0% | 5,837ms | Same `<think>` problem as larger Qwen3; 79% no-tool-call rate |
+
+**Dropped from active benchmarks:**
+- Qwen3 32B — only had partial run (40/100 tests), extreme latency
+- Qwen3-30B-A3B (original) — replaced by Instruct-2507 variant
+- Qwen2.5-32B — dev proxy, too large for target hardware
+
+**Benchmark conditions:** 100 single-step prompts and 50 multi-step chains against all 67 tools (unfiltered), using the same test suite across all models. Tests run on Apple M4 Max (36 GB unified memory) via llama-server (LFM2) or Ollama (all others). Greedy sampling (temp=0) for all results unless noted. See [Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md) for detailed results.
+
+### Quality benchmark (LFM2-24B-A2B vs Llama 3.2 3B)
+
+Tool selection only measures dispatch accuracy. The [quality benchmark](./quality-benchmark-results.md) measures what happens after dispatch: parameter extraction, instruction following, and synthesis of tool results.
+
+| Dimension | LFM2-24B-A2B | Llama 3.2 3B | Delta |
+|---|---|---|---|
+| Single-step tool selection | 80% | 82% | -2pp (tie) |
+| Multi-step chains | 26% | 52% | -26pp (Llama) |
+| **Parameter extraction** | **65%** | 50% | **+15pp (LFM2)** |
+| Instruction following | 65% | 63% | +2pp (tie) |
+| **Synthesis quality** | **88%** | 74% | **+14pp (LFM2)** |
+
+Both models dispatch tools equally well. LFM2-24B extracts parameters 15pp more accurately and synthesizes tool results 14pp more coherently. See [Quality Benchmark: Beyond Tool Selection](./quality-benchmark-results.md) for the full analysis.
 
 ### What the numbers mean
 
 - **Single-step accuracy**: Given a user prompt, does the model select the correct tool from all 67 available? Tested with 100 prompts spanning 12 categories.
 - **Multi-step chains**: Can the model complete a 3-6 step workflow (e.g., list files, OCR each, rename)? 50 chains of varying difficulty (simple, medium, complex).
 - **Active params**: For MoE models, the number of parameters activated per token. LFM2-24B-A2B has 24B total but only routes ~2B per token.
+- **Quality scores**: 150 programmatically-scored tests across parameter extraction (50), instruction following (50), and synthesis (50). No LLM judge — all constraints verified with deterministic checks.
 
 ---
 
@@ -74,13 +100,11 @@ K=15 is the Pareto-optimal point. Below it, the filter misses the correct tool t
 
 ## Five Key Discoveries
 
-### 1. Architecture matters more than parameter count
+### 1. The hybrid design + MoE sparsity combination delivers the best speed-accuracy trade-off
 
 LFM2-24B-A2B activates ~2B parameters per token through its hybrid Mixture-of-Experts architecture (convolution blocks + grouped query attention). GPT-OSS-20B is also MoE (32 experts, top-4 routing) activating ~3.6B parameters per token.
 
-Result: the ~2B-active hybrid MoE scores **80%** while the ~3.6B-active standard MoE scores **51%** (updated from earlier ~36% estimate). Similar active param counts, same MoE concept, but LFM2's hybrid conv+attn block design is the differentiator.
-
-The hypothesis: Liquid AI's convolution-heavy hybrid architecture processes structured tool schemas differently from pure transformer attention. Convolution blocks may be more efficient at pattern-matching over JSON-structured tool definitions.
+Result: the ~2B-active hybrid MoE scores **80%** while the ~3.6B-active standard MoE scores **51%** (updated from earlier ~36% estimate). LFM2 is also 6x faster (390ms vs 2,303ms). The speed advantage comes from the combination of the hybrid conv+attention design and MoE sparsity. The accuracy difference likely reflects differences in training data and methodology rather than architecture alone — we would not attribute the quality improvement specifically to the hybrid block design.
 
 ### 2. Every model fails at the same point
 
@@ -181,7 +205,8 @@ See [gpt-oss-20b.md](./gpt-oss-20b.md) for the complete taxonomy with evidence a
 
 ### Competitive comparison
 
-- **[Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md)** — LFM2-24B-A2B (2B active) vs 5 models: Mistral-Small-24B, Gemma 3 27B, Qwen3 32B, GPT-OSS-20B, and Qwen3-30B-A3B. Same 67-tool benchmark, same Apple M4 Max hardware. Latency, accuracy, memory, and efficiency-per-parameter analysis.
+- **[Tool-Calling Benchmark Results](./tool-calling-benchmark-results.md)** — LFM2-24B-A2B (2B active) vs 7 models across 2 tiers. Includes greedy sampling re-run (temp=0) and Tier 2 small model comparison (3-4B dense). Same 67-tool benchmark, same Apple M4 Max hardware.
+- **[Quality Benchmark: Beyond Tool Selection](./quality-benchmark-results.md)** — 150 tests measuring parameter extraction accuracy, instruction following precision, and synthesis quality. LFM2-24B-A2B (72.5%) vs Llama 3.2 3B (62.2%). Fully programmatic scoring, no LLM judge. Shows where the 24B model's knowledge capacity separates from a 3B dense model.
 
 ### Per-model deep dives
 
@@ -327,7 +352,8 @@ For the broader community building local AI agents: the era of "throw all tools 
 
 All benchmark code and results live in the repository:
 
-- **Test suite:** `tests/model-behavior/benchmark-lfm.ts` (100 single-step), `benchmark-multi-step.ts` (50 chains), `benchmark-orchestrator.ts` (50 orchestrator chains)
+- **Tool selection:** `tests/model-behavior/benchmark-lfm.ts` (100 single-step), `benchmark-multi-step.ts` (50 chains), `benchmark-orchestrator.ts` (50 orchestrator chains)
+- **Quality benchmark:** `tests/model-behavior/benchmark-quality.ts` (150 tests: param extraction + instruction following + synthesis). Scoring: `quality-scoring.ts`. Tests: `param-extraction-tests.ts`, `instruction-following-tests.ts`, `synthesis-tests.ts`.
 - **Runner script:** `scripts/benchmark-lfm2-24b.sh` (three-phase: single-model, orchestrator, report)
 - **Results:** `tests/model-behavior/.results/` (JSON files with per-test accuracy, latency, and failure analysis)
 - **Model config:** `_models/config.yaml` (active model, fallback chain, sampling parameters)

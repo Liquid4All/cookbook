@@ -11,6 +11,8 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::agent_core::response_analysis::{is_deflection_response, is_incomplete_response};
+use crate::agent_core::tokens::truncate_utf8;
+use crate::agent_core::AuditStatus;
 use crate::agent_core::ConversationManager;
 use crate::inference::config::{find_config_path, load_models_config};
 use crate::inference::types::{SamplingOverrides, ToolDefinition};
@@ -72,47 +74,58 @@ with full privacy. You have access to tools across multiple capability areas.";
 fn system_prompt_rules() -> String {
     let home = dirs::home_dir()
         .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|| "/Users/user".to_string());
+        .unwrap_or_else(|| {
+            if cfg!(target_os = "windows") {
+                r"C:\Users\user".to_string()
+            } else if cfg!(target_os = "macos") {
+                "/Users/user".to_string()
+            } else {
+                "/home/user".to_string()
+            }
+        });
 
     format!("\
 IMPORTANT: Always use the fully-qualified tool name with the server prefix \
-(e.g., filesystem.move_file, NOT move_file).\n\n\
+(e.g., filesystem.list_dir, NOT list_dir).\n\n\
 Rules:\n\
 1. ALWAYS use absolute paths (e.g. {home}/Documents/file.png). Never use ~/.\n\
 2. For READ operations: call the tool immediately, no need to ask.\n\
 3. For WRITE operations: call the tool directly — the system will show the user \
 a confirmation dialog before executing. Do NOT ask for confirmation in text.\n\
-4. When the user approves a rename/move plan, call filesystem.move_file for each file.\n\
-5. Be concise, direct, and action-oriented.\n\
-6. SEQUENTIAL PROCESSING: For tasks involving multiple files, process ONE file completely \
+4. Be concise, direct, and action-oriented.\n\
+5. SEQUENTIAL PROCESSING: For tasks involving multiple files, process ONE file completely \
 (read/analyze/act) before moving to the next. Never batch-read all files first.\n\
-7. NO REDUNDANT CALLS: Never call a tool with the same arguments twice in one conversation. \
+6. NO REDUNDANT CALLS: Never call a tool with the same arguments twice in one conversation. \
 If you already listed a directory or read a file, use the result you received.\n\
-8. PROGRESS TRACKING: After completing each file, briefly state what you did and which \
+7. PROGRESS TRACKING: After completing each file, briefly state what you did and which \
 file you will process next. This keeps your work organized.\n\
-9. TRUTHFULNESS: Only report results you actually received from tool calls. If you did \
+8. TRUTHFULNESS: Only report results you actually received from tool calls. If you did \
 not process a file or did not receive a result, say so explicitly. Never guess or \
 invent information.\n\
-10. COMPLETE ALL FILES: Do NOT stop and produce a summary until you have processed \
+9. COMPLETE ALL FILES: Do NOT stop and produce a summary until you have processed \
 EVERY file that matches the user's request. If you listed 7 files to process and have \
 only processed 3, keep going — call the next tool. Only produce a final text response \
 when there are zero files remaining.\n\
-11. KNOW WHEN TO STOP: After you have called 3-5 tools and collected results, produce \
+10. KNOW WHEN TO STOP: After you have called 3-5 tools and collected results, produce \
 your response. Do NOT keep calling tools to find more data unless the user explicitly \
 asked for exhaustive processing. Quality of analysis beats quantity of tool calls.\n\n\
 Examples of CORRECT tool usage:\n\n\
 Example 1 — single tool call (correct name + absolute path):\n\
-  User: \"What text is in this image?\"\n\
-  You call: ocr.extract_text_from_image({{\"path\": \"{home}/Documents/receipt.png\"}})\n\
-  WRONG: extract_text_from_image({{\"path\": \"~/Documents/receipt.png\"}})\n\n\
-Example 2 — multi-step read-then-act:\n\
-  User: \"Rename my screenshots based on their content.\"\n\
-  Step 1: filesystem.list_dir({{\"path\": \"{home}/Documents\"}})\n\
-  Step 2: ocr.extract_text_from_image({{\"path\": \"{home}/Documents/IMG_001.png\"}})\n\
-  Step 3: Read the OCR result. Decide the new name from the CONTENT, not the filename.\n\
-  Step 4: filesystem.move_file({{\"source\": \"{home}/Documents/IMG_001.png\", \
-\"destination\": \"{home}/Documents/invoice-march-2026.png\"}})\n\
-  Step 5: Process the NEXT file (steps 2-4). Do NOT read all files before renaming any.")
+  User: \"List the files in my Documents folder.\"\n\
+  You call: filesystem.list_dir({{\"path\": \"{home}/Documents\"}})\n\
+  WRONG: list_dir({{\"path\": \"~/Documents\"}})\n\n\
+Example 2 — multi-step security scan + audit:\n\
+  User: \"Scan my Projects folder for secrets and show me the audit trail.\"\n\
+  Step 1: security.scan_for_secrets({{\"path\": \"{home}/Projects\"}})\n\
+  Step 2: Read the scan results. Report what was found.\n\
+  Step 3: audit.get_tool_log({{\"session_id\": \"current\"}})\n\
+  Step 4: Summarize the audit trail for the user.\n\n\
+Example 3 — document comparison:\n\
+  User: \"Compare these two contracts.\"\n\
+  Step 1: document.extract_text({{\"path\": \"{home}/Documents/contract_v1.pdf\"}})\n\
+  Step 2: document.extract_text({{\"path\": \"{home}/Documents/contract_v2.pdf\"}})\n\
+  Step 3: document.diff_documents({{\"path_a\": \"{home}/Documents/contract_v1.pdf\", \
+\"path_b\": \"{home}/Documents/contract_v2.pdf\"}})")
 }
 
 /// Build the system prompt with dynamic tool capabilities from the MCP registry.
@@ -275,8 +288,28 @@ fn builtin_tool_definitions() -> Vec<ToolDefinition> {
 }
 
 /// Build merged tool definitions: built-in + MCP tools from the registry.
+///
+/// Built-in tools (`list_directory`, `read_file`) are suppressed when the MCP
+/// registry already contains their equivalents (`filesystem.list_dir`,
+/// `filesystem.read_file`). This avoids confusing the model with near-duplicate
+/// tools, which causes it to pick the wrong one or get stuck in loops.
 fn build_all_tool_definitions(mcp_client: &McpClient) -> Vec<ToolDefinition> {
-    let mut tools = builtin_tool_definitions();
+    // Map of built-in tool name → MCP equivalent that supersedes it
+    let builtin_mcp_equivalents: &[(&str, &str)] = &[
+        ("list_directory", "filesystem.list_dir"),
+        ("read_file", "filesystem.read_file"),
+    ];
+
+    // Only include built-ins whose MCP equivalent is NOT in the registry
+    let mut tools: Vec<ToolDefinition> = builtin_tool_definitions()
+        .into_iter()
+        .filter(|tool| {
+            let name = &tool.function.name;
+            !builtin_mcp_equivalents.iter().any(|(builtin, mcp)| {
+                name == builtin && mcp_client.registry.get_tool(mcp).is_some()
+            })
+        })
+        .collect();
 
     // Append MCP tool definitions from the registry
     let mcp_tools = mcp_client.registry.to_openai_tools();
@@ -363,8 +396,8 @@ fn execute_builtin_tool(name: &str, arguments: &serde_json::Value) -> String {
                 Ok(content) => {
                     if content.len() > 8000 {
                         format!(
-                            "{}\n\n[... truncated, showing first 8000 chars of {} total]",
-                            &content[..8000],
+                            "{}\n\n[... truncated, showing first ~8000 chars of {} total]",
+                            truncate_utf8(&content, 8000),
                             content.len()
                         )
                     } else {
@@ -489,7 +522,7 @@ async fn execute_tool(
             let text = if suggestions.is_empty() {
                 format!(
                     "Unknown tool: '{original}'. Use fully-qualified names \
-                     (e.g., filesystem.move_file, ocr.extract_text_from_image)."
+                     (e.g., filesystem.list_dir, security.scan_for_secrets)."
                 )
             } else {
                 format!(
@@ -775,6 +808,11 @@ fn format_correction_hint(unknown_tools: &[(String, ToolResolution)]) -> String 
 /// despite system-prompt rules. Rather than relying on each MCP server to
 /// handle tildes, we expand them centrally before dispatch.
 ///
+/// Also fixes cross-platform path hallucination:
+/// - `/home/<user>/...` on macOS → `/Users/<user>/...`
+/// - `/Users/{user}/...` (placeholder) → real home dir
+/// - `/Users/<wrong_user>/...` → real home dir
+///
 /// Only replaces `~` or `~/...` at the start of a string value. Values like
 /// `~other_user/` or `~suffix` are left untouched (we can't resolve those).
 fn expand_tilde_in_arguments(args: &serde_json::Value) -> serde_json::Value {
@@ -786,17 +824,9 @@ fn expand_tilde_in_arguments(args: &serde_json::Value) -> serde_json::Value {
             }
             serde_json::Value::Object(out)
         }
-        serde_json::Value::String(s) if s.starts_with('~') => {
-            if let Some(home) = dirs::home_dir() {
-                let expanded = if let Some(rest) = s.strip_prefix("~/") {
-                    home.join(rest)
-                } else if s == "~" {
-                    home
-                } else {
-                    // ~other_user/... — leave as-is
-                    return serde_json::Value::String(s.clone());
-                };
-                serde_json::Value::String(expanded.to_string_lossy().into_owned())
+        serde_json::Value::String(s) => {
+            if let Some(fixed) = fix_path_string(s) {
+                serde_json::Value::String(fixed)
             } else {
                 serde_json::Value::String(s.clone())
             }
@@ -806,6 +836,160 @@ fn expand_tilde_in_arguments(args: &serde_json::Value) -> serde_json::Value {
         }
         other => other.clone(),
     }
+}
+
+/// Fix a single path string: tilde expansion + cross-platform path correction.
+///
+/// Returns `Some(fixed)` if the path was modified, `None` if no fix was needed.
+///
+/// The model hallucinates paths in several forms:
+///   - `~/Documents`         → tilde shorthand
+///   - `Projects`            → bare relative dir name
+///   - `/home/user/...`      → wrong OS prefix (Linux on macOS/Windows)
+///   - `/Users/{user}/...`   → template placeholders
+///   - `C:\Users\{user}\...` → template placeholders (Windows)
+///
+/// All corrections use `std::path::Path::join` so separators are always
+/// correct for the target platform.
+fn fix_path_string(s: &str) -> Option<String> {
+    use std::path::MAIN_SEPARATOR;
+
+    let home = dirs::home_dir()?;
+    let home_str = home.to_string_lossy();
+
+    // ── 1. Tilde expansion: ~/... → <home>/... ──────────────────────────────
+    if s.starts_with("~/") || s.starts_with("~\\") {
+        let rest = &s[2..];
+        return Some(home.join(rest).to_string_lossy().into_owned());
+    }
+    if s == "~" {
+        return Some(home_str.into_owned());
+    }
+
+    // ── 2. Bare relative path that matches a well-known home subdirectory ───
+    //    Model outputs "Projects" or "Downloads" instead of an absolute path.
+    //    Guard: skip strings that look like absolute paths or URLs.
+    let looks_absolute = s.starts_with('/')
+        || s.starts_with('\\')
+        || (s.len() >= 3 && s.as_bytes()[1] == b':'); // C:\ or D:\
+    if !looks_absolute && !s.contains("://") {
+        let first_segment = s.split(&['/', '\\'][..]).next().unwrap_or(s);
+        let well_known = [
+            "Desktop",
+            "Documents",
+            "Downloads",
+            "Projects",
+            "Pictures",
+            "Music",
+            "Videos",   // Windows
+            "Movies",   // macOS
+            "Library",  // macOS
+        ];
+        if well_known.iter().any(|d| d.eq_ignore_ascii_case(first_segment)) {
+            return Some(home.join(s).to_string_lossy().into_owned());
+        }
+    }
+
+    // ── 3. Foreign OS home prefix → real home dir ─────────────────────────
+    //    LLMs hallucinate Linux-style /home/... on macOS/Windows and
+    //    macOS-style /Users/... on Linux/Windows.  A foreign prefix means
+    //    the entire path is hallucinated — rewrite any username unconditionally.
+    let foreign_prefixes: &[&str] = if cfg!(target_os = "macos") {
+        &["/home/"] // /Users/ is native on macOS — handled separately below
+    } else if cfg!(target_os = "linux") {
+        &["/Users/"] // /home/ is native on Linux — handled separately below
+    } else {
+        &["/home/", "/Users/"] // both are foreign on Windows
+    };
+
+    for prefix in foreign_prefixes {
+        if let Some(after_prefix) = s.strip_prefix(prefix) {
+            if let Some(slash_idx) = after_prefix.find('/') {
+                let rest = &after_prefix[slash_idx + 1..];
+                return Some(home.join(rest).to_string_lossy().into_owned());
+            }
+        }
+    }
+
+    // ── 4. Native OS home prefix with template placeholder ──────────────
+    //    /Users/{user}/... on macOS, /home/{user}/... on Linux.
+    //    Only rewrite if the "username" is a known template placeholder —
+    //    never silently replace a real username on a multi-user system.
+    let native_prefix: &str = if cfg!(target_os = "macos") {
+        "/Users/"
+    } else if cfg!(target_os = "linux") {
+        "/home/"
+    } else {
+        "" // Windows native prefix handled in section 5
+    };
+
+    if !native_prefix.is_empty() && s.starts_with(native_prefix) {
+        // Already matches our home dir — nothing to fix
+        if s.starts_with(&*home_str) {
+            return None;
+        }
+
+        let after_prefix = &s[native_prefix.len()..];
+        if let Some(slash_idx) = after_prefix.find('/') {
+            let placeholder = &after_prefix[..slash_idx];
+            let rest = &after_prefix[slash_idx + 1..];
+
+            let is_template =
+                (placeholder.starts_with('{') && placeholder.ends_with('}'))
+                    || (placeholder.starts_with('<') && placeholder.ends_with('>'))
+                    || (placeholder.starts_with('[') && placeholder.ends_with(']'));
+
+            if is_template {
+                return Some(home.join(rest).to_string_lossy().into_owned());
+            }
+
+            // Common LLM placeholder words (not real usernames)
+            let placeholder_lower = placeholder.to_ascii_lowercase();
+            let known_placeholders = ["user", "username", "your_name", "me"];
+            if known_placeholders.contains(&placeholder_lower.as_str()) {
+                return Some(home.join(rest).to_string_lossy().into_owned());
+            }
+        }
+    }
+
+    // ── 5. Windows C:\Users\{placeholder}\... ───────────────────────────────
+    let win_prefix = "C:\\Users\\";
+    let win_prefix_fwd = "C:/Users/"; // model may use forward slashes on Windows too
+    for prefix in &[win_prefix, win_prefix_fwd] {
+        if let Some(after_prefix) = s.strip_prefix(prefix) {
+            // Already matches our home dir — nothing to fix
+            if s.starts_with(&*home_str) {
+                return None;
+            }
+
+            let sep_idx = after_prefix.find(&['/', '\\'][..]);
+
+            if let Some(idx) = sep_idx {
+                let placeholder = &after_prefix[..idx];
+                let rest = &after_prefix[idx + 1..];
+
+                let is_template =
+                    (placeholder.starts_with('{') && placeholder.ends_with('}'))
+                        || (placeholder.starts_with('<') && placeholder.ends_with('>'))
+                        || (placeholder.starts_with('[') && placeholder.ends_with(']'));
+
+                if is_template {
+                    return Some(home.join(rest).to_string_lossy().into_owned());
+                }
+
+                let placeholder_lower = placeholder.to_ascii_lowercase();
+                let known_placeholders = ["user", "username", "your_name", "me"];
+                if known_placeholders.contains(&placeholder_lower.as_str()) {
+                    return Some(home.join(rest).to_string_lossy().into_owned());
+                }
+            }
+        }
+    }
+
+    // Suppress unused-variable warning on platforms where MAIN_SEPARATOR is `/`
+    let _ = MAIN_SEPARATOR;
+
+    None
 }
 
 /// Extract readable text from an MCP tool result.
@@ -1587,13 +1771,64 @@ pub async fn send_message(
         let mut round_unknown_tools: Vec<(String, ToolResolution)> = Vec::new();
 
         for tc in &tool_calls_detected {
+            // Auto-inject session_id into audit tool arguments so the model
+            // doesn't need to guess it. Audit tools expect a session_id param
+            // that matches the agent_core audit log's session column.
+            // Always override — the model often hallucinates placeholder values
+            // like "SESSION_ID_FROM_CURRENT_CONTEXT" or tool_call_ids.
+            let effective_arguments = if tc.name.starts_with("audit.") {
+                let mut args = tc.arguments.clone();
+                if let Some(obj) = args.as_object_mut() {
+                    obj.insert(
+                        "session_id".to_string(),
+                        serde_json::Value::String(session_id.clone()),
+                    );
+                }
+                args
+            } else {
+                tc.arguments.clone()
+            };
+
+            let tool_start = std::time::Instant::now();
             let outcome = {
                 let mut mcp = mcp_state.lock().await;
-                execute_tool(&tc.name, &tc.arguments, &mut mcp).await
+                execute_tool(&tc.name, &effective_arguments, &mut mcp).await
             };
+            let execution_time_ms = tool_start.elapsed().as_millis() as u64;
 
             let is_error = outcome.is_error();
             let result_text = outcome.model_text().to_string();
+
+            // ── Audit log write ──────────────────────────────────────
+            // Record every tool execution in the audit_log table so
+            // audit.get_tool_log / audit.generate_audit_report can read them.
+            {
+                let mgr = state
+                    .lock()
+                    .map_err(|e| format!("Lock error: {e}"))?;
+                let audit_status = if is_error {
+                    AuditStatus::Error
+                } else {
+                    AuditStatus::Success
+                };
+                let result_val = serde_json::Value::String(result_text.clone());
+                if let Err(e) = mgr.db().insert_audit_entry(
+                    &session_id,
+                    &tc.name,
+                    &effective_arguments,
+                    Some(&result_val),
+                    audit_status,
+                    false, // user_confirmed — set later if confirmation flow ran
+                    execution_time_ms,
+                ) {
+                    tracing::warn!(
+                        session_id = %session_id,
+                        tool = %tc.name,
+                        error = %e,
+                        "failed to write audit log entry"
+                    );
+                }
+            }
 
             if is_error {
                 round_error_count += 1;
@@ -1622,7 +1857,8 @@ pub async fn send_message(
                     tool = %tc.name,
                     tool_call_id = %tc.id,
                     result_len = result_text.len(),
-                    result_preview = %&result_text[..result_text.len().min(200)],
+                    result_preview = %truncate_utf8(&result_text, 200),
+                    execution_time_ms = execution_time_ms,
                     tools_completed = tool_call_history.len(),
                     "tool call FAILED"
                 );
@@ -1632,6 +1868,7 @@ pub async fn send_message(
                     tool = %tc.name,
                     tool_call_id = %tc.id,
                     result_len = result_text.len(),
+                    execution_time_ms = execution_time_ms,
                     tools_completed = tool_call_history.len(),
                     "tool execution complete"
                 );
@@ -2127,7 +2364,7 @@ mod tests {
         let prompt = build_system_prompt(&registry, false);
         assert!(prompt.contains("No MCP tools currently available"));
         assert!(prompt.contains("list_dir"));
-        assert!(prompt.contains("move_file"));
+        assert!(prompt.contains("scan_for_secrets"));
         // Should still include the rules section
         assert!(prompt.contains("IMPORTANT: Always use the fully-qualified"));
     }
@@ -2366,5 +2603,151 @@ mod tests {
         assert!(!paths[0].as_str().unwrap().starts_with('~'));
         assert_eq!(paths[1].as_str().unwrap(), "/b.txt");
         assert!(!paths[2].as_str().unwrap().starts_with('~'));
+    }
+
+    // ── fix_path_string: cross-platform path correction tests ───────
+
+    /// Helper: build the expected path using Path::join (platform-correct).
+    fn expected_home_join(suffix: &str) -> String {
+        dirs::home_dir()
+            .unwrap()
+            .join(suffix)
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_fix_foreign_os_prefix() {
+        // On macOS, /home/ is foreign — any username is hallucinated
+        let args = serde_json::json!({"path": "/home/chintan/Downloads"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert_eq!(path, expected_home_join("Downloads"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_native_prefix_real_username_not_rewritten() {
+        // On macOS, /Users/<other_real_user>/... should NOT be rewritten
+        // (could be a legitimate multi-user path)
+        let args = serde_json::json!({"path": "/Users/admin/shared/notes.txt"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert_eq!(path, "/Users/admin/shared/notes.txt", "Real username should not be rewritten");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_native_prefix_template_user() {
+        // /Users/{user}/Downloads on macOS — template on native prefix
+        let args = serde_json::json!({"path": "/Users/{user}/Downloads"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert!(
+            !path.contains("{user}"),
+            "Placeholder should be replaced: {path}"
+        );
+        assert_eq!(path, expected_home_join("Downloads"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_native_prefix_template_username() {
+        // /Users/{username}/Documents on macOS
+        let args = serde_json::json!({"path": "/Users/{username}/Documents"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert!(
+            !path.contains("{username}"),
+            "Placeholder should be replaced: {path}"
+        );
+        assert_eq!(path, expected_home_join("Documents"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_native_prefix_angle_bracket() {
+        // /Users/<username>/Downloads on macOS
+        let args = serde_json::json!({"path": "/Users/<username>/Downloads"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert!(
+            !path.contains("<username>"),
+            "Angle-bracket placeholder should be replaced: {path}"
+        );
+        assert_eq!(path, expected_home_join("Downloads"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_native_prefix_square_bracket() {
+        // /Users/[USER]/Documents/Projects on macOS
+        let args = serde_json::json!({"path": "/Users/[USER]/Documents/Projects"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert!(
+            !path.contains("[USER]"),
+            "Square-bracket placeholder should be replaced: {path}"
+        );
+        assert_eq!(path, expected_home_join("Documents/Projects"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn test_native_prefix_known_placeholder_word() {
+        // /Users/user/Documents on macOS — "user" is a known placeholder
+        let args = serde_json::json!({"path": "/Users/user/Documents"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert_eq!(path, expected_home_join("Documents"));
+    }
+
+    #[test]
+    fn test_fix_bare_relative_path() {
+        // Model generates just "Projects" instead of an absolute path
+        let args = serde_json::json!({"path": "Projects"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert_eq!(path, expected_home_join("Projects"));
+    }
+
+    #[test]
+    fn test_fix_bare_downloads_relative_path() {
+        // Model generates "Downloads"
+        let args = serde_json::json!({"path": "Downloads"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert_eq!(path, expected_home_join("Downloads"));
+    }
+
+    #[test]
+    fn test_tilde_expansion() {
+        let args = serde_json::json!({"path": "~/Documents/file.txt"});
+        let expanded = expand_tilde_in_arguments(&args);
+        let path = expanded["path"].as_str().unwrap();
+        assert_eq!(path, expected_home_join("Documents/file.txt"));
+    }
+
+    #[test]
+    fn test_no_fix_for_correct_path() {
+        // Already-correct absolute path should not be modified
+        let home = dirs::home_dir().unwrap();
+        let correct = home.join("Documents").join("test.txt");
+        let correct_str = correct.to_string_lossy().into_owned();
+        let args = serde_json::json!({"path": correct_str});
+        let expanded = expand_tilde_in_arguments(&args);
+        assert_eq!(expanded["path"].as_str().unwrap(), correct_str);
+    }
+
+    #[test]
+    fn test_no_fix_for_urls() {
+        // URL-like strings should not be modified
+        let args = serde_json::json!({"url": "https://example.com/Documents/file"});
+        let expanded = expand_tilde_in_arguments(&args);
+        assert_eq!(
+            expanded["url"].as_str().unwrap(),
+            "https://example.com/Documents/file"
+        );
     }
 }

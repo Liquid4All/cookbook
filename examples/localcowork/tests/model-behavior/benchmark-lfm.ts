@@ -17,6 +17,9 @@
  *   --model NAME       Model name for Ollama (e.g., "mistral-small:24b")
  *   --timeout MS       Per-request timeout (default: 30000)
  *   --top-k N          Enable RAG pre-filter with top-K tools (0 = disabled)
+ *   --greedy           Use greedy sampling (temp=0, top_p=1.0, top_k=0)
+ *   --servers LIST     Comma-separated server names to restrict tool set and tests
+ *                      (e.g., "security,audit,document,ocr")
  *
  * Prerequisites:
  *   - llama-server running on port 8082
@@ -57,6 +60,8 @@ interface CliArgs {
   timeoutMs: number;
   topK: number;
   model: string | undefined;
+  greedy: boolean;
+  servers: string[];
 }
 
 function parseArgs(): CliArgs {
@@ -65,6 +70,8 @@ function parseArgs(): CliArgs {
   let timeoutMs = DEFAULT_TIMEOUT_MS;
   let topK = 0;
   let model: string | undefined;
+  let servers: string[] = [];
+  const greedy = args.includes('--greedy');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--endpoint' && args[i + 1]) {
@@ -75,10 +82,31 @@ function parseArgs(): CliArgs {
       topK = parseInt(args[++i], 10);
     } else if (args[i] === '--model' && args[i + 1]) {
       model = args[++i];
+    } else if (args[i] === '--servers' && args[i + 1]) {
+      servers = args[++i].split(',').map((s) => s.trim()).filter(Boolean);
     }
   }
 
-  return { endpoint, timeoutMs, topK, model };
+  return { endpoint, timeoutMs, topK, model, greedy, servers };
+}
+
+// ─── Server Filtering ──────────────────────────────────────────────────────
+
+/** Filter VALID_TOOL_NAMES to only tools belonging to the given servers. */
+function filterToolNamesByServers(servers: string[]): string[] {
+  const serverSet = new Set(servers);
+  return VALID_TOOL_NAMES.filter((name) => serverSet.has(name.split('.')[0]));
+}
+
+/** Filter test cases to only those whose expectedTools include at least one tool from the server set. */
+function filterTestsByServers(
+  tests: readonly import('./types').ToolSelectionTest[],
+  servers: string[],
+): import('./types').ToolSelectionTest[] {
+  const serverSet = new Set(servers);
+  return tests.filter((test) =>
+    test.expectedTools.some((tool) => serverSet.has(tool.split('.')[0])),
+  );
 }
 
 // ─── Model Communication ───────────────────────────────────────────────────
@@ -103,6 +131,7 @@ async function queryModel(
   context: readonly string[],
   timeoutMs: number,
   model?: string,
+  greedy?: boolean,
 ): Promise<{ tools: string[]; rawContent: string; durationMs: number }> {
   const messages: Array<{ role: string; content: string }> = [
     { role: 'system', content: systemPrompt },
@@ -122,10 +151,10 @@ async function queryModel(
 
   const body: Record<string, unknown> = {
     messages,
-    temperature: 0.1,
-    top_k: 50,
-    top_p: 0.1,
-    repetition_penalty: 1.05,
+    temperature: greedy ? 0 : 0.1,
+    top_k: greedy ? 0 : 50,
+    top_p: greedy ? 1.0 : 0.1,
+    repetition_penalty: greedy ? 1.0 : 1.05,
     max_tokens: 512,
   };
   if (model) {
@@ -184,10 +213,20 @@ interface BenchmarkResult {
   noToolRate: number;
   restraintScore: number;
   durationMs: number;
+  sampling: {
+    temperature: number;
+    top_p: number;
+    top_k: number;
+    repetition_penalty: number;
+    mode: 'greedy' | 'near-greedy';
+  };
   // Filter-specific metrics
   filterHitRate?: number;       // % of tests where correct tool was in top-K
   filterHitCount?: number;      // Number of tests where correct tool was in top-K
   avgFilteredToolCount?: number; // Average number of tools sent to model
+  // Server-filter metadata
+  servers?: string[];
+  toolCount?: number;
 }
 
 async function runBenchmark(
@@ -196,9 +235,16 @@ async function runBenchmark(
   topK: number,
   toolIndex: ToolEmbeddingIndex | null,
   model?: string,
+  greedy?: boolean,
+  servers?: string[],
 ): Promise<BenchmarkResult> {
-  const allToolDefs = buildToolDefinitions();
-  const tests = allToolSelectionTests;
+  const hasServerFilter = servers !== undefined && servers.length > 0;
+  const allToolDefs = hasServerFilter
+    ? buildFilteredToolDefinitions(filterToolNamesByServers(servers))
+    : buildToolDefinitions();
+  const tests = hasServerFilter
+    ? filterTestsByServers(allToolSelectionTests, servers)
+    : allToolSelectionTests;
   const results: IndividualTestResult[] = [];
   const startTime = Date.now();
   let passed = 0;
@@ -213,10 +259,18 @@ async function runBenchmark(
   const isFiltered = topK > 0 && toolIndex !== null;
   const mode = isFiltered ? 'filtered' : 'unfiltered';
 
+  const samplingMode = greedy ? 'GREEDY (temp=0)' : 'NEAR-GREEDY (temp=0.1)';
+
+  const toolCount = allToolDefs.length;
+
   console.log(`\n${'═'.repeat(70)}`);
   console.log(`  LFM Tool Selection Benchmark — ${mode.toUpperCase()}`);
   console.log(`  Endpoint: ${endpoint}`);
-  console.log(`  Tests: ${tests.length} | Tools: ${VALID_TOOL_NAMES.length}`);
+  console.log(`  Tests: ${tests.length} | Tools: ${toolCount} (of ${VALID_TOOL_NAMES.length} total)`);
+  console.log(`  Sampling: ${samplingMode}`);
+  if (hasServerFilter) {
+    console.log(`  Servers: ${servers.join(', ')}`);
+  }
   if (isFiltered) {
     console.log(`  Pre-filter: top-K=${topK} via /v1/embeddings`);
   }
@@ -261,7 +315,7 @@ IMPORTANT RULES:
 Available tools: [${toolsJson.slice(1, -1)}]`;
 
       const { tools: actualTools, rawContent, durationMs } = await queryModel(
-        endpoint, systemPrompt, test.prompt, test.context ?? [], timeoutMs, model,
+        endpoint, systemPrompt, test.prompt, test.context ?? [], timeoutMs, model, greedy,
       );
 
       totalLatency += durationMs;
@@ -365,6 +419,15 @@ Available tools: [${toolsJson.slice(1, -1)}]`;
     individual: results,
     toolCallRate, wrongToolRate, noToolRate, restraintScore,
     durationMs: totalDurationMs,
+    sampling: {
+      temperature: greedy ? 0 : 0.1,
+      top_p: greedy ? 1.0 : 0.1,
+      top_k: greedy ? 0 : 50,
+      repetition_penalty: greedy ? 1.0 : 1.05,
+      mode: greedy ? 'greedy' : 'near-greedy',
+    },
+    servers: hasServerFilter ? servers : undefined,
+    toolCount,
   };
 
   if (isFiltered) {
@@ -387,6 +450,10 @@ function printSummary(result: BenchmarkResult): void {
   console.log(`  Model:          ${result.model}`);
   console.log(`  Endpoint:       ${result.endpoint}`);
   console.log(`  Mode:           ${result.mode}${result.topK > 0 ? ` (K=${result.topK})` : ''}`);
+  if (result.servers && result.servers.length > 0) {
+    console.log(`  Servers:        ${result.servers.join(', ')} (${result.toolCount ?? '?'} tools)`);
+  }
+  console.log(`  Sampling:       ${result.sampling.mode} (temp=${result.sampling.temperature}, top_p=${result.sampling.top_p})`);
   console.log(`  Duration:       ${(result.durationMs / 1000).toFixed(1)}s`);
   console.log(`  Avg Latency:    ${result.avgLatencyMs}ms per test`);
   console.log(`${'─'.repeat(70)}`);
@@ -406,7 +473,8 @@ function printSummary(result: BenchmarkResult): void {
     console.log(`  FILTER METRICS:`);
     console.log(`  Filter Hit Rate:    ${result.filterHitRate}% (correct tool in top-K)`);
     console.log(`  Filter Hits:        ${result.filterHitCount}/${result.totalTests}`);
-    console.log(`  Avg Tools Sent:     ${result.avgFilteredToolCount} (of ${VALID_TOOL_NAMES.length})`);
+    const totalToolRef = result.toolCount ?? VALID_TOOL_NAMES.length;
+    console.log(`  Avg Tools Sent:     ${result.avgFilteredToolCount} (of ${totalToolRef})`);
   }
 
   console.log(`${'─'.repeat(70)}`);
@@ -451,7 +519,7 @@ function saveResults(result: BenchmarkResult): string {
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const { endpoint, timeoutMs, topK, model } = parseArgs();
+  const { endpoint, timeoutMs, topK, model, greedy, servers } = parseArgs();
 
   // Verify model is reachable
   try {
@@ -487,7 +555,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const result = await runBenchmark(endpoint, timeoutMs, topK, toolIndex, model);
+  const result = await runBenchmark(endpoint, timeoutMs, topK, toolIndex, model, greedy, servers);
 
   printSummary(result);
 

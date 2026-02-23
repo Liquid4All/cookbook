@@ -230,7 +230,7 @@ See [Dual-Model Orchestrator Performance](./dual-model-orchestrator-performance.
 
 ### Hypothesis validation
 
-1. **H1: VALIDATED.** LFM2-24B-A2B with ~2B active params dramatically outperforms both GPT-OSS-20B (~3.6B MoE) and Qwen3-30B-A3B (~3B MoE) on single-step tool selection — 80% vs 51%/44%. The hybrid convolution + attention architecture handles structured tool schemas significantly better than standard MoE transformer architectures at comparable active parameter counts.
+1. **H1: VALIDATED (speed), INCONCLUSIVE (quality).** LFM2-24B-A2B with ~2B active params outperforms both GPT-OSS-20B (~3.6B MoE) and Qwen3-30B-A3B (~3B MoE) on single-step tool selection — 80% vs 51%/44% — while being 6x faster. The speed advantage comes from the combination of hybrid conv+attention design and MoE sparsity. The accuracy difference likely reflects training data and methodology differences rather than architecture alone.
 
 2. **H2: PARTIALLY VALIDATED.** LFM2-24B-A2B shows the first cross-server transition success in multi-step chains (47% simple chain completion, 26% overall). Previous models all scored ~0% on chains requiring cross-server transitions. However, complex chains (6+ steps) still largely fail (7%), indicating the improvement is real but incomplete.
 
@@ -240,9 +240,9 @@ See [Dual-Model Orchestrator Performance](./dual-model-orchestrator-performance.
 
 ### Key takeaways
 
-1. **Architecture matters more than parameter count.** LFM2-24B-A2B (~2B active) beats GPT-OSS-20B (~3.6B active MoE) by 29 percentage points and is 6x faster. The hybrid convolution + attention architecture is fundamentally better at structured tool selection than standard MoE transformers.
+1. **The hybrid design + MoE sparsity delivers the best latency-to-accuracy trade-off.** LFM2-24B-A2B (~2B active) beats GPT-OSS-20B (~3.6B active MoE) by 29 percentage points and is 6x faster. The speed comes from the combination of the hybrid conv+attention design and MoE sparsity. The accuracy gap likely reflects training differences rather than architecture alone.
 
-2. **The 67-tool problem is solvable without decomposition.** 80% single-step accuracy with all 67 tools means the "tool overload" failure mode (FM-11) is not an inherent limitation — it's a model capability issue. The right architecture handles it natively.
+2. **The 67-tool problem is solvable without decomposition.** 80% single-step accuracy with all 67 tools means the "tool overload" failure mode (FM-11) is not an inherent limitation — it's a model capability issue. The right model handles it without needing tool pre-filtering.
 
 3. **Multi-step chains remain the hard problem.** Even at 80% single-step, chain completion is only 26%. The compounding effect of errors (0.80^4 = 41% theoretical for 4-step) combined with growing conversation context and wrong-tool propagation means multi-step requires either better models or architectural mitigation (retry, hierarchical routing, or agent loop hardening like the semantic alias + confabulation detection implemented in this session).
 

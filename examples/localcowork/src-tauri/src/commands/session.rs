@@ -7,6 +7,7 @@ use serde::Serialize;
 use std::sync::Mutex;
 
 use crate::agent_core::ConversationManager;
+use crate::agent_core::tokens::truncate_utf8;
 
 // ─── Response Types ─────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ pub fn list_sessions(
             })
             .map(|s| {
                 if s.len() > 80 {
-                    format!("{}…", &s[..77])
+                    format!("{}…", truncate_utf8(&s, 77))
                 } else {
                     s
                 }

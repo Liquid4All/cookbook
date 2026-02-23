@@ -112,6 +112,29 @@ pub struct ModelsConfig {
     /// Default: `false` (flat mode — all tools every turn).
     #[serde(default)]
     pub two_pass_tool_selection: Option<bool>,
+    /// Optional allowlist of MCP server names to start.
+    ///
+    /// When set, only servers whose names appear in this list are started.
+    /// All others are skipped during discovery. This reduces the tool count
+    /// sent to the model, improving accuracy and reducing token usage.
+    ///
+    /// Example: `["security", "audit", "document", "ocr", "email", "system", "clipboard", "filesystem"]`
+    ///
+    /// Default: `None` (all discovered servers are started).
+    #[serde(default)]
+    pub enabled_servers: Option<Vec<String>>,
+    /// Optional allowlist of fully-qualified tool names to expose to the model.
+    ///
+    /// When set, only tools whose names appear in this list are kept in the
+    /// registry after server startup. All other tools are removed. This allows
+    /// curating a tight, high-accuracy tool surface from servers that each
+    /// expose more tools than needed for a specific demo or deployment.
+    ///
+    /// Tool names are fully-qualified: `"server.tool"` (e.g., `"filesystem.list_dir"`).
+    ///
+    /// Default: `None` (all tools from started servers are exposed).
+    #[serde(default)]
+    pub enabled_tools: Option<Vec<String>>,
 }
 
 // ─── Loading ─────────────────────────────────────────────────────────────────
@@ -291,6 +314,8 @@ mod tests {
             fallback_chain: vec![],
             orchestrator: None,
             two_pass_tool_selection: None,
+            enabled_servers: None,
+            enabled_tools: None,
         };
         let result = resolve_active_model(&config);
         assert!(result.is_err());

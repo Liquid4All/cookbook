@@ -15,6 +15,7 @@ use std::sync::Mutex;
 use tokio::sync::Mutex as TokioMutex;
 
 use crate::agent_core::plan_parser::{parse_bracket_plan, parse_json_plan};
+use crate::agent_core::tokens::truncate_utf8;
 use crate::agent_core::tool_prefilter::ToolEmbeddingIndex;
 use crate::inference::client::InferenceClient;
 use crate::inference::config::{ModelsConfig, OrchestratorConfig};
@@ -272,7 +273,7 @@ pub async fn orchestrate_dual_model(
                 "success": result.success,
                 "tool_called": result.tool_called,
                 "result_preview": result.tool_result.as_deref()
-                    .map(|r| &r[..r.len().min(200)]),
+                    .map(|r| truncate_utf8(r, 200)),
             }),
         );
 
@@ -1128,7 +1129,7 @@ async fn execute_step(
             step = step.step_number,
             attempt = attempt,
             response_text_len = response_text.len(),
-            response_text_preview = %&response_text[..response_text.len().min(200)],
+            response_text_preview = %truncate_utf8(response_text, 200),
             has_native_tool_calls,
             "router raw response"
         );
@@ -1174,7 +1175,7 @@ async fn execute_step(
                                 step = step.step_number,
                                 tool = %tc.name,
                                 result_len = text.len(),
-                                result_preview = %&text[..text.len().min(200)],
+                                result_preview = %truncate_utf8(&text, 200),
                                 "step tool execution succeeded"
                             );
                             text
@@ -1253,7 +1254,7 @@ async fn execute_step(
                         step = step.step_number,
                         tool = %tc.name,
                         result_len = text.len(),
-                        result_preview = %&text[..text.len().min(200)],
+                        result_preview = %truncate_utf8(&text, 200),
                         "fallback tool execution succeeded"
                     );
                     text
@@ -1300,7 +1301,7 @@ fn condense_step_result(result: &StepExecutionResult) -> String {
             let summary = if text.len() <= 200 {
                 text.clone()
             } else {
-                format!("{}... ({} chars total)", &text[..150], text.len())
+                format!("{}... ({} chars total)", truncate_utf8(text, 150), text.len())
             };
             format!("Step {} ({}) succeeded: {}", result.step_number, tool, summary)
         }
@@ -1387,7 +1388,7 @@ async fn synthesize_response(
                     r.tool_called.as_deref().unwrap_or("none"),
                     r.tool_result
                         .as_deref()
-                        .map(|s| if s.len() > 500 { &s[..500] } else { s })
+                        .map(|s| truncate_utf8(s, 500))
                         .unwrap_or("ok")
                 )
             } else {

@@ -177,11 +177,14 @@ fn resolve_mcp_config() -> mcp_client::types::McpServersConfig {
     let overrides = load_override_file(&project_root);
 
     // 3. Merge: overrides win
-    let merged = mcp_client::discovery::merge_configs(discovered, overrides);
+    let mut merged = mcp_client::discovery::merge_configs(discovered, overrides);
+
+    // 4. Filter by enabled_servers allowlist from _models/config.yaml (if set)
+    filter_by_enabled_servers(&mut merged, &project_root);
 
     let mut config = mcp_client::types::McpServersConfig { servers: merged };
 
-    // 4. Post-process: resolve paths, venvs, inject vision env vars
+    // 5. Post-process: resolve paths, venvs, inject vision env vars
     resolve_paths_and_env(&mut config, &project_root);
 
     tracing::info!(
@@ -191,6 +194,89 @@ fn resolve_mcp_config() -> mcp_client::types::McpServersConfig {
     );
 
     config
+}
+
+/// Filter discovered servers by the `enabled_servers` allowlist in `_models/config.yaml`.
+///
+/// When `enabled_servers` is set, only servers whose names appear in the list
+/// are kept. All others are removed. When absent or empty, all servers pass through.
+fn filter_by_enabled_servers(
+    servers: &mut std::collections::HashMap<String, mcp_client::ServerConfig>,
+    project_root: &std::path::Path,
+) {
+    let config_path = project_root.join("_models/config.yaml");
+    let content = match std::fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return, // No config file — skip filtering
+    };
+
+    // Parse just enough YAML to extract enabled_servers without requiring
+    // the full ModelsConfig (which needs model configs to be valid).
+    let yaml: serde_json::Value = match serde_yaml::from_str(&content) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    let enabled = match yaml.get("enabled_servers").and_then(|v| v.as_array()) {
+        Some(arr) => arr,
+        None => return, // Field absent — no filtering
+    };
+
+    let allowlist: std::collections::HashSet<String> = enabled
+        .iter()
+        .filter_map(|v| v.as_str().map(String::from))
+        .collect();
+
+    if allowlist.is_empty() {
+        return;
+    }
+
+    let before = servers.len();
+    servers.retain(|name, _| allowlist.contains(name));
+    let after = servers.len();
+
+    tracing::info!(
+        before,
+        after,
+        enabled = ?allowlist,
+        "filtered MCP servers by enabled_servers allowlist"
+    );
+}
+
+/// Filter tools by the `enabled_tools` allowlist in `_models/config.yaml`.
+///
+/// When `enabled_tools` is set, only tools whose fully-qualified names appear
+/// in the list are kept in the registry. All others are removed. This allows
+/// curating a tight tool surface for specific demos or deployments.
+///
+/// Must be called AFTER `McpClient::start_all()` has populated the registry.
+fn filter_tools_by_allowlist(mcp_client: &mut McpClient, project_root: &std::path::Path) {
+    let config_path = project_root.join("_models/config.yaml");
+    let content = match std::fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return, // No config file — skip filtering
+    };
+
+    let yaml: serde_json::Value = match serde_yaml::from_str(&content) {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+
+    let enabled = match yaml.get("enabled_tools").and_then(|v| v.as_array()) {
+        Some(arr) => arr,
+        None => return, // Field absent — no filtering
+    };
+
+    let allowlist: std::collections::HashSet<String> = enabled
+        .iter()
+        .filter_map(|v| v.as_str().map(String::from))
+        .collect();
+
+    if allowlist.is_empty() {
+        return;
+    }
+
+    mcp_client.registry.retain_tools(&allowlist);
 }
 
 /// Determine the project root directory.
@@ -472,6 +558,10 @@ pub fn run() {
                         "MCP server failed to start (non-fatal)"
                     );
                 }
+
+                // Filter tools by enabled_tools allowlist (if configured)
+                filter_tools_by_allowlist(&mut mcp_client, &project_root);
+
 
                 let running = mcp_client.running_server_count();
                 let tools = mcp_client.tool_count();

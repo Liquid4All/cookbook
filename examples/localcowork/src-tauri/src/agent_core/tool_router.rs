@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::mpsc;
 
+use crate::agent_core::tokens::truncate_utf8;
 use crate::inference::types::ToolCall;
 use crate::mcp_client::errors::McpError;
 use crate::mcp_client::types::ToolCallResult;
@@ -474,7 +475,7 @@ fn generate_preview(tool_name: &str, arguments: &serde_json::Value) -> String {
             let args_preview = serde_json::to_string(arguments)
                 .unwrap_or_default();
             let truncated = if args_preview.len() > 100 {
-                format!("{}...", &args_preview[..100])
+                format!("{}...", truncate_utf8(&args_preview, 100))
             } else {
                 args_preview
             };

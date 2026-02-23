@@ -19,34 +19,35 @@ describe('audit.get_session_summary', () => {
       session_id: 'sess-summary-001',
     });
     expect(result.success).toBe(true);
-    expect(result.data).toHaveProperty('documents_touched');
     expect(result.data).toHaveProperty('tools_called');
-    expect(result.data).toHaveProperty('confirmations');
-    expect(result.data).toHaveProperty('rejections');
+    expect(result.data).toHaveProperty('succeeded');
+    expect(result.data).toHaveProperty('failed');
+    expect(result.data).toHaveProperty('user_confirmed');
+    expect(result.data).toHaveProperty('total_execution_ms');
   });
 
-  it('should count confirmations correctly', async () => {
+  it('should count succeeded correctly', async () => {
     const result = await getSessionSummary.execute({
       session_id: 'sess-summary-001',
     });
-    // write_file entries are 'confirmed'
-    expect(result.data.confirmations).toBeGreaterThanOrEqual(1);
+    // 5 seed entries are 'Success'
+    expect(result.data.succeeded).toBe(5);
   });
 
-  it('should count rejections correctly', async () => {
+  it('should count failed correctly', async () => {
     const result = await getSessionSummary.execute({
       session_id: 'sess-summary-001',
     });
-    // 1 rejected entry in seed data
-    expect(result.data.rejections).toBe(1);
+    // 1 Error entry in seed data
+    expect(result.data.failed).toBe(1);
   });
 
-  it('should list unique documents touched', async () => {
+  it('should count user_confirmed correctly', async () => {
     const result = await getSessionSummary.execute({
       session_id: 'sess-summary-001',
     });
-    expect(Array.isArray(result.data.documents_touched)).toBe(true);
-    expect(result.data.documents_touched.length).toBeGreaterThan(0);
+    // write_file entries have user_confirmed = 1
+    expect(result.data.user_confirmed).toBeGreaterThanOrEqual(1);
   });
 
   it('has correct metadata', () => {

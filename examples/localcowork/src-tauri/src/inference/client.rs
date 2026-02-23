@@ -552,6 +552,8 @@ mod tests {
             ],
             orchestrator: None,
             two_pass_tool_selection: None,
+            enabled_servers: None,
+            enabled_tools: None,
         }
     }
 

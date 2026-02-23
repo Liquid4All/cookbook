@@ -12,6 +12,8 @@
  *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:11434 --model mistral-small:24b
  *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:8082 --top-k 15
  *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:8082 --difficulty simple
+ *   npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:11434 --model qwen3:4b --greedy
+ *   npx tsx tests/model-behavior/benchmark-multi-step.ts --servers security,audit,document --greedy
  */
 
 import type { MultiStepTest, MultiStepResult, StepResult } from './types';
@@ -42,14 +44,51 @@ const ENDPOINT = getArg('endpoint') ?? 'http://localhost:8082';
 const MODEL = getArg('model');
 const TOP_K = getArg('top-k') ? parseInt(getArg('top-k')!, 10) : 0;
 const DIFFICULTY = getArg('difficulty') as 'simple' | 'medium' | 'complex' | undefined;
+const GREEDY = args.includes('--greedy');
+const SERVERS: string[] = getArg('servers')
+  ? getArg('servers')!.split(',').map((s) => s.trim()).filter(Boolean)
+  : [];
+
+// ── Server Filtering ────────────────────────────────────────────────────
+
+/**
+ * Filter chains to only those where ALL steps' expectedTools belong to the server set.
+ * A chain is excluded if any step requires a tool from a server not in the set.
+ */
+function filterChainsByServers(
+  tests: readonly MultiStepTest[],
+  servers: string[],
+): MultiStepTest[] {
+  const serverSet = new Set(servers);
+  return tests.filter((test) =>
+    test.steps.every((step) =>
+      step.expectedTools.every((tool) => serverSet.has(tool.split('.')[0])),
+    ),
+  );
+}
+
+/** Filter TOOL_DESCRIPTIONS to only tools belonging to the given servers. */
+function filterToolDescriptionsByServers(
+  descriptions: Record<string, string>,
+  servers: string[],
+): Record<string, string> {
+  const serverSet = new Set(servers);
+  const filtered: Record<string, string> = {};
+  for (const [name, desc] of Object.entries(descriptions)) {
+    if (serverSet.has(name.split('.')[0])) {
+      filtered[name] = desc;
+    }
+  }
+  return filtered;
+}
 
 // ── Model query (local — different signature from shared queryModel) ──────
 
-async function queryModelLocal(endpoint: string, messages: ChatMessage[], model?: string): Promise<string> {
+async function queryModelLocal(endpoint: string, messages: ChatMessage[], model?: string, greedy?: boolean): Promise<string> {
   const body: Record<string, unknown> = {
     messages,
-    temperature: 0.1,
-    top_p: 0.1,
+    temperature: greedy ? 0 : 0.1,
+    top_p: greedy ? 1.0 : 0.1,
     max_tokens: 512,
     stream: false,
   };
@@ -79,8 +118,10 @@ async function queryModelLocal(endpoint: string, messages: ChatMessage[], model?
 async function runChainBenchmark(
   tests: readonly MultiStepTest[],
   endpoint: string,
+  toolDescriptions?: Record<string, string>,
 ): Promise<MultiStepResult[]> {
   const results: MultiStepResult[] = [];
+  const activeDescriptions = toolDescriptions ?? TOOL_DESCRIPTIONS;
   const systemPrompt = `You are LocalCowork, a desktop assistant with full access to local tools for files, documents, tasks, calendar, email, and more.
 
 IMPORTANT RULES:
@@ -89,7 +130,7 @@ IMPORTANT RULES:
 3. Use the full dotted tool name (e.g., filesystem.list_dir, NOT list_dir).
 4. After receiving a tool result, proceed to the NEXT step immediately. Do NOT ask the user what to do.
 
-Available tools: ${Object.entries(TOOL_DESCRIPTIONS).map(([k, v]) => `${k}: ${v}`).join('\n')}`;
+Available tools: ${Object.entries(activeDescriptions).map(([k, v]) => `${k}: ${v}`).join('\n')}`;
 
   for (let i = 0; i < tests.length; i++) {
     const test = tests[i];
@@ -109,7 +150,7 @@ Available tools: ${Object.entries(TOOL_DESCRIPTIONS).map(([k, v]) => `${k}: ${v}
 
       let content: string;
       try {
-        content = await queryModelLocal(endpoint, messages, MODEL);
+        content = await queryModelLocal(endpoint, messages, MODEL, GREEDY);
       } catch (e) {
         stepResults.push({
           stepIndex: s,
@@ -209,6 +250,18 @@ async function main(): Promise<void> {
     tests = allMultiStepTests;
   }
 
+  // Apply server filter (only include chains where ALL steps use allowed servers)
+  const hasServerFilter = SERVERS.length > 0;
+  if (hasServerFilter) {
+    tests = filterChainsByServers(tests, SERVERS);
+  }
+
+  // Build tool descriptions (filtered or full)
+  const toolDescriptions = hasServerFilter
+    ? filterToolDescriptionsByServers(TOOL_DESCRIPTIONS, SERVERS)
+    : TOOL_DESCRIPTIONS;
+  const toolCount = Object.keys(toolDescriptions).length;
+
   // Verify model server
   try {
     const resp = await fetch(`${ENDPOINT}/v1/models`);
@@ -220,14 +273,20 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const samplingMode = GREEDY ? 'GREEDY (temp=0)' : 'NEAR-GREEDY (temp=0.1)';
+
   console.log('══════════════════════════════════════════════════════════════════════');
   console.log('  LFM Multi-Step Chain Benchmark');
   console.log(`  Endpoint: ${ENDPOINT}`);
-  console.log(`  Tests: ${tests.length} | Difficulty: ${DIFFICULTY ?? 'all'}`);
+  console.log(`  Tests: ${tests.length} | Difficulty: ${DIFFICULTY ?? 'all'} | Tools: ${toolCount}`);
+  console.log(`  Sampling: ${samplingMode}`);
+  if (hasServerFilter) {
+    console.log(`  Servers: ${SERVERS.join(', ')}`);
+  }
   console.log('══════════════════════════════════════════════════════════════════════\n');
 
   const startTime = Date.now();
-  const results = await runChainBenchmark(tests, ENDPOINT);
+  const results = await runChainBenchmark(tests, ENDPOINT, toolDescriptions);
   const totalDuration = Date.now() - startTime;
 
   // ── Compute metrics ──────────────────────────────────────────────────
@@ -261,7 +320,8 @@ async function main(): Promise<void> {
   console.log('\n══════════════════════════════════════════════════════════════════════');
   console.log('  MULTI-STEP BENCHMARK RESULTS');
   console.log('══════════════════════════════════════════════════════════════════════');
-  console.log(`  Model:          ${ENDPOINT}`);
+  console.log(`  Model:          ${MODEL ?? ENDPOINT}`);
+  console.log(`  Sampling:       ${GREEDY ? 'greedy (temp=0)' : 'near-greedy (temp=0.1)'}`);
   console.log(`  Duration:       ${(totalDuration / 1000).toFixed(1)}s`);
   console.log('──────────────────────────────────────────────────────────────────────');
   console.log(`  Total Chains:   ${tests.length}`);
@@ -302,6 +362,13 @@ async function main(): Promise<void> {
         endpoint: ENDPOINT,
         topK: TOP_K,
         difficulty: DIFFICULTY ?? 'all',
+        sampling: {
+          temperature: GREEDY ? 0 : 0.1,
+          top_p: GREEDY ? 1.0 : 0.1,
+          mode: GREEDY ? 'greedy' : 'near-greedy',
+        },
+        servers: hasServerFilter ? SERVERS : undefined,
+        toolCount,
         totalChains: tests.length,
         passed,
         failed,

@@ -2,7 +2,7 @@
  * audit.get_tool_log — Retrieve tool execution log entries.
  *
  * Non-destructive: executes immediately, no confirmation needed.
- * Reads from the SQLite audit database.
+ * Reads from the Agent Core's agent.db (audit_log table).
  */
 
 import { z } from 'zod';
@@ -57,7 +57,10 @@ export const getToolLog: MCPTool<Params> = {
       }
 
       const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-      const sql = `SELECT * FROM audit_log ${where} ORDER BY timestamp DESC LIMIT 1000`;
+      const sql = `SELECT id, session_id, timestamp, tool_name, arguments,
+                          result, result_status, user_confirmed, execution_time_ms
+                   FROM audit_log ${where}
+                   ORDER BY timestamp DESC LIMIT 1000`;
       const rows = db.prepare(sql).all(...values) as AuditEntry[];
 
       return { success: true, data: rows };
