@@ -4,21 +4,7 @@
 
 Building a local AI agent sounds great until you try to use one all day. The hard part isn't getting a model to understand you -- it's getting it to choose the right tool and do it fast enough that the experience feels interactive. This is where [LFM2-24B-A2B](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) shines: it's designed for tool dispatch on consumer hardware, where latency and memory aren't abstract constraints -- they decide whether your agent is a product or a demo.
 
-LocalCowork is a desktop AI agent that runs entirely on-device. No cloud APIs, no data leaving your machine. The model calls pre-built tools via the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), the user confirms every mutable action, and every tool execution is logged to a local audit trail.
-
-## The Numbers
-
-| | LFM2-24B-A2B | Best Dense (Gemma 27B) | Other MoE (GPT-OSS 20B) |
-|---|---|---|---|
-| **Active params** | ~2B | 27B | ~3.6B |
-| **Tool accuracy** | 80% | 91% | 51% |
-| **Response latency** | 390ms | 24,088ms | 2,303ms |
-| **VRAM** | ~14.5 GB | ~18 GB | ~14 GB |
-| **Interactive?** | Yes | No (24s/turn) | Barely |
-
-LFM2-24B-A2B (24B total, ~2B active per token via 64 experts) delivers 94% of the best dense model's accuracy at 3% of the latency. At 390ms per tool selection, human-in-the-loop correction is instant -- that turns 80% accuracy into near-100% effective accuracy.
-
-Full benchmark: 8 models, 67 tools, 150+ scenarios. See [`docs/model-analysis/`](docs/model-analysis/).
+LocalCowork is a desktop AI agent that runs entirely on-device. No cloud APIs, no data leaving your machine. The model calls pre-built tools via the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), and every tool execution is logged to a local audit trail.
 
 ## What It Does
 
@@ -104,13 +90,13 @@ The agent core communicates with the inference layer via the OpenAI chat complet
 
 ### Human-in-the-Loop
 
-Every tool execution is logged to a local audit trail. The confirmation system -- where write actions show a preview and destructive actions require typed confirmation -- is built (ToolRouter, PermissionStore, frontend ConfirmationDialog) but not yet wired into the agent loop. Today, tools execute immediately after model selection. Integrating the confirmation flow is tracked as a future workstream.
+Every tool execution is logged to a local audit trail. The confirmation system (ToolRouter, PermissionStore, frontend ConfirmationDialog) is built but not yet wired into the agent loop. Today, tools execute immediately after the model selects them. Integrating the confirmation flow is a future workstream.
 
-The architecture is designed so that 80% tool accuracy becomes near-100% effective accuracy once confirmation is live -- the user will see what the agent wants to do before it does it.
+Once live, write actions will show a preview and require confirmation. Destructive actions will require typed confirmation. That turns 80% model accuracy into near-100% effective accuracy: the user sees what the agent wants to do before it does it.
 
 ## Benchmarks
 
-We benchmarked 6 models against all 67 tools on Apple M4 Max hardware:
+We tested 6 models against 67 tools on Apple M4 Max. LFM2-24B-A2B (24B total, ~2B active per token) delivers 80% tool accuracy at 390ms. That's 94% of the best dense model's accuracy at 3% of its latency.
 
 | Model | Active Params | Accuracy | Latency | Multi-Step |
 |-------|-------------|----------|---------|-----------|
@@ -121,20 +107,9 @@ We benchmarked 6 models against all 67 tools on Apple M4 Max hardware:
 | GPT-OSS-20B | ~3.6B (MoE) | 51% | 2,303ms | 0% |
 | Qwen3-30B-A3B | ~3B (MoE) | 44% | 5,938ms | 4% |
 
-**Key findings:**
+The speed comes from the combination of the hybrid conv+attention design and MoE sparsity. Every model we tested fails at cross-server transitions. That's the universal barrier, not a model-specific gap. UX is designed around single-turn tool calls with human confirmation to compensate.
 
-- **Latency decides whether your agent is usable.** Gemma leads accuracy at 91% but at 24s per response it can't support interactive use. Only LFM2 at 390ms enables real-time human-in-the-loop. The speed comes from the combination of the hybrid conv+attention design and MoE sparsity.
-- **Every model fails at cross-server transitions.** This is the universal barrier, not a model-specific deficiency. Design UX around single-turn tool calls with human confirmation.
-
-Three interventions that compound:
-
-| Intervention | Impact | Cost |
-|---|---|---|
-| RAG pre-filter to K=15 tools | +117% accuracy (36% to 78%) | ~10ms per query |
-| LoRA fine-tuned router | +8% accuracy, 100% at K=25 | $5, 6 min on H100 |
-| Dual-model orchestrator | 100% on 1-2 step tasks | 2 models, ~14.5 GB VRAM |
-
-Full study: [`docs/model-analysis/`](docs/model-analysis/) -- 8 models, 2 tiers, 150+ scenarios, 12 failure modes.
+Full study with 8 models, 150+ scenarios, and 12 failure modes: [`docs/model-analysis/`](docs/model-analysis/).
 
 ## Quick Start
 
