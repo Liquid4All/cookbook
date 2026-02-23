@@ -8,7 +8,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
 
-import type { McpServerStatus, ModelsOverview, PermissionGrant } from "../types";
+import type {
+  McpServerStatus,
+  ModelsOverview,
+  PermissionGrant,
+  SamplingConfig,
+} from "../types";
 
 /** State shape for the settings panel. */
 interface SettingsState {
@@ -18,6 +23,8 @@ interface SettingsState {
   serverStatuses: readonly McpServerStatus[];
   /** Persistent permission grants. */
   permissionGrants: readonly PermissionGrant[];
+  /** Runtime sampling hyperparameters. */
+  samplingConfig: SamplingConfig | null;
   /** Whether the settings panel is visible. */
   isOpen: boolean;
   /** Which tab is active. */
@@ -38,6 +45,12 @@ interface SettingsActions {
   loadPermissionGrants: () => Promise<void>;
   /** Revoke a persistent permission grant. */
   revokePermission: (toolName: string) => Promise<void>;
+  /** Load sampling configuration from backend. */
+  loadSamplingConfig: () => Promise<void>;
+  /** Update sampling configuration and persist to disk. */
+  updateSamplingConfig: (config: SamplingConfig) => Promise<void>;
+  /** Reset sampling configuration to defaults. */
+  resetSamplingConfig: () => Promise<void>;
   /** Toggle settings panel visibility. */
   togglePanel: () => void;
   /** Set active tab. */
@@ -53,6 +66,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   modelsOverview: null,
   serverStatuses: [],
   permissionGrants: [],
+  samplingConfig: null,
   isOpen: false,
   activeTab: "model",
   isLoading: false,
@@ -100,6 +114,36 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       set({ error: `Failed to revoke permission: ${message}` });
+    }
+  },
+
+  loadSamplingConfig: async (): Promise<void> => {
+    try {
+      const config = await invoke<SamplingConfig>("get_sampling_config");
+      set({ samplingConfig: config });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: `Failed to load sampling config: ${message}` });
+    }
+  },
+
+  updateSamplingConfig: async (config: SamplingConfig): Promise<void> => {
+    try {
+      const updated = await invoke<SamplingConfig>("update_sampling_config", { config });
+      set({ samplingConfig: updated });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: `Failed to update sampling config: ${message}` });
+    }
+  },
+
+  resetSamplingConfig: async (): Promise<void> => {
+    try {
+      const config = await invoke<SamplingConfig>("reset_sampling_config");
+      set({ samplingConfig: config });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: `Failed to reset sampling config: ${message}` });
     }
   },
 

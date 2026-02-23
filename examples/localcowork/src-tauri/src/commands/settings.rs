@@ -4,7 +4,9 @@
 //! of truth used by the inference client at runtime) and provides live
 //! MCP server status from the running McpClient.
 
-use serde::Serialize;
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 
 /// Model configuration exposed to the frontend.
 #[derive(Debug, Clone, Serialize)]
@@ -131,22 +133,156 @@ pub struct PermissionGrantInfo {
 
 /// List all persistent permission grants.
 ///
-/// In the full integration, this reads from the ToolRouter's PermissionStore.
-/// For now, returns a stub (empty list).
+/// Reads from the PermissionStore in Tauri state.
 #[tauri::command]
-pub fn list_permission_grants() -> Result<Vec<PermissionGrantInfo>, String> {
-    // Stub: no grants until ToolRouter is fully wired into Tauri state.
-    // When integrated, this will read from the ToolRouter's permissions field.
-    Ok(vec![])
+pub async fn list_permission_grants(
+    perms: tauri::State<'_, crate::TokioMutex<crate::agent_core::PermissionStore>>,
+) -> Result<Vec<PermissionGrantInfo>, String> {
+    let store = perms.lock().await;
+    let grants = store
+        .list_persistent()
+        .into_iter()
+        .map(|g| PermissionGrantInfo {
+            tool_name: g.tool_name.clone(),
+            scope: format!("{:?}", g.scope).to_lowercase(),
+            granted_at: g.granted_at.clone(),
+        })
+        .collect();
+    Ok(grants)
 }
 
 /// Revoke a persistent permission grant by tool name.
 ///
-/// In the full integration, this calls PermissionStore::revoke() on the
-/// ToolRouter. For now, returns a stub.
+/// Removes the grant from the PermissionStore and persists the change to disk.
 #[tauri::command]
-pub fn revoke_permission(tool_name: String) -> Result<bool, String> {
-    // Stub: return false (nothing to revoke) until ToolRouter is wired in.
-    tracing::info!(tool = %tool_name, "revoke_permission called (stub)");
-    Ok(false)
+pub async fn revoke_permission(
+    tool_name: String,
+    perms: tauri::State<'_, crate::TokioMutex<crate::agent_core::PermissionStore>>,
+) -> Result<bool, String> {
+    let mut store = perms.lock().await;
+    let removed = store.revoke(&tool_name);
+    tracing::info!(tool = %tool_name, removed, "revoke_permission");
+    Ok(removed)
+}
+
+// ─── Sampling Configuration ─────────────────────────────────────────────────
+
+/// Runtime sampling hyperparameters exposed to the frontend.
+///
+/// Persisted to `sampling_config.json` in the app data directory.
+/// The agent loop reads these at the start of each `send_message` call
+/// instead of using hardcoded constants.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SamplingConfig {
+    pub tool_temperature: f32,
+    pub tool_top_p: f32,
+    pub conversational_temperature: f32,
+    pub conversational_top_p: f32,
+}
+
+impl Default for SamplingConfig {
+    fn default() -> Self {
+        Self {
+            tool_temperature: 0.1,
+            tool_top_p: 0.2,
+            conversational_temperature: 0.7,
+            conversational_top_p: 0.9,
+        }
+    }
+}
+
+impl SamplingConfig {
+    /// Load from disk or return defaults.
+    pub fn load_or_default() -> Self {
+        let path = Self::persist_path();
+        if !path.exists() {
+            return Self::default();
+        }
+        match std::fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str::<Self>(&content) {
+                Ok(cfg) => {
+                    tracing::info!(path = %path.display(), "loaded sampling config");
+                    cfg
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "failed to parse sampling config, using defaults");
+                    Self::default()
+                }
+            },
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to read sampling config, using defaults");
+                Self::default()
+            }
+        }
+    }
+
+    /// Save to disk (atomic write).
+    pub fn save(&self) {
+        let path = Self::persist_path();
+        let content = match serde_json::to_string_pretty(self) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!(error = %e, "failed to serialize sampling config");
+                return;
+            }
+        };
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let tmp_path = path.with_extension("json.tmp");
+        if let Err(e) = std::fs::write(&tmp_path, &content) {
+            tracing::error!(error = %e, "failed to write sampling config temp file");
+            return;
+        }
+        if let Err(e) = std::fs::rename(&tmp_path, &path) {
+            tracing::error!(error = %e, "failed to rename sampling config file");
+            return;
+        }
+        tracing::debug!("saved sampling config");
+    }
+
+    fn persist_path() -> PathBuf {
+        crate::data_dir().join("sampling_config.json")
+    }
+}
+
+/// Get the current sampling configuration.
+#[tauri::command]
+pub async fn get_sampling_config(
+    state: tauri::State<'_, crate::TokioMutex<SamplingConfig>>,
+) -> Result<SamplingConfig, String> {
+    let cfg = state.lock().await;
+    Ok(cfg.clone())
+}
+
+/// Update the sampling configuration and persist to disk.
+#[tauri::command]
+pub async fn update_sampling_config(
+    config: SamplingConfig,
+    state: tauri::State<'_, crate::TokioMutex<SamplingConfig>>,
+) -> Result<SamplingConfig, String> {
+    let mut cfg = state.lock().await;
+    *cfg = config;
+    cfg.save();
+    tracing::info!(
+        tool_temp = cfg.tool_temperature,
+        tool_top_p = cfg.tool_top_p,
+        conv_temp = cfg.conversational_temperature,
+        conv_top_p = cfg.conversational_top_p,
+        "sampling config updated"
+    );
+    Ok(cfg.clone())
+}
+
+/// Reset the sampling configuration to defaults and persist.
+#[tauri::command]
+pub async fn reset_sampling_config(
+    state: tauri::State<'_, crate::TokioMutex<SamplingConfig>>,
+) -> Result<SamplingConfig, String> {
+    let mut cfg = state.lock().await;
+    *cfg = SamplingConfig::default();
+    cfg.save();
+    tracing::info!("sampling config reset to defaults");
+    Ok(cfg.clone())
 }

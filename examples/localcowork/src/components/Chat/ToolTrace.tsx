@@ -250,7 +250,7 @@ export function ToolTrace({
   allMessages,
   isExecuting,
 }: ToolTraceProps): React.JSX.Element {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const steps = useMemo(
     () => buildTraceSteps(toolCalls, allMessages, isExecuting),

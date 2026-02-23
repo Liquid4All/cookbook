@@ -10,15 +10,17 @@ use futures::StreamExt;
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::agent_core::permissions::{PermissionScope, PermissionStatus, PermissionStore};
 use crate::agent_core::response_analysis::{is_deflection_response, is_incomplete_response};
 use crate::agent_core::tokens::truncate_utf8;
-use crate::agent_core::AuditStatus;
+use crate::agent_core::tool_router::{generate_preview, is_destructive_action};
+use crate::agent_core::{AuditStatus, ConfirmationRequest, ConfirmationResponse};
 use crate::agent_core::ConversationManager;
 use crate::inference::config::{find_config_path, load_models_config};
 use crate::inference::types::{SamplingOverrides, ToolDefinition};
 use crate::inference::InferenceClient;
 use crate::mcp_client::{CategoryRegistry, McpClient, ToolResolution};
-use crate::TokioMutex;
+use crate::{PendingConfirmation, TokioMutex};
 
 // ─── Two-Pass Tool Selection ────────────────────────────────────────────────
 
@@ -222,23 +224,6 @@ const MIN_ROUND_TOKEN_BUDGET: u32 = 1500;
 /// a verbose OCR extraction or large file read) from consuming the entire
 /// context window and starving subsequent rounds.
 const MAX_TOOL_RESULT_CHARS: usize = 6_000;
-
-/// Sampling parameters for tool-calling turns.
-///
-/// Low temperature + tight top_p = more deterministic tool selection.
-/// Reduces wrong tool selection and argument hallucination.
-const TOOL_TURN_SAMPLING: SamplingOverrides = SamplingOverrides {
-    temperature: Some(0.1),
-    top_p: Some(0.2),
-};
-
-/// Sampling parameters for conversational turns (no tools).
-///
-/// Higher temperature + wider top_p = more natural language output.
-const CONVERSATIONAL_SAMPLING: SamplingOverrides = SamplingOverrides {
-    temperature: Some(0.7),
-    top_p: Some(0.9),
-};
 
 // ─── Tool Definitions ──────────────────────────────────────────────────────
 
@@ -1190,14 +1175,29 @@ pub async fn start_session(
 /// 3. If model returns tool calls → execute them → feed results back → repeat
 /// 4. When model returns text → stream it to frontend
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn send_message(
     session_id: String,
     content: String,
     app_handle: tauri::AppHandle,
     state: tauri::State<'_, Mutex<ConversationManager>>,
     mcp_state: tauri::State<'_, TokioMutex<McpClient>>,
+    permission_state: tauri::State<'_, TokioMutex<PermissionStore>>,
+    pending_confirm: tauri::State<'_, PendingConfirmation>,
+    sampling_state: tauri::State<'_, TokioMutex<crate::commands::settings::SamplingConfig>>,
 ) -> Result<(), String> {
     use tauri::Emitter;
+
+    // Read sampling config once at the start of this request.
+    let sampling_cfg = sampling_state.lock().await.clone();
+    let tool_turn_sampling = SamplingOverrides {
+        temperature: Some(sampling_cfg.tool_temperature),
+        top_p: Some(sampling_cfg.tool_top_p),
+    };
+    let conversational_sampling = SamplingOverrides {
+        temperature: Some(sampling_cfg.conversational_temperature),
+        top_p: Some(sampling_cfg.conversational_top_p),
+    };
 
     // 1. Persist user message and build conversation history
     let mut messages = {
@@ -1393,7 +1393,7 @@ pub async fn send_message(
         let mut tool_calls_detected: Vec<crate::inference::types::ToolCall> = Vec::new();
 
         match client
-            .chat_completion_stream(messages.clone(), Some(tools.clone()), Some(TOOL_TURN_SAMPLING))
+            .chat_completion_stream(messages.clone(), Some(tools.clone()), Some(tool_turn_sampling))
             .await
         {
             Ok(stream) => {
@@ -1776,7 +1776,7 @@ pub async fn send_message(
             // that matches the agent_core audit log's session column.
             // Always override — the model often hallucinates placeholder values
             // like "SESSION_ID_FROM_CURRENT_CONTEXT" or tool_call_ids.
-            let effective_arguments = if tc.name.starts_with("audit.") {
+            let mut effective_arguments = if tc.name.starts_with("audit.") {
                 let mut args = tc.arguments.clone();
                 if let Some(obj) = args.as_object_mut() {
                     obj.insert(
@@ -1789,6 +1789,180 @@ pub async fn send_message(
                 tc.arguments.clone()
             };
 
+            // ── HITL confirmation check ──────────────────────────────
+            // Built-in tools (list_directory, read_file) are always read-only.
+            // MCP tools check the registry's confirmation_required metadata.
+            // If the user has previously granted permission, skip the dialog.
+            let is_builtin = tc.name == "list_directory" || tc.name == "read_file";
+            let needs_confirmation = !is_builtin && {
+                let mcp = mcp_state.lock().await;
+                mcp.registry.requires_confirmation(&tc.name)
+            };
+
+            let mut user_confirmed = !needs_confirmation;
+
+            if needs_confirmation {
+                // Check if permission was previously granted
+                let already_allowed = {
+                    let perms = permission_state.lock().await;
+                    perms.check(&tc.name) == PermissionStatus::Allowed
+                };
+
+                if already_allowed {
+                    user_confirmed = true;
+                    tracing::debug!(
+                        tool = %tc.name,
+                        "skipping confirmation — permission granted"
+                    );
+                } else {
+                    // Build and emit a confirmation request
+                    let supports_undo = {
+                        let mcp = mcp_state.lock().await;
+                        mcp.registry.supports_undo(&tc.name)
+                    };
+                    let preview = generate_preview(&tc.name, &effective_arguments);
+                    let is_destructive = is_destructive_action(&tc.name);
+
+                    let request = ConfirmationRequest {
+                        request_id: Uuid::new_v4().to_string(),
+                        tool_name: tc.name.clone(),
+                        arguments: effective_arguments.clone(),
+                        preview,
+                        confirmation_required: true,
+                        undo_supported: supports_undo,
+                        is_destructive,
+                    };
+
+                    tracing::info!(
+                        tool = %tc.name,
+                        request_id = %request.request_id,
+                        is_destructive,
+                        "awaiting user confirmation"
+                    );
+
+                    // Create a oneshot channel for this confirmation
+                    let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
+                    {
+                        let mut pending = pending_confirm.lock().await;
+                        *pending = Some(resp_tx);
+                    }
+
+                    // Emit confirmation-request event to frontend
+                    let _ = app_handle.emit("confirmation-request", &request);
+
+                    // Wait for user response (blocks the agent loop)
+                    match resp_rx.await {
+                        Ok(ConfirmationResponse::Rejected) => {
+                            tracing::info!(
+                                tool = %tc.name,
+                                "tool call rejected by user"
+                            );
+                            // Write rejection to audit log
+                            {
+                                let mgr = state
+                                    .lock()
+                                    .map_err(|e| format!("Lock error: {e}"))?;
+                                let _ = mgr.db().insert_audit_entry(
+                                    &session_id,
+                                    &tc.name,
+                                    &effective_arguments,
+                                    None,
+                                    AuditStatus::RejectedByUser,
+                                    false,
+                                    0,
+                                );
+                            }
+
+                            let rejection_text =
+                                format!("Tool '{}' was rejected by the user.", tc.name);
+
+                            // Emit rejection result to frontend
+                            let _ = app_handle.emit(
+                                "tool-result",
+                                serde_json::json!({
+                                    "id": chrono::Utc::now().timestamp_millis(),
+                                    "sessionId": session_id,
+                                    "timestamp": chrono::Utc::now().to_rfc3339(),
+                                    "role": "tool",
+                                    "content": rejection_text,
+                                    "toolCallId": tc.id,
+                                    "toolResult": {
+                                        "success": false,
+                                        "result": rejection_text,
+                                        "toolCallId": tc.id,
+                                        "toolName": tc.name,
+                                    },
+                                    "tokenCount": rejection_text.len() / 4,
+                                }),
+                            );
+
+                            // Persist rejection so the model knows
+                            {
+                                let mgr = state
+                                    .lock()
+                                    .map_err(|e| format!("Lock error: {e}"))?;
+                                let result_json =
+                                    serde_json::Value::String(rejection_text);
+                                mgr.add_tool_result_message(
+                                    &session_id,
+                                    &tc.id,
+                                    &result_json,
+                                )
+                                .map_err(|e| {
+                                    format!("Failed to save tool result: {e}")
+                                })?;
+                            }
+
+                            // Add to conversation history for the LLM
+                            messages.push(crate::inference::types::ChatMessage {
+                                role: crate::inference::types::Role::Tool,
+                                content: Some(format!(
+                                    "Tool '{}' was rejected by the user.",
+                                    tc.name
+                                )),
+                                tool_call_id: Some(tc.id.clone()),
+                                tool_calls: None,
+                            });
+
+                            round_error_count += 1;
+                            tool_call_history.push(tc.name.clone());
+                            tool_call_signatures.push((
+                                tc.name.clone(),
+                                tc.arguments.to_string(),
+                            ));
+                            continue;
+                        }
+                        Ok(ConfirmationResponse::ConfirmedForSession) => {
+                            let mut perms = permission_state.lock().await;
+                            perms.grant(&tc.name, PermissionScope::Session);
+                            user_confirmed = true;
+                        }
+                        Ok(ConfirmationResponse::ConfirmedAlways) => {
+                            let mut perms = permission_state.lock().await;
+                            perms.grant(&tc.name, PermissionScope::Always);
+                            user_confirmed = true;
+                        }
+                        Ok(ConfirmationResponse::Confirmed) => {
+                            user_confirmed = true;
+                        }
+                        Ok(ConfirmationResponse::EditedAndConfirmed {
+                            new_arguments,
+                        }) => {
+                            effective_arguments = new_arguments;
+                            user_confirmed = true;
+                        }
+                        Err(_) => {
+                            tracing::warn!(
+                                tool = %tc.name,
+                                "confirmation channel closed — skipping tool"
+                            );
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            // ── Execute tool ─────────────────────────────────────────
             let tool_start = std::time::Instant::now();
             let outcome = {
                 let mut mcp = mcp_state.lock().await;
@@ -1818,7 +1992,7 @@ pub async fn send_message(
                     &effective_arguments,
                     Some(&result_val),
                     audit_status,
-                    false, // user_confirmed — set later if confirmation flow ran
+                    user_confirmed,
                     execution_time_ms,
                 ) {
                     tracing::warn!(
@@ -1870,6 +2044,7 @@ pub async fn send_message(
                     result_len = result_text.len(),
                     execution_time_ms = execution_time_ms,
                     tools_completed = tool_call_history.len(),
+                    user_confirmed,
                     "tool execution complete"
                 );
             }
@@ -2075,7 +2250,7 @@ pub async fn send_message(
         messages.push(summary_instruction);
 
         match client
-            .chat_completion_stream(messages, None, Some(CONVERSATIONAL_SAMPLING)) // No tools → model MUST produce text
+            .chat_completion_stream(messages, None, Some(conversational_sampling)) // No tools → model MUST produce text
             .await
         {
             Ok(stream) => {
@@ -2133,20 +2308,39 @@ pub async fn send_message(
     Ok(())
 }
 
-/// Respond to a confirmation request from the ToolRouter.
+/// Respond to a confirmation request from the agent loop.
 ///
 /// The frontend calls this when the user clicks Confirm/Cancel on a
-/// confirmation dialog.
+/// confirmation dialog. The response is forwarded to the agent loop
+/// via the pending oneshot channel.
 #[tauri::command]
-pub fn respond_to_confirmation(
+pub async fn respond_to_confirmation(
     request_id: String,
     response: serde_json::Value,
+    pending: tauri::State<'_, PendingConfirmation>,
 ) -> Result<(), String> {
     tracing::info!(
         request_id = %request_id,
         response = %response,
         "confirmation response received"
     );
+
+    let parsed: ConfirmationResponse = serde_json::from_value(response)
+        .map_err(|e| format!("Invalid confirmation response: {e}"))?;
+
+    let mut lock = pending.lock().await;
+    if let Some(tx) = lock.take() {
+        // oneshot::Sender::send returns Err if receiver was dropped
+        tx.send(parsed).map_err(|_| {
+            "Confirmation channel closed — agent loop may have timed out".to_string()
+        })?;
+    } else {
+        tracing::warn!(
+            request_id = %request_id,
+            "no pending confirmation — response ignored"
+        );
+    }
+
     Ok(())
 }
 

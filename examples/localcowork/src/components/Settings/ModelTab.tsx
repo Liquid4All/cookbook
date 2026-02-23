@@ -1,14 +1,19 @@
 /**
- * ModelTab — model configuration display in the settings panel.
+ * ModelTab — model configuration and inference parameters in the settings panel.
  *
  * Shows the active model, available models, fallback chain,
- * and inference parameters.
+ * and editable sampling hyperparameters (temperature, top_p).
  */
 
-import type { ModelsOverview } from "../../types";
+import { useCallback, useState } from "react";
+
+import type { ModelsOverview, SamplingConfig } from "../../types";
 
 interface ModelTabProps {
   readonly overview: ModelsOverview;
+  readonly samplingConfig: SamplingConfig | null;
+  readonly onUpdateSampling: (config: SamplingConfig) => Promise<void>;
+  readonly onResetSampling: () => Promise<void>;
 }
 
 /** Badge for a capability. */
@@ -20,10 +25,71 @@ function CapabilityBadge({
   return <span className="settings-capability-badge">{label}</span>;
 }
 
-export function ModelTab({ overview }: ModelTabProps): React.JSX.Element {
+/** Slider row for a single sampling parameter. */
+function SamplingSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  readonly label: string;
+  readonly value: number;
+  readonly min: number;
+  readonly max: number;
+  readonly step: number;
+  readonly onChange: (value: number) => void;
+}): React.JSX.Element {
+  return (
+    <div className="settings-sampling-row">
+      <div className="settings-sampling-header">
+        <span className="settings-detail-label">{label}</span>
+        <span className="settings-sampling-value">{value.toFixed(2)}</span>
+      </div>
+      <input
+        type="range"
+        className="settings-sampling-slider"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => {
+          onChange(parseFloat(e.target.value));
+        }}
+      />
+    </div>
+  );
+}
+
+export function ModelTab({
+  overview,
+  samplingConfig,
+  onUpdateSampling,
+  onResetSampling,
+}: ModelTabProps): React.JSX.Element {
   const activeModel = overview.models.find(
     (m) => m.key === overview.activeModel,
   );
+
+  // Local state for slider values (committed on change).
+  const [localConfig, setLocalConfig] = useState<SamplingConfig | null>(null);
+  const config = localConfig ?? samplingConfig;
+
+  const handleSliderChange = useCallback(
+    (field: keyof SamplingConfig, value: number) => {
+      if (config == null) return;
+      const updated: SamplingConfig = { ...config, [field]: value };
+      setLocalConfig(updated);
+      void onUpdateSampling(updated);
+    },
+    [config, onUpdateSampling],
+  );
+
+  const handleReset = useCallback(() => {
+    setLocalConfig(null);
+    void onResetSampling();
+  }, [onResetSampling]);
 
   return (
     <div className="settings-tab-content">
@@ -60,7 +126,7 @@ export function ModelTab({ overview }: ModelTabProps): React.JSX.Element {
               <div className="settings-detail-row">
                 <span className="settings-detail-label">Temperature</span>
                 <span className="settings-detail-value">
-                  {activeModel.temperature}
+                  {activeModel.temperature.toFixed(2)}
                 </span>
               </div>
               <div className="settings-detail-row">
@@ -91,6 +157,77 @@ export function ModelTab({ overview }: ModelTabProps): React.JSX.Element {
           <p className="settings-muted">No active model configured.</p>
         )}
       </div>
+
+      {/* Inference parameters */}
+      {config != null && (
+        <div className="settings-section">
+          <div className="settings-section-header">
+            <h3 className="settings-section-title">Inference Parameters</h3>
+            <button
+              className="settings-reset-btn"
+              onClick={handleReset}
+              type="button"
+            >
+              Reset
+            </button>
+          </div>
+          <p className="settings-section-desc">
+            Tool-calling turns use low temperature for deterministic tool
+            selection. Conversational turns use higher temperature for natural
+            language.
+          </p>
+          <div className="settings-sampling-group">
+            <span className="settings-sampling-group-label">
+              Tool-Calling Turns
+            </span>
+            <SamplingSlider
+              label="Temperature"
+              value={config.toolTemperature}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) => {
+                handleSliderChange("toolTemperature", v);
+              }}
+            />
+            <SamplingSlider
+              label="Top-P"
+              value={config.toolTopP}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) => {
+                handleSliderChange("toolTopP", v);
+              }}
+            />
+          </div>
+          <div className="settings-sampling-group">
+            <span className="settings-sampling-group-label">
+              Conversational Turns
+            </span>
+            <SamplingSlider
+              label="Temperature"
+              value={config.conversationalTemperature}
+              min={0}
+              max={2}
+              step={0.05}
+              onChange={(v) => {
+                handleSliderChange("conversationalTemperature", v);
+              }}
+            />
+            <SamplingSlider
+              label="Top-P"
+              value={config.conversationalTopP}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) => {
+                handleSliderChange("conversationalTopP", v);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Fallback chain */}
       <div className="settings-section">

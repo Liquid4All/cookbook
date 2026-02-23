@@ -119,6 +119,7 @@ pub struct NewUndoEntry {
 
 /// Request sent to the frontend for user confirmation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConfirmationRequest {
     /// Unique request ID for matching responses.
     pub request_id: String,
@@ -138,6 +139,7 @@ pub struct ConfirmationRequest {
 
 /// Response from the frontend after user decision.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
 pub enum ConfirmationResponse {
     /// User confirmed the action (Allow Once).
     Confirmed,
@@ -148,6 +150,7 @@ pub enum ConfirmationResponse {
     /// User rejected the action.
     Rejected,
     /// User edited the arguments before confirming.
+    #[serde(rename = "edited")]
     EditedAndConfirmed {
         /// Modified arguments.
         new_arguments: serde_json::Value,
@@ -260,24 +263,68 @@ mod tests {
 
     #[test]
     fn test_confirmation_response_serialization() {
+        // Tagged enum with camelCase: {"type": "confirmed"}
         let confirmed = ConfirmationResponse::Confirmed;
         let json = serde_json::to_string(&confirmed).unwrap();
-        assert!(json.contains("Confirmed"));
+        assert_eq!(json, r#"{"type":"confirmed"}"#);
 
         let session = ConfirmationResponse::ConfirmedForSession;
         let json = serde_json::to_string(&session).unwrap();
-        assert!(json.contains("ConfirmedForSession"));
+        assert_eq!(json, r#"{"type":"confirmedForSession"}"#);
 
         let always = ConfirmationResponse::ConfirmedAlways;
         let json = serde_json::to_string(&always).unwrap();
-        assert!(json.contains("ConfirmedAlways"));
+        assert_eq!(json, r#"{"type":"confirmedAlways"}"#);
+
+        let rejected = ConfirmationResponse::Rejected;
+        let json = serde_json::to_string(&rejected).unwrap();
+        assert_eq!(json, r#"{"type":"rejected"}"#);
 
         let edited = ConfirmationResponse::EditedAndConfirmed {
             new_arguments: serde_json::json!({"path": "/tmp/new"}),
         };
         let json = serde_json::to_string(&edited).unwrap();
-        assert!(json.contains("EditedAndConfirmed"));
+        assert!(json.contains(r#""type":"edited""#));
         assert!(json.contains("/tmp/new"));
+    }
+
+    #[test]
+    fn test_confirmation_response_deserialization() {
+        // Frontend sends {"type": "confirmed"} etc.
+        let confirmed: ConfirmationResponse =
+            serde_json::from_str(r#"{"type":"confirmed"}"#).unwrap();
+        assert!(matches!(confirmed, ConfirmationResponse::Confirmed));
+
+        let session: ConfirmationResponse =
+            serde_json::from_str(r#"{"type":"confirmedForSession"}"#).unwrap();
+        assert!(matches!(session, ConfirmationResponse::ConfirmedForSession));
+
+        let edited: ConfirmationResponse =
+            serde_json::from_str(r#"{"type":"edited","new_arguments":{"path":"/tmp"}}"#).unwrap();
+        assert!(matches!(edited, ConfirmationResponse::EditedAndConfirmed { .. }));
+    }
+
+    #[test]
+    fn test_confirmation_request_serialization() {
+        let req = ConfirmationRequest {
+            request_id: "r1".to_string(),
+            tool_name: "filesystem.write_file".to_string(),
+            arguments: serde_json::json!({"path": "/tmp/test.txt"}),
+            preview: "Write to file: /tmp/test.txt".to_string(),
+            confirmation_required: true,
+            undo_supported: true,
+            is_destructive: false,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        // camelCase: requestId, toolName, undoSupported, isDestructive
+        assert!(json.contains("requestId"));
+        assert!(json.contains("toolName"));
+        assert!(json.contains("undoSupported"));
+        assert!(json.contains("isDestructive"));
+        assert!(json.contains("confirmationRequired"));
+        // Should NOT contain snake_case
+        assert!(!json.contains("request_id"));
+        assert!(!json.contains("tool_name"));
     }
 
     #[test]

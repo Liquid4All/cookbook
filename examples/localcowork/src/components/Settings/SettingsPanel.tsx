@@ -17,6 +17,7 @@ export function SettingsPanel(): React.JSX.Element {
     modelsOverview,
     serverStatuses,
     permissionGrants,
+    samplingConfig,
     isOpen,
     activeTab,
     isLoading,
@@ -24,6 +25,9 @@ export function SettingsPanel(): React.JSX.Element {
     loadModelsConfig,
     loadServerStatuses,
     loadPermissionGrants,
+    loadSamplingConfig,
+    updateSamplingConfig,
+    resetSamplingConfig,
     revokePermission,
     togglePanel,
     setActiveTab,
@@ -36,6 +40,7 @@ export function SettingsPanel(): React.JSX.Element {
       void loadModelsConfig();
       void loadServerStatuses();
       void loadPermissionGrants();
+      void loadSamplingConfig();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -140,7 +145,12 @@ export function SettingsPanel(): React.JSX.Element {
           ) : (
             <>
               {activeTab === "model" && modelsOverview != null && (
-                <ModelTab overview={modelsOverview} />
+                <ModelTab
+                  overview={modelsOverview}
+                  samplingConfig={samplingConfig}
+                  onUpdateSampling={updateSamplingConfig}
+                  onResetSampling={resetSamplingConfig}
+                />
               )}
               {activeTab === "servers" && (
                 <ServersTab

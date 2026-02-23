@@ -19,6 +19,7 @@ export type {
   ModelConfig,
   ModelsOverview,
   PermissionGrant,
+  SamplingConfig,
 } from "./settings";
 
 export type {

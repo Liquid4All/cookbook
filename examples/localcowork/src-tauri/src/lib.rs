@@ -5,9 +5,15 @@ pub mod mcp_client;
 
 use std::sync::Mutex;
 
-use agent_core::{AgentDatabase, ConversationManager};
+use agent_core::{AgentDatabase, ConversationManager, ConfirmationResponse, PermissionStore};
+use commands::settings::SamplingConfig;
 use mcp_client::McpClient;
 use tauri::Manager;
+
+/// Pending confirmation channel — holds a oneshot sender while the agent loop
+/// awaits a user response via the ConfirmationDialog.
+pub type PendingConfirmation =
+    TokioMutex<Option<tokio::sync::oneshot::Sender<ConfirmationResponse>>>;
 
 /// Async mutex for types that require `.await` inside their methods.
 pub type TokioMutex<T> = tokio::sync::Mutex<T>;
@@ -537,6 +543,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(conversation_manager))
         .manage(TokioMutex::new(McpClient::new(empty_mcp_config, None)))
+        .manage(TokioMutex::new(PermissionStore::new()))
+        .manage(TokioMutex::new(SamplingConfig::load_or_default()))
+        .manage(TokioMutex::new(None::<tokio::sync::oneshot::Sender<ConfirmationResponse>>)
+            as PendingConfirmation)
         .setup(|app| {
             // Initialize MCP client asynchronously during app setup.
             // Once servers are started, replace the empty client via lock.
@@ -595,6 +605,9 @@ pub fn run() {
             commands::settings::get_mcp_servers_status,
             commands::settings::list_permission_grants,
             commands::settings::revoke_permission,
+            commands::settings::get_sampling_config,
+            commands::settings::update_sampling_config,
+            commands::settings::reset_sampling_config,
             commands::hardware::detect_hardware,
             commands::model_download::download_model,
             commands::model_download::verify_model,

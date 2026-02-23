@@ -41,3 +41,11 @@ export interface PermissionGrant {
   readonly scope: "session" | "always";
   readonly grantedAt: string;
 }
+
+/** Runtime sampling hyperparameters for the agent loop. */
+export interface SamplingConfig {
+  readonly toolTemperature: number;
+  readonly toolTopP: number;
+  readonly conversationalTemperature: number;
+  readonly conversationalTopP: number;
+}

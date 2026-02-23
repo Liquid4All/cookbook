@@ -350,10 +350,150 @@ For the broader community building local AI agents: the era of "throw all tools 
 
 ## Benchmark Infrastructure
 
-All benchmark code and results live in the repository:
+### Source Files
 
-- **Tool selection:** `tests/model-behavior/benchmark-lfm.ts` (100 single-step), `benchmark-multi-step.ts` (50 chains), `benchmark-orchestrator.ts` (50 orchestrator chains)
-- **Quality benchmark:** `tests/model-behavior/benchmark-quality.ts` (150 tests: param extraction + instruction following + synthesis). Scoring: `quality-scoring.ts`. Tests: `param-extraction-tests.ts`, `instruction-following-tests.ts`, `synthesis-tests.ts`.
-- **Runner script:** `scripts/benchmark-lfm2-24b.sh` (three-phase: single-model, orchestrator, report)
-- **Results:** `tests/model-behavior/.results/` (JSON files with per-test accuracy, latency, and failure analysis)
-- **Model config:** `_models/config.yaml` (active model, fallback chain, sampling parameters)
+| File | What it does | Tests |
+|------|-------------|-------|
+| `tests/model-behavior/benchmark-lfm.ts` | Single-step tool selection | 100 prompts across 12 categories |
+| `tests/model-behavior/benchmark-multi-step.ts` | Multi-step chain completion | 50 chains (simple, medium, complex) |
+| `tests/model-behavior/benchmark-orchestrator.ts` | Dual-model orchestrator | 50 chains via plan-execute-synthesize |
+| `tests/model-behavior/benchmark-quality.ts` | Quality: param extraction, instruction following, synthesis | 150 tests (50 per module) |
+| `tests/model-behavior/quality-scoring.ts` | Programmatic scoring functions (no LLM judge) | — |
+| `tests/model-behavior/param-extraction-tests.ts` | 50 param extraction test definitions | — |
+| `tests/model-behavior/instruction-following-tests.ts` | 50 instruction following test definitions | — |
+| `tests/model-behavior/synthesis-tests.ts` | 50 synthesis test definitions | — |
+| `scripts/benchmark-lfm2-24b.sh` | All-in-one runner (single-model + orchestrator + report) | — |
+| `_models/config.yaml` | Model config (active model, fallback chain, sampling params) | — |
+
+### Running Benchmarks
+
+**Prerequisites:** Start a model server before running any benchmark.
+
+```bash
+# LFM2-24B-A2B via llama-server (default port 8080)
+llama-server -m _models/LFM2-24B-A2B-Preview-Q4_K_M.gguf --port 8080
+
+# Any Ollama model (default port 11434)
+ollama run llama3.2
+```
+
+**Tool selection — single-step (100 prompts):**
+
+```bash
+# LFM2-24B via llama-server
+npx tsx tests/model-behavior/benchmark-lfm.ts --endpoint http://localhost:8080 --greedy
+
+# Llama 3.2 3B via Ollama
+npx tsx tests/model-behavior/benchmark-lfm.ts --endpoint http://localhost:11434 --model llama3.2 --greedy
+
+# With RAG pre-filter (narrows 67 tools to top-K candidates)
+npx tsx tests/model-behavior/benchmark-lfm.ts --endpoint http://localhost:8080 --greedy --filter --topk 15
+```
+
+**Tool selection — multi-step chains (50 chains):**
+
+```bash
+npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:8080 --greedy
+npx tsx tests/model-behavior/benchmark-multi-step.ts --endpoint http://localhost:11434 --model llama3.2 --greedy
+```
+
+**Quality benchmark (150 tests — param extraction + instruction following + synthesis):**
+
+```bash
+# All 3 modules
+npx tsx tests/model-behavior/benchmark-quality.ts --endpoint http://localhost:8080 --greedy
+
+# Individual modules
+npx tsx tests/model-behavior/benchmark-quality.ts --endpoint http://localhost:8080 --greedy --module params
+npx tsx tests/model-behavior/benchmark-quality.ts --endpoint http://localhost:8080 --greedy --module instructions
+npx tsx tests/model-behavior/benchmark-quality.ts --endpoint http://localhost:8080 --greedy --module synthesis
+
+# Against Ollama
+npx tsx tests/model-behavior/benchmark-quality.ts --endpoint http://localhost:11434 --model llama3.2 --greedy
+```
+
+**Orchestrator (dual-model plan-execute-synthesize):**
+
+```bash
+npx tsx tests/model-behavior/benchmark-orchestrator.ts --endpoint http://localhost:8080 --greedy
+```
+
+**All-in-one runner script:**
+
+```bash
+./scripts/benchmark-lfm2-24b.sh
+```
+
+**CLI flags reference:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--endpoint` | `http://localhost:8080` | Model server URL |
+| `--model` | _(none)_ | Model name for Ollama (required for Ollama, omit for llama-server) |
+| `--greedy` | off | Greedy sampling: temp=0, top_p=1.0 (recommended for reproducibility) |
+| `--filter` | off | Enable RAG embedding pre-filter |
+| `--topk` | 15 | Number of tools to show model when `--filter` is on |
+| `--timeout` | 30000 | Per-request timeout in ms |
+| `--module` | _(all)_ | Quality benchmark only: `params`, `instructions`, or `synthesis` |
+
+### Viewing Results
+
+Results are saved as JSON to `tests/model-behavior/.results/`. Each run creates a timestamped file.
+
+**File naming convention:**
+
+| Pattern | Benchmark type |
+|---------|---------------|
+| `lfm-unfiltered-k0-<timestamp>.json` | Single-step, all 67 tools |
+| `lfm-filtered-k15-<timestamp>.json` | Single-step, RAG pre-filtered to K tools |
+| `lfm-multistep-all-<timestamp>.json` | Multi-step chain completion |
+| `orchestrator-all-<timestamp>.json` | Dual-model orchestrator |
+| `quality-param-extraction-instruction-following-synthesis-<timestamp>.json` | Quality benchmark (all 3 modules) |
+
+**JSON structure — tool selection results:**
+
+```json
+{
+  "runId": "lfm-1771786409609",
+  "timestamp": "2026-02-22T...",
+  "endpoint": "http://localhost:8080",
+  "sampling": { "mode": "greedy", "temperature": 0, "topP": 1 },
+  "summary": { "total": 100, "passed": 80, "failed": 20, "accuracy": 0.80 },
+  "results": [
+    { "testId": "ts-file-001", "status": "passed", "expectedTools": ["filesystem.list_dir"], "actualTools": ["filesystem.list_dir"], "durationMs": 312 }
+  ]
+}
+```
+
+**JSON structure — quality benchmark results:**
+
+```json
+{
+  "runId": "quality-1771791851178",
+  "sampling": { "mode": "greedy", "temperature": 0, "topP": 1 },
+  "modules": {
+    "param-extraction": { "totalTests": 50, "avgScore": 0.649, "categories": { "path-extraction": { "total": 10, "avgScore": 0.725 } } },
+    "instruction-following": { "totalTests": 50, "avgScore": 0.647, "categories": { ... } },
+    "synthesis": { "totalTests": 50, "avgScore": 0.880, "categories": { ... } }
+  }
+}
+```
+
+**Quick commands to extract scores:**
+
+```bash
+# Overall accuracy from a tool selection run
+cat tests/model-behavior/.results/lfm-unfiltered-k0-*.json | jq '.summary.accuracy'
+
+# Per-module scores from a quality run
+cat tests/model-behavior/.results/quality-*.json | jq '.modules | to_entries[] | {module: .key, score: .value.avgScore}'
+
+# Per-category breakdown
+cat tests/model-behavior/.results/quality-*.json | jq '.modules["param-extraction"].categories'
+
+# List all failed tests from a run
+cat tests/model-behavior/.results/lfm-unfiltered-k0-*.json | jq '[.results[] | select(.status == "failed")] | length'
+
+# Compare two runs side by side
+diff <(cat .results/run1.json | jq '.summary') <(cat .results/run2.json | jq '.summary')
+```

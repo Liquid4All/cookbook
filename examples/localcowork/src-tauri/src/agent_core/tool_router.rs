@@ -386,7 +386,7 @@ fn is_retriable_mcp_error(err: &McpError) -> bool {
 }
 
 /// Determine if a tool action is destructive (delete, overwrite).
-fn is_destructive_action(tool_name: &str) -> bool {
+pub fn is_destructive_action(tool_name: &str) -> bool {
     let name = tool_name.split('.').next_back().unwrap_or(tool_name);
     matches!(
         name,
@@ -409,7 +409,7 @@ fn infer_action_type(tool_name: &str) -> String {
 }
 
 /// Generate a human-readable preview for a tool call.
-fn generate_preview(tool_name: &str, arguments: &serde_json::Value) -> String {
+pub fn generate_preview(tool_name: &str, arguments: &serde_json::Value) -> String {
     let name = tool_name.split('.').next_back().unwrap_or(tool_name);
 
     match name {

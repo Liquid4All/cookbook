@@ -34,10 +34,9 @@ export function MessageList({
     <div className="message-list">
       {messages.length === 0 && !isGenerating && (
         <div className="message-list-empty">
-          <p className="empty-title">Welcome to LocalCowork</p>
+          <p className="empty-title">Your AI workspace, entirely on-device</p>
           <p className="empty-subtitle">
-            Ask me to organize files, extract data, search documents, or
-            manage tasks — all on-device, all private.
+            Everything runs locally. Nothing leaves your machine.
           </p>
           <PresetCards />
         </div>
