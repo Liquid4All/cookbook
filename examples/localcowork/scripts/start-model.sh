@@ -15,7 +15,7 @@ set -euo pipefail
 MODELS_DIR="${LOCALCOWORK_MODELS_DIR:-$HOME/Projects/_models}"
 
 # Main model (LFM2-24B-A2B)
-MAIN_MODEL="LFM2-24B-A2B-Preview-Q4_K_M.gguf"
+MAIN_MODEL="LFM2-24B-A2B-Q4_K_M.gguf"
 MAIN_PORT=8080
 MAIN_CTX=32768
 
@@ -85,13 +85,13 @@ else
     echo "❌ Main model not found: $MAIN_PATH"
     echo ""
     echo "   Download LFM2-24B-A2B from HuggingFace (gated — request access first):"
-    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview"
+    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
     echo ""
     echo "   pip install huggingface-hub"
     echo "   python3 -c \""
     echo "     from huggingface_hub import hf_hub_download"
-    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',"
-    echo "                     'LFM2-24B-A2B-Preview-Q4_K_M.gguf',"
+    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',"
+    echo "                     'LFM2-24B-A2B-Q4_K_M.gguf',"
     echo "                     local_dir='$MODELS_DIR')"
     echo "   \""
     if [ "$CHECK_ONLY" = true ]; then

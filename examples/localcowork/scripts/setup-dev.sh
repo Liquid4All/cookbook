@@ -187,7 +187,7 @@ echo "  Models directory: $MODELS_DIR"
 echo ""
 
 # Primary model: LFM2-24B-A2B (production, 80% tool-calling accuracy)
-MAIN_MODEL="LFM2-24B-A2B-Preview-Q4_K_M.gguf"
+MAIN_MODEL="LFM2-24B-A2B-Q4_K_M.gguf"
 if [ -f "$MODELS_DIR/$MAIN_MODEL" ]; then
     MAIN_SIZE=$(du -h "$MODELS_DIR/$MAIN_MODEL" | cut -f1)
     echo "✅ LFM2-24B-A2B found ($MAIN_SIZE)"
@@ -195,12 +195,12 @@ else
     echo "❌ LFM2-24B-A2B not found — this is the primary production model"
     echo ""
     echo "   Download from HuggingFace (gated — request access first):"
-    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview"
+    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
     echo ""
     echo "   pip install huggingface-hub"
     echo "   python3 -c \""
     echo "     from huggingface_hub import hf_hub_download"
-    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',"
+    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',"
     echo "                     '$MAIN_MODEL',"
     echo "                     local_dir='$MODELS_DIR')"
     echo "   \""
