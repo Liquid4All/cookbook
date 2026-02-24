@@ -145,7 +145,7 @@ llama-server \
     --port "$MAIN_PORT" \
     --ctx-size "$MAIN_CTX" \
     --n-gpu-layers 99 \
-    --flash-attn &
+    --flash-attn on &
 
 MAIN_PID=$!
 echo "  PID: $MAIN_PID"
