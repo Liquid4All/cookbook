@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/f9b5a6fd-ed3b-4235-a856-6251441a1ada
 > - macos-arm64
 > - ubuntu-arm64
 > - ubuntu-x64
-> - ubuntu-WSL2 (see [WSL Pitfalls](WSL-PITFALLS.md) for known issues)
+> - ubuntu-WSL2
 
 Usage:
 ```bash
