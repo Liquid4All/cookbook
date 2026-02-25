@@ -119,8 +119,16 @@ llama-liquid-audio/llama-liquid-audio-server: $(ZIP)  ## Download pre-built llam
 # │                    Build llama-server                    │
 # └──────────────────────────────────────────────────────────┘
 
-install-deps:  ## Install system dependencies required to build llama-server (Linux/apt only)
+install-deps:  ## Install system dependencies required to build llama-server
+ifeq ($(UNAME_S),Darwin)
+	@echo "On macOS, install Xcode Command Line Tools and cmake via Homebrew:"
+	@echo "  xcode-select --install"
+	@echo "  brew install cmake"
+else ifeq ($(UNAME_S),Linux)
 	sudo apt install -y build-essential cmake libssl-dev libcurl4-openssl-dev
+else
+	$(error install-deps: unsupported OS $(UNAME_S))
+endif
 
 llama.cpp:
 	git clone https://github.com/ggml-org/llama.cpp.git && \
