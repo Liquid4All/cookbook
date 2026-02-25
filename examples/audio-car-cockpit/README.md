@@ -24,6 +24,9 @@ https://github.com/user-attachments/assets/f9b5a6fd-ed3b-4235-a856-6251441a1ada
 
 Usage:
 ```bash
+# (Linux only) Install system dependencies required to build llama-server
+make install-deps
+
 # Setup python env
 make setup
 
