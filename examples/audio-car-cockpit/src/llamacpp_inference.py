@@ -199,7 +199,7 @@ class ToolCallingRuntime:
                 ]
             },
             headers={"Content-Type": "application/json"},
-            timeout=3.0,
+            timeout=30.0,
         )
         response.raise_for_status()
         formatted_prompt: str = response.json().get("prompt")
@@ -215,7 +215,7 @@ class ToolCallingRuntime:
                 "prompt": formatted_prompt,
             },
             headers={"Content-Type": "application/json"},
-            timeout=30.0,
+            timeout=300.0,
         )
         response.raise_for_status()
         j = response.json()
@@ -251,7 +251,7 @@ class ToolCallingRuntime:
                     "stream": True,
                 },
                 headers={"Content-Type": "application/json"},
-                timeout=30.0,
+                timeout=300.0,
             ) as r:
                 async for x in r.aiter_text():
                     yield x

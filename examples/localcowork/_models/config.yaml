@@ -1,0 +1,411 @@
+# LocalCowork — Model Configuration
+# This file defines which LLM backend to use and how to connect to it.
+# The active model is loaded at app startup.
+#
+# MODEL DIRECTORY:
+#   All non-Ollama model files (GGUF, etc.) are stored here.
+#   Set LOCALCOWORK_MODELS_DIR env var to override.
+#   Ollama-managed models use Ollama's own storage (~/.ollama/models/).
+#
+#   Model paths below use ${LOCALCOWORK_MODELS_DIR} for interpolation.
+#   The config-loader resolves environment variables at load time.
+
+active_model: lfm2-24b-a2b  # Hybrid MoE: 24B total, ~2B active — 78% tool accuracy (benchmarked)
+
+# Default model directory for non-Ollama model files (GGUF, MLX, etc.)
+models_dir: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}"
+
+# ─── Tool Surface Curation ──────────────────────────────────────────────────
+# By default, only the curated high-accuracy servers and tools are active.
+# This keeps the model's context window focused and selection accuracy high.
+# Comment out both lists to start ALL discovered servers and expose all ~75 tools.
+enabled_servers:
+  - filesystem
+  - document
+  - audit
+  - security
+  - system
+  - clipboard
+
+# Curated tool allowlist: 20 high-accuracy tools across 6 servers.
+# Every tool here scores ≥80% single-step accuracy and participates in at
+# least one passing multi-step chain. Comment out to expose all tools from
+# the enabled servers.
+enabled_tools:
+  # filesystem — file browsing and search (3 tools, 80% accuracy)
+  - filesystem.list_dir
+  - filesystem.read_file
+  - filesystem.search_files
+  # document — text extraction, diffing, PDF/DOCX generation (4 tools, 83%)
+  - document.extract_text
+  - document.diff_documents
+  - document.create_pdf
+  - document.create_docx
+  # audit — audit trail and reporting (3 tools, 100%)
+  - audit.get_tool_log
+  - audit.generate_audit_report
+  - audit.export_audit_pdf
+  # security — scanning and encryption (5 tools, 90%)
+  - security.scan_for_pii
+  - security.scan_for_secrets
+  - security.find_duplicates
+  - security.propose_cleanup
+  - security.encrypt_file
+  # system — system info and disk usage (3 tools, 80%)
+  - system.get_system_info
+  - system.get_disk_usage
+  - system.take_screenshot
+  # clipboard — copy/paste (3 tools, 80%)
+  - clipboard.get_clipboard
+  - clipboard.set_clipboard
+  - clipboard.clipboard_history
+
+models:
+  # Development proxy — GPT-OSS-20B via Ollama
+  # Closest match to LFM2.5-24B target: similar param count, fits 16GB,
+  # native tool calling, Apache 2.0 license, OpenAI-compatible API.
+  gpt-oss-20b:
+    display_name: "GPT-OSS-20B (Dev)"
+    runtime: ollama
+    model_name: "gpt-oss:20b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json  # Native function calling + structured outputs
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 14
+    force_json_response: false  # Enable after live testing — triggers GBNF grammar enforcement
+    capabilities:
+      - text
+      - tool_calling
+
+  # Production target — LFM2.5-24B (when released)
+  lfm25-24b:
+    display_name: "LFM2.5-24B (Production)"
+    runtime: llama_cpp
+    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/lfm25-24b-q4_k_m.gguf"
+    base_url: "http://localhost:8080/v1"
+    context_window: 32768
+    tool_call_format: pythonic  # LFM2.5 uses Pythonic calls; normalizer converts to JSON
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 14
+    capabilities:
+      - text
+      - tool_calling
+
+  # LFM2-24B-A2B — Liquid AI's MoE hybrid model (private preview)
+  # Architecture: 24B total params, ~2B active per token (hybrid conv + GQA, same as LFM2-8B-A1B scaled up)
+  # Download GGUF from: https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview (gated — request access)
+  # Benchmark plan: docs/model-analysis/lfm2-24b-a2b-benchmark.md
+  # Run: llama-server --model <path> --port 8080 --ctx-size 32768 --n-gpu-layers 99 --flash-attn
+  lfm2-24b-a2b:
+    display_name: "LFM2-24B-A2B-Preview"
+    runtime: llama_cpp
+    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/LFM2-24B-A2B-Preview-Q4_K_M.gguf"
+    base_url: "http://localhost:8080/v1"
+    context_window: 32768
+    tool_call_format: bracket  # LFM2 bracket format: [server.tool(args)] parsed by tool_call_parser.rs
+    temperature: 0.7
+    tool_temperature: 0.1  # Lower temperature for tool-calling turns (ADR-008 Layer 3)
+    max_tokens: 4096
+    estimated_vram_gb: 16  # Q4_K_M quantization estimate for 24B MoE
+    capabilities:
+      - text
+      - tool_calling
+
+  # Fallback — lighter model for lower-spec hardware (only ~3B active params)
+  qwen3-30b-moe:
+    display_name: "Qwen3-30B-A3B (MoE, Lightweight)"
+    runtime: ollama
+    model_name: "qwen3:30b-a3b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 4  # Only ~3B active params
+    capabilities:
+      - text
+      - tool_calling
+
+  # Vision-Language model — LFM2.5-VL-1.6B for OCR and image understanding
+  # Only 1.6B params, runs on CPU or minimal GPU.
+  # Showcases Liquid AI's multimodal capability for text extraction.
+  # Download GGUF + mmproj from: https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF
+  #   Q8_0: LFM2.5-VL-1.6B-Q8_0.gguf (1.25 GB) + mmproj-LFM2.5-VL-1.6b-Q8_0.gguf (583 MB)
+  #   Q4_0: LFM2.5-VL-1.6B-Q4_0.gguf (696 MB)  + mmproj-LFM2.5-VL-1.6b-Q8_0.gguf (583 MB)
+  lfm25-vl:
+    display_name: "LFM2.5-VL-1.6B (Vision OCR)"
+    runtime: llama_cpp
+    model_name: "LFM2.5-VL-1.6B"
+    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/LFM2.5-VL-1.6B-Q8_0.gguf"
+    mmproj_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/mmproj-LFM2.5-VL-1.6b-Q8_0.gguf"
+    base_url: "http://localhost:8081/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.1
+    max_tokens: 4096
+    estimated_vram_gb: 1.8  # Q8_0 model (1.25 GB) + mmproj (583 MB)
+    capabilities:
+      - text
+      - vision
+
+  # Tool router — LFM2.5-1.2B-Instruct fine-tuned for LocalCowork tool selection
+  # Used by the dual-model orchestrator (ADR-009) as the execution engine.
+  # Base: 0.880 agent score (tied #1 among 21 small LLMs), 49.12 BFCLv3
+  # Fine-tuned V2: LoRA (r=64, alpha=128) on 4,314 examples — 93.0% eval token accuracy
+  # 83 tools across 15 servers, variable K (5-83), 29 scenario types, GPT-4o teacher data
+  # Same bracket format: <|tool_call_start|>[fn(params)]<|tool_call_end|>
+  # Runs alongside planner model on a separate llama-server instance.
+  lfm25-1.2b-router-ft:
+    display_name: "LFM2.5-1.2B-Router (Fine-Tuned V2)"
+    runtime: llama_cpp
+    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/LFM2.5-1.2B-Router-FT-v2-Q8_0.gguf"
+    base_url: "http://localhost:8082/v1"
+    context_window: 32768
+    tool_call_format: bracket  # LFM2.5 bracket format: [server.tool(args)]
+    temperature: 0.1
+    max_tokens: 512
+    estimated_vram_gb: 1.5  # Q8_0 quantization (1.2 GB)
+    role: tool_router
+    fine_tuned:
+      method: lora
+      version: v2
+      base_model: "LiquidAI/LFM2.5-1.2B-Instruct"
+      training_examples: 4314
+      tools_trained: 83
+      servers_trained: 15
+      eval_token_accuracy: 0.930
+      eval_loss: 0.195
+      lora_r: 64
+      lora_alpha: 128
+      quantization: Q8_0
+    capabilities:
+      - tool_calling
+
+  # Tool router base model — LFM2.5-1.2B-Instruct (pre-fine-tune)
+  # Kept for A/B comparison against the fine-tuned variant above.
+  lfm25-1.2b-instruct:
+    display_name: "LFM2.5-1.2B-Instruct (Base Router)"
+    runtime: llama_cpp
+    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/LFM2.5-1.2B-Instruct-F16.gguf"
+    base_url: "http://localhost:8084/v1"
+    context_window: 32768
+    tool_call_format: bracket  # LFM2.5 bracket format: [server.tool(args)]
+    temperature: 0.1
+    max_tokens: 512
+    estimated_vram_gb: 2.3
+    role: tool_router
+    capabilities:
+      - tool_calling
+      - embeddings
+
+  # Legacy router — kept for A/B comparison during fine-tuning evaluation
+  lfm2-1.2b-tool:
+    display_name: "LFM2-1.2B-Tool (Legacy Router)"
+    runtime: llama_cpp
+    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/LFM2-1.2B-Tool-F16.gguf"
+    base_url: "http://localhost:8083/v1"
+    context_window: 32768
+    tool_call_format: bracket
+    temperature: 0.1
+    max_tokens: 512
+    estimated_vram_gb: 2.3
+    role: tool_router
+    capabilities:
+      - tool_calling
+      - embeddings
+
+  # Legacy dev proxy — kept for comparison/regression testing
+  qwen25-32b:
+    display_name: "Qwen2.5-32B-Instruct (Legacy Dev)"
+    runtime: ollama
+    model_name: "qwen2.5:32b-instruct"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 20
+    capabilities:
+      - text
+      - tool_calling
+
+  # ─── Benchmark comparison models ────────────────────────────────────────
+  # These models are benchmarked against LFM2-24B-A2B to demonstrate
+  # scaling efficiency of hybrid MoE conv+attn vs dense and standard MoE.
+  # All use native OpenAI function calling format via Ollama.
+
+  # Mistral-Small-24B-Instruct — direct 24B-to-24B param count comparison
+  # Same total params as LFM2-24B-A2B but 12x more active params per token.
+  mistral-small-24b:
+    display_name: "Mistral-Small-24B-Instruct"
+    runtime: ollama
+    model_name: "mistral-small:24b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    tool_temperature: 0.1
+    max_tokens: 4096
+    estimated_vram_gb: 16
+    capabilities:
+      - text
+      - tool_calling
+
+  # Gemma 3 27B — Google's latest instruct model, widely recognized baseline
+  gemma3-27b:
+    display_name: "Gemma 3 27B Instruct"
+    runtime: ollama
+    model_name: "gemma3:27b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    tool_temperature: 0.1
+    max_tokens: 4096
+    estimated_vram_gb: 18
+    capabilities:
+      - text
+      - tool_calling
+
+  # Qwen3 32B Instruct — dense variant (NOT the A3B MoE already tested)
+  # DEPRECATED: Only had a partial benchmark run (40/100 tests). Dropped from active benchmarks.
+  # 16x more active params per token than LFM2-24B-A2B.
+  qwen3-32b:
+    display_name: "Qwen3 32B Instruct (Deprecated)"
+    runtime: ollama
+    model_name: "qwen3:32b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    tool_temperature: 0.1
+    max_tokens: 4096
+    estimated_vram_gb: 20
+    deprecated: true  # Partial run only (40/100), dropped from active benchmarks
+    capabilities:
+      - text
+      - tool_calling
+
+  # Qwen3-30B-A3B-Instruct-2507 — updated variant with <think> mode removed
+  # The original qwen3:30b-a3b had 51% no-tool-call rate from <think> blocks.
+  # This Instruct-2507 variant (released 2025-07-30) specifically improves tool calling.
+  qwen3-30b-a3b-instruct:
+    display_name: "Qwen3-30B-A3B-Instruct-2507"
+    runtime: ollama
+    model_name: "qwen3:30b-a3b-instruct-2507-q4_K_M"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 19
+    capabilities:
+      - text
+      - tool_calling
+
+  # ─── Tier 2: Small model benchmarks (active-param-class comparison) ──────
+  # These models match LFM2-24B-A2B's ~2B active compute budget.
+  # Tests whether hybrid MoE architecture outperforms dense models at similar per-token cost.
+
+  qwen3-4b:
+    display_name: "Qwen3-4B"
+    runtime: ollama
+    model_name: "qwen3:4b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 32768
+    tool_call_format: native_json
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 2.5
+    capabilities:
+      - text
+      - tool_calling
+
+  phi4-mini:
+    display_name: "Phi-4-mini (3.8B)"
+    runtime: ollama
+    model_name: "phi4-mini"
+    base_url: "http://localhost:11434/v1"
+    context_window: 128000
+    tool_call_format: native_json
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 2.5
+    capabilities:
+      - text
+      - tool_calling
+
+  llama32-3b:
+    display_name: "Llama 3.2 3B"
+    runtime: ollama
+    model_name: "llama3.2:3b"
+    base_url: "http://localhost:11434/v1"
+    context_window: 131072
+    tool_call_format: native_json
+    temperature: 0.7
+    max_tokens: 4096
+    estimated_vram_gb: 2.0
+    capabilities:
+      - text
+      - tool_calling
+
+# Runtime configurations
+runtimes:
+  ollama:
+    command: "ollama serve"
+    health_check: "http://localhost:11434/api/tags"
+    startup_timeout_seconds: 30
+
+  llama_cpp:
+    command: "llama-server"
+    args: ["--model", "{model_path}", "--port", "8080", "--ctx-size", "32768"]
+    health_check: "http://localhost:8080/health"
+    startup_timeout_seconds: 60
+
+  mlx:
+    command: "mlx_lm.server"
+    args: ["--model", "{model_path}", "--port", "8080"]
+    health_check: "http://localhost:8080/health"
+    startup_timeout_seconds: 45
+    platform: macos_only
+
+# Fallback chain — used when the active model is unavailable
+fallback_chain:
+  - lfm2-24b-a2b     # Primary — 78% single-step, 24% chain completion
+  - qwen3-30b-moe    # Fallback 1 — Ollama-hosted Qwen3 MoE
+  - static_response   # Fallback 2 — hardcoded "model unavailable" message
+
+# Dual-model orchestrator (ADR-009)
+# When enabled, the planner model decomposes multi-step workflows and
+# LFM2.5-1.2B-Instruct executes each step independently with RAG pre-filtered tools.
+# LFM2-24B-A2B as planner + LFM2.5-1.2B-Instruct as router ≈ 18 GB total.
+# Falls back to single-model mode if disabled or if orchestration fails.
+#
+# MODEL COMPATIBILITY:
+#   The orchestrator requires LFM-family models (bracket tool_call_format).
+#   Both planner and router use bracket-format prompts and parsing
+#   ([plan.add_step(...)], [server.tool(args)]) that are hardcoded to LFM's
+#   native output format. Models with native_json or pythonic formats
+#   (GPT-OSS, Qwen, etc.) will fail the plan phase and fall back to the
+#   single-model agent loop, which IS fully format-portable.
+#
+#   If you are using a non-LFM model as active_model, set enabled: false
+#   to skip the orchestrator entirely and avoid the ~2-3s wasted planner call.
+#   See ADR-009 for full details.
+orchestrator:
+  enabled: false  # With 20 curated tools, single-model loop is faster. Enable for 67+ tools.
+  planner_model: lfm2-24b-a2b
+  router_model: lfm25-1.2b-router-ft  # Fine-tuned V2: 93.0% eval accuracy, 83.7% live (83 tools)
+  router_top_k: 15
+  max_plan_steps: 10
+  step_retries: 3
+
+# Two-pass category-based tool selection (Tier 1.5 optimization)
+# When enabled and >20 MCP tools are registered, the first agent turn sends
+# ~15 category meta-tools (~1,500 tokens) instead of all 67 tools (~8,670 tokens).
+# The model selects 2-3 categories, then subsequent turns use only those tools.
+# Saves ~7,170 tokens per turn and eliminates cross-server confusion.
+two_pass_tool_selection: true  # Active only when >30 tools registered; 21 curated tools use flat mode

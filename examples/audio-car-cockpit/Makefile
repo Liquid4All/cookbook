@@ -3,7 +3,8 @@
 	serve audioserver \
 	test-search test-quick test-full test-toolcall \
 	llama-liquid-audio-runner \
-	LFM2-1.2B-Tool-GGUF
+	LFM2-1.2B-Tool-GGUF \
+	install-deps
 
 all: help
 
@@ -16,6 +17,10 @@ help:  ## Show commands
 ifneq ($(firstword $(sort $(MAKE_VERSION) 4.3)),4.3)
 	$(error Needs GNU Make 4.3 or higher. In MacOS, try using gmake, and maybe add it to the path)
 endif
+
+# Use uv from PATH if available, otherwise fall back to the default install location
+# (handles the case where uv was just installed by this Makefile and PATH isn't updated yet)
+UV := $(shell which uv 2>/dev/null || echo $(HOME)/.local/bin/uv)
 
 # Override the externally defined value, if any
 override VIRTUAL_ENV := $(PWD)/.venv
@@ -44,10 +49,10 @@ ifeq (, $(shell which uv))
 	$(info uv is not installed yet, fetching it now)
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 endif
-	uv venv --allow-python-downloads --allow-existing
+	$(UV) venv --allow-python-downloads --allow-existing
 
 setup: .venv  ## Initial virtual setup through uv
-	uv sync --all-groups
+	$(UV) sync --all-groups
 
 
 # ┌──────────────────────────────────────────────────────────┐
@@ -55,13 +60,14 @@ setup: .venv  ## Initial virtual setup through uv
 # └──────────────────────────────────────────────────────────┘
 
 LFM2.5-Audio-1.5B-GGUF:  ## Download audio model
-	uv run --with "huggingface_hub" hf download "LiquidAI/LFM2.5-Audio-1.5B-GGUF" \
+	$(UV) run --with "huggingface_hub" python hf_download.py "LiquidAI/LFM2.5-Audio-1.5B-GGUF" \
 		--local-dir ./LFM2.5-Audio-1.5B-GGUF \
 		--include '*Q8_0*'
 
-LFM2-1.2B-Tool-GGUF: llama-server  ## Download tool calling model
-	@# Not strictly necessary, but pre-download for smoother first startup
-	./llama-server -hf "LiquidAI/LFM2-1.2B-Tool-GGUF:Q8_0" --version
+LFM2-1.2B-Tool-GGUF:  ## Pre-download tool calling model to HuggingFace cache
+	@# Downloads to ~/.cache/huggingface/hub/ so llama-server finds it without a network call
+	$(UV) run --with "huggingface_hub" python hf_download.py "LiquidAI/LFM2-1.2B-Tool-GGUF" \
+		--include '*Q8_0*'
 
 
 # ┌──────────────────────────────────────────────────────────┐
@@ -148,7 +154,7 @@ llama-liquid-audio-runner: $(ZIP)
 
 $(ZIP):
 	@mkdir -p runners
-	uv run --with "huggingface_hub" hf download "LiquidAI/LFM2.5-Audio-1.5B-GGUF" --local-dir ./ $@
+	$(UV) run --with "huggingface_hub" python hf_download.py "LiquidAI/LFM2.5-Audio-1.5B-GGUF" --local-dir ./ --include $@
 	unzip -q -o $@
 
 llama-liquid-audio/llama-liquid-audio-server: $(ZIP)  ## Download pre-built llama-liquid-audio-server (CPU)
@@ -161,7 +167,24 @@ llama-liquid-audio/llama-liquid-audio-server: $(ZIP)  ## Download pre-built llam
 # │                Build llama.cpp from source                │
 # └──────────────────────────────────────────────────────────┘
 
+install-deps:  ## Install system dependencies required to build llama-server
+ifeq ($(UNAME_S),Darwin)
+	@echo "On macOS, install Xcode Command Line Tools and cmake via Homebrew:"
+	@echo "  xcode-select --install"
+	@echo "  brew install cmake"
+else ifeq ($(UNAME_S),Linux)
+	sudo apt install -y build-essential cmake libssl-dev libcurl4-openssl-dev
+else
+	$(error install-deps: unsupported OS $(UNAME_S))
+endif
+
+
 llama.cpp/build/bin/llama-server: llama.cpp
+ifeq ($(UNAME_S),Linux)
+	@dpkg -s libssl-dev >/dev/null 2>&1 || \
+		(echo "Error: libssl-dev not found — llama-server would build without HTTPS support." \
+		     "Run 'make install-deps' first." && exit 1)
+endif
 	cd llama.cpp && \
 		cmake -B build $(CMAKE_ARGS) && \
 		cmake --build build --config Release -t llama-server -j 8
@@ -190,7 +213,7 @@ endif
 # └──────────────────────────────────────────────────────────┘
 
 serve: llama-server  ## Start FastAPI server
-	uv run --frozen server.py
+	$(UV) run --frozen server.py
 
 audioserver: $(AUDIO_SERVER_TARGET) LFM2.5-Audio-1.5B-GGUF  ## Start audio server
 	$(AUDIO_SERVER) \
@@ -228,7 +251,7 @@ test-toolcall:  ## Tool call with the string "play the next song"
 # │                        Utilities                         │
 # └──────────────────────────────────────────────────────────┘
 
-UV_FROZEN_DEV = uv run --only-group dev --frozen
+UV_FROZEN_DEV = $(UV) run --only-group dev --frozen
 
 lint:  ## Lint and format python code
 	@$(UV_FROZEN_DEV) ruff format

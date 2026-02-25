@@ -1,0 +1,19 @@
+{
+  "name": "@localcowork/mcp-shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared MCP base classes for TypeScript servers",
+  "type": "module",
+  "main": "mcp-base.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.22.0",
+    "zod-to-json-schema": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  }
+}

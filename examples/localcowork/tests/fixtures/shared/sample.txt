@@ -1,0 +1,2 @@
+This is a shared sample text file used across multiple test cases.
+It contains plain text content for testing file operations.

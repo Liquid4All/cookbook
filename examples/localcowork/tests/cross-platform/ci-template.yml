@@ -1,0 +1,104 @@
+# .github/workflows/cross-platform.yml (template -- not yet activated)
+#
+# Reference CI configuration for running LocalCowork cross-platform tests
+# on macOS and Windows runners. Copy this to .github/workflows/ when ready.
+#
+name: Cross-Platform Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: cross-platform-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run cross-platform smoke tests
+        run: npx vitest run tests/cross-platform/smoke-runner.ts
+
+      - name: Run build checks
+        run: npx vitest run tests/cross-platform/build-check.ts
+
+      - name: Run benchmarks
+        run: npx vitest run tests/cross-platform/benchmarks.ts
+
+  test-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run cross-platform smoke tests
+        run: npx vitest run tests/cross-platform/smoke-runner.ts
+
+      - name: Run build checks
+        run: npx vitest run tests/cross-platform/build-check.ts
+
+      - name: Run benchmarks
+        run: npx vitest run tests/cross-platform/benchmarks.ts
+
+  test-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run cross-platform smoke tests
+        run: npx vitest run tests/cross-platform/smoke-runner.ts
+
+      - name: Run build checks
+        run: npx vitest run tests/cross-platform/build-check.ts
+
+      - name: Run benchmarks
+        run: npx vitest run tests/cross-platform/benchmarks.ts

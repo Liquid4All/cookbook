@@ -1,0 +1,6 @@
+RECEIPT
+Vendor: Staples Office Supply
+Date: 2026-01-18
+Amount: $32.99
+Item: Printer Paper (5 reams)
+Payment: Corporate Amex ending 5678

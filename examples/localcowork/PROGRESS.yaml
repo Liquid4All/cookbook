@@ -1,0 +1,1814 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LocalCowork — Development Progress Checkpoint
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# NOTE: This file is an internal development artifact used for AI-assisted
+# session management. For the public roadmap, see GitHub Issues.
+# For model benchmarks and architecture findings, see docs/model-analysis/
+#
+# PURPOSE: This is the "JIRA board" for Claude Code sessions.
+#   - Claude reads this at session start to know where to pick up.
+#   - Claude updates this at session end (or via /session-end) to checkpoint.
+#   - Humans can read this anytime to see project status.
+#
+# STATUS VALUES:
+#   not_started  — No work done yet
+#   in_progress  — Partially complete (see notes for details)
+#   blocked      — Cannot proceed (see blockers)
+#   complete     — Done and verified (tests pass, lint clean)
+#
+# RULES:
+#   - Only Claude Code or a human should edit this file.
+#   - Never mark "complete" without passing tests.
+#   - Always include the session_id (git short hash) that made the change.
+#   - Keep notes concise — one line per item.
+# ─────────────────────────────────────────────────────────────────────────────
+
+project: LocalCowork
+last_updated: "2026-02-18"
+last_session_id: "session-034"
+current_phase: "Post-A/B-test documentation consolidation. Orchestrator operational for 1-2 step workflows (A/B tested). Fine-tuned router V2 at 84% live accuracy. Documentation restructured: 3 files deleted, 1 created, 5 rewritten. All cross-references verified (35 links, 0 broken). Next: commit all changes, run tests."
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 0: FOUNDATION (Week 1)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+phases:
+  foundation:
+    target_week: 1
+    status: complete
+
+    workstreams:
+      WS-0A:
+        name: "Project scaffold"
+        description: "Repo structure, configs, CI, CLAUDE.md, .claude/ folder"
+        status: complete
+        completed_in: "session-001"
+        notes: >
+          Created full directory tree (91 dirs), CLAUDE.md, .claude/settings.json,
+          6 slash commands, .gitignore, _models/config.yaml, scripts/setup-dev.sh,
+          scripts/validate-mcp-servers.sh.
+
+      WS-0B:
+        name: "Shared MCP base classes"
+        description: "TypeScript + Python shared base classes in mcp-servers/_shared/"
+        status: complete
+        completed_in: "session-001"
+        notes: >
+          Created mcp-base.ts, json-rpc.ts, validation.ts (TS) and
+          mcp_base.py, json_rpc.py, validation.py (PY). Includes MCPServer,
+          MCPTool, MCPError, JSON-RPC transport, sandbox validation, PII patterns.
+
+      WS-0C:
+        name: "MCP tool registry YAML"
+        description: "Machine-readable tool definitions extracted from PRD Appendix"
+        status: complete
+        completed_in: "session-001"
+        notes: >
+          docs/mcp-tool-registry.yaml — all 68 tools across 13 servers with
+          typed params, returns, confirmation/undo metadata, and shared types.
+
+      WS-0D:
+        name: "Tauri shell"
+        description: "Empty Tauri 2.0 app that launches with a blank window"
+        status: complete
+        completed_in: "session-004"
+        notes: >
+          Fixed tauri.conf.json (removed invalid app.title, added window label).
+          Fixed main.rs crate name. Added @vitejs/plugin-react. Generated app icons.
+          cargo check + cargo clippy -- -D warnings both pass clean.
+        depends_on: []
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 1: CORE SERVERS (Weeks 2–4)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  core_servers:
+    target_weeks: "2-4"
+    status: complete
+
+    workstreams:
+      WS-1A:
+        name: "filesystem server"
+        description: "TypeScript — file CRUD, watch, search, tree. Most servers depend on this."
+        status: complete
+        completed_in: "session-002"
+        depends_on: ["WS-0B"]
+        tools:
+          - list_dir       # ✅ implemented + tested
+          - read_file      # ✅ implemented + tested
+          - write_file     # ✅ implemented + tested
+          - move_file      # ✅ implemented + tested
+          - copy_file      # ✅ implemented
+          - delete_file    # ✅ implemented (trash-based)
+          - search_files   # ✅ implemented + tested
+          - get_metadata   # ✅ implemented
+          - watch_folder   # ✅ implemented
+        notes: >
+          All 9 tools implemented. 5 test files, 24 tests, all passing.
+          Sandbox validation, glob matching, recursive walk, trash-based delete.
+
+      WS-1B:
+        name: "document server"
+        description: "Python — text extraction, conversion, diff, PDF generation"
+        status: complete
+        completed_in: "session-003"
+        depends_on: ["WS-0B"]
+        tools:
+          - extract_text         # ✅ implemented + tested (PDF, DOCX, HTML, TXT, MD)
+          - convert_format       # ✅ implemented + tested (txt, md, html, docx)
+          - diff_documents       # ✅ implemented + tested (paragraph, sentence, word)
+          - create_pdf           # ✅ implemented + tested (markdown→HTML→PDF fallback)
+          - fill_pdf_form        # ✅ implemented (pypdf form filling)
+          - merge_pdfs           # ✅ implemented (pypdf merger)
+          - create_docx          # ✅ implemented + tested (markdown→docx)
+          - read_spreadsheet     # ✅ implemented + tested (xlsx, csv, tsv)
+        notes: >
+          All 8 tools implemented. 6 test files, 25 tests, all passing.
+          Fixed _shared/py/validation.py regex bug ((?-i) syntax).
+          Fixed conftest.py shared module loading (importlib approach).
+
+      WS-1C:
+        name: "ocr server"
+        description: "Python — LFM Vision primary, Tesseract fallback (ADR-004)"
+        status: complete
+        completed_in: "session-003"
+        depends_on: ["WS-0B"]
+        tools:
+          - extract_text_from_image   # ✅ implemented + vision stub
+          - extract_text_from_pdf     # ✅ implemented + tested
+          - extract_structured_data   # ✅ implemented + tested (regex fallback)
+          - extract_table             # ✅ implemented + tested (CSV/TSV/pipe/space)
+        notes: >
+          All 4 tools implemented. 3 test files, 17 tests, all passing.
+          ADR-004 adopted: LFM Vision primary → Tesseract fallback.
+          Vision model stubs ready for WS-2B integration.
+
+      WS-1D:
+        name: "data server"
+        description: "TypeScript — CSV/SQLite operations, deduplication, anomaly detection"
+        status: complete
+        completed_in: "session-003"
+        depends_on: ["WS-0B"]
+        tools:
+          - write_csv              # ✅ implemented + tested (RFC 4180)
+          - write_sqlite           # ✅ implemented + tested (auto schema)
+          - query_sqlite           # ✅ implemented + tested (read-only enforced)
+          - deduplicate_records    # ✅ implemented + tested (Levenshtein)
+          - summarize_anomalies   # ✅ implemented + tested (z-score, range, pattern)
+        notes: >
+          All 5 tools implemented. 5 test files, 27 tests, all passing.
+          Fixed type inference for null columns (scan all rows).
+          Table name validation in execute() for direct calls.
+
+      WS-1E:
+        name: "audit server"
+        description: "TypeScript — audit log reader, reports, compliance export"
+        status: complete
+        completed_in: "session-002"
+        depends_on: ["WS-0B"]
+        tools:
+          - get_tool_log           # ✅ implemented + tested
+          - get_session_summary    # ✅ implemented + tested
+          - generate_audit_report  # ✅ implemented + tested
+          - export_audit_pdf       # ✅ implemented
+        notes: >
+          All 4 tools implemented. SQLite-backed (better-sqlite3), WAL mode,
+          in-memory DB for tests. 3 test files, 15 tests, all passing.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 2: AGENT CORE (Weeks 3–5)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  agent_core:
+    target_weeks: "3-5"
+    status: complete
+
+    workstreams:
+      WS-2A:
+        name: "MCP Client"
+        description: "Rust — JSON-RPC stdio transport, server lifecycle, tool aggregation"
+        status: complete
+        completed_in: "session-004"
+        depends_on: ["WS-0D", "WS-1A"]
+        notes: >
+          6 files: mod.rs, client.rs, transport.rs, registry.rs, lifecycle.rs,
+          types.rs, errors.rs. JSON-RPC 2.0 over stdio, tool aggregation + validation,
+          server spawn/restart/shutdown, OpenAI tool format export. 24 tests passing.
+
+      WS-2B:
+        name: "Inference Client"
+        description: "Rust — OpenAI-compat API client, streaming, tool-call parsing"
+        status: complete
+        completed_in: "session-004"
+        depends_on: ["WS-0D"]
+        notes: >
+          6 files: mod.rs, client.rs, config.rs, streaming.rs, tool_call_parser.rs,
+          types.rs, errors.rs. OpenAI-compat streaming, native_json + Pythonic tool
+          call parsing, env var config loading, fallback chain. 24 tests passing.
+
+      WS-2C:
+        name: "ConversationManager"
+        description: "Rust — SQLite history, context window budget, message eviction"
+        status: complete
+        completed_in: "session-005"
+        depends_on: ["WS-2A", "WS-2B"]
+        notes: >
+          6 files: conversation.rs, database.rs, errors.rs, tokens.rs, types.rs, mod.rs.
+          SQLite-backed history with WAL mode, session management, token estimation,
+          context window eviction (keep recent N turns, summarize evicted), undo stack,
+          build_chat_messages() for inference client. 22 new tests passing.
+
+      WS-2D:
+        name: "ToolRouter"
+        description: "Rust — model tool calls → MCP server dispatch + result aggregation"
+        status: complete
+        completed_in: "session-005"
+        depends_on: ["WS-2A", "WS-2B"]
+        notes: >
+          1 file: tool_router.rs. Validates tool calls, checks confirmation metadata,
+          sends ConfirmationRequest via mpsc channels, executes via McpClient with
+          retry+backoff, logs to audit table, pushes undo entries. Preview generation
+          for common actions. 19 new tests passing (including 2 async integration tests).
+
+      WS-2E:
+        name: "Human-in-the-loop engine"
+        description: "Rust — confirm/undo system, preview generation, undo stack"
+        status: complete
+        completed_in: "session-005"
+        depends_on: ["WS-2D"]
+        notes: >
+          Implemented as part of WS-2C (undo stack in ConversationManager + database)
+          and WS-2D (confirmation flow in ToolRouter). ConfirmationRequest/Response
+          types, is_destructive_action(), generate_preview(), undo mark_undone().
+          No separate module needed — responsibilities fully covered.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 3: FRONTEND (Weeks 4–6)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  frontend:
+    target_weeks: "4-6"
+    status: complete
+
+    workstreams:
+      WS-3A:
+        name: "Chat UI"
+        description: "React — streaming messages, markdown rendering, message input"
+        status: complete
+        completed_in: "session-005"
+        depends_on: ["WS-2C"]
+        notes: >
+          5 React components: ChatPanel, MessageList, MessageBubble, MessageInput,
+          ConfirmationDialog. Zustand chatStore with Tauri event listeners.
+          TypeScript types for ChatMessage, ToolCall, ConfirmationRequest.
+          Tauri IPC commands (start_session, send_message, respond_to_confirmation).
+          Full CSS theme with dark mode. Builds clean (vite + tsc --noEmit).
+
+      WS-3B:
+        name: "Tool Trace Visualizer"
+        description: "React — real-time tool execution display, expandable steps"
+        status: complete
+        completed_in: "session-006"
+        depends_on: ["WS-3A", "WS-2D"]
+        notes: >
+          ToolTrace component with collapsible tree UI. Correlates tool calls
+          with results via toolCallId. Status tracking: pending → executing →
+          complete/error. Expandable result previews with "Show more" toggle.
+          Duration formatting, abbreviated arguments, error display. Replaces
+          old tool-call-chip rendering in MessageBubble.
+
+      WS-3C:
+        name: "File Browser"
+        description: "React — directory tree, file preview, drag-drop"
+        status: complete
+        completed_in: "session-006"
+        depends_on: ["WS-3A", "WS-1A"]
+        notes: >
+          Left sidebar (260px) with lazy-loaded directory tree. Components:
+          FileBrowser, DirectoryTree, TreeNodeRow, PathBreadcrumb, FileIcon.
+          Zustand fileBrowserStore with expand/collapse/navigate state.
+          Tauri IPC: list_directory (sorts dirs first, skips hidden), get_home_dir.
+          File icons by extension. Added dirs crate to Cargo.toml.
+
+      WS-3D:
+        name: "Confirmation Dialogs"
+        description: "React — preview pane, confirm/cancel, undo toast"
+        status: complete
+        completed_in: "session-005"
+        depends_on: ["WS-3A", "WS-2E"]
+        notes: >
+          ConfirmationDialog component built as part of WS-3A. Modal overlay
+          with destructive/mutable styling, preview text, undo hint,
+          confirm/cancel buttons. Wired to chatStore's respondToConfirmation.
+
+      WS-3E:
+        name: "Settings Panel"
+        description: "React — model config, MCP server status, resource monitor"
+        status: complete
+        completed_in: "session-006"
+        depends_on: ["WS-3A"]
+        notes: >
+          Slide-out panel with Model and Servers tabs. Model tab shows active
+          model details (runtime, endpoint, context window, temperature, VRAM),
+          fallback chain, and all available models. Servers tab shows MCP server
+          health (12 servers with status dots: initialized/starting/failed/unavailable).
+          Zustand settingsStore. Tauri IPC: get_models_config, get_mcp_servers_status.
+          Gear icon settings button in header.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 4: ADVANCED SERVERS (Weeks 5–8)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  advanced_servers:
+    target_weeks: "5-8"
+    status: complete
+
+    workstreams:
+      WS-4A:
+        name: "knowledge server"
+        description: "Python — SQLite RAG pipeline, chunking, semantic search"
+        status: complete
+        completed_in: "session-007"
+        depends_on: ["WS-1A", "WS-1B"]
+        tools:
+          - index_folder         # ✅ implemented + tested (paragraph chunking, idempotent)
+          - search_documents     # ✅ implemented + tested (cosine similarity, top_k, path filter)
+          - ask_about_files      # ✅ implemented + tested (stub answer from context chunks)
+          - update_index         # ✅ implemented + tested (three-way reconciliation)
+          - get_related_chunks   # ✅ implemented + tested (deterministic, score-sorted)
+        notes: >
+          All 5 tools implemented. SQLite-backed (documents + chunks tables).
+          Mock embeddings via SHA-512 hash → 128-dim normalized float vectors.
+          Only generate_embedding() needs swapping for real sentence-transformers.
+          5 test files, 39 tests, all passing.
+
+      WS-4B:
+        name: "security server"
+        description: "Python — PII/secrets scan, duplicate detection, encrypt/decrypt files"
+        status: complete
+        completed_in: "session-007"
+        depends_on: ["WS-0B"]
+        tools:
+          - scan_for_pii         # ✅ implemented + tested (SSN, credit card w/ Luhn, email, phone)
+          - scan_for_secrets     # ✅ implemented + tested (AWS keys, GitHub tokens, private keys)
+          - find_duplicates      # ✅ implemented + tested (hash, name, content methods)
+          - propose_cleanup      # ✅ implemented + tested (dedup + action proposals)
+          - encrypt_file         # ✅ implemented + tested (Fernet symmetric encryption)
+          - decrypt_file         # ✅ implemented + tested (roundtrip verified)
+        notes: >
+          All 6 tools implemented. Regex-based PII/secrets scanning with Luhn
+          validation for credit cards. Fernet encryption via cryptography lib.
+          patterns.py shared module with Finding/FileInfo/ProposedAction models.
+          6 test files, 57 tests, all passing.
+
+      WS-4C:
+        name: "task server"
+        description: "TypeScript — CRUD tasks, daily briefing, priority sorting"
+        status: complete
+        completed_in: "session-007"
+        depends_on: ["WS-0B"]
+        tools:
+          - create_task          # ✅ implemented + tested (title, description, source, priority, due_date)
+          - list_tasks           # ✅ implemented + tested (status/priority/limit filters, sorted)
+          - update_task          # ✅ implemented + tested (dynamic SET, existence check)
+          - get_overdue          # ✅ implemented + tested (due_date < now, not completed)
+          - daily_briefing       # ✅ implemented + tested (summary text + task arrays)
+        notes: >
+          All 5 tools implemented. SQLite-backed (tasks table with indexes).
+          WAL mode, in-memory DB for tests. Priority 1-5 (1=urgent).
+          5 test files, 28 tests, all passing.
+
+      WS-4D:
+        name: "calendar server"
+        description: "TypeScript — SQLite calendar, event CRUD, free slot finder"
+        status: complete
+        completed_in: "session-007"
+        depends_on: ["WS-0B"]
+        tools:
+          - list_events          # ✅ implemented + tested (date range, calendar filter)
+          - create_event         # ✅ implemented + tested (all_day support, validation)
+          - find_free_slots      # ✅ implemented + tested (8am-6pm, min_duration filter)
+          - create_time_block    # ✅ implemented + tested (preferred_time: morning/afternoon/evening)
+        notes: >
+          All 4 tools implemented. SQLite-backed (events table).
+          Switched from ical.js to better-sqlite3 for local-first simplicity.
+          4 test files, 29 tests, all passing.
+
+      WS-4E:
+        name: "email server"
+        description: "TypeScript — SQLite email/drafts, search, thread summarization"
+        status: complete
+        completed_in: "session-007"
+        depends_on: ["WS-0B"]
+        tools:
+          - draft_email          # ✅ implemented + tested (to/cc, subject, body, UUID draft_id)
+          - list_drafts          # ✅ implemented + tested (status filter, limit)
+          - search_emails        # ✅ implemented + tested (LIKE on subject+body, folder filter)
+          - summarize_thread     # ✅ implemented + tested (strips Re:/Fwd:, chronological)
+          - send_draft           # ✅ implemented + tested (marks sent, no real SMTP yet)
+        notes: >
+          All 5 tools implemented. SQLite-backed (drafts + emails tables).
+          Draft lifecycle: draft → sent. Thread grouping by thread_id.
+          5 test files, 40 tests, all passing.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 5: ML SERVERS (Weeks 7–10)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  ml_servers:
+    target_weeks: "7-10"
+    status: complete
+
+    workstreams:
+      WS-5A:
+        name: "meeting server — transcription"
+        description: "Python — Whisper.cpp stub, audio preprocessing"
+        status: complete
+        completed_in: "session-008"
+        depends_on: ["WS-0B"]
+        tools:
+          - transcribe_audio   # ✅ implemented + tested (stub engine, real Whisper swap later)
+        notes: >
+          1 tool implemented. Stub transcription engine with mock segments.
+          meeting_types.py shared Pydantic models (Segment, ActionItem, Commitment, Decision).
+          Diarization via speaker label rotation when diarize=True.
+          1 test file, 16 tests, all passing.
+
+      WS-5B:
+        name: "meeting server — extraction"
+        description: "Python — action items, commitments, decisions from transcripts"
+        status: complete
+        completed_in: "session-008"
+        depends_on: ["WS-5A"]
+        tools:
+          - extract_action_items    # ✅ implemented + tested (regex/heuristic extraction)
+          - extract_commitments     # ✅ implemented + tested (commitments + decisions + open questions)
+          - generate_minutes        # ✅ implemented + tested (markdown minutes with attendees)
+        notes: >
+          All 3 tools implemented. Heuristic-based extraction via regex patterns in
+          extraction.py. Action items: ACTION/TODO markers, "will do" phrases, deadline/priority.
+          Commitments: "I will"/"I commit" patterns. Decisions: "We decided"/"Agreed" patterns.
+          Minutes: attendee extraction, action items section, markdown output.
+          3 test files, 34 tests, all passing. Full meeting server: 50 tests.
+
+      WS-5C:
+        name: "clipboard + system servers"
+        description: "TypeScript — OS clipboard via Tauri bridge, system info APIs"
+        status: complete
+        completed_in: "session-008"
+        depends_on: ["WS-0D"]
+        tools:
+          - get_clipboard       # ✅ implemented + tested (mock bridge, Tauri swap later)
+          - set_clipboard       # ✅ implemented + tested (adds to history)
+          - clipboard_history   # ✅ implemented + tested (most-recent-first, limit param)
+          - get_system_info     # ✅ implemented + tested (Node.js os module for real data)
+          - open_application    # ✅ implemented + tested (stub, confirmationRequired)
+          - take_screenshot     # ✅ implemented + tested (stub, region param)
+          - list_processes      # ✅ implemented + tested (mock bridge, case-insensitive filter)
+          - open_file_with      # ✅ implemented + tested (stub, confirmationRequired)
+        notes: >
+          8 tools across 2 servers (clipboard: 3 tools, system: 5 tools).
+          Clipboard: MockClipboardBridge with in-memory storage + history (max 100 entries).
+          System: MockSystemBridge with predictable test data; NodeSystemBridge uses
+          real os.platform/arch/cpus/totalmem. Clipboard: 3 test files, 21 tests.
+          System: 5 test files, 32 tests. Total: 53 tests, all passing.
+
+      WS-5D:
+        name: "Screenshot-to-Action pipeline"
+        description: "Screenshot capture, OCR, action suggestion pipeline"
+        status: complete
+        completed_in: "session-008"
+        depends_on: ["WS-1C", "WS-5C"]
+        tools:
+          - capture_and_extract    # implemented + tested (stub capture + OCR)
+          - extract_ui_elements    # implemented + tested (stub element detection)
+          - suggest_actions        # implemented + tested (heuristic classifier)
+        notes: >
+          All 3 tools implemented as Python MCP server in mcp-servers/screenshot-pipeline/.
+          Stubs for screenshot capture (Tauri) and OCR (vision model) — swap when
+          real integrations are ready. Heuristic action classifier with 6 pattern rules
+          (email, file path, date/time, TODO, URL, tabular data). 3 test files,
+          33 tests, all passing.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 6: INTEGRATION & POLISH (Weeks 9–12)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 7: WIRE MCP INTO AGENT LOOP
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  mcp_wiring:
+    target_weeks: "post-dev"
+    status: in_progress  # WS-7A, WS-7B complete. WS-8 not_started. WS-10F (auto-discovery) complete.
+
+    workstreams:
+      WS-7A:
+        name: "Wire MCP Client into Agent Loop"
+        description: "Connect the existing MCP infrastructure (McpClient, ToolRegistry, StdioTransport) to the chat agent loop. Fix protocol mismatches between Python MCP servers and Rust MCP client. Initialize MCP servers at app startup. Route tool calls through McpClient instead of hardcoded implementations."
+        status: complete
+        started_in: "session-011"
+        completed_in: "session-011"
+        depends_on: ["WS-2A", "WS-2B", "WS-2C", "WS-1C"]
+        notes: >
+          All 6 subtasks complete. Fixed Python MCP init protocol, Rust serde aliases,
+          per-server cwd, mcp-servers.json config, McpClient initialization in lib.rs
+          with tokio::sync::Mutex, and hybrid built-in + MCP tool dispatch in chat.rs.
+          OCR server fully connected: 4 tools discovered, text extraction verified
+          end-to-end via Tesseract at 84% confidence. Venv resolution added to lib.rs.
+        subtasks:
+          - "Fix Python MCP init protocol (mcp_base.py): remove proactive init, add initialize handler ✅"
+          - "Fix Rust serde aliases (types.rs): inputSchema, confirmationRequired, undoSupported ✅"
+          - "Add per-server cwd + venv to ServerConfig + lifecycle.rs ✅"
+          - "Create mcp-servers.json config ✅"
+          - "Initialize McpClient in lib.rs with tokio::sync::Mutex ✅"
+          - "Wire McpClient into chat.rs send_message (hybrid built-in + MCP tools) ✅"
+
+      WS-7B:
+        name: "LFM Vision OCR Integration"
+        description: "Replace vision model stubs with direct Python→llama.cpp HTTP calls using LFM2.5-VL-1.6B. Auto-detect vision-capable models from _models/config.yaml and inject endpoint env vars into MCP servers. Phase 1 of vision integration (Phase 2 = WS-8 Rust bridge)."
+        status: complete
+        started_in: "session-012"
+        completed_in: "session-013"
+        depends_on: ["WS-7A"]
+        notes: >
+          Vision OCR implemented in extract_text_from_image.py and extract_table.py
+          via aiohttp calls to OpenAI-compatible vision API (LFM2.5-VL-1.6B served
+          by llama-server on port 8081). Rust lib.rs reads _models/config.yaml,
+          finds first vision-capable model, injects LOCALCOWORK_VISION_ENDPOINT +
+          LOCALCOWORK_VISION_MODEL env vars into MCP server processes.
+          Fallback chain: LFM Vision → Tesseract → error.
+          Live tested end-to-end: LFM Vision extracted 4/4 lines perfectly (engine=lfm_vision,
+          confidence=0.90). Tesseract fallback also verified (engine=tesseract, confidence=0.84).
+          setup-dev.sh and README.md updated with download instructions (Python API, not CLI).
+        subtasks:
+          - "Replace _ocr_with_vision_model() stub in extract_text_from_image.py ✅"
+          - "Replace _extract_table_with_vision() stub in extract_table.py ✅"
+          - "Add resolve_vision_model() to lib.rs + inject env vars ✅"
+          - "Add aiohttp to OCR server dependencies ✅"
+          - "Update setup-dev.sh with Tesseract + vision model ✅"
+          - "Update README.md with Vision OCR docs ✅"
+          - "Download LFM2.5-VL-1.6B GGUF + mmproj (1.8 GB total) ✅"
+          - "Live end-to-end test: LFM Vision OCR verified working ✅"
+          - "Live end-to-end test: Tesseract fallback verified working ✅"
+
+      WS-8:
+        name: "Rust Inference Bridge — Multimodal Model Gateway"
+        description: >
+          Extend Rust InferenceClient to support multimodal content (vision images).
+          Build _shared/services/model_gateway.py as a Python wrapper.
+          Wire all Python MCP servers (OCR, knowledge, meeting, security) to use the
+          gateway instead of direct HTTP. Single source of truth for model routing,
+          fallback chains, and capability negotiation. Depends on WS-7B.
+        status: not_started
+        depends_on: ["WS-7B"]
+        notes: >
+          Future workstream. Requires extending ChatMessage in inference/types.rs to
+          support multimodal content blocks (text + image_url). Add has_capability()
+          and vision_extract() to InferenceClient. Build model_gateway.py wrapper in
+          _shared/services/. Estimated ~500 LOC across Rust + Python. This is the
+          proper long-term architecture — WS-7B is the pragmatic interim solution.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 8: TOOL-CALLING OPTIMIZATION (ADR-008)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  tool_calling_optimization:
+    target_weeks: "post-dev"
+    status: in_progress
+    notes: >
+      ADR-008: Don't fine-tune yet — implement 4 layers of free improvements
+      first. Fine-tune only if tool selection accuracy remains below 85%.
+      See docs/architecture-decisions/008-tool-calling-optimization-strategy.md.
+      WS-9A, WS-9B, WS-9C complete (sessions 017-018). WS-9D remaining.
+
+    workstreams:
+      WS-9A:
+        name: "Client-Side JSON Repair for Tool Calls"
+        description: "Intercept Ollama HTTP 500 tool-call parse errors and repair malformed JSON client-side. Recovers the turn instead of cascading through the fallback chain. Opt-in response_format support for future GBNF experimentation."
+        status: complete
+        completed_in: "session-018"
+        depends_on: ["WS-7A"]
+        notes: >
+          Research found Ollama does NOT use llama.cpp GBNF grammar for tool call
+          arguments — it uses Harmony template-based post-generation parsing. Pivoted
+          to client-side JSON repair strategy. Four repair heuristics: double-quote fix,
+          trailing comma removal, brace balancing, control character stripping. Error
+          extraction from Ollama HTTP 500 body. Opt-in response_format: json_object
+          for future GBNF experimentation (disabled by default). 6 files modified,
+          ~19 new tests. ADR-008 Layer 1 rationale updated with production log evidence.
+
+      WS-9B:
+        name: "Few-Shot Tool Call Examples in System Prompt"
+        description: "Add 2-3 exemplar tool calls to SYSTEM_PROMPT showing correct fully-qualified names, absolute paths, and multi-step sequencing. Research shows 15-40% accuracy improvement."
+        status: complete
+        completed_in: "session-017"
+        depends_on: []
+        notes: >
+          Added 2 compact examples to SYSTEM_PROMPT (~220 tokens): (1) single tool call
+          with correct fully-qualified name + absolute path + WRONG counterexample,
+          (2) multi-step OCR-then-rename workflow showing read-before-act pattern.
+          Updated SYSTEM_PROMPT_BUDGET from 500 to 900 tokens.
+
+      WS-9C:
+        name: "Dynamic Inference Parameters for Tool Turns"
+        description: "Use lower temperature (0.1) and top_p (0.2) for tool-calling turns, higher (0.7/0.9) for conversational turns. Reduces wrong tool selection and argument hallucination."
+        status: complete
+        completed_in: "session-017"
+        depends_on: []
+        notes: >
+          Added SamplingOverrides struct to inference types. Added top_p field to
+          ChatCompletionRequest (skip_serializing_if None for backward compat).
+          Updated chat_completion_stream() and chat_completion() to accept sampling
+          overrides. Agent loop passes temperature=0.1/top_p=0.2 for tool turns,
+          temperature=0.7/top_p=0.9 for conversational turns. 3 new tests (112 total).
+
+      WS-9D:
+        name: "Evaluate Qwen3-30B-A3B (MoE) as Base Model"
+        description: "Benchmark Qwen3-30B-A3B against current GPT-OSS-20B using the 100-prompt tool-selection test suite. Only 3B active parameters (MoE) = faster inference. Scores 69.6 on Tau2-Bench vs Qwen2.5's ~63."
+        status: not_started
+        depends_on: ["WS-9A"]
+        notes: >
+          Download Qwen3-30B-A3B via Ollama. Run tests/model-behavior/ suite.
+          If scores >=80% on the 15-tool set, adopt as primary model.
+          Apache 2.0 license. Estimated effort: ~2 hours.
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PHASE 9: TRUST & EXTENSIBILITY (OpenWork-Inspired)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  trust_extensibility:
+    target_weeks: "post-dev"
+    status: complete
+    notes: >
+      Patterns borrowed from OpenWork (different-ai/openwork): tiered permissions,
+      system settings control, enhanced system monitoring. Inspired by OpenWork's
+      three-tier permission grants, audit-as-product, and MCP lifecycle patterns.
+      macOS + Windows support from day one. All 3 workstreams + auto-discovery complete.
+
+    workstreams:
+      WS-10E:
+        name: "Enhanced System Monitor Tools"
+        description: "Add 5 OS health monitoring tools to existing system server: get_memory_usage, get_disk_usage, get_cpu_usage, get_network_info, kill_process. Cross-platform via Node.js os module + platform-specific commands."
+        status: complete
+        completed_in: "session-019"
+        depends_on: ["WS-5C"]
+        tools:
+          - get_memory_usage    # ✅ implemented + tested (total/used/free/percent)
+          - get_disk_usage      # ✅ implemented + tested (all mounts, percent calc)
+          - get_cpu_usage       # ✅ implemented + tested (per-core + average)
+          - get_network_info    # ✅ implemented + tested (interfaces, IPv4/IPv6)
+          - kill_process        # ✅ implemented + tested (confirmation required, destructive)
+        notes: >
+          All 5 tools implemented in mcp-servers/system/. Cross-platform via Node.js
+          os module + platform-specific execSync commands. kill_process is destructive
+          and requires confirmation. 5 test files, 58 total system tests passing.
+
+      WS-10A:
+        name: "System Settings MCP Server"
+        description: "New MCP server for conversational OS control: display sleep, audio volume, default browser, do-not-disturb. 8 tools (4 read, 4 write). macOS (osascript/pmset/defaults) + Windows (PowerShell/registry/powercfg)."
+        status: complete
+        completed_in: "session-019"
+        depends_on: ["WS-5C"]
+        tools:
+          - get_display_sleep     # ✅ implemented + tested
+          - set_display_sleep     # ✅ implemented + tested (confirmation required)
+          - get_audio_volume      # ✅ implemented + tested
+          - set_audio_volume      # ✅ implemented + tested (confirmation required)
+          - get_default_browser   # ✅ implemented + tested
+          - set_default_browser   # ✅ implemented + tested (confirmation required)
+          - get_do_not_disturb    # ✅ implemented + tested
+          - set_do_not_disturb    # ✅ implemented + tested (confirmation required)
+        notes: >
+          New server at mcp-servers/system-settings/. Bridge pattern with
+          DarwinSettingsBridge + WindowsSettingsBridge + MockSettingsBridge.
+          All write tools require confirmation with natural language previews.
+          ESM module with async import() bridge. 28 tests passing.
+
+      WS-10B:
+        name: "Tiered Permission Model"
+        description: "Upgrade binary confirm/reject to three-tier grants: Allow Once / Allow for Session / Always Allow. Persistent grants in permissions.json. Revocable from Settings. Inspired by OpenWork's permission flow."
+        status: complete
+        completed_in: "session-019"
+        depends_on: ["WS-2D", "WS-3D"]
+        notes: >
+          PermissionStore in Rust (permissions.rs) with session + persistent grants.
+          Persistent grants saved to ~/.localcowork/permissions.json. Extended
+          ConfirmationResponse with ConfirmedForSession + ConfirmedAlways variants.
+          ConfirmationDialog has three buttons. PermissionsTab in Settings for revoking.
+          9 unit tests passing. IPC commands are stubs until ToolRouter is in Tauri state.
+
+      WS-10F:
+        name: "MCP Server Auto-Discovery"
+        description: "Auto-discover MCP servers at startup by scanning mcp-servers/ directory. Eliminates manual mcp-servers.json maintenance. Settings UI shows live server status from McpClient instead of hardcoded stubs."
+        status: complete
+        completed_in: "session-020"
+        depends_on: ["WS-7A"]
+        notes: >
+          New discovery.rs module scans mcp-servers/ for package.json (TS) or
+          pyproject.toml (Python) markers. Generates ServerConfig with correct
+          command/args/cwd/venv. mcp-servers.json is now optional override file.
+          settings.rs::get_mcp_servers_status() queries live McpClient state instead
+          of returning hardcoded stubs. 10 discovery tests + 2 helper method tests.
+          resolve_mcp_config() refactored into 4 helper functions.
+
+  model_optimization:
+    target_weeks: "post-dev"
+    status: in_progress
+    notes: >
+      FM-11 (Tool Cognitive Overload): 67 tool definitions overwhelm small models.
+      Option A (LFM bracket parser): 36% accuracy — rejected.
+      Option E (RAG pre-filter): K=15 → 78% (1.2B model), but DEGRADED 24B model (72% vs 78%).
+      Tier 1.5 (Two-pass category selection): 16 categories, 83 tools. Reduces first-turn
+      tokens from ~10,700 → 2,367. LFM2-24B-A2B at 80% single-step, 26% multi-step.
+      WS-12A: Dual-model orchestrator — disabled (0% chain completion with LFM2-24B-A2B).
+      Demo-ready: MAX_ROUNDS=10, deflection trust gate, system prompt tuning, preset cards.
+
+    workstreams:
+      WS-11A:
+        name: "LFM bracket parser + config"
+        description: "Parse LFM's [tool_name(kwargs)] bracket format, add LFM models to config.yaml, integrate with Rust inference pipeline"
+        status: complete
+        completed_in: "session-028"
+        notes: >
+          LfmBracket parser in inference/parsers/lfm_bracket.rs. Handles both
+          special-token markers and bare bracket format. Config entries for
+          LFM2.5-1.2B-Instruct and LFM2-1.2B-Tool. Streaming support for bracket
+          format. 177/177 Rust tests passing. Checkpointed on feat/option-a-lfm-router branch.
+
+      WS-11B:
+        name: "LFM model benchmarking (baseline)"
+        description: "Benchmark LFM models against 67-tool test suite, establish accuracy baselines"
+        status: complete
+        completed_in: "session-029"
+        notes: >
+          Created benchmark-lfm.ts standalone runner with LFM bracket parser.
+          Tested both LFM2.5-1.2B-Instruct (18% accuracy) and LFM2-1.2B-Tool (36% accuracy).
+          Both fail <60% decision gate. Root cause: 67 tools overwhelm 1.2B parameter model.
+          LFM2-1.2B-Tool is 2x better but still insufficient for production use.
+
+      WS-11C:
+        name: "RAG pre-filter for tool selection (Option E)"
+        description: "Embedding-based pre-filter narrows 67 tools to top-K per query using cosine similarity"
+        status: complete
+        completed_in: "session-030"
+        depends_on: ["WS-11B"]
+        notes: >
+          Phase 1 (TypeScript validation) COMPLETE. 78% accuracy at K=15.
+          Baseline K-sweep: K=5 (54%), K=10 (60%), K=15 (68%), K=20 (63%).
+          Prompt engineering (session-030):
+            - Rewrote all 67 tool descriptions (contrastive, synonym-augmented)
+            - Anti-refusal system prompt ("ALWAYS call the appropriate tool")
+            - Lenient bracket parser (4 modes: strict → lenient → backtick → prose)
+            - Result: 68% → 78% accuracy, 87% → 94% filter hit rate
+          70% decision gate CLEARED. Phase 2 (Rust implementation) approved.
+          See ADR-010 for full analysis.
+
+      WS-11D:
+        name: "Rust ToolPreFilter implementation (Option E Phase 2)"
+        description: "Port validated TypeScript pre-filter to Rust in agent_core/tool_prefilter.rs"
+        status: in_progress
+        completed_in: null
+        depends_on: ["WS-11C"]
+        notes: >
+          Core embedding index implemented in session-032 as part of WS-12A orchestrator.
+          ToolEmbeddingIndex::build() + filter() with cosine similarity, L2 normalization,
+          mean pooling. 9 unit tests passing. Remaining for full ADR-010 compliance:
+          pluggable embedding backends, always-include list, contrastive tool descriptions,
+          tool embedding cache at startup, lenient bracket parser integration,
+          graceful fallback to all-tools mode.
+
+      WS-11E:
+        name: "Multi-step deflection detection + benchmark"
+        description: "Detect FM-3 deflection in agent loop, extract response analysis to dedicated module, build multi-step chain benchmark runner"
+        status: complete
+        completed_in: "session-031"
+        depends_on: ["WS-11C"]
+        notes: >
+          Three deliverables completed:
+          (1) response_analysis.rs: Extracted is_incomplete_response from chat.rs,
+              added is_deflection_response (21 patterns + heuristic), is_completion_summary.
+              14 unit tests. cargo check + cargo test pass clean.
+          (2) chat.rs integration: Deflection check with MAX_DEFLECTION_RETRIES=3,
+              ephemeral continuation prompts, stream-clear on deflection.
+          (3) benchmark-multi-step.ts: 50-chain benchmark runner with mock tool results,
+              per-step conversation history, deflection detection mirroring Rust impl.
+          Results: 8% chain completion (4/50). Wrong tool 56%, no tool 32%, FM-3 4%.
+          Key finding: deflection detection helps but is insufficient — the 1.2B model
+          fundamentally cannot maintain tool selection accuracy under conversation history.
+        artifacts:
+          - "src-tauri/src/agent_core/response_analysis.rs (NEW)"
+          - "src-tauri/src/commands/chat.rs (modified: deflection detection)"
+          - "tests/model-behavior/benchmark-multi-step.ts (NEW)"
+          - "tests/model-behavior/types.ts (added StepResult, MultiStepResult)"
+          - "docs/model-analysis/lfm2-1.2b-tool.md (NEW)"
+
+      WS-12A:
+        name: "Dual-model orchestrator (Planner + Router)"
+        description: "GPT-OSS-20B plans multi-step workflows, LFM2-1.2B-Tool executes each step independently with RAG pre-filtered tools"
+        status: complete
+        completed_in: "session-032"
+        depends_on: ["WS-11C", "WS-11E"]
+        notes: >
+          ADR-009 documents the architecture. Three-phase pipeline:
+          (1) Plan: GPT-OSS-20B receives capability summary (no tool defs), outputs JSON step plan.
+          (2) Execute: LFM2-1.2B-Tool per step — clean prompt, RAG pre-filtered K=15 tools, no conversation history.
+          (3) Synthesize: GPT-OSS-20B streams final response with all step results as context.
+          Opt-in via config.yaml orchestrator.enabled flag. Falls back to single-model loop on failure.
+          VRAM budget: 14 GB (GPT-OSS-20B) + 2.3 GB (LFM2) = 16.3 GB. Fits 24 GB unified memory.
+          Expected improvement: 8% → ~50-60% chain completion via independent per-step calls.
+          194 tests passing (16 new), clippy clean.
+        artifacts:
+          - "docs/architecture-decisions/009-dual-model-orchestrator.md (NEW)"
+          - "src-tauri/src/agent_core/orchestrator.rs (NEW, ~280 lines)"
+          - "src-tauri/src/agent_core/tool_prefilter.rs (NEW, ~250 lines)"
+          - "src-tauri/src/inference/config.rs (modified: OrchestratorConfig, role field)"
+          - "src-tauri/src/inference/client.rs (modified: from_config_with_model)"
+          - "src-tauri/src/commands/chat.rs (modified: orchestrator hook)"
+          - "src-tauri/src/agent_core/mod.rs (modified: register new modules)"
+          - "src-tauri/src/mcp_client/registry.rs (modified: tool_name_description_pairs)"
+          - "_models/config.yaml (modified: lfm2-1.2b-tool model + orchestrator section)"
+
+  integration:
+    target_weeks: "9-12"
+    status: complete
+
+    workstreams:
+      WS-6A:
+        name: "UC integration tests"
+        description: "End-to-end tests for UC-1 through UC-10"
+        status: complete
+        completed_in: "session-009"
+        depends_on: ["WS-1A", "WS-1B", "WS-1C", "WS-1D", "WS-1E"]
+        use_cases:
+          UC-1: { name: "Receipt Reconciliation", status: complete }
+          UC-2: { name: "Contract Copilot", status: complete }
+          UC-3: { name: "Security Steward", status: complete }
+          UC-4: { name: "Download Triage", status: complete }
+          UC-5: { name: "Screenshot to Action", status: complete }
+          UC-6: { name: "Meeting Pipeline", status: complete }
+          UC-7: { name: "Personal Ops", status: complete }
+          UC-8: { name: "Deal Memo", status: complete }
+          UC-9: { name: "Codebase Navigator", status: complete }
+          UC-10: { name: "Compliance Pack Generator", status: complete }
+        notes: >
+          TestHarness class with callTsTool(), tempPath(), fixturePath().
+          Python tool wrapper (call-python-tool.py) for cross-language tests.
+          10 test files, 50 tests, all passing in 241ms.
+          Database-backed servers use in-memory SQLite via setDb().
+
+      WS-6B:
+        name: "Model behavior test suite"
+        description: "100 prompts + 50 multi-step + 30 edge cases"
+        status: complete
+        completed_in: "session-009"
+        depends_on: ["WS-2D"]
+        notes: >
+          192 structural tests passing. 100 tool-selection tests (15 filesystem,
+          12 document, 10 data, 8 OCR, 10 security, 8 task, 7 calendar, 8 email,
+          7 meeting, 7 knowledge, 5 system/clipboard, 3 audit). 50 multi-step chains
+          (15 simple, 20 medium, 15 complex). 30 edge cases (10 ambiguous, 10 error,
+          5 malformed, 5 boundary). All IDs unique, all tool names valid against
+          68-tool registry. 17 TypeScript files across types, framework, and test parts.
+
+      WS-6C:
+        name: "Model swap validation"
+        description: "Qwen2.5-32B → LFM2.5-24B compatibility testing"
+        status: complete
+        completed_in: "session-009"
+        depends_on: ["WS-6B"]
+        notes: >
+          ModelSwapRunner class loads WS-6B test definitions (JSON format).
+          Comparison report: side-by-side accuracy, regression/improvement detection,
+          pass/fail verdict. Thresholds: tool selection >= baseline - 5%,
+          chain completion >= baseline - 10%. System prompts for both models.
+          20 tests passing, 1 skipped (live model test). Results dir at
+          tests/model-swap/.results/.
+
+      WS-6D:
+        name: "Cross-platform testing"
+        description: "macOS + Windows build, install, and smoke tests"
+        status: complete
+        completed_in: "session-009"
+        depends_on: ["WS-6A"]
+        notes: >
+          65 tests across 4 test files. Platform-helpers.ts with OS-aware utilities.
+          smoke-runner.test.ts (24 tests): platform detection, paths, temp dirs,
+          permissions, process listing, system info, clipboard. smoke-runner-fs.test.ts
+          (17 tests): file watcher, unicode paths, long paths, hidden files, line
+          endings, case sensitivity. build-check.test.ts (19 tests): TS compile,
+          Vite build, cargo check, 8 server health checks, dependency audit.
+          benchmarks.test.ts (5 tests): file list/read/write speed, SQLite, search.
+          GitHub Actions CI template included.
+
+      WS-6E:
+        name: "First-run experience"
+        description: "Hardware detection, model download, onboarding wizard"
+        status: complete
+        completed_in: "session-009"
+        depends_on: ["WS-3E"]
+        notes: >
+          Rust: hardware.rs (sysinfo crate — CPU, RAM, GPU, OS, arch, runtime/quant
+          recommendations), model_download.rs (reqwest streaming download, SHA-256
+          verification, progress events). React: 7-step OnboardingWizard (Welcome,
+          Hardware, Model, Folder, Servers, Demo, Ready) with progress dots.
+          Zustand onboardingStore with localStorage persistence. TypeScript types
+          mirroring Rust structs. CSS styles appended to styles.css. Both cargo check
+          and tsc --noEmit pass clean. Cargo.toml updated with sysinfo + sha2.
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SESSION LOG
+# ═══════════════════════════════════════════════════════════════════════════════
+# Each session appends a brief entry here for human-readable history.
+
+sessions:
+  - id: "session-001"
+    date: "2026-02-12"
+    focus: "Foundation — WS-0A, WS-0B, WS-0C"
+    completed:
+      - "WS-0A: Full project scaffold (91 dirs, CLAUDE.md, slash commands, scripts)"
+      - "WS-0B: Shared MCP base classes (TS + PY)"
+      - "WS-0C: MCP tool registry YAML (68 tools, 13 servers)"
+    artifacts_created:
+      - "CLAUDE.md"
+      - ".claude/settings.json"
+      - ".claude/commands/*.md (6 commands)"
+      - "docs/mcp-tool-registry.yaml"
+      - "docs/patterns/*.md (3 patterns)"
+      - "docs/architecture-decisions/*.md (3 ADRs)"
+      - ".claude/skills/*/SKILL.md (3 skills)"
+      - "mcp-servers/_shared/ts/*.ts (3 files)"
+      - "mcp-servers/_shared/py/*.py (3 files)"
+      - "scripts/*.sh (2 scripts)"
+      - "_models/config.yaml"
+      - ".gitignore"
+    next_recommended: "WS-0D (Tauri shell) to complete Foundation phase"
+
+  - id: "session-002"
+    date: "2026-02-12"
+    focus: "Workspace init, Tauri shell, filesystem + audit servers"
+    completed:
+      - "WS-0A+: Initialized Cargo.toml, package.json (npm workspaces), pyproject.toml, tsconfig.json"
+      - "WS-0A+: Created per-server package.json (8 TS) and pyproject.toml (5 PY)"
+      - "WS-0D (partial): React frontend shell (index.html, main.tsx, App.tsx, styles.css)"
+      - "WS-0D (partial): Tauri config (tauri.conf.json, capabilities, build.rs, Rust stubs)"
+      - "WS-1A: Filesystem server — 9 tools, 5 test files, 24 tests passing"
+      - "WS-1E: Audit server — 4 tools, 3 test files, 15 tests passing"
+      - "README.md created"
+      - "Git repo initialized"
+    artifacts_created:
+      - "src-tauri/Cargo.toml + build.rs + tauri.conf.json + capabilities/default.json"
+      - "src-tauri/src/{main.rs, lib.rs, commands/mod.rs}"
+      - "src-tauri/src/{agent_core,mcp_client,inference}/mod.rs (stubs)"
+      - "package.json + tsconfig.json + vite.config.ts"
+      - "pyproject.toml"
+      - "index.html + src/{main.tsx, App.tsx, styles.css}"
+      - "mcp-servers/filesystem/src/index.ts + 9 tool files + 5 test files"
+      - "mcp-servers/audit/src/index.ts + db.ts + 4 tool files + 3 test files"
+      - "8x mcp-servers/*/package.json + tsconfig.json"
+      - "5x mcp-servers/*/pyproject.toml + __init__.py"
+      - "README.md"
+    test_results:
+      filesystem: "24/24 passing"
+      audit: "15/15 passing"
+    next_recommended: "WS-0D (Cargo compile), WS-1B (document server), WS-1D (data server)"
+    blockers:
+      - "Cargo/Rust toolchain not available in dev env — WS-0D Rust compile pending"
+
+  - id: "session-003"
+    date: "2026-02-12"
+    focus: "Core Servers — WS-1D, WS-1B, WS-1C + ADR-004 + model config"
+    completed:
+      - "WS-1D: Data server — 5 tools (write_csv, write_sqlite, query_sqlite, deduplicate_records, summarize_anomalies), 27 tests"
+      - "WS-1B: Document server — 8 tools (extract_text, convert_format, diff_documents, create_pdf, fill_pdf_form, merge_pdfs, create_docx, read_spreadsheet), 25 tests"
+      - "WS-1C: OCR server — 4 tools (extract_text_from_image, extract_text_from_pdf, extract_structured_data, extract_table), 17 tests"
+      - "ADR-004: OCR Engine — LFM Vision primary, Tesseract fallback"
+      - "Model config updated: LOCALCOWORK_MODELS_DIR env var, capabilities field, fallback_chain"
+      - "Fixed _shared/py/validation.py regex bug ((?-i) → (?i:...) syntax)"
+      - "Fixed _shared/py/validation.py import flexibility (relative + absolute)"
+      - "Core Servers phase COMPLETE — all 5 servers implemented (WS-1A through WS-1E)"
+    artifacts_created:
+      - "mcp-servers/data/src/index.ts + 5 tool files + 5 test files"
+      - "mcp-servers/document/src/server.py + 8 tool files + 6 test files + conftest.py"
+      - "mcp-servers/ocr/src/server.py + 4 tool files + 3 test files + conftest.py"
+      - "docs/architecture-decisions/004-ocr-engine-lfm-vision-primary.md"
+      - "_models/config.yaml (updated with env vars, capabilities, fallback chain)"
+    test_results:
+      filesystem: "24/24 passing"
+      audit: "15/15 passing"
+      data: "27/27 passing"
+      document: "25/25 passing"
+      ocr: "17/17 passing"
+      total: "108/108 passing"
+    next_recommended: "WS-0D (install Rust), then WS-2A/WS-2B (Agent Core — MCP Client + Inference Client)"
+    blockers:
+      - "Cargo/Rust toolchain still not installed — blocks WS-0D and all Phase 2 workstreams"
+
+  - id: "session-004"
+    date: "2026-02-12"
+    focus: "WS-0D completion + Phase 2 Agent Core (WS-2A, WS-2B)"
+    completed:
+      - "WS-0D: Tauri shell compiles — fixed config, crate name, icons, vite plugin"
+      - "WS-2B: Inference Client — 6 files, 24 tests (streaming, tool parsing, fallback chain)"
+      - "WS-2A: MCP Client — 6 files, 24 tests (JSON-RPC stdio, registry, lifecycle)"
+      - "Foundation phase COMPLETE (all 4 workstreams)"
+      - "Resolved Rust toolchain blocker"
+    artifacts_created:
+      - "src-tauri/src/inference/{client,config,errors,streaming,tool_call_parser,types}.rs"
+      - "src-tauri/src/mcp_client/{client,errors,lifecycle,registry,transport,types}.rs"
+      - "src-tauri/icons/{32x32.png, 128x128.png, 128x128@2x.png, icon.icns, icon.ico}"
+      - "Updated: tauri.conf.json, main.rs, lib.rs, Cargo.toml, vite.config.ts, .gitignore"
+    test_results:
+      rust_inference: "24/24 passing"
+      rust_mcp_client: "24/24 passing"
+      rust_total: "48/48 passing"
+      ts_mcp_servers: "108/108 passing (unchanged)"
+      grand_total: "156 tests passing"
+    next_recommended: "WS-2C (ConversationManager) + WS-2D (ToolRouter) — both depend on WS-2A + WS-2B which are now complete"
+
+  - id: "session-005"
+    date: "2026-02-12"
+    focus: "Agent Core completion (WS-2C, WS-2D, WS-2E) + Frontend kickoff (WS-3A, WS-3D)"
+    completed:
+      - "WS-2C: ConversationManager — 6 files (conversation.rs, database.rs, errors.rs, tokens.rs, types.rs, mod.rs)"
+      - "WS-2D: ToolRouter — tool_router.rs with full dispatch lifecycle"
+      - "WS-2E: Human-in-the-loop — integrated into WS-2C (undo stack) + WS-2D (confirmation flow)"
+      - "Agent Core phase COMPLETE (all 5 workstreams)"
+      - "WS-3A: Chat UI — 5 React components, Zustand store, Tauri IPC commands, full CSS theme"
+      - "WS-3D: Confirmation Dialogs — modal overlay built as part of WS-3A"
+      - "Tauri IPC bridge: start_session, send_message, respond_to_confirmation commands"
+      - "TypeScript types: ChatMessage, ToolCall, ConfirmationRequest, ContextBudget, SessionStatus"
+    artifacts_created:
+      - "src-tauri/src/agent_core/{conversation,database,errors,tokens,tool_router,types}.rs"
+      - "src-tauri/src/commands/chat.rs"
+      - "src/types/{chat.ts, index.ts}"
+      - "src/stores/chatStore.ts"
+      - "src/components/Chat/{ChatPanel,MessageList,MessageBubble,MessageInput,ConfirmationDialog,index}.tsx"
+      - "Updated: src-tauri/src/{agent_core/mod.rs, commands/mod.rs, lib.rs}"
+      - "Updated: src/{App.tsx, styles.css}"
+    test_results:
+      rust_agent_core: "41/41 passing"
+      rust_inference: "24/24 passing"
+      rust_mcp_client: "24/24 passing"
+      rust_total: "89/89 passing"
+      ts_mcp_servers: "108/108 passing"
+      frontend_build: "vite build + tsc --noEmit clean"
+      grand_total: "197 tests passing + clean frontend build"
+    next_recommended: "WS-3B (Tool Trace Visualizer) + WS-3C (File Browser) + WS-3E (Settings Panel) to complete Frontend phase"
+
+  - id: "session-006"
+    date: "2026-02-12"
+    focus: "Frontend phase completion (WS-3B, WS-3C, WS-3E)"
+    completed:
+      - "WS-3B: ToolTrace component — collapsible tree, status tracking, result correlation"
+      - "WS-3C: FileBrowser sidebar — directory tree, PathBreadcrumb, FileIcon, Zustand store"
+      - "WS-3E: SettingsPanel — Model tab (active model, fallback chain, catalog) + Servers tab (12 servers)"
+      - "Frontend phase COMPLETE (all 5 workstreams WS-3A through WS-3E)"
+      - "Tauri IPC: list_directory, get_home_dir, get_models_config, get_mcp_servers_status"
+      - "Added dirs crate for home directory resolution"
+      - "Updated MessageBubble to use ToolTrace (hides standalone tool messages)"
+      - "App layout: FileBrowser sidebar + ChatPanel + SettingsPanel overlay"
+    artifacts_created:
+      - "src/components/Chat/ToolTrace.tsx"
+      - "src/components/FileBrowser/{FileBrowser,DirectoryTree,TreeNodeRow,PathBreadcrumb,FileIcon,index}.tsx"
+      - "src/components/Settings/{SettingsPanel,ModelTab,ServersTab,index}.tsx"
+      - "src/stores/{fileBrowserStore,settingsStore}.ts"
+      - "src/types/{filesystem,settings}.ts"
+      - "src-tauri/src/commands/{filesystem,settings}.rs"
+      - "Updated: src/{App.tsx, styles.css, types/index.ts}"
+      - "Updated: src/components/Chat/{MessageBubble,MessageList,index}.tsx"
+      - "Updated: src-tauri/src/{lib.rs, commands/mod.rs, Cargo.toml}"
+    test_results:
+      rust_agent_core: "41/41 passing"
+      rust_inference: "24/24 passing"
+      rust_mcp_client: "24/24 passing"
+      rust_total: "89/89 passing"
+      ts_mcp_servers: "108/108 passing"
+      frontend_build: "vite build + tsc --noEmit + cargo clippy all clean"
+      grand_total: "197 tests passing + clean frontend build"
+    next_recommended: "Phase 4 Advanced Servers (WS-4A knowledge, WS-4B security, WS-4C task, WS-4D calendar, WS-4E email)"
+
+  - id: "session-007"
+    date: "2026-02-12"
+    focus: "Phase 4 Advanced Servers — all 5 servers (WS-4A through WS-4E)"
+    completed:
+      - "WS-4C: Task server — 5 tools (create_task, list_tasks, update_task, get_overdue, daily_briefing), 28 tests"
+      - "WS-4D: Calendar server — 4 tools (list_events, create_event, find_free_slots, create_time_block), 29 tests"
+      - "WS-4E: Email server — 5 tools (draft_email, list_drafts, search_emails, summarize_thread, send_draft), 40 tests"
+      - "WS-4A: Knowledge server — 5 tools (index_folder, search_documents, ask_about_files, update_index, get_related_chunks), 39 tests"
+      - "WS-4B: Security server — 6 tools (scan_for_pii, scan_for_secrets, find_duplicates, propose_cleanup, encrypt_file, decrypt_file), 57 tests"
+      - "Advanced Servers phase COMPLETE (all 5 workstreams WS-4A through WS-4E)"
+    artifacts_created:
+      - "mcp-servers/task/src/{index.ts, db.ts} + 5 tool files + tests/helpers.ts + 5 test files"
+      - "mcp-servers/calendar/src/{index.ts, db.ts} + 4 tool files + tests/helpers.ts + 4 test files"
+      - "mcp-servers/email/src/{index.ts, db.ts} + 5 tool files + tests/helpers.ts + 5 test files"
+      - "mcp-servers/knowledge/src/{main.py, db.py, embeddings.py} + 5 tool files + tests/conftest.py + 5 test files"
+      - "mcp-servers/security/src/{main.py, patterns.py} + 6 tool files + tests/conftest.py + 6 test files"
+      - "71 files changed, 6965 insertions"
+    test_results:
+      task: "28/28 passing"
+      calendar: "29/29 passing"
+      email: "40/40 passing"
+      knowledge: "39/39 passing"
+      security: "57/57 passing"
+      phase_4_total: "193/193 passing"
+      grand_total: "390 tests passing (197 prior + 193 new)"
+    next_recommended: "Phase 5 ML Servers (WS-5A meeting transcription, WS-5B meeting extraction, WS-5C clipboard+system, WS-5D screenshot pipeline)"
+
+  - id: "session-008"
+    date: "2026-02-13"
+    focus: "Phase 5 ML Servers — all 4 workstreams (WS-5A through WS-5D)"
+    completed:
+      - "WS-5A: Meeting transcription — 1 tool (transcribe_audio with diarize), stub engine, 16 tests"
+      - "WS-5B: Meeting extraction — 3 tools (extract_action_items, extract_commitments, generate_minutes), regex heuristics, 34 tests"
+      - "WS-5C: Clipboard server — 3 tools (get_clipboard, set_clipboard, clipboard_history), mock bridge, 21 tests"
+      - "WS-5C: System server — 5 tools (get_system_info, open_application, take_screenshot, list_processes, open_file_with), mock bridge, 32 tests"
+      - "WS-5D: Screenshot pipeline — 3 tools (capture_and_extract, extract_ui_elements, suggest_actions), heuristic classifier, 33 tests"
+      - "ML Servers phase COMPLETE (all 4 workstreams WS-5A through WS-5D)"
+    artifacts_created:
+      - "mcp-servers/meeting/src/{main.py, meeting_types.py, transcription.py, extraction.py} + 4 tool files + conftest.py + 4 test files"
+      - "mcp-servers/clipboard/src/{index.ts, bridge.ts} + 3 tool files + tests/helpers.ts + 3 test files"
+      - "mcp-servers/system/src/{index.ts, bridge.ts} + 5 tool files + tests/helpers.ts + 5 test files"
+      - "mcp-servers/screenshot-pipeline/src/{main.py, pipeline_types.py, action_classifier.py} + 3 tool files + conftest.py + 3 test files"
+    test_results:
+      meeting: "50/50 passing (16 transcription + 34 extraction)"
+      clipboard: "21/21 passing"
+      system: "32/32 passing"
+      screenshot_pipeline: "33/33 passing"
+      phase_5_total: "136/136 passing"
+      grand_total: "526 tests passing (390 prior + 136 new)"
+    next_recommended: "Phase 6 Integration & Polish (WS-6A UC integration tests, WS-6B model behavior tests, WS-6C model swap, WS-6D cross-platform, WS-6E first-run)"
+
+  - id: "session-009"
+    date: "2026-02-13"
+    focus: "Phase 6 Integration & Polish — all 5 workstreams (WS-6A through WS-6E)"
+    completed:
+      - "WS-6A: UC integration tests — TestHarness + 10 UC test files, 50 tests passing"
+      - "WS-6B: Model behavior test suite — 192 structural tests (100 tool-selection + 50 multi-step + 30 edge cases)"
+      - "WS-6C: Model swap validation — ModelSwapRunner, comparison reports, system prompts, 20 tests passing"
+      - "WS-6D: Cross-platform testing — platform helpers, 4 test files, 65 tests passing, CI template"
+      - "WS-6E: First-run experience — Rust hardware detection + model download, React 7-step onboarding wizard"
+      - "Integration & Polish phase COMPLETE (all 5 workstreams WS-6A through WS-6E)"
+      - "ALL DEVELOPMENT PHASES COMPLETE (Foundation → Core Servers → Agent Core → Frontend → Advanced Servers → ML Servers → Integration)"
+    artifacts_created:
+      - "tests/helpers/test-harness.ts + tests/helpers/call-python-tool.py"
+      - "tests/integration/uc{1-10}_*.test.ts (10 files)"
+      - "tests/fixtures/uc{1-9}/ + shared/ (test fixture directories)"
+      - "vitest.integration.config.ts + tests/tsconfig.json"
+      - "tests/model-behavior/{types,framework,run.test}.ts + tool-selection-part{1,1b,2,3}.ts + tool-selection.ts"
+      - "tests/model-behavior/multi-step-chains-{simple-a,simple-b,medium-a,medium-b,complex-a,complex-b,complex-c}.ts + multi-step-chains.ts"
+      - "tests/model-behavior/edge-cases.ts + vitest.model.config.ts"
+      - "tests/model-swap/{runner,compare,run-swap-test.test}.ts + models.json + system-prompts/{qwen,lfm25}-system-prompt.txt"
+      - "tests/model-behavior/definitions/{tool-selection,multi-step,edge-cases}.json"
+      - "tests/cross-platform/{platform-helpers,smoke-runner.test,smoke-runner-fs.test,build-check.test,benchmarks.test}.ts + ci-template.yml"
+      - "src-tauri/src/commands/{hardware,model_download}.rs"
+      - "src/components/Onboarding/{OnboardingWizard,WelcomeStep,HardwareStep,ModelStep,FolderStep,ServerStep,DemoStep,ReadyStep,index}.tsx"
+      - "src/stores/onboardingStore.ts + src/types/onboarding.ts"
+      - "Updated: src-tauri/{Cargo.toml, src/commands/mod.rs, src/lib.rs}"
+      - "Updated: src/{App.tsx, styles.css, types/index.ts}"
+    test_results:
+      integration_uc: "50/50 passing (10 UC test files)"
+      model_behavior: "192/192 passing (structural validation)"
+      model_swap: "20/20 passing + 1 skipped (live model)"
+      cross_platform: "65/65 passing (4 test files)"
+      phase_6_total: "327/327 passing + 1 skipped"
+      rust_build: "cargo check clean"
+      typescript_build: "tsc --noEmit clean"
+      grand_total: "853 tests passing (526 prior + 327 new)"
+    next_recommended: "Project is feature-complete. Next steps: real model integration (swap stubs for Whisper/OCR/embeddings), production LFM2.5-24B testing, performance optimization, user acceptance testing."
+
+  - id: "session-010"
+    date: "2026-02-13"
+    focus: "Post-development — dev environment hardening, model config migration, Ollama setup"
+    completed:
+      - "fix: setup-dev.sh — auto-detect cargo PATH, make ollama optional, add screenshot-pipeline to install loop"
+      - "fix: all 6 Python pyproject.toml — add [tool.hatch.build.targets.wheel] packages = [\"src\"] for hatchling editable installs"
+      - "fix: setup-dev.sh — upgrade pip before hatchling installs"
+      - "feat: switch active dev model from Qwen2.5-32B to GPT-OSS-20B (closer to LFM2.5-24B target, 14GB VRAM, native tool calling)"
+      - "feat: set models_dir default to ~/Projects/_models for non-Ollama model files"
+      - "fix: setup-dev.sh — install tauri-cli via cargo, add /usr/local/bin to PATH for Ollama"
+      - "docs: README updated with GPT-OSS-20B model info, new env var defaults, quick start commands"
+      - "chore: model-swap tests updated with gpt-oss-20b as baseline + system prompt"
+      - "Pulled gpt-oss:20b model via Ollama (13GB), verified live API response"
+    artifacts_created:
+      - "scripts/setup-dev.sh (4 rounds of fixes)"
+      - "_models/config.yaml (gpt-oss-20b active, updated fallback chain, models_dir)"
+      - "tests/model-swap/models.json (gpt-oss-20b baseline)"
+      - "tests/model-swap/system-prompts/gpt-oss-system-prompt.txt"
+      - "README.md (model table, quick start, env vars updated)"
+      - "mcp-servers/{document,ocr,knowledge,meeting,security,screenshot-pipeline}/pyproject.toml (hatch build config)"
+    test_results:
+      setup_script: "runs clean end-to-end"
+      ollama_model: "gpt-oss:20b pulled and serving (verified via curl)"
+      all_prior_tests: "853 tests unchanged"
+    next_recommended: "Real model integration testing — run model behavior tests against live gpt-oss:20b, swap OCR/meeting/knowledge stubs for real implementations."
+
+  - id: "session-011"
+    date: "2026-02-13"
+    focus: "WS-7A — Wire MCP Client into Agent Loop"
+    completed:
+      - "WS-7A: Fixed Python MCP init protocol (request-response instead of proactive init)"
+      - "WS-7A: Fixed Rust serde aliases (inputSchema, confirmationRequired, undoSupported)"
+      - "WS-7A: Added per-server cwd + venv to ServerConfig and lifecycle.rs"
+      - "WS-7A: Created mcp-servers.json config for OCR server"
+      - "WS-7A: Initialized McpClient in lib.rs with tokio::sync::Mutex"
+      - "WS-7A: Wired McpClient into chat.rs send_message (hybrid built-in + MCP tools)"
+      - "fix: Python venv resolution in Rust — rewrites command to venv binary, injects VIRTUAL_ENV + PATH"
+      - "fix: server.py sys.path for tools/ subpackage import"
+      - "Installed tesseract via Homebrew for OCR fallback"
+    artifacts_created:
+      - "src-tauri/mcp-servers.json"
+      - "Updated: src-tauri/src/lib.rs (McpClient init, venv resolution)"
+      - "Updated: src-tauri/src/mcp_client/types.rs (venv field in ServerConfig)"
+      - "Updated: src-tauri/src/commands/chat.rs (MCP tool dispatch)"
+      - "Updated: mcp-servers/_shared/py/mcp_base.py (initialize handler)"
+      - "Updated: mcp-servers/ocr/src/server.py (sys.path fix)"
+    test_results:
+      rust_total: "89/89 passing"
+      ocr: "17/17 passing"
+      clippy: "clean"
+    next_recommended: "WS-7B — LFM Vision OCR integration (replace vision stubs with real Ollama calls)"
+
+  - id: "session-012"
+    date: "2026-02-13"
+    focus: "WS-7B — LFM Vision OCR Integration + docs updates"
+    completed:
+      - "WS-7B: Replaced _ocr_with_vision_model() stub with aiohttp → Ollama vision API call"
+      - "WS-7B: Replaced _extract_table_with_vision() stub with vision API call"
+      - "WS-7B: Added resolve_vision_model() to lib.rs — reads _models/config.yaml, injects LOCALCOWORK_VISION_ENDPOINT + LOCALCOWORK_VISION_MODEL"
+      - "WS-7B: Added aiohttp>=3.9.0 to OCR server dependencies"
+      - "WS-7B: Updated setup-dev.sh — Tesseract install (brew/apt), pytest-asyncio, vision model suggestion"
+      - "WS-7B: Updated README.md — OCR engine description, Tesseract prereq, vision model in models table, Vision OCR section, env vars"
+      - "WS-8: Documented Rust Inference Bridge as future workstream in PROGRESS.yaml"
+    artifacts_created:
+      - "Updated: mcp-servers/ocr/src/tools/extract_text_from_image.py (vision API call)"
+      - "Updated: mcp-servers/ocr/src/tools/extract_table.py (vision API call)"
+      - "Updated: mcp-servers/ocr/pyproject.toml (aiohttp dep, description)"
+      - "Updated: src-tauri/src/lib.rs (resolve_vision_model, env var injection)"
+      - "Updated: scripts/setup-dev.sh (OCR deps section, vision model suggestion)"
+      - "Updated: README.md (Vision OCR docs, prereqs, models, env vars)"
+      - "Updated: PROGRESS.yaml (WS-7A complete, WS-7B in_progress, WS-8 not_started)"
+    test_results:
+      rust_total: "89/89 passing"
+      ocr: "17/17 passing"
+      clippy: "clean"
+      cargo_check: "clean"
+    next_recommended: "Download LFM2.5-VL-1.6B GGUF for live vision OCR testing. Then WS-8 (Rust Inference Bridge) when ready for the proper multimodal architecture."
+
+  - id: "session-013"
+    date: "2026-02-13"
+    focus: "WS-7B completion — LFM Vision OCR live testing, onboarding model download, session management"
+    completed:
+      - "WS-7B: Downloaded LFM2.5-VL-1.6B GGUF + mmproj (1.8 GB total)"
+      - "WS-7B: Live end-to-end test — LFM Vision OCR extracted text perfectly (engine=lfm_vision, confidence=0.90)"
+      - "WS-7B: Live end-to-end test — Tesseract fallback verified (engine=tesseract, confidence=0.84)"
+      - "feat: ModelStep onboarding — Ollama model pull with streaming progress, model catalog UI"
+      - "feat: Session management — session.rs with list/load/delete, SessionSidebar.tsx, ContextIndicator.tsx"
+      - "feat: chatStore rewrite — proper session lifecycle, load/resume sessions, context budget display"
+      - "fix: ChatMessage serialization — emit empty string instead of null for content field (Ollama compat)"
+      - "fix: ConversationManager — add tool_result column, store results for ToolTrace correlation on resume"
+    artifacts_created:
+      - "src-tauri/src/commands/session.rs (list_sessions, load_session, delete_session)"
+      - "src-tauri/src/commands/ollama.rs (pull_model with streaming progress)"
+      - "src/components/Chat/SessionSidebar.tsx"
+      - "src/components/Chat/ContextIndicator.tsx"
+      - "Updated: src/components/Onboarding/ModelStep.tsx (Ollama pull UI)"
+      - "Updated: src/stores/chatStore.ts (session lifecycle rewrite)"
+      - "Updated: src-tauri/src/inference/types.rs (serialize_content)"
+      - "Updated: src-tauri/src/agent_core/database.rs (tool_result column)"
+    test_results:
+      rust_total: "94/94 passing (5 new session + agent_core tests)"
+      clippy: "clean"
+    next_recommended: "Test live agent loop with LFM Vision OCR — verify multi-round tool calling works end-to-end."
+
+  - id: "session-014"
+    date: "2026-02-13"
+    focus: "Agent loop stability fix + filesystem MCP server registration"
+    completed:
+      - "fix: Streaming timeout — added STREAM_REQUEST_TIMEOUT=180s (was 30s) to prevent silent stream termination on long contexts"
+      - "fix: Agent loop rewrite — empty response retry (MAX_EMPTY_RETRIES=2), triple-layer fallback (retry → inject summary prompt → static text)"
+      - "fix: Reduced log verbosity — request logging changed from full body to metadata only (prevents log corruption)"
+      - "feat: Registered filesystem MCP server in mcp-servers.json (was built in session-002 but never wired in)"
+      - "feat: Updated SYSTEM_PROMPT — documented READ tools (list, read, search, metadata, OCR) and WRITE tools (move, copy, write, delete) with usage rules"
+      - "fix: MAX_TOOL_ROUNDS increased 15→20 for complex multi-file workflows"
+      - "Live test PASSED: agent completed 12 rounds (list_directory + 9 OCR extractions), produced full rename summary"
+    artifacts_created:
+      - "Updated: src-tauri/src/inference/client.rs (separate http_stream client with 180s timeout)"
+      - "Updated: src-tauri/src/commands/chat.rs (agent loop rewrite, SYSTEM_PROMPT with filesystem tools)"
+      - "Updated: src-tauri/mcp-servers.json (added filesystem server entry)"
+    test_results:
+      rust_total: "94/94 passing"
+    next_recommended: "Test live rename workflow: verify filesystem.move_file is called (not mv commands), ConfirmationDialog appears, and file is actually renamed. Check agent.log for server_count=2 and total_tools=13."
+
+  - id: "session-015"
+    date: "2026-02-13"
+    focus: "Agent Core — context window optimization + tool name normalization fix"
+    completed:
+      - "Opt 1: Removed phantom ACTIVE_CONTEXT_BUDGET (9,500 → OUTPUT_RESERVATION 2,000) — freed ~7,500 tokens"
+      - "Opt 2: Slimmed system prompt — removed duplicate tool listing (~1,400 chars saved)"
+      - "Opt 3: Sliding window with tool result compression (3-tier: recent verbatim, middle compressed, evicted summarized)"
+      - "Opt 4: Raised eviction threshold (1,000 → 5,000) — eviction triggers before context overflow"
+      - "Opt 5: Capped session summary at 500 tokens — prevents unbounded growth"
+      - "Opt 6: Ephemeral continuation prompts — not persisted to DB, prevents history pollution"
+      - "Fix: Tool name normalization — resolve_tool_name() auto-resolves 'move_file' → 'filesystem.move_file'"
+      - "Fix: Consistent system prompt naming — all tools shown with filesystem.* prefix"
+      - "Fix: MCP error messages now include hint about fully-qualified names"
+    artifacts_created:
+      - "Updated: src-tauri/src/agent_core/conversation.rs (windowed builder, budget constants, summary cap)"
+      - "Updated: src-tauri/src/agent_core/types.rs (output_reservation field)"
+      - "Updated: src-tauri/src/agent_core/tokens.rs (summarize_tool_result)"
+      - "Updated: src-tauri/src/commands/chat.rs (resolve_tool_name, system prompt, ephemeral continuations)"
+      - "Updated: src-tauri/src/commands/session.rs (output_reservation field)"
+      - "Updated: src-tauri/src/inference/client.rs (HTTP 500 retriable)"
+      - "Created: docs/architecture-decisions/005-mcp-init-protocol-alignment.md"
+      - "Created: docs/architecture-decisions/006-agent-loop-reliability.md"
+      - "Created: docs/architecture-decisions/007-agent-loop-hardening.md"
+      - "Created: docs/agent-loop-sequence-diagram.md"
+    test_results:
+      rust_total: "109/109 passing (15 new tests)"
+      clippy: "clean"
+    next_recommended: "Live test the agent with OCR+rename workflow to verify: (a) tool name normalization works in production, (b) context window handles 10+ round workflows without fatigue, (c) filesystem.move_file confirmation flow works end-to-end."
+
+  - id: "session-016"
+    date: "2026-02-13"
+    focus: "Research — toolshim architecture analysis, LFM model family evaluation, reasoning depth diagnosis"
+    completed:
+      - "ADR-008: Documented tool-calling optimization strategy (grammar → few-shot → params → model eval → defer fine-tuning)"
+      - "Analysis: Doc organization failure diagnosed — model skips content reading, categorizes by filename only (not a tool-calling issue)"
+      - "Analysis: Toolshim architecture evaluated — solves tool formatting, not reasoning depth; defer until Layers 1-4 fail"
+      - "Analysis: LFM model family mapped — LFM2.5-24B not yet released, LFM2-1.2B-Tool available for tool formatting, LFM2.5-VL-1.6B for vision"
+      - "Recommendation: Qwen3-30B-A3B as reasoning model (3B active MoE, /think mode for step-by-step reasoning, native tool calling, 128K context)"
+      - "Recommendation: Add 'read before act' instruction to system prompt to fix reasoning depth (prompt engineering, not model change)"
+    artifacts_created:
+      - "docs/architecture-decisions/008-tool-calling-optimization-strategy.md (committed in session-015)"
+    next_recommended: "WS-9B (Few-Shot Tool Call Examples) — add 2-3 exemplar tool calls to SYSTEM_PROMPT including 'read before categorize' pattern. Free, ~1 hour, 15-40% accuracy improvement. Then WS-9A (Grammar-Constrained Tool Calling) for guaranteed valid JSON."
+
+  - id: "session-017"
+    date: "2026-02-13"
+    focus: "WS-9B (Few-Shot Examples) + WS-9C (Dynamic Sampling Parameters) — ADR-008 Layer 2+3 implementation"
+    completed:
+      - "WS-9C: Added top_p field to ChatCompletionRequest with skip_serializing_if for backward compat"
+      - "WS-9C: Created SamplingOverrides struct for runtime temperature/top_p overrides per inference call"
+      - "WS-9C: Updated chat_completion_stream, try_stream_request, chat_completion signatures in client.rs"
+      - "WS-9C: Wired TOOL_TURN_SAMPLING (temp=0.1, top_p=0.2) and CONVERSATIONAL_SAMPLING (temp=0.7, top_p=0.9) into agent loop"
+      - "WS-9B: Added 2 few-shot examples to SYSTEM_PROMPT — single tool call with WRONG counterexample + multi-step OCR read-then-rename workflow"
+      - "WS-9B: Updated SYSTEM_PROMPT_BUDGET from 500 to 900 tokens to accommodate examples"
+      - "Fix: Smoke test ESM __dirname compatibility (contract-validator.ts + server-health.ts)"
+      - "Fix: Health checker response key mismatch (serverInfo vs server_info vs tools)"
+      - "Fix: Python server detection (main.py/server.py direct execution instead of module invocation)"
+      - "Fix: Removed Stripe test API key from git history via filter-branch (GitHub Push Protection)"
+    artifacts_created:
+      - "Updated: src-tauri/src/inference/types.rs (+top_p field, +SamplingOverrides struct, +3 tests)"
+      - "Updated: src-tauri/src/inference/mod.rs (+SamplingOverrides re-export)"
+      - "Updated: src-tauri/src/inference/client.rs (3 method signatures + request body construction)"
+      - "Updated: src-tauri/src/commands/chat.rs (+few-shot examples, +sampling constants, +2 call sites)"
+      - "Updated: src-tauri/src/agent_core/conversation.rs (SYSTEM_PROMPT_BUDGET 500→900)"
+      - "Updated: tests/smoke/contract-validator.ts (ESM __dirname fix)"
+      - "Updated: tests/smoke/server-health.ts (ESM fix + response key fix + Python detection fix)"
+    test_results:
+      rust_total: "112/112 passing (3 new serialization tests)"
+      clippy: "clean"
+      smoke_tests: "14/14 server health checks passing"
+    next_recommended: "WS-9A (Grammar-Constrained Tool Calling) — GBNF grammar for guaranteed valid JSON tool calls. Or live-test the few-shot + sampling changes with OCR+rename workflow to measure accuracy improvement."
+
+  - id: "session-018"
+    date: "2026-02-13"
+    focus: "WS-9A (Client-Side JSON Repair) — ADR-008 Layer 1 implementation"
+    completed:
+      - "WS-9A: Added extract_tool_call_from_error() to tool_call_parser.rs — parses Ollama HTTP 500 error body to extract raw malformed JSON"
+      - "WS-9A: Added repair_malformed_tool_call_json() with 4 repair heuristics (double-quote, trailing comma, brace balance, control chars)"
+      - "WS-9A: Added helper functions: repair_double_quotes, repair_trailing_commas, repair_unbalanced_braces, repair_control_characters"
+      - "WS-9A: Added is_tool_call_parse_error() and error_body() helper methods to InferenceError"
+      - "WS-9A: Wired repair into chat_completion_stream() — intercepts HTTP 500 before fallback chain, builds synthetic StreamChunk via Either<L,R>"
+      - "WS-9A: Added try_repair_from_error() method to InferenceClient"
+      - "WS-9A: Added ResponseFormat struct + response_format field to ChatCompletionRequest (opt-in, skip_serializing_if None)"
+      - "WS-9A: Added force_json_response field to ModelConfig (default false, serde default)"
+      - "WS-9A: Updated config.yaml — added force_json_response: false to gpt-oss-20b"
+      - "fix: HTTP 404 added to is_retriable() — Ollama returns 404 for unpulled models, was blocking fallback chain"
+      - "docs: ADR-008 Layer 1 rationale updated with production log evidence"
+    artifacts_created:
+      - "Updated: src-tauri/src/inference/tool_call_parser.rs (+6 functions, +8 tests)"
+      - "Updated: src-tauri/src/inference/errors.rs (+2 methods, +5 tests)"
+      - "Updated: src-tauri/src/inference/client.rs (+try_repair_from_error, +Either wrapping, +response_format wiring, +3 tests)"
+      - "Updated: src-tauri/src/inference/types.rs (+ResponseFormat struct, +response_format field, +2 tests)"
+      - "Updated: src-tauri/src/inference/config.rs (+force_json_response field, +1 test)"
+      - "Updated: _models/config.yaml (+force_json_response on gpt-oss-20b)"
+      - "Updated: docs/architecture-decisions/008-tool-calling-optimization-strategy.md (Layer 1 rationale)"
+    test_results:
+      rust_total: "131/131 passing (19 new tests)"
+      clippy: "clean"
+    next_recommended: "WS-9D (Evaluate Qwen3-30B-A3B) — benchmark MoE model with 3B active params for faster inference. Or live-test WS-9A JSON repair with OCR+rename workflow to verify 'repaired malformed JSON tool call' appears in agent.log."
+
+  - id: "session-019"
+    date: "2026-02-13"
+    focus: "Phase 9 Trust & Extensibility — WS-10E, WS-10A, WS-10B"
+    completed:
+      - "WS-10E: Enhanced System Monitor — 5 tools (get_memory_usage, get_disk_usage, get_cpu_usage, get_network_info, kill_process), 58 total system tests"
+      - "WS-10A: System Settings MCP Server — 8 tools (4 read + 4 write), bridge pattern, 28 tests"
+      - "WS-10B: Tiered Permission Model — PermissionStore, 3-tier grants (once/session/always), PermissionsTab, 9 tests"
+      - "fix: Added all 11 MCP servers to mcp-servers.json (critical bug — model couldn't call tools from unregistered servers)"
+      - "fix: Updated settings.rs hardcoded stubs to reflect actual server statuses"
+    artifacts_created:
+      - "mcp-servers/system/src/tools/{get_memory_usage,get_disk_usage,get_cpu_usage,get_network_info,kill_process}.ts + tests"
+      - "mcp-servers/system-settings/ (entire new server — 8 tools, bridge pattern, ESM)"
+      - "src-tauri/src/agent_core/permissions.rs (PermissionStore)"
+      - "src/components/Settings/PermissionsTab.tsx"
+      - "Updated: src-tauri/src/agent_core/{mod.rs, tool_router.rs, types.rs}"
+      - "Updated: src/components/{Chat/ConfirmationDialog.tsx, Settings/SettingsPanel.tsx}"
+      - "Updated: src/types/{chat.ts, settings.ts}"
+      - "Updated: src/stores/settingsStore.ts"
+    test_results:
+      system_server: "58/58 passing"
+      system_settings: "28/28 passing"
+      permissions: "9/9 passing"
+      rust_total: "142/142 passing"
+      clippy: "clean"
+      tsc: "clean"
+    next_recommended: "MCP auto-discovery to eliminate manual mcp-servers.json maintenance."
+
+  - id: "session-020"
+    date: "2026-02-13"
+    focus: "WS-10F MCP Auto-Discovery — eliminate manual mcp-servers.json, live settings status"
+    completed:
+      - "WS-10F: Created discovery.rs — discover_servers() scans mcp-servers/ for package.json (TS) or pyproject.toml (Python)"
+      - "WS-10F: merge_configs() — override entries fully replace discovered entries per-server"
+      - "WS-10F: Refactored resolve_mcp_config() → 4 helper functions (resolve_project_root, load_override_file, resolve_paths_and_env, resolve_vision_model)"
+      - "WS-10F: Replaced settings.rs hardcoded stubs (~80 lines) with live async McpClient query"
+      - "WS-10F: Added configured_servers() to McpClient, tools_for_server() to ToolRegistry"
+      - "WS-10F: Trimmed mcp-servers.json to empty {\"servers\": {}} — all servers now auto-discovered"
+      - "Phase 9 Trust & Extensibility COMPLETE (WS-10E + WS-10A + WS-10B + WS-10F)"
+    artifacts_created:
+      - "src-tauri/src/mcp_client/discovery.rs (NEW — ~230 lines, 10 tests)"
+      - "Updated: src-tauri/src/mcp_client/mod.rs (+pub mod discovery)"
+      - "Updated: src-tauri/src/mcp_client/client.rs (+configured_servers() + test)"
+      - "Updated: src-tauri/src/mcp_client/registry.rs (+tools_for_server() + test)"
+      - "Updated: src-tauri/src/lib.rs (resolve_mcp_config refactored into 4 helpers)"
+      - "Updated: src-tauri/src/commands/settings.rs (live McpClient query)"
+      - "Updated: src-tauri/Cargo.toml (+tempfile dev-dependency)"
+      - "Updated: src-tauri/mcp-servers.json (trimmed to empty overrides)"
+    test_results:
+      rust_total: "154/154 passing (12 new discovery + helper tests)"
+      clippy: "clean"
+      tsc: "clean"
+    next_recommended: "WS-9D (Evaluate Qwen3-30B-A3B MoE model) or WS-8 (Rust Inference Bridge for multimodal). Permission IPC commands remain stubs until ToolRouter is wired into Tauri managed state."
+
+  - id: "session-021"
+    date: "2026-02-13"
+    focus: "Dynamic system prompt from MCP registry + markdown rendering in chat UI"
+    completed:
+      - "Dynamic system prompt: capability_summary() in registry.rs generates compact server/tool listing from live MCP registry"
+      - "Dynamic system prompt: Split SYSTEM_PROMPT into SYSTEM_PROMPT_INTRO + SYSTEM_PROMPT_RULES + build_system_prompt(registry)"
+      - "Dynamic system prompt: Made start_session async with MCP state; 3-phase lock management to avoid Send bound errors"
+      - "Dynamic system prompt: Empty McpClient registered synchronously in lib.rs; async task replaces via lock (graceful degradation)"
+      - "Dynamic system prompt: Added system_prompt_budget field to ConversationManager (follows tool_definitions_budget pattern)"
+      - "Markdown rendering: Added react-markdown + remark-gfm dependencies"
+      - "Markdown rendering: Created MarkdownContent.tsx component; assistant messages render as formatted markdown"
+      - "Markdown rendering: Updated MessageBubble.tsx (conditional render) and MessageList.tsx (streaming content)"
+      - "Markdown rendering: Added ~175 lines of dark-theme CSS for tables, code blocks, headings, lists, blockquotes, links"
+    artifacts_created:
+      - "src/components/Chat/MarkdownContent.tsx (NEW — 29 lines)"
+      - "Updated: src-tauri/src/mcp_client/registry.rs (+capability_summary() + 3 tests)"
+      - "Updated: src-tauri/src/commands/chat.rs (+build_system_prompt(), async start_session, 2 tests)"
+      - "Updated: src-tauri/src/lib.rs (synchronous empty McpClient registration)"
+      - "Updated: src-tauri/src/agent_core/conversation.rs (+system_prompt_budget field + setter)"
+      - "Updated: src/components/Chat/MessageBubble.tsx (+MarkdownContent import, conditional render)"
+      - "Updated: src/components/Chat/MessageList.tsx (+MarkdownContent import, streaming wrap)"
+      - "Updated: src/styles.css (+175 lines markdown CSS)"
+      - "Updated: package.json (+react-markdown, +remark-gfm)"
+    test_results:
+      rust_total: "159/159 passing (5 new: 3 capability_summary + 2 build_system_prompt)"
+      clippy: "clean"
+      tsc: "clean"
+    next_recommended: "WS-9D (Evaluate Qwen3-30B-A3B MoE model) or WS-8 (Rust Inference Bridge for multimodal). Permission IPC commands remain stubs until ToolRouter is wired into Tauri managed state."
+
+  - id: "session-022"
+    date: "2026-02-13"
+    focus: "Onboarding UX overhaul — fix broken Model step (404, missing guidance)"
+    completed:
+      - "fix: Removed broken GGUF download (hardcoded HuggingFace URL returning 404)"
+      - "feat: Replaced GGUF option with 'Lightweight Fallback' card — pulls qwen3:30b-a3b via Ollama (~4 GB)"
+      - "feat: OllamaInstallGuide — platform-specific install instructions (macOS: brew, Linux: curl, Windows: download)"
+      - "feat: LocalModelGuide — llama.cpp serving guidance with interpolated model path for Browse Files users"
+      - "fix: Error messages — removed redundant 'Download failed: Download failed' prefix, added 404 recovery hints"
+      - "refactor: Split ModelStep.tsx (494 → 203 lines) into 5 modules under 300-line limit"
+      - "Added fallback model constants (FALLBACK_OLLAMA_MODEL, FALLBACK_MODEL_DISPLAY, FALLBACK_MODEL_SIZE)"
+      - "Audited README.md, setup-dev.sh, ADRs — all consistent, no changes needed"
+    artifacts_created:
+      - "src/components/Onboarding/modelStepUtils.ts (NEW — 42 lines)"
+      - "src/components/Onboarding/ModelProgressViews.tsx (NEW — 94 lines)"
+      - "src/components/Onboarding/ModelSelectionPanel.tsx (NEW — 177 lines)"
+      - "src/components/Onboarding/OllamaInstallGuide.tsx (NEW — 137 lines)"
+      - "src/components/Onboarding/LocalModelGuide.tsx (NEW — 61 lines)"
+      - "Updated: src/components/Onboarding/ModelStep.tsx (494 → 203 lines)"
+      - "Updated: src/stores/onboardingStore.ts (+fallback constants, +error improvements)"
+      - "Updated: src/styles.css (+96 lines for install guide, local model guide, disabled hint)"
+    test_results:
+      tsc: "clean (npx tsc --noEmit passes)"
+      rust_total: "159/159 passing (unchanged)"
+    next_recommended: "WS-9D (Evaluate Qwen3-30B-A3B MoE model) or WS-8 (Rust Inference Bridge for multimodal). Permission IPC commands remain stubs until ToolRouter is wired into Tauri managed state."
+
+  - id: "session-023"
+    date: "2026-02-14"
+    focus: "Diagnose and fix flaky agent loop — multi-step tasks stalling after 4 tool rounds"
+    completed:
+      - "fix: Injected nudge prompt on empty model response instead of bare retry with identical messages (chat.rs)"
+      - "fix: Added tool_call_history tracker for context-aware nudge prompts"
+      - "fix: MCP lifecycle captures stderr from failed server processes and includes in error messages (lifecycle.rs)"
+      - "investigation: Ollama harmony parser 'no reverse mapping' warning is cosmetic — dotted tool names work fine, no code change needed"
+      - "diagnosis: System resources healthy (M4 Max 36GB, 75% free RAM, Ollama running) — root cause was empty model responses"
+      - "diagnosis: 5 Python MCP servers crash on startup (document, knowledge, security, meeting, screenshot-pipeline) — stderr now captured for next restart"
+    artifacts_created:
+      - "Updated: src-tauri/src/commands/chat.rs (+tool_call_history vec, +nudge prompt injection on empty response, +tools_completed log field)"
+      - "Updated: src-tauri/src/mcp_client/lifecycle.rs (+read_stderr_on_failure(), +format_stderr_suffix(), stderr capture on init failure/timeout)"
+    test_results:
+      rust_total: "159/159 passing"
+      clippy: "clean (cargo clippy -- -D warnings)"
+    next_recommended: "1) Restart app and test multi-step rename workflow to verify nudge prompt works. 2) Check agent.log for Python server stderr to identify missing pip packages. 3) WS-9D model eval or WS-8 multimodal gateway."
+
+  - id: "session-024"
+    date: "2026-02-14"
+    focus: "Production-grade Python MCP server dependency management — auto-provision venvs, cross-platform support, onboarding UX, Settings repair"
+    completed:
+      - "fix: Cross-platform venv resolution in lib.rs — bin/ on macOS/Linux, Scripts\\ on Windows; PATH separator : vs ;"
+      - "feat: python_env.rs — ensure_python_server_env + ensure_all_python_envs IPC commands with Tauri event progress"
+      - "feat: python_env_startup.rs — provision_missing_venvs() at app startup before MCP server discovery"
+      - "feat: PythonEnvStep.tsx — onboarding Setup step with per-server progress, retry, Continue Anyway"
+      - "feat: OnboardingWizard steps now 8 (Welcome > Hardware > Model > Folder > Servers > Setup > Demo > Ready)"
+      - "feat: Settings ServersTab — Repair button for failed Python servers"
+      - "fix: OCR error diagnostics — reports missing package names and points to Settings > Servers"
+      - "feat: setup-dev.sh — per-server venv creation loop for all 6 Python MCP servers"
+    artifacts_created:
+      - "src-tauri/src/commands/python_env.rs (NEW — 401 lines, 4 tests)"
+      - "src-tauri/src/commands/python_env_startup.rs (NEW — 135 lines)"
+      - "src/components/Onboarding/PythonEnvStep.tsx (NEW — 150 lines)"
+      - "Updated: src-tauri/src/lib.rs (cross-platform venv, startup provisioning, pub(crate) resolve_project_root)"
+      - "Updated: src-tauri/src/commands/mod.rs (+python_env, +python_env_startup)"
+      - "Updated: src/components/Onboarding/OnboardingWizard.tsx (8 steps)"
+      - "Updated: src/stores/onboardingStore.ts (+pythonEnvStatuses, +provisionPythonEnvs, +retryPythonEnv)"
+      - "Updated: src/components/Settings/ServersTab.tsx (+Repair button)"
+      - "Updated: src/types/{onboarding.ts, index.ts} (+PythonEnvStatus, +PythonEnvProgress)"
+      - "Updated: src/styles.css (+python-env-step, +server-repair-btn)"
+      - "Updated: mcp-servers/ocr/src/tools/extract_text_from_image.py (diagnostic error messages)"
+      - "Updated: scripts/setup-dev.sh (per-server venv loop)"
+    test_results:
+      rust_total: "163/163 passing (4 new python_env tests)"
+      clippy: "clean"
+      tsc: "clean"
+    next_recommended: "WS-9D (Evaluate Qwen3-30B-A3B MoE model) or WS-8 (Rust Inference Bridge for multimodal). Also consider live-testing venv auto-provisioning by deleting a .venv and restarting app."
+
+  - id: "session-025"
+    date: "2026-02-14"
+    focus: "WS-9D (partial) — GPT-OSS-20B behavioral analysis, system prompt bug fixes, multi-model architecture evaluation"
+    completed:
+      - "docs: GPT-OSS-20B behavioral reference with 12 failure modes (FM-1 through FM-12)"
+      - "docs: Multi-model architecture analysis — RAG tool selection (Option D) recommended"
+      - "fix: 3 system prompt bugs in chat.rs (image_path, /Users/name, list_directory)"
+      - "analysis: Root cause of 'conversational deflection' — FM-11 (57 tools) -> FM-3 (deflection)"
+      - "refactor: docs/models/ renamed to docs/model-analysis/ for clarity"
+    artifacts_created:
+      - "docs/model-analysis/gpt-oss-20b.md (NEW — behavioral reference + architecture analysis)"
+      - "Updated: src-tauri/src/commands/chat.rs (system prompt bug fixes)"
+    test_results:
+      rust_total: "163/163 passing"
+      clippy: "clean"
+      tsc: "clean"
+    next_recommended: "WS-9D: Test Qwen3-30B-A3B with the rename-screenshots workflow. If still <85% accuracy, implement Option D (RAG-based tool selection) per docs/model-analysis/gpt-oss-20b.md."
+
+  - id: "session-026"
+    date: "2026-02-14"
+    focus: "Cross-platform audit — full codebase review for Windows + macOS compatibility and App Store readiness"
+    completed:
+      - "audit: Comprehensive cross-platform audit of entire codebase (Tauri config, Rust backend, React/TS frontend, MCP servers, onboarding flow)"
+      - "docs: Persistent audit report at docs/cross-platform-audit.md with 27 categorized findings"
+      - "analysis: 5 Critical, 9 High, 8 Medium, 5 Low issues identified across 30+ files"
+      - "analysis: Key architectural finding — MCP child-process spawning incompatible with Mac App Store sandbox"
+      - "analysis: Distribution strategy comparison (direct download vs stores) with recommendation"
+      - "analysis: 3-phase fix priority plan with time estimates for each issue"
+    artifacts_created:
+      - "docs/cross-platform-audit.md (NEW — full audit report with 27 findings, fix priorities, distribution strategy)"
+    test_results:
+      rust_total: "163/163 passing (no code changes)"
+      clippy: "clean"
+      tsc: "clean"
+    next_recommended: "1) Decide distribution strategy (direct download recommended — see C-1 in audit report). 2) Fix Phase 1 issues: C-3 (dynamic system prompt paths), C-4 (macOS entitlements), M-1 (CSP), H-5 (expand_tilde), M-5 (upgrade dialog plugin). 3) Fix Phase 2 issues for Windows support (pathUtils.ts, PATH separators in MCP servers)."
+
+  - id: "session-027"
+    date: "2026-02-14"
+    focus: "Cross-platform Phases 2+3 — data dir migration, Windows GPU detection, packaged app resolution, MCP server fixes"
+    completed:
+      - "C-2/H-9: Migrated all data dirs to platform-standard paths via dirs::data_dir() + LOCALCOWORK_DATA_DIR env var injection (12 files: lib.rs, permissions.rs, model_download.rs, 5 TS db.ts files, 2 Python db.py files, delete_file.ts, create_pdf.py)"
+      - "H-4: Added Windows GPU detection (wmic CSV parsing) and Linux GPU detection (lspci) with conditional compilation"
+      - "H-8: Added Windows CREATE_NO_WINDOW flag to MCP child process spawning (lifecycle.rs)"
+      - "L-3: Rewrote resolve_project_root() with 4-tier resolution: cwd, parent-cwd, exe-relative (.app/Resources, flat layout), fallback"
+      - "H-1/H-2: Created pathUtils.ts with cross-platform path splitting/joining, updated PathBreadcrumb and FileBrowser"
+      - "H-3: Onboarding uses tauri documentDir() API instead of hardcoded ~/Documents"
+      - "H-6: PATH separator in MCP server index.ts files uses path.delimiter instead of hardcoded ':'"
+      - "H-7: Hidden file filter uses Windows FILE_ATTRIBUTE_HIDDEN via MetadataExt"
+      - "M-4: Expanded Tauri capabilities with shell and dialog permissions"
+      - "M-6: MCP server HOME fallback uses os.homedir()/Path.home() instead of HOME env var"
+      - "Distribution strategy resolved: Direct download + notarize (Option D)"
+    artifacts_created:
+      - "src/utils/pathUtils.ts (NEW — cross-platform path utilities)"
+      - "docs/cross-platform-audit.md (UPDATED — 23/27 issues marked FIXED with session references)"
+    test_results:
+      rust_total: "163/163 passing"
+      clippy: "0 warnings"
+      tsc: "clean (noEmit)"
+    next_recommended: "WS-9D (Evaluate Qwen3-30B-A3B model) or WS-8 (Rust Inference Bridge for multimodal). Remaining audit items: M-7 (temp cleanup), L-5 (test matrix), L-1 (home shortcut), L-2 (font stack)."
+
+  - id: "session-029"
+    date: "2026-02-15"
+    focus: "Option E validation — RAG pre-filter for tool selection (WS-11C Phase 1)"
+    completed:
+      - "WS-11B: Benchmarked LFM2-1.2B-Tool at 36% baseline accuracy (all 67 tools)"
+      - "WS-11C Phase 1: Built embedding pre-filter in benchmark-lfm.ts"
+      - "Fixed /embeddings endpoint: client-side mean pooling for LFM's pooling=none default"
+      - "Ran filtered benchmarks at K=5 (54%), K=10 (60%), K=15 (68%), K=20 (63%)"
+      - "Identified K=15 as optimal: 87% filter hit rate, 68% accuracy, 89% relative improvement"
+      - "Checkpointed Option A work on feat/option-a-lfm-router branch"
+    artifacts_created:
+      - "tests/model-behavior/benchmark-lfm.ts (REWRITTEN — full embedding pre-filter support)"
+      - "tests/model-behavior/.results/lfm-filtered-k{5,10,15,20}-*.json (benchmark results)"
+      - "feat/option-a-lfm-router branch (Option A checkpoint, commit 8a2345a)"
+    test_results:
+      filtered_k15_accuracy: "68% (best)"
+      filter_hit_rate_k15: "87%"
+      baseline_accuracy: "36% (unfiltered)"
+      tool_call_rate_k15: "87%"
+    next_recommended: "Prompt engineering to push K=15 past 70%. Then Rust implementation of ToolPreFilter in agent_core/. Key areas to improve: file-operations (40→60%), calendar (43→60%), audit (33→66%)."
+
+  - id: "session-030"
+    date: "2026-02-15"
+    focus: "Prompt engineering to push K=15 past 70% decision gate (WS-11C completion)"
+    completed:
+      - "Rewrote all 67 TOOL_DESCRIPTIONS with contrastive, synonym-augmented text"
+      - "Improved system prompt with anti-refusal rules and bracket format instructions"
+      - "Ran improved benchmark: 67% accuracy (strict parser) — wrong tool halved (19→9%) but no-tool-call doubled (13→24%) due to malformed bracket syntax"
+      - "Added lenient parser Modes 3 (prefix/paren tolerance) and 4 (backtick/prose extraction)"
+      - "Final K=15 result: 78% accuracy, 94% filter hit rate, 6% no-tool-call rate"
+      - "Updated ADR-010 with prompt engineering results (Section 7) and post-engineering confusion matrix"
+      - "WS-11C marked complete. 70% decision gate cleared — Rust implementation approved"
+    artifacts_created:
+      - "tests/model-behavior/benchmark-lfm.ts (updated: 67 descriptions, system prompt, parser modes 3+4)"
+      - "tests/model-behavior/.results/lfm-filtered-k15-1771172364499.json (78% result)"
+      - "docs/architecture-decisions/010-rag-prefilter-benchmark-analysis.md (updated: Section 7, Appendix B)"
+    test_results:
+      final_accuracy_k15: "78% (up from 68% baseline)"
+      filter_hit_rate: "94% (up from 87%)"
+      wrong_tool_rate: "16%"
+      no_tool_call_rate: "6% (down from 13%)"
+      restraint: "0.84"
+      best_categories: "task-management 100%, audit 100%, data-operations 90%"
+      worst_categories: "file-operations 60%, email 62.5%, document-processing 66.7%"
+    next_recommended: "WS-11D: Rust ToolPreFilter implementation in src-tauri/src/agent_core/tool_prefilter.rs. Port embedding pre-filter, contrastive descriptions, lenient parser, and always-include list. Also consider WS-9D (evaluate Qwen3-30B-A3B)."
+
+  - id: "session-031"
+    date: "2026-02-15"
+    focus: "Multi-step deflection detection + chain benchmark (WS-11E)"
+    completed:
+      - "Created response_analysis.rs: is_deflection_response (21 patterns + heuristic), is_incomplete_response (moved from chat.rs), is_completion_summary. 14 unit tests."
+      - "Integrated deflection detection into chat.rs agent loop with MAX_DEFLECTION_RETRIES=3"
+      - "Created docs/model-analysis/lfm2-1.2b-tool.md — comprehensive model behavior reference"
+      - "Created benchmark-multi-step.ts — 50-chain multi-step benchmark runner"
+      - "Added StepResult and MultiStepResult interfaces to types.ts"
+      - "Ran full 50-chain benchmark: 8% chain completion rate (4/50 passed)"
+      - "Updated lfm2-1.2b-tool.md with actual benchmark numbers replacing estimates"
+    artifacts_created:
+      - "src-tauri/src/agent_core/response_analysis.rs (NEW, ~220 lines)"
+      - "tests/model-behavior/benchmark-multi-step.ts (NEW, ~300 lines)"
+      - "docs/model-analysis/lfm2-1.2b-tool.md (NEW, ~230 lines)"
+      - "tests/model-behavior/types.ts (modified: +22 lines)"
+      - "src-tauri/src/commands/chat.rs (modified: deflection integration)"
+      - "src-tauri/src/agent_core/mod.rs (modified: register response_analysis)"
+    test_results:
+      single_step_accuracy: "78% (unchanged from session-030)"
+      chain_completion_rate: "8% (4/50 chains)"
+      step_completion_rate: "16% (35/222 steps)"
+      avg_steps_per_chain: "0.7 (out of 4.4 average)"
+      easy_chains: "20% (3/15)"
+      medium_chains: "5% (1/20)"
+      hard_chains: "0% (0/15)"
+      failure_breakdown: "wrong_tool 56%, no_tool 32%, deflection 4%, error 8%"
+      cargo_check: "pass (181 crates compiled)"
+      cargo_test: "pass (14 response_analysis tests + existing)"
+    next_recommended: "WS-11D (Rust ToolPreFilter) for production single-step routing. For multi-step: consider orchestrator architecture where GPT-OSS-20B handles chain planning and LFM2 handles individual tool selection per step. Alternatively evaluate WS-9D (Qwen3-30B-A3B) which may have better multi-step capacity."
+
+  - id: "session-032"
+    date: "2026-02-15"
+    focus: "Dual-model orchestrator implementation (WS-12A)"
+    completed:
+      - "ADR-009: Dual-Model Orchestrator architecture decision document"
+      - "Added lfm2-1.2b-tool model entry + orchestrator config section to _models/config.yaml"
+      - "OrchestratorConfig struct + role field in inference/config.rs"
+      - "InferenceClient::from_config_with_model() — pin client to specific model by key"
+      - "tool_prefilter.rs: ToolEmbeddingIndex with build/filter, cosine similarity, L2 norm, mean pooling (9 tests)"
+      - "orchestrator.rs: plan_steps + execute_step + synthesize_response three-phase pipeline (7 tests)"
+      - "Integrated orchestrator into chat.rs with opt-in config flag and single-model fallback"
+      - "Added tool_name_description_pairs() to ToolRegistry for embedding index"
+      - "Fixed 5 compilation errors, 4 test config errors, 2 clippy warnings"
+    artifacts_created:
+      - "docs/architecture-decisions/009-dual-model-orchestrator.md (NEW, ~120 lines)"
+      - "src-tauri/src/agent_core/orchestrator.rs (NEW, ~280 lines)"
+      - "src-tauri/src/agent_core/tool_prefilter.rs (NEW, ~250 lines)"
+      - "src-tauri/src/inference/config.rs (modified: +30 lines)"
+      - "src-tauri/src/inference/client.rs (modified: +25 lines + test fixes)"
+      - "src-tauri/src/commands/chat.rs (modified: +30 lines)"
+      - "src-tauri/src/agent_core/mod.rs (modified: +2 lines)"
+      - "src-tauri/src/mcp_client/registry.rs (modified: +6 lines)"
+      - "_models/config.yaml (modified: +20 lines)"
+    test_results:
+      cargo_check: "pass"
+      cargo_clippy: "pass (zero warnings)"
+      cargo_test: "pass (194 tests, up from 178)"
+      new_tests: "16 (7 orchestrator + 9 tool_prefilter)"
+    next_recommended: "Live test with both models: start GPT-OSS-20B via Ollama + LFM2 on port 8082, set orchestrator.enabled: true, send multi-step query. Then complete WS-11D (always-include list, contrastive descriptions, startup cache). Alternatively evaluate WS-9D (Qwen3-30B-A3B)."
+
+  - id: "session-033"
+    date: "2026-02-17"
+    focus: "Demo-ready release — agent loop convergence + UX (Tier 1.5 + demo presets)"
+    completed:
+      - "Two-pass category selection: 16 categories covering all 83 tools across 15 servers (was 67 tools, 15 categories)"
+      - "Added 16 new tools to categories: 3 screenshot-pipeline, 4 system monitoring, 1 system.kill_process, 8 system-settings"
+      - "expand_tilde_in_arguments(): recursive tilde expansion for MCP tool arguments (7 tests)"
+      - "Per-tool failure counter + stuck-tool removal (MAX_SAME_TOOL_FAILURES=3)"
+      - "Deflection trust gate: skip deflection detection after 5+ successful tool calls (2 tests)"
+      - "MAX_TOOL_ROUNDS reduced from 20 to 10 (halves worst-case wait time)"
+      - "System prompt rule 11: KNOW WHEN TO STOP — model self-terminates after 3-5 tools"
+      - "Two-pass hint: 'call minimum tools needed, then provide your response'"
+      - "PresetCards.tsx: 4 curated demo prompt cards targeting highest-accuracy UCs"
+      - "Wired PresetCards into MessageList empty state + added preset card styles"
+      - "Documented correct log location (~/Library/Application Support/com.localcowork.app/)"
+      - "two_pass_tool_selection enabled in config.yaml"
+    artifacts_created:
+      - "src/components/Chat/PresetCards.tsx (NEW, ~85 lines)"
+      - "src-tauri/src/commands/chat.rs (modified: +403 lines — tilde expansion, failure counters, prompt rules, MAX_ROUNDS)"
+      - "src-tauri/src/agent_core/response_analysis.rs (modified: +24 lines — trust gate + tests)"
+      - "src-tauri/src/mcp_client/registry.rs (modified: +656 lines — 16 categories, 83 tools, category infrastructure)"
+      - "src/components/Chat/MessageList.tsx (modified: +2 lines — PresetCards import + render)"
+      - "src/styles.css (modified: +51 lines — preset card grid styles)"
+      - "_models/config.yaml (modified: +7 lines — two_pass enabled, tool_temperature)"
+      - "src-tauri/src/inference/config.rs (modified: +11 lines)"
+      - "src-tauri/src/inference/client.rs (modified: +1 line)"
+      - "src-tauri/src/mcp_client/mod.rs (modified: +1 line)"
+    test_results:
+      cargo_check: "pass"
+      cargo_clippy: "pass (zero warnings)"
+      cargo_test: "pass (254 tests, up from 194)"
+      tsc_no_emit: "pass (zero errors)"
+      new_tests: "60 (7 tilde expansion + 2 deflection trust gate + 51 category/registry)"
+    doc_sync: "cross-refs pass, no ADRs needed (no breaking changes), staleness check skipped (bash version)"
+    next_recommended: "Live manual test of demo presets with running LFM2-24B-A2B model. Click each preset card, verify model selects correct categories, calls minimum tools, and produces response within 5-8 rounds. If successful, commit + create PR to merge feat/dual-model-orchestrator to main."
+
+  - id: "session-034"
+    date: "2026-02-18"
+    focus: "Documentation restructuring — orchestrator A/B results, fine-tuning docs, model analysis consolidation"
+    completed:
+      - "Created docs/model-analysis/dual-model-orchestrator-performance.md (487 lines) — architecture, 11 fixes, A/B test methodology + results, serving guides"
+      - "Slimmed docs/model-analysis/fine-tuning-results.md — removed architecture section (moved to orchestrator doc), removed serving commands, added cross-references"
+      - "Updated docs/architecture-decisions/009-dual-model-orchestrator.md — status from '0% chain completion' to 'operational for 1-2 step workflows', model refs from Qwen3-30B to LFM2-24B-A2B, added actual A/B test results"
+      - "Deleted docs/model-analysis/fine-tuning-plan.md (869 lines, all superseded by actual results)"
+      - "Deleted docs/model-analysis/lfm2-1.2b-tool.md (251 lines, superseded by fine-tuned V2)"
+      - "Deleted docs/model-analysis/lfm2-24b-a2b-real-world-execution.md (360 lines, merged into benchmark doc)"
+      - "Rewrote docs/model-analysis/project-learnings-and-recommendations.md (343→210 lines) — updated with actual 24B + orchestrator data, cut verbose explanations"
+      - "Rewrote docs/model-analysis/qwen3-30b-a3b-tool-calling.md (279→51 lines) — cut to essential takeaway: why MoE != efficient tool calling"
+      - "Merged real-world execution traces into lfm2-24b-a2b-benchmark.md — added pre/post infrastructure comparison, updated orchestrator from 'FAIL' to 'WORKING'"
+      - "Updated README.md — core thesis table on front page, fixed Known Limitations (orchestrator no longer disabled)"
+      - "Updated docs/model-analysis/README.md — reading guide reflects new file structure"
+      - "Verified all cross-references: 35 links across 7 model-analysis docs + ADRs, 0 broken"
+    artifacts_created:
+      - "docs/model-analysis/dual-model-orchestrator-performance.md (NEW, 487 lines)"
+    artifacts_deleted:
+      - "docs/model-analysis/fine-tuning-plan.md (869 lines)"
+      - "docs/model-analysis/lfm2-1.2b-tool.md (251 lines)"
+      - "docs/model-analysis/lfm2-24b-a2b-real-world-execution.md (360 lines)"
+    doc_sync: "✓ cross-refs (35 links, 0 broken), ✓ ADR-009 updated, ✓ README updated, no code changes (docs-only session)"
+    next_recommended: "Commit all session-034 changes. Then live manual test of demo presets with running model, or proceed to fine-tuning V3 training data (address security.encrypt_file false positive and cross-server confusion failures)."
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BLOCKERS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+blockers:
+  - workstream: "WS-0D"
+    description: "Cargo/Rust toolchain not installed — cannot run cargo check or cargo tauri dev"
+    opened_in: "session-002"
+    resolved: true
+    resolved_in: "session-004"
+    resolution: "User installed rustc 1.93.1 (stable-aarch64-apple-darwin)"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ARCHITECTURE DECISIONS PENDING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+pending_decisions: []
+
+resolved_decisions:
+  - topic: "Tool cognitive overload strategy (FM-11)"
+    decision: "Option E (RAG pre-filter) + prompt engineering: Embed contrastive tool descriptions at startup, filter to top-K=15 per query via cosine similarity. Final accuracy: 78% (up from 36% baseline). Includes anti-refusal system prompt, synonym-augmented descriptions, and 4-mode lenient bracket parser. 70% decision gate cleared — Rust implementation approved."
+    raised_in: "session-028"
+    resolved_in: "session-030"
+  - topic: "Distribution strategy — Direct download + notarize"
+    decision: "Option D (Hybrid): Ship via direct download with notarization (macOS) and code signing (Windows). Add Homebrew/winget later. Skip App Store for v1 — MCP child-process spawning is incompatible with sandbox. Revisit stores post-launch."
+    raised_in: "session-026"
+    resolved_in: "session-027"

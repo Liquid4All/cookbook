@@ -1,0 +1,57 @@
+# ─── Dependencies ──────────────────────────────────────────────────────────
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+
+# ─── Build outputs ────────────────────────────────────────────────────────
+target/
+dist/
+build/
+*.tsbuildinfo
+src-tauri/gen/
+
+# ─── Local models (large binary files) ────────────────────────────────────
+_models/*.gguf
+_models/*.bin
+_models/*.safetensors
+
+# ─── IDE ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ─── LocalCowork runtime ─────────────────────────────────────────────────
+~/.localcowork/
+*.db
+*.db-journal
+
+# ─── Test artifacts ───────────────────────────────────────────────────────
+tests/smoke/results/
+tests/model-behavior/.results/
+coverage/
+.vitest/
+
+# ─── Training data (generated, not source of truth) ─────────────────────
+training-data/
+
+# ─── Planning artifacts (not source of truth) ───────────────────────────
+LocalCowork_ClaudeCode_Blueprint.md
+LocalCowork_PRD.md
+
+# ─── Claude Code local (not shared) ──────────────────────────────────────
+CLAUDE.local.md
+.claude/settings.local.json
+
+# ─── Local-only scripts (not shared) ─────────────────────────────────────
+scripts/sync-to-cookbook.sh
+
+# ─── Environment ─────────────────────────────────────────────────────────
+.env
+.env.local
+*.pem
+*.key

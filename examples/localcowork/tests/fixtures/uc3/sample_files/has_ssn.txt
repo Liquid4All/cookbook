@@ -1,0 +1,9 @@
+Employee Records
+
+Name: John Smith
+SSN: 123-45-6789
+Department: Engineering
+
+Name: Jane Doe
+SSN: 987-65-4321
+Department: Marketing

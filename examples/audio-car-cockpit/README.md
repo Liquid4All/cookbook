@@ -15,23 +15,20 @@ https://github.com/user-attachments/assets/f9b5a6fd-ed3b-4235-a856-6251441a1ada
 
 > [!NOTE]
 > **Supported Platforms**
-> 
+>
 > The following platforms are currently supported:
 > - macos-arm64
 > - ubuntu-arm64
 > - ubuntu-x64
+> - ubuntu-WSL2
 
-Usage:
 ```bash
 # Setup python env
 make setup
 
-# Optional, if you have already llama-server in your path, you can
-#   symlink instead of building it
-ln -s $(which llama-server) llama-server
-# else: build llama-server for your target hardware
-#   Note: When building for ROCm, libstdc++-14-dev has to be installed with: sudo apt install -y libstdc++-14-dev
-make llama-server
+# Optional: if llama-server is already in your PATH, symlink it instead of building
+# ln -s $(which llama-server) llama-server
+# Note: when building for ROCm, also install: sudo apt install -y libstdc++-14-dev
 
 # Prepare the audio and tool calling models
 make LFM2.5-Audio-1.5B-GGUF LFM2-1.2B-Tool-GGUF
@@ -39,3 +36,16 @@ make LFM2.5-Audio-1.5B-GGUF LFM2-1.2B-Tool-GGUF
 # Launch demo
 make -j2 audioserver serve
 ```
+
+> [!NOTE]
+> **Building llama-server from source**
+>
+> The `make -j2 audioserver serve` step will build `llama-server` automatically if it is not already present.
+> This requires `cmake` and a C++ toolchain. If the build fails, install the missing dependencies first:
+>
+> | Platform | Command |
+> |---|---|
+> | macOS | `brew install cmake` (Xcode CLT required: `xcode-select --install`) |
+> | Linux / WSL2 | `make install-deps` |
+>
+> Then re-run `make -j2 audioserver serve`.

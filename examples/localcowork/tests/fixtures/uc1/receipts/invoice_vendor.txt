@@ -1,0 +1,7 @@
+INVOICE #INV-2026-0042
+Vendor: Acme Corp
+Date: 2026-01-20
+Amount: $1,250.00
+Description: Consulting services - January 2026
+Terms: Net 30
+Due Date: 2026-02-19

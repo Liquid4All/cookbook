@@ -1,0 +1,6 @@
+RECEIPT
+Vendor: Blue Bottle Coffee
+Date: 2026-01-15
+Amount: $4.75
+Item: Drip Coffee (Large)
+Payment: Visa ending 1234

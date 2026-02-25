@@ -1,0 +1,720 @@
+{
+  "suite": "multi-step",
+  "description": "50 multi-step scenarios requiring chains of tool calls",
+  "version": "1.0.0",
+  "tests": [
+    {
+      "id": "ms-001",
+      "name": "Receipt Reconciliation Pipeline",
+      "prompt": "I have a receipt photo at /tmp/receipt.jpg. Extract the data, save it to my expenses database, and check for duplicates.",
+      "expectedChain": [
+        "ocr.extract_structured_data",
+        "data.write_sqlite",
+        "data.deduplicate_records"
+      ],
+      "tags": [
+        "UC-1",
+        "ocr",
+        "data"
+      ]
+    },
+    {
+      "id": "ms-002",
+      "name": "Contract Review Pipeline",
+      "prompt": "Compare the old contract at /docs/contract-v1.pdf with the new one at /docs/contract-v2.pdf, then scan the new version for PII.",
+      "expectedChain": [
+        "document.diff_documents",
+        "security.scan_for_pii"
+      ],
+      "tags": [
+        "UC-2",
+        "document",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-003",
+      "name": "Download Triage",
+      "prompt": "List everything in my Downloads folder, find duplicate files, and suggest what I can clean up.",
+      "expectedChain": [
+        "filesystem.list_dir",
+        "security.find_duplicates",
+        "security.propose_cleanup"
+      ],
+      "tags": [
+        "UC-3",
+        "filesystem",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-004",
+      "name": "Meeting Pipeline",
+      "prompt": "Transcribe the audio at /meetings/standup.mp3, pull out action items, and generate formal meeting minutes.",
+      "expectedChain": [
+        "meeting.transcribe_audio",
+        "meeting.extract_action_items",
+        "meeting.generate_minutes"
+      ],
+      "tags": [
+        "UC-4",
+        "meeting"
+      ]
+    },
+    {
+      "id": "ms-005",
+      "name": "Paper Digitization",
+      "prompt": "Extract text from this scanned document image, create a searchable PDF from it, and index it for future search.",
+      "expectedChain": [
+        "ocr.extract_text_from_image",
+        "document.create_pdf",
+        "knowledge.index_folder"
+      ],
+      "tags": [
+        "UC-5",
+        "ocr",
+        "document",
+        "knowledge"
+      ]
+    },
+    {
+      "id": "ms-006",
+      "name": "Knowledge Base Build",
+      "prompt": "Index my research folder, then search for anything about machine learning architectures.",
+      "expectedChain": [
+        "knowledge.index_folder",
+        "knowledge.search_documents"
+      ],
+      "tags": [
+        "UC-6",
+        "knowledge"
+      ]
+    },
+    {
+      "id": "ms-007",
+      "name": "Spreadsheet Audit",
+      "prompt": "Read the expense spreadsheet, check for anomalies, and generate an audit report.",
+      "expectedChain": [
+        "document.read_spreadsheet",
+        "data.summarize_anomalies",
+        "audit.generate_audit_report"
+      ],
+      "tags": [
+        "UC-7",
+        "document",
+        "data",
+        "audit"
+      ]
+    },
+    {
+      "id": "ms-008",
+      "name": "Job Application Tracker Setup",
+      "prompt": "Create a task to apply to Acme Corp by Friday, schedule a time block for interview prep, and draft a follow-up email.",
+      "expectedChain": [
+        "task.create_task",
+        "calendar.create_time_block",
+        "email.draft_email"
+      ],
+      "tags": [
+        "UC-8",
+        "task",
+        "calendar",
+        "email"
+      ]
+    },
+    {
+      "id": "ms-009",
+      "name": "Weekly Review",
+      "prompt": "Give me my daily briefing, show overdue tasks, and show this week calendar.",
+      "expectedChain": [
+        "task.daily_briefing",
+        "task.get_overdue",
+        "calendar.list_events"
+      ],
+      "tags": [
+        "UC-9",
+        "task",
+        "calendar"
+      ]
+    },
+    {
+      "id": "ms-010",
+      "name": "Compliance Pack",
+      "prompt": "Generate an audit report for the last month, export it as PDF, and scan all project files for secrets.",
+      "expectedChain": [
+        "audit.generate_audit_report",
+        "audit.export_audit_pdf",
+        "security.scan_for_secrets"
+      ],
+      "tags": [
+        "UC-10",
+        "audit",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-011",
+      "name": "File Backup Workflow",
+      "prompt": "Copy my important document to a backup folder and encrypt the backup.",
+      "expectedChain": [
+        "filesystem.copy_file",
+        "security.encrypt_file"
+      ],
+      "tags": [
+        "filesystem",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-012",
+      "name": "Email Research",
+      "prompt": "Search my emails for the vendor proposal, extract the attached PDF text, and add it to my knowledge base.",
+      "expectedChain": [
+        "email.search_emails",
+        "document.extract_text",
+        "knowledge.index_folder"
+      ],
+      "tags": [
+        "email",
+        "document",
+        "knowledge"
+      ]
+    },
+    {
+      "id": "ms-013",
+      "name": "Meeting Follow-up",
+      "prompt": "Extract commitments from the meeting, create tasks for each one, and draft follow-up emails.",
+      "expectedChain": [
+        "meeting.extract_commitments",
+        "task.create_task",
+        "email.draft_email"
+      ],
+      "tags": [
+        "meeting",
+        "task",
+        "email"
+      ]
+    },
+    {
+      "id": "ms-014",
+      "name": "Data Import and Analysis",
+      "prompt": "Read the CSV expense report, write it to a SQLite database, and find any anomalies.",
+      "expectedChain": [
+        "document.read_spreadsheet",
+        "data.write_sqlite",
+        "data.summarize_anomalies"
+      ],
+      "tags": [
+        "document",
+        "data"
+      ]
+    },
+    {
+      "id": "ms-015",
+      "name": "Document Creation Pipeline",
+      "prompt": "Read the template file, fill in the PDF form fields, and merge it with the appendix PDF.",
+      "expectedChain": [
+        "filesystem.read_file",
+        "document.fill_pdf_form",
+        "document.merge_pdfs"
+      ],
+      "tags": [
+        "filesystem",
+        "document"
+      ]
+    },
+    {
+      "id": "ms-016",
+      "name": "Security Audit",
+      "prompt": "Scan the project for secrets, scan for PII, and generate a compliance report.",
+      "expectedChain": [
+        "security.scan_for_secrets",
+        "security.scan_for_pii",
+        "audit.generate_audit_report"
+      ],
+      "tags": [
+        "security",
+        "audit"
+      ]
+    },
+    {
+      "id": "ms-017",
+      "name": "Clipboard to Document",
+      "prompt": "Get what is on my clipboard and write it to a new file.",
+      "expectedChain": [
+        "clipboard.get_clipboard",
+        "filesystem.write_file"
+      ],
+      "tags": [
+        "clipboard",
+        "filesystem"
+      ]
+    },
+    {
+      "id": "ms-018",
+      "name": "System Check and Report",
+      "prompt": "Get system info, list running processes, and take a screenshot for documentation.",
+      "expectedChain": [
+        "system.get_system_info",
+        "system.list_processes",
+        "system.take_screenshot"
+      ],
+      "tags": [
+        "system"
+      ]
+    },
+    {
+      "id": "ms-019",
+      "name": "OCR Table to Database",
+      "prompt": "Extract the table from this image, write it as CSV, then import it into SQLite.",
+      "expectedChain": [
+        "ocr.extract_table",
+        "data.write_csv",
+        "data.write_sqlite"
+      ],
+      "tags": [
+        "ocr",
+        "data"
+      ]
+    },
+    {
+      "id": "ms-020",
+      "name": "Event Scheduling with Email",
+      "prompt": "Find free slots this week, create a meeting event, and draft an invitation email.",
+      "expectedChain": [
+        "calendar.find_free_slots",
+        "calendar.create_event",
+        "email.draft_email"
+      ],
+      "tags": [
+        "calendar",
+        "email"
+      ]
+    },
+    {
+      "id": "ms-021",
+      "name": "File Organization",
+      "prompt": "List files in Downloads, search for PDFs, and move them to a Documents/PDFs folder.",
+      "expectedChain": [
+        "filesystem.list_dir",
+        "filesystem.search_files",
+        "filesystem.move_file"
+      ],
+      "tags": [
+        "filesystem"
+      ]
+    },
+    {
+      "id": "ms-022",
+      "name": "Knowledge Search and Summary",
+      "prompt": "Search my documents for budget information, get related chunks, and create a summary PDF.",
+      "expectedChain": [
+        "knowledge.search_documents",
+        "knowledge.get_related_chunks",
+        "document.create_pdf"
+      ],
+      "tags": [
+        "knowledge",
+        "document"
+      ]
+    },
+    {
+      "id": "ms-023",
+      "name": "Task Review and Scheduling",
+      "prompt": "Show my overdue tasks, update their due dates, and block time on my calendar to complete them.",
+      "expectedChain": [
+        "task.get_overdue",
+        "task.update_task",
+        "calendar.create_time_block"
+      ],
+      "tags": [
+        "task",
+        "calendar"
+      ]
+    },
+    {
+      "id": "ms-024",
+      "name": "Email Digest",
+      "prompt": "Search recent emails, summarize the thread about project Alpha, and create a task for any follow-ups.",
+      "expectedChain": [
+        "email.search_emails",
+        "email.summarize_thread",
+        "task.create_task"
+      ],
+      "tags": [
+        "email",
+        "task"
+      ]
+    },
+    {
+      "id": "ms-025",
+      "name": "Encrypted Backup Pipeline",
+      "prompt": "Read the sensitive document, scan it for PII, encrypt it, and copy to backup.",
+      "expectedChain": [
+        "filesystem.read_file",
+        "security.scan_for_pii",
+        "security.encrypt_file",
+        "filesystem.copy_file"
+      ],
+      "tags": [
+        "filesystem",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-026",
+      "name": "Multi-Receipt Processing",
+      "prompt": "I have three receipt images. Extract structured data from each one and add them all to my expense database.",
+      "expectedChain": [
+        "ocr.extract_structured_data",
+        "ocr.extract_structured_data",
+        "ocr.extract_structured_data",
+        "data.write_sqlite"
+      ],
+      "tags": [
+        "ocr",
+        "data"
+      ]
+    },
+    {
+      "id": "ms-027",
+      "name": "Document Merge and Export",
+      "prompt": "Read the three chapter files, create a DOCX combining them, then convert to PDF.",
+      "expectedChain": [
+        "filesystem.read_file",
+        "document.create_docx",
+        "document.convert_format"
+      ],
+      "tags": [
+        "filesystem",
+        "document"
+      ]
+    },
+    {
+      "id": "ms-028",
+      "name": "Audit Export Pipeline",
+      "prompt": "Get the session summary, get the tool log, and generate a PDF audit report.",
+      "expectedChain": [
+        "audit.get_session_summary",
+        "audit.get_tool_log",
+        "audit.export_audit_pdf"
+      ],
+      "tags": [
+        "audit"
+      ]
+    },
+    {
+      "id": "ms-029",
+      "name": "Meeting to Tasks Pipeline",
+      "prompt": "Transcribe the meeting audio, extract action items, and create a task for each action item.",
+      "expectedChain": [
+        "meeting.transcribe_audio",
+        "meeting.extract_action_items",
+        "task.create_task"
+      ],
+      "tags": [
+        "meeting",
+        "task"
+      ]
+    },
+    {
+      "id": "ms-030",
+      "name": "File Dedup and Cleanup",
+      "prompt": "Find duplicate files, propose what to clean up, and delete the duplicates after my approval.",
+      "expectedChain": [
+        "security.find_duplicates",
+        "security.propose_cleanup",
+        "filesystem.delete_file"
+      ],
+      "tags": [
+        "security",
+        "filesystem"
+      ]
+    },
+    {
+      "id": "ms-031",
+      "name": "Calendar and Email Prep",
+      "prompt": "Check my schedule for tomorrow, list any meetings, and draft preparation emails.",
+      "expectedChain": [
+        "calendar.list_events",
+        "email.draft_email"
+      ],
+      "tags": [
+        "calendar",
+        "email"
+      ]
+    },
+    {
+      "id": "ms-032",
+      "name": "Knowledge Update Pipeline",
+      "prompt": "Check which new files exist in my docs folder, update the search index, and verify by searching.",
+      "expectedChain": [
+        "filesystem.list_dir",
+        "knowledge.update_index",
+        "knowledge.search_documents"
+      ],
+      "tags": [
+        "filesystem",
+        "knowledge"
+      ]
+    },
+    {
+      "id": "ms-033",
+      "name": "Spreadsheet to PDF Report",
+      "prompt": "Read the spreadsheet data, write a summary CSV, and create a PDF report.",
+      "expectedChain": [
+        "document.read_spreadsheet",
+        "data.write_csv",
+        "document.create_pdf"
+      ],
+      "tags": [
+        "document",
+        "data"
+      ]
+    },
+    {
+      "id": "ms-034",
+      "name": "OCR PDF Processing",
+      "prompt": "Extract text from this scanned PDF, scan the extracted text for PII, and save a clean version.",
+      "expectedChain": [
+        "ocr.extract_text_from_pdf",
+        "security.scan_for_pii",
+        "filesystem.write_file"
+      ],
+      "tags": [
+        "ocr",
+        "security",
+        "filesystem"
+      ]
+    },
+    {
+      "id": "ms-035",
+      "name": "Task Delegation Pipeline",
+      "prompt": "List all tasks, draft delegation emails for the overdue ones, and update task statuses.",
+      "expectedChain": [
+        "task.list_tasks",
+        "email.draft_email",
+        "task.update_task"
+      ],
+      "tags": [
+        "task",
+        "email"
+      ]
+    },
+    {
+      "id": "ms-036",
+      "name": "Clipboard Archive",
+      "prompt": "Show clipboard history, write all recent items to a file, and copy the file path to clipboard.",
+      "expectedChain": [
+        "clipboard.clipboard_history",
+        "filesystem.write_file",
+        "clipboard.set_clipboard"
+      ],
+      "tags": [
+        "clipboard",
+        "filesystem"
+      ]
+    },
+    {
+      "id": "ms-037",
+      "name": "System Diagnostics Report",
+      "prompt": "Get system info, take a screenshot, and create a diagnostic PDF.",
+      "expectedChain": [
+        "system.get_system_info",
+        "system.take_screenshot",
+        "document.create_pdf"
+      ],
+      "tags": [
+        "system",
+        "document"
+      ]
+    },
+    {
+      "id": "ms-038",
+      "name": "Contract Finalization",
+      "prompt": "Diff the two contract versions, fill the final PDF form, and encrypt it for secure storage.",
+      "expectedChain": [
+        "document.diff_documents",
+        "document.fill_pdf_form",
+        "security.encrypt_file"
+      ],
+      "tags": [
+        "document",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-039",
+      "name": "Research Ingestion",
+      "prompt": "Extract text from the research PDF, index it for search, and ask a question about the content.",
+      "expectedChain": [
+        "document.extract_text",
+        "knowledge.index_folder",
+        "knowledge.ask_about_files"
+      ],
+      "tags": [
+        "document",
+        "knowledge"
+      ]
+    },
+    {
+      "id": "ms-040",
+      "name": "Expense Reconciliation",
+      "prompt": "Query the expense database, compare totals with the bank CSV, and flag anomalies.",
+      "expectedChain": [
+        "data.query_sqlite",
+        "document.read_spreadsheet",
+        "data.summarize_anomalies"
+      ],
+      "tags": [
+        "data",
+        "document"
+      ]
+    },
+    {
+      "id": "ms-041",
+      "name": "Daily Kickoff",
+      "prompt": "Get my daily briefing, list today calendar events, and check for unread important emails.",
+      "expectedChain": [
+        "task.daily_briefing",
+        "calendar.list_events",
+        "email.search_emails"
+      ],
+      "tags": [
+        "task",
+        "calendar",
+        "email"
+      ]
+    },
+    {
+      "id": "ms-042",
+      "name": "Folder Watch and Index",
+      "prompt": "Watch my documents folder for new files and update the search index when changes are detected.",
+      "expectedChain": [
+        "filesystem.watch_folder",
+        "knowledge.update_index"
+      ],
+      "tags": [
+        "filesystem",
+        "knowledge"
+      ]
+    },
+    {
+      "id": "ms-043",
+      "name": "PDF Form Merge Pipeline",
+      "prompt": "Fill out the application form PDF, merge it with supporting documents, and encrypt the bundle.",
+      "expectedChain": [
+        "document.fill_pdf_form",
+        "document.merge_pdfs",
+        "security.encrypt_file"
+      ],
+      "tags": [
+        "document",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-044",
+      "name": "Meeting Commitments to Calendar",
+      "prompt": "Extract commitments from the meeting transcript, create calendar events for deadlines, and create tasks.",
+      "expectedChain": [
+        "meeting.extract_commitments",
+        "calendar.create_event",
+        "task.create_task"
+      ],
+      "tags": [
+        "meeting",
+        "calendar",
+        "task"
+      ]
+    },
+    {
+      "id": "ms-045",
+      "name": "Data Query and Export",
+      "prompt": "Query the database for this month expenses, write results to CSV, and create a summary PDF.",
+      "expectedChain": [
+        "data.query_sqlite",
+        "data.write_csv",
+        "document.create_pdf"
+      ],
+      "tags": [
+        "data",
+        "document"
+      ]
+    },
+    {
+      "id": "ms-046",
+      "name": "Decryption and Review",
+      "prompt": "Decrypt this protected file, extract its text content, and scan for sensitive data before sharing.",
+      "expectedChain": [
+        "security.decrypt_file",
+        "document.extract_text",
+        "security.scan_for_pii"
+      ],
+      "tags": [
+        "security",
+        "document"
+      ]
+    },
+    {
+      "id": "ms-047",
+      "name": "Screenshot to File",
+      "prompt": "Take a screenshot and save it as a file in my screenshots folder.",
+      "expectedChain": [
+        "system.take_screenshot",
+        "filesystem.write_file"
+      ],
+      "tags": [
+        "system",
+        "filesystem"
+      ]
+    },
+    {
+      "id": "ms-048",
+      "name": "Email Thread Analysis",
+      "prompt": "Search for the project discussion thread, summarize it, and extract any action items as tasks.",
+      "expectedChain": [
+        "email.search_emails",
+        "email.summarize_thread",
+        "task.create_task"
+      ],
+      "tags": [
+        "email",
+        "task"
+      ]
+    },
+    {
+      "id": "ms-049",
+      "name": "File Metadata and Search",
+      "prompt": "Get metadata for the large files in my downloads, search for anything older than a month, and propose cleanup.",
+      "expectedChain": [
+        "filesystem.get_metadata",
+        "filesystem.search_files",
+        "security.propose_cleanup"
+      ],
+      "tags": [
+        "filesystem",
+        "security"
+      ]
+    },
+    {
+      "id": "ms-050",
+      "name": "Full Weekly Review Pipeline",
+      "prompt": "Get my daily briefing, show overdue tasks, list this week events, generate a session audit summary, and create a PDF report.",
+      "expectedChain": [
+        "task.daily_briefing",
+        "task.get_overdue",
+        "calendar.list_events",
+        "audit.get_session_summary",
+        "document.create_pdf"
+      ],
+      "tags": [
+        "UC-9",
+        "task",
+        "calendar",
+        "audit",
+        "document"
+      ]
+    }
+  ]
+}

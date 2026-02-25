@@ -1,0 +1,19 @@
+DEAL MEMO - Project Phoenix
+
+Target Company: TechStart Inc
+Valuation: $15M
+Deal Type: Series A
+Lead Investor: Acme Ventures
+
+Key Metrics:
+ARR: $2.1M
+MRR Growth: 15% MoM
+Customers: 47 enterprise
+Churn: 3.2% monthly
+
+Due Diligence Items:
+- Financial audit (Q1-Q4 2025)
+- IP review and patent search
+- Customer reference calls (5 minimum)
+- Technical architecture review
+- Team background checks

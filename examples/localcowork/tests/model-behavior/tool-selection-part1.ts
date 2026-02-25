@@ -1,0 +1,125 @@
+/**
+ * Tool Selection Tests — File Operations (15 tests).
+ */
+
+import type { ToolSelectionTest } from './types';
+
+/** File Operations — 15 tests covering the filesystem server. */
+export const fileOperationTests: readonly ToolSelectionTest[] = [
+  {
+    id: 'ts-file-001',
+    category: 'file-operations',
+    prompt: 'What files are in my Documents folder?',
+    expectedTools: ['filesystem.list_dir'],
+    expectedParamKeys: { 'filesystem.list_dir': ['path'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-002',
+    category: 'file-operations',
+    prompt: 'Read the contents of budget.xlsx',
+    expectedTools: ['filesystem.read_file'],
+    expectedParamKeys: { 'filesystem.read_file': ['path'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-003',
+    category: 'file-operations',
+    prompt: 'Move report.pdf to the Archive folder',
+    expectedTools: ['filesystem.move_file'],
+    expectedParamKeys: { 'filesystem.move_file': ['source', 'destination'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-004',
+    category: 'file-operations',
+    prompt: 'Search for all PDF files in Downloads',
+    expectedTools: ['filesystem.search_files'],
+    expectedParamKeys: { 'filesystem.search_files': ['path', 'pattern'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-005',
+    category: 'file-operations',
+    prompt: 'Copy config.yaml to a backup',
+    expectedTools: ['filesystem.copy_file'],
+    expectedParamKeys: { 'filesystem.copy_file': ['source', 'destination'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-006',
+    category: 'file-operations',
+    prompt: 'Delete the old draft of my resume from Desktop',
+    expectedTools: ['filesystem.delete_file'],
+    expectedParamKeys: { 'filesystem.delete_file': ['path'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-007',
+    category: 'file-operations',
+    prompt: 'Write a new file called notes.md with the text "Meeting notes for Monday"',
+    expectedTools: ['filesystem.write_file'],
+    expectedParamKeys: { 'filesystem.write_file': ['path', 'content'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-008',
+    category: 'file-operations',
+    prompt: 'What is the file size and last modified date of presentation.pptx?',
+    expectedTools: ['filesystem.get_metadata'],
+    expectedParamKeys: { 'filesystem.get_metadata': ['path'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-009',
+    category: 'file-operations',
+    prompt: 'Watch the Downloads folder for new files',
+    expectedTools: ['filesystem.watch_folder'],
+    expectedParamKeys: { 'filesystem.watch_folder': ['path', 'callback_id'] },
+    difficulty: 'medium',
+  },
+  {
+    id: 'ts-file-010',
+    category: 'file-operations',
+    prompt: 'Show me all .json files in the project directory recursively',
+    expectedTools: ['filesystem.search_files'],
+    expectedParamKeys: { 'filesystem.search_files': ['path', 'pattern'] },
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-011',
+    category: 'file-operations',
+    prompt: 'List everything in my home directory',
+    expectedTools: ['filesystem.list_dir'],
+    difficulty: 'easy',
+  },
+  {
+    id: 'ts-file-012',
+    category: 'file-operations',
+    prompt: 'Rename quarterly-report-v1.docx to quarterly-report-final.docx',
+    expectedTools: ['filesystem.move_file'],
+    expectedParamKeys: { 'filesystem.move_file': ['source', 'destination'] },
+    difficulty: 'medium',
+  },
+  {
+    id: 'ts-file-013',
+    category: 'file-operations',
+    prompt: 'Find all images larger than 5MB in my Pictures folder',
+    expectedTools: ['filesystem.search_files'],
+    difficulty: 'medium',
+  },
+  {
+    id: 'ts-file-014',
+    category: 'file-operations',
+    prompt: 'Show me what changed in the project folder since yesterday',
+    expectedTools: ['filesystem.list_dir'],
+    difficulty: 'hard',
+  },
+  {
+    id: 'ts-file-015',
+    category: 'file-operations',
+    prompt: 'Create a backup of my entire Documents/contracts folder',
+    expectedTools: ['filesystem.copy_file'],
+    difficulty: 'medium',
+  },
+];

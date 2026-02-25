@@ -1,0 +1,169 @@
+---
+name: mcp-server-dev
+description: >
+  Skill for developing MCP servers for the LocalCowork project. Use this whenever
+  building a new MCP server, adding tools to an existing server, debugging MCP
+  communication issues, or implementing any tool from the PRD tool registry.
+  MANDATORY TRIGGERS: "build the filesystem server", "add a tool to the document
+  server", "implement the OCR MCP server", "MCP server", "tool implementation",
+  or any mention of a specific server name (filesystem, document, ocr, knowledge,
+  meeting, security, calendar, email, task, data, audit, clipboard, system).
+  Also trigger when user says "implement UC-" since use cases require MCP tools.
+---
+
+# MCP Server Development Skill
+
+## Context
+
+You are building MCP servers for LocalCowork, a desktop AI agent where the LLM
+calls pre-built tools via MCP — it never writes code. Each server is an
+independent process communicating via JSON-RPC over stdio.
+
+The PRD (`docs/PRD.md`) is the product source of truth.
+The tool registry (`docs/mcp-tool-registry.yaml`) defines exact tool signatures.
+The pattern doc (`docs/patterns/mcp-server-pattern.md`) is the canonical template.
+
+## Before You Start
+
+Read these files in order — they give you the complete picture:
+
+1. `docs/mcp-tool-registry.yaml` — find the server you're building and read all
+   its tool definitions (params, returns, confirmation, undo metadata).
+2. `docs/PRD.md` Section 6 — read the use cases that reference this server to
+   understand how tools will be composed in real workflows. The "Implementation
+   Notes for Claude Code" in each UC are especially important.
+3. `docs/patterns/mcp-server-pattern.md` — the canonical implementation pattern
+   with templates for both TypeScript and Python.
+4. `mcp-servers/_shared/` — the base classes your server must extend.
+
+## Language Selection
+
+Check `docs/mcp-tool-registry.yaml` for the server's designated language:
+
+| Language | Servers |
+|----------|---------|
+| TypeScript | filesystem, calendar, email, task, data, audit, clipboard, system |
+| Python | document, ocr, knowledge, meeting, security |
+
+The language is non-negotiable — it's driven by dependency requirements (ADR-002).
+
+## Implementation Checklist
+
+For each tool in the registry, work through these steps:
+
+### Step 1: Create the tool file
+
+One tool per file. Place in `mcp-servers/<server>/src/tools/<tool_name>.ts` (or `.py`).
+
+### Step 2: Define typed params
+
+Match the registry EXACTLY. Use zod (TypeScript) or pydantic (Python).
+
+TypeScript example:
+```typescript
+const paramsSchema = z.object({
+  path: z.string().describe('Absolute path to directory'),
+  recursive: z.boolean().optional().default(false),
+  filter: z.string().optional(),
+});
+```
+
+Python example:
+```python
+class Params(BaseModel):
+    path: str = Field(description="Path to image file")
+    language: Optional[str] = Field(default="eng", description="OCR language")
+```
+
+### Step 3: Define typed returns
+
+Match the registry return type. Create a result type/interface.
+
+### Step 4: Implement the logic
+
+Follow the PRD implementation notes for this tool. Key principles:
+- Use the shared Logger (never print/console.log)
+- Use structured MCPError for errors (never throw raw exceptions)
+- Validate paths are within sandbox before any filesystem access
+- Return structured results that the model can parse
+
+### Step 5: Set confirmation metadata
+
+Every tool declares two metadata flags:
+- `confirmationRequired`: does the Agent Core need user confirmation before executing?
+- `undoSupported`: can this action be reversed via the undo stack?
+
+These must match `docs/mcp-tool-registry.yaml` exactly.
+
+### Step 6: Write the unit test
+
+Every tool gets a test file covering:
+- **Param validation:** invalid types, missing required, extra params
+- **Happy path:** correct input → expected output shape
+- **Error paths:** file not found, permission denied, invalid input
+- **Sandbox enforcement:** paths outside sandbox are rejected
+- **Metadata verification:** confirmationRequired and undoSupported match registry
+
+### Step 7: Write the smoke test
+
+Every tool also gets a smoke test — a FAST (<500ms) regression check. Use `/add-smoke-test` for the template, or create manually:
+
+- TypeScript: `mcp-servers/<server>/tests/<tool_name>.smoke.test.ts`
+- Python: `mcp-servers/<server>/tests/<tool_name>_smoke_test.py`
+
+Smoke tests check:
+1. Tool can be imported / instantiated
+2. Params schema accepts valid input
+3. Params schema rejects garbage input
+4. Confirmation/undo metadata matches registry
+5. (Non-destructive tools only) Basic execution doesn't crash
+
+These are auto-discovered by `./scripts/smoke-test.sh` and run before every push.
+
+### Step 8: Lint and type check
+
+Before moving to the next tool:
+- TypeScript: `npx tsc --noEmit` must pass
+- Python: `mypy --strict src/` must pass
+
+### Step 9: Run smoke tests
+
+After all tools for the server are done, verify the whole server passes:
+```bash
+./scripts/smoke-test.sh --server <server-name>
+```
+
+## Server Entry Point
+
+After all tools are implemented, create the entry point:
+- TypeScript: `src/index.ts` — imports all tools, registers them, starts JSON-RPC
+- Python: `src/__init__.py` — imports all tools, registers them, starts JSON-RPC
+
+The entry point uses the shared MCPServer base class from `_shared/`.
+
+## Validation
+
+After implementing all tools, run the validation command:
+```bash
+/validate-server <server-name>
+```
+
+This checks every tool against the PRD spec and reports any mismatches.
+
+## Common Pitfalls
+
+1. **Don't deviate from the registry signatures.** Even if a param seems unnecessary,
+   include it — the model's tool definitions are auto-generated from the registry.
+
+2. **Don't combine multiple tools into one file.** One file per tool is how the
+   project stays navigable across 68+ tools.
+
+3. **Don't skip the sandbox check on filesystem tools.** Every path must be
+   validated against the user's granted directories.
+
+4. **Don't use console.log or print.** Always use the shared Logger. The audit
+   system depends on structured log output.
+
+5. **Don't forget to handle the case where the model sends bad arguments.**
+   The local LLM may occasionally hallucinate params. Validation should catch
+   this gracefully and return a helpful error, not crash.
