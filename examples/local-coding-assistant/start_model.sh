@@ -9,7 +9,7 @@ if [[ -z "${HF_TOKEN:-}" ]]; then
 fi
 
 llama-server \
-  -hf liquidai/LFM2-24B-A2B-Q4_0-GGUF \
-  -hftoken "$HF_TOKEN" \
+  -hf LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 \
+  -hft "$HF_TOKEN" \
   --ctx-size 8192 \
   --port 8080
