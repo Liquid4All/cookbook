@@ -81,7 +81,16 @@ Type your request and press Enter. Use `exit` or `Ctrl+C` to quit.
 
 The assistant supports [llama.cpp](https://github.com/ggerganov/llama.cpp) as a local backend via its OpenAI-compatible server.
 
-**Start the llama.cpp server:**
+**Start the llama.cpp server** using the `-hf` flag to download the model directly from Hugging Face (no manual download needed):
+
+```bash
+./llama-server \
+  -hf liquidai/LFM2-24B-A2B-Q4_0-GGUF \
+  --ctx-size 8192 \
+  --port 8080
+```
+
+The model is downloaded on first run and cached locally for subsequent runs. If you already have the GGUF file on disk, you can point to it directly instead:
 
 ```bash
 ./llama-server \
