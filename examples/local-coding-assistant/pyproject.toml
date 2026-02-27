@@ -1,13 +1,21 @@
 [project]
 name = "local-coding-assistant"
 version = "0.1.0"
-description = "Add your description here"
+description = "A minimal agentic coding assistant"
 readme = "README.md"
 authors = [
     { name = "Pau Labarta Bajo", email = "plabartabajo@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "anthropic>=0.40.0",
+    "openai>=1.50.0",
+    "python-dotenv>=1.0.0",
+    "click>=8.0.0",
+]
+
+[project.scripts]
+lca = "local_coding_assistant.main:main"
 
 [build-system]
 requires = ["uv_build>=0.9.18,<0.10.0"]
