@@ -125,7 +125,7 @@ All settings are controlled via environment variables (or a `.env` file):
 | `LCA_ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model name |
 | `LCA_LOCAL_BASE_URL` | `http://localhost:8080/v1` | llama.cpp server URL |
 | `LCA_LOCAL_MODEL` | `local` | Model passed to the server (HF path or file path) |
-| `LCA_LOCAL_CTX_SIZE` | `8192` | Context window size for the local server |
+| `LCA_LOCAL_CTX_SIZE` | `32768` | Context window size for the local server |
 | `LCA_LOCAL_GPU_LAYERS` | `99` | Number of layers to offload to GPU |
 | `LCA_MAX_TOKENS` | `8192` | Max tokens per response |
 | `LCA_WORKING_DIR` | `.` | Working directory for bash commands |

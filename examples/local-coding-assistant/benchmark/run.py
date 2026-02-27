@@ -4,8 +4,8 @@ Usage:
     python benchmark/run.py --backend anthropic [--model claude-sonnet-4-6] [--task 1,2,3]
     python benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
 
-    # llama.cpp suite (requires a local clone of the repo)
-    python benchmark/run.py --backend anthropic --suite llamacpp --working-dir /tmp/llama.cpp
+    # Requires a local clone of llama.cpp (auto-cloned to /tmp/llama.cpp if absent)
+    python benchmark/run.py --backend anthropic --working-dir /tmp/llama.cpp
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ import io
 import json
 import subprocess
 import sys
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -192,6 +193,24 @@ def save_results(
     return out_file
 
 
+# ── llama.cpp repo helper ─────────────────────────────────────────────────────
+
+LLAMACPP_REPO = "https://github.com/ggerganov/llama.cpp"
+LLAMACPP_DEFAULT_DIR = Path("/tmp/llama.cpp")
+
+
+def ensure_llamacpp_repo(working_dir: Path) -> None:
+    """Clone the llama.cpp repo into working_dir if it isn't already there."""
+    if (working_dir / ".git").exists():
+        return
+    print(f"Cloning {LLAMACPP_REPO} into {working_dir} ...")
+    subprocess.run(
+        ["git", "clone", "--depth=1", LLAMACPP_REPO, str(working_dir)],
+        check=True,
+    )
+    print("Clone complete.\n")
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -214,17 +233,9 @@ def main() -> None:
         "--working-dir", default=None,
         help="Working directory for agent tool calls (default: project root)",
     )
-    parser.add_argument(
-        "--suite", default="default", choices=["default", "llamacpp"],
-        help="Task suite to run: 'default' (local-coding-assistant) or 'llamacpp'",
-    )
     args = parser.parse_args()
 
-    # Load the chosen task suite
-    if args.suite == "llamacpp":
-        from tasks_llamacpp import TASKS
-    else:
-        from tasks import TASKS
+    from tasks_llamacpp import TASKS
 
     # Determine which tasks to run
     if args.task:
@@ -250,8 +261,10 @@ def main() -> None:
 
     working_dir = (
         Path(args.working_dir).resolve() if args.working_dir
-        else (_PROJECT_ROOT if args.suite == "default" else Path.cwd())
+        else LLAMACPP_DEFAULT_DIR
     )
+
+    ensure_llamacpp_repo(working_dir)
 
     # Start local server if needed
     server_proc: subprocess.Popen | None = None
@@ -267,7 +280,7 @@ def main() -> None:
 
         print(
             f"Running {len(tasks_to_run)} task(s) | "
-            f"suite={args.suite} | backend={args.backend} | model={model_name}"
+            f"suite=llamacpp | backend={args.backend} | model={model_name}"
         )
         print(f"Working dir: {working_dir}\n")
 
@@ -281,7 +294,7 @@ def main() -> None:
 
         print_summary(results, args.backend, model_name, date_str)
 
-        out_file = save_results(results, args.suite, args.backend, model_name, date_str)
+        out_file = save_results(results, "llamacpp", args.backend, model_name, date_str)
         print(f"\nResults saved to: {out_file}")
 
     finally:

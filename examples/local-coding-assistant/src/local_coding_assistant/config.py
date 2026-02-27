@@ -20,7 +20,7 @@ class Config:
     local_base_url: str = "http://localhost:8080/v1"
     local_model: str = "local"
     local_api_key: str = "sk-no-key"  # llama.cpp server ignores this
-    local_ctx_size: int = 8192
+    local_ctx_size: int = 32768
     local_n_gpu_layers: int = 99
 
     # Agent behavior
@@ -37,7 +37,7 @@ def load_config() -> Config:
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
         local_base_url=os.getenv("LCA_LOCAL_BASE_URL", "http://localhost:8080/v1"),
         local_model=os.getenv("LCA_LOCAL_MODEL", "local"),
-        local_ctx_size=int(os.getenv("LCA_LOCAL_CTX_SIZE", "8192")),
+        local_ctx_size=int(os.getenv("LCA_LOCAL_CTX_SIZE", "32768")),
         local_n_gpu_layers=int(os.getenv("LCA_LOCAL_GPU_LAYERS", "99")),
         max_tokens=int(os.getenv("LCA_MAX_TOKENS", "8192")),
         max_context_messages=int(os.getenv("LCA_MAX_CONTEXT_MESSAGES", "40")),
