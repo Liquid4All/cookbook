@@ -81,35 +81,36 @@ Type your request and press Enter. Use `exit` or `Ctrl+C` to quit.
 
 The assistant supports [llama.cpp](https://github.com/ggerganov/llama.cpp) as a local backend via its OpenAI-compatible server.
 
-**Start the llama.cpp server** using the `-hf` flag to download the model directly from Hugging Face (no manual download needed):
+Pass `--backend local` and `--model` to select the model. The llama-server is started and stopped automatically.
+
+**From a HuggingFace repo** (downloaded and cached on first run):
 
 ```bash
-./llama-server \
-  -hf liquidai/LFM2-24B-A2B-Q4_0-GGUF \
-  --ctx-size 8192 \
-  --port 8080
+uv run lca --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
 ```
 
-The model is downloaded on first run and cached locally for subsequent runs. If you already have the GGUF file on disk, you can point to it directly instead:
+If the repo requires authentication, set `HF_TOKEN` in your environment or `.env` file.
+
+**From a local GGUF file:**
 
 ```bash
-./llama-server \
-  --model /path/to/LFM2-24B-A2B-Q4_0.gguf \
-  --ctx-size 8192 \
-  --port 8080
+uv run lca --backend local --model /path/to/model.gguf
 ```
 
-**Run the assistant against the local model:**
+**Non-interactive mode** works the same way:
 
 ```bash
-LCA_BACKEND=llama uv run lca
+uv run lca --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 -p "What does agent.py do?"
 ```
 
-Or set it permanently in your `.env`:
+If you prefer to manage the llama-server yourself, omit `--model` and the assistant will connect to the already-running server:
 
-```
-LCA_BACKEND=llama
-LCA_LLAMA_BASE_URL=http://localhost:8080/v1
+```bash
+# terminal 1 — start server manually
+llama-server --model /path/to/model.gguf --port 8080
+
+# terminal 2 — connect without auto-start
+uv run lca --backend local
 ```
 
 ## Configuration
@@ -118,18 +119,21 @@ All settings are controlled via environment variables (or a `.env` file):
 
 | Variable | Default | Description |
 |---|---|---|
-| `LCA_BACKEND` | `anthropic` | Backend to use: `anthropic` or `llama` |
+| `LCA_BACKEND` | `anthropic` | Backend to use: `anthropic` or `local` |
 | `ANTHROPIC_API_KEY` | — | Your Anthropic API key |
 | `LCA_ANTHROPIC_MODEL` | `claude-sonnet-4-6` | Anthropic model name |
-| `LCA_LLAMA_BASE_URL` | `http://localhost:8080/v1` | llama.cpp server URL |
-| `LCA_LLAMA_MODEL` | `local` | Model name reported by the server |
+| `LCA_LOCAL_BASE_URL` | `http://localhost:8080/v1` | llama.cpp server URL |
+| `LCA_LOCAL_MODEL` | `local` | Model passed to the server (HF path or file path) |
+| `LCA_LOCAL_CTX_SIZE` | `8192` | Context window size for the local server |
+| `LCA_LOCAL_GPU_LAYERS` | `99` | Number of layers to offload to GPU |
 | `LCA_MAX_TOKENS` | `8192` | Max tokens per response |
 | `LCA_WORKING_DIR` | `.` | Working directory for bash commands |
+| `HF_TOKEN` | — | HuggingFace token (required for gated models) |
 
 CLI flags override env vars:
 
 ```bash
-uv run lca --backend llama --working-dir /path/to/my/project
+uv run lca --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --working-dir /path/to/my/project
 ```
 
 ## Project structure

@@ -11,10 +11,10 @@ class LlamaClient:
 
     def __init__(self, config: Config) -> None:
         self._client = OpenAI(
-            base_url=config.llama_base_url,
-            api_key=config.llama_api_key,
+            base_url=config.local_base_url,
+            api_key=config.local_api_key,
         )
-        self._model = config.llama_model
+        self._model = config.local_model
         self._max_tokens = config.max_tokens
 
     def chat(self, messages: list[dict], tools: list[dict], system: str) -> LLMResponse:

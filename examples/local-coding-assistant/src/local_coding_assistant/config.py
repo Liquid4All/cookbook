@@ -10,16 +10,18 @@ load_dotenv()
 @dataclass
 class Config:
     # Which backend to use
-    backend: Literal["anthropic", "llama"] = "anthropic"
+    backend: Literal["anthropic", "local"] = "anthropic"
 
     # Anthropic settings
     anthropic_model: str = "claude-sonnet-4-6"
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
 
-    # llama.cpp server settings
-    llama_base_url: str = "http://localhost:8080/v1"
-    llama_model: str = "local"
-    llama_api_key: str = "sk-no-key"  # llama.cpp server ignores this
+    # Local llama.cpp server settings
+    local_base_url: str = "http://localhost:8080/v1"
+    local_model: str = "local"
+    local_api_key: str = "sk-no-key"  # llama.cpp server ignores this
+    local_ctx_size: int = 8192
+    local_n_gpu_layers: int = 99
 
     # Agent behavior
     max_tokens: int = 8192
@@ -33,8 +35,10 @@ def load_config() -> Config:
         backend=os.getenv("LCA_BACKEND", "anthropic"),  # type: ignore[arg-type]
         anthropic_model=os.getenv("LCA_ANTHROPIC_MODEL", "claude-sonnet-4-6"),
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
-        llama_base_url=os.getenv("LCA_LLAMA_BASE_URL", "http://localhost:8080/v1"),
-        llama_model=os.getenv("LCA_LLAMA_MODEL", "local"),
+        local_base_url=os.getenv("LCA_LOCAL_BASE_URL", "http://localhost:8080/v1"),
+        local_model=os.getenv("LCA_LOCAL_MODEL", "local"),
+        local_ctx_size=int(os.getenv("LCA_LOCAL_CTX_SIZE", "8192")),
+        local_n_gpu_layers=int(os.getenv("LCA_LOCAL_GPU_LAYERS", "99")),
         max_tokens=int(os.getenv("LCA_MAX_TOKENS", "8192")),
         max_context_messages=int(os.getenv("LCA_MAX_CONTEXT_MESSAGES", "40")),
         working_directory=os.getenv("LCA_WORKING_DIR", "."),

@@ -8,7 +8,7 @@ def get_llm_client(config: Config) -> LLMClient:
     """Factory: return the right backend based on config.backend."""
     if config.backend == "anthropic":
         return AnthropicClient(config)
-    elif config.backend == "llama":
+    elif config.backend == "local":
         return LlamaClient(config)
     else:
         raise ValueError(f"Unknown backend: {config.backend!r}")
