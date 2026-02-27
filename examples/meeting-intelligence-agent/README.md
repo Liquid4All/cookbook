@@ -2,6 +2,32 @@
 
 A local AI agent that reads meeting transcripts and turns them into structured outputs: action items, a markdown summary, and a follow-up email. Runs entirely on your hardware. Your personal or private data is not shared with any model provider.
 
+```mermaid
+flowchart LR
+    A["Meeting transcript\nUser request"] --> B[LLM]
+    B -- tool call --> C
+    C -- tool result --> B
+    B -- done --> D["tasks.json\nsummary.md\nsent_emails.log"]
+
+    subgraph C[Tools]
+        direction TB
+        t1[read_transcript]
+        t2[lookup_team_member]
+        t3[create_task]
+        t4[save_summary]
+        t5[send_email]
+    end
+```
+
+## Table of contents
+
+- [What it does](#what-it-does)
+- [Setup](#setup)
+- [Usage](#usage)
+- [Benchmark](#benchmark)
+- [Demo outputs](#demo-outputs)
+- [Configuration](#configuration)
+
 ## What it does
 
 Given a meeting transcript, the agent:
@@ -15,8 +41,26 @@ Given a meeting transcript, the agent:
 
 ## Setup
 
+**1. Install llama.cpp** (provides `llama-server`):
+
 ```bash
-cd examples/meeting-intelligence-agent
+# macOS
+brew install llama.cpp
+
+# Linux / Windows — download a prebuilt binary from:
+# https://github.com/ggml-org/llama.cpp/releases
+```
+
+**2. Clone the repository:**
+
+```bash
+git clone https://github.com/Liquid4All/cookbook.git
+```
+
+**3. Install Python dependencies:**
+
+```bash
+cd cookbook/examples/meeting-intelligence-agent
 uv sync
 ```
 
@@ -35,18 +79,19 @@ uv run mia --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 -p "Process data/sample_trans
 
 **With an already-running llama-server:**
 ```bash
+# Start the server (once)
+llama-server \
+  --port 8080 \
+  --ctx-size 32768 \
+  --n-gpu-layers 99 \
+  --flash-attn on \
+  --jinja \
+  -hf LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
+
+# Then run the agent (server is reused across runs)
 uv run mia
 > Process the meeting transcript in data/sample_transcript.txt
 ```
-
-## Configuration
-
-| Environment variable    | Default                      | Description                        |
-|-------------------------|------------------------------|------------------------------------|
-| `MIA_LOCAL_BASE_URL`    | `http://localhost:8080/v1`   | llama.cpp server URL               |
-| `MIA_LOCAL_MODEL`       | `local`                      | Model name or HuggingFace path     |
-| `MIA_LOCAL_CTX_SIZE`    | `32768`                      | Context window size                |
-| `MIA_LOCAL_GPU_LAYERS`  | `99`                         | GPU layers to offload (0 = CPU)    |
 
 ## Benchmark
 
@@ -85,3 +130,12 @@ cat data/tasks.json          # structured task records
 cat data/summaries/*.md      # markdown meeting summary
 cat data/sent_emails.log     # follow-up email log
 ```
+
+## Configuration
+
+| Environment variable    | Default                      | Description                        |
+|-------------------------|------------------------------|------------------------------------|
+| `MIA_LOCAL_BASE_URL`    | `http://localhost:8080/v1`   | llama.cpp server URL               |
+| `MIA_LOCAL_MODEL`       | `local`                      | Model name or HuggingFace path     |
+| `MIA_LOCAL_CTX_SIZE`    | `32768`                      | Context window size                |
+| `MIA_LOCAL_GPU_LAYERS`  | `99`                         | GPU layers to offload (0 = CPU)    |
