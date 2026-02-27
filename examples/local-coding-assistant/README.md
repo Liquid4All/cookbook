@@ -138,20 +138,50 @@ uv run lca --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --working-dir
 
 ## Benchmarking
 
-The `benchmark/` directory contains 10 tasks of increasing difficulty (easy → hard) with automated verifiers. Use it to compare how different models perform on coding assistant tasks.
+The `benchmark/` directory contains two task suites, each with 10 tasks of increasing difficulty (easy → hard) and automated verifiers. Use them to compare how different models perform on real coding tasks.
+
+### Default suite — this project
+
+Tasks range from reading `pyproject.toml` to multi-file code analysis:
 
 ```bash
 # Quick smoke test (tasks 1–3)
 uv run python benchmark/run.py --backend anthropic --task 1,2,3
 
-# Full benchmark against Anthropic
+# Full benchmark
 uv run python benchmark/run.py --backend anthropic
 
 # Full benchmark against a local model
 uv run python benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
 ```
 
-Results are saved to `benchmark/results/<timestamp>-<backend>-<model>.json` and a summary table is printed:
+### llama.cpp suite — real-world C++ codebase
+
+Tasks operate on a large open-source C++ project. Hard tasks require the agent to
+write and run Python scripts that parse and analyse the codebase:
+
+```bash
+# Clone the target repo once
+git clone https://github.com/ggerganov/llama.cpp /tmp/llama.cpp
+
+# Quick smoke test (tasks 1–3)
+uv run python benchmark/run.py --backend anthropic \
+    --suite llamacpp --working-dir /tmp/llama.cpp --task 1,2,3
+
+# Full benchmark
+uv run python benchmark/run.py --backend anthropic \
+    --suite llamacpp --working-dir /tmp/llama.cpp
+
+# Full benchmark against a local model
+uv run python benchmark/run.py --backend local \
+    --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 \
+    --suite llamacpp --working-dir /tmp/llama.cpp
+```
+
+### Output
+
+Results are saved to `benchmark/results/<timestamp>-<suite>-<backend>-<model>.json`
+and a summary table is printed:
 
 ```
 Model : claude-sonnet-4-6 (anthropic)
@@ -167,14 +197,15 @@ Date  : 2026-02-27 12:55
 Score: 10/10  |  Total tokens: 75702  |  Avg time: 13.5s
 ```
 
-Optional flags:
+### Flags
 
 | Flag | Description |
 |---|---|
 | `--backend` | `anthropic` or `local` (required) |
+| `--suite` | `default` (this project) or `llamacpp` (default: `default`) |
 | `--model` | Override the model (Anthropic model ID or HF/GGUF path for local) |
 | `--task` | Comma-separated task IDs to run, e.g. `1,2,3` |
-| `--working-dir` | Directory the agent operates in (default: project root) |
+| `--working-dir` | Directory the agent operates in (default: project root for `default` suite) |
 
 ## Project structure
 
@@ -190,4 +221,10 @@ src/local_coding_assistant/
     ├── anthropic_client.py  # Anthropic backend
     ├── llama_client.py      # llama.cpp backend
     └── __init__.py          # Backend factory
+
+benchmark/
+├── run.py               # CLI runner (metrics, reporting, server management)
+├── tasks.py             # Default suite: 10 tasks on this project
+├── tasks_llamacpp.py    # llama.cpp suite: 10 tasks on a real-world C++ repo
+└── results/             # Timestamped JSON output (gitignored)
 ```

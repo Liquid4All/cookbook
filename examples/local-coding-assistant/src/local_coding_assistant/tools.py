@@ -2,7 +2,7 @@ import os
 import subprocess
 from pathlib import Path
 
-# Working directory used by run_bash. Set by the agent at startup.
+# Working directory for all tool calls. Set by the agent at startup.
 _working_directory = "."
 
 
@@ -11,10 +11,18 @@ def set_working_directory(path: str) -> None:
     _working_directory = path
 
 
+def _resolve(path: str) -> Path:
+    """Resolve a path relative to the working directory (if not absolute)."""
+    p = Path(path)
+    if p.is_absolute():
+        return p
+    return Path(_working_directory) / p
+
+
 def read_file(path: str) -> str:
     """Read the contents of a file. Returns the file content as a string."""
     try:
-        return Path(path).read_text(encoding="utf-8")
+        return _resolve(path).read_text(encoding="utf-8")
     except FileNotFoundError:
         return f"[error] File not found: {path}"
     except Exception as e:
@@ -24,7 +32,7 @@ def read_file(path: str) -> str:
 def write_file(path: str, content: str) -> str:
     """Write content to a file, creating parent directories if needed."""
     try:
-        p = Path(path)
+        p = _resolve(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(content, encoding="utf-8")
         return f"File written: {path}"
@@ -35,7 +43,7 @@ def write_file(path: str, content: str) -> str:
 def list_directory(path: str = ".") -> str:
     """List files and directories at the given path."""
     try:
-        entries = sorted(Path(path).iterdir(), key=lambda e: (e.is_file(), e.name))
+        entries = sorted(_resolve(path).iterdir(), key=lambda e: (e.is_file(), e.name))
         lines = []
         for entry in entries:
             prefix = "  " if entry.is_file() else "/ "

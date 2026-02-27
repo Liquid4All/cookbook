@@ -3,6 +3,9 @@
 Usage:
     python benchmark/run.py --backend anthropic [--model claude-sonnet-4-6] [--task 1,2,3]
     python benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
+
+    # llama.cpp suite (requires a local clone of the repo)
+    python benchmark/run.py --backend anthropic --suite llamacpp --working-dir /tmp/llama.cpp
 """
 from __future__ import annotations
 
@@ -10,11 +13,14 @@ import argparse
 import contextlib
 import io
 import json
+import subprocess
 import sys
 import time
+import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Make sure the project src and benchmark/ dir are importable
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -26,7 +32,48 @@ from local_coding_assistant.config import Config
 from local_coding_assistant.context import ContextManager
 from local_coding_assistant.llm import LLMResponse, get_llm_client
 from local_coding_assistant.tools import set_working_directory
-from tasks import TASKS, Task
+
+
+# ── Local server management ───────────────────────────────────────────────────
+
+def _start_local_server(config: Config) -> subprocess.Popen:
+    """Start llama-server for config.local_model. Returns the process."""
+    import os
+    port = urlparse(config.local_base_url).port or 8080
+    model = config.local_model
+
+    cmd = [
+        "llama-server",
+        "--port", str(port),
+        "--ctx-size", str(config.local_ctx_size),
+        "--n-gpu-layers", str(config.local_n_gpu_layers),
+        "--flash-attn", "on",
+    ]
+
+    if model.startswith("/") or model.startswith("./"):
+        cmd += ["--model", model]
+    else:
+        cmd += ["-hf", model]
+        hf_token = os.environ.get("HF_TOKEN", "")
+        if hf_token:
+            cmd += ["-hft", hf_token]
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    health_url = f"http://localhost:{port}/health"
+    print(f"  Starting llama-server for {model} ...", flush=True)
+    for _ in range(180):
+        try:
+            with urllib.request.urlopen(health_url, timeout=1) as resp:
+                if resp.status == 200:
+                    print("  llama-server ready.\n", flush=True)
+                    return proc
+        except Exception:
+            pass
+        time.sleep(1)
+
+    proc.kill()
+    raise RuntimeError("llama-server did not become ready within 3 minutes")
 
 
 # ── Metrics dataclass ─────────────────────────────────────────────────────────
@@ -167,16 +214,17 @@ def print_summary(
 
 
 def save_results(
-    results: list[TaskResult], backend: str, model: str, date: str
+    results: list[TaskResult], suite: str, backend: str, model: str, date: str
 ) -> Path:
     results_dir = Path(__file__).parent / "results"
     results_dir.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     model_slug = model.replace("/", "-").replace(":", "-").replace(" ", "_")
-    out_file = results_dir / f"{timestamp}-{backend}-{model_slug}.json"
+    out_file = results_dir / f"{timestamp}-{suite}-{backend}-{model_slug}.json"
 
     report = {
+        "suite": suite,
         "backend": backend,
         "model": model,
         "date": date,
@@ -210,7 +258,17 @@ def main() -> None:
         "--working-dir", default=None,
         help="Working directory for agent tool calls (default: project root)",
     )
+    parser.add_argument(
+        "--suite", default="default", choices=["default", "llamacpp"],
+        help="Task suite to run: 'default' (local-coding-assistant) or 'llamacpp'",
+    )
     args = parser.parse_args()
+
+    # Load the chosen task suite
+    if args.suite == "llamacpp":
+        from tasks_llamacpp import TASKS
+    else:
+        from tasks import TASKS
 
     # Determine which tasks to run
     if args.task:
@@ -234,32 +292,46 @@ def main() -> None:
         config.anthropic_model if config.backend == "anthropic" else config.local_model
     )
 
-    working_dir = Path(args.working_dir).resolve() if args.working_dir else _PROJECT_ROOT
-
-    # Build instrumented LLM client (shared; reset per task)
-    raw_llm = get_llm_client(config)
-    instrumented = InstrumentedLLMClient(raw_llm)
-
-    date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    print(
-        f"Running {len(tasks_to_run)} task(s) | "
-        f"backend={args.backend} | model={model_name}"
+    working_dir = (
+        Path(args.working_dir).resolve() if args.working_dir
+        else (_PROJECT_ROOT if args.suite == "default" else Path.cwd())
     )
-    print(f"Working dir: {working_dir}\n")
 
-    results: list[TaskResult] = []
-    for task in tasks_to_run:
-        print(f"  [{task.id:>2}/10] {task.name} ...", end=" ", flush=True)
-        result = run_task(task, instrumented, config, working_dir)
-        status = "PASS" if result.passed else "FAIL"
-        print(f"{status} ({result.duration_s:.1f}s)")
-        results.append(result)
+    # Start local server if needed
+    server_proc: subprocess.Popen | None = None
+    if config.backend == "local" and args.model:
+        server_proc = _start_local_server(config)
 
-    print_summary(results, args.backend, model_name, date_str)
+    try:
+        # Build instrumented LLM client (shared; reset per task)
+        raw_llm = get_llm_client(config)
+        instrumented = InstrumentedLLMClient(raw_llm)
 
-    out_file = save_results(results, args.backend, model_name, date_str)
-    print(f"\nResults saved to: {out_file}")
+        date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        print(
+            f"Running {len(tasks_to_run)} task(s) | "
+            f"suite={args.suite} | backend={args.backend} | model={model_name}"
+        )
+        print(f"Working dir: {working_dir}\n")
+
+        results: list[TaskResult] = []
+        for task in tasks_to_run:
+            print(f"  [{task.id:>2}/10] {task.name} ...", end=" ", flush=True)
+            result = run_task(task, instrumented, config, working_dir)
+            status = "PASS" if result.passed else "FAIL"
+            print(f"{status} ({result.duration_s:.1f}s)")
+            results.append(result)
+
+        print_summary(results, args.backend, model_name, date_str)
+
+        out_file = save_results(results, args.suite, args.backend, model_name, date_str)
+        print(f"\nResults saved to: {out_file}")
+
+    finally:
+        if server_proc is not None:
+            server_proc.terminate()
+            server_proc.wait()
 
 
 if __name__ == "__main__":
