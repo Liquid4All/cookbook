@@ -136,6 +136,46 @@ CLI flags override env vars:
 uv run lca --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --working-dir /path/to/my/project
 ```
 
+## Benchmarking
+
+The `benchmark/` directory contains 10 tasks of increasing difficulty (easy → hard) with automated verifiers. Use it to compare how different models perform on coding assistant tasks.
+
+```bash
+# Quick smoke test (tasks 1–3)
+uv run python benchmark/run.py --backend anthropic --task 1,2,3
+
+# Full benchmark against Anthropic
+uv run python benchmark/run.py --backend anthropic
+
+# Full benchmark against a local model
+uv run python benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
+```
+
+Results are saved to `benchmark/results/<timestamp>-<backend>-<model>.json` and a summary table is printed:
+
+```
+Model : claude-sonnet-4-6 (anthropic)
+Date  : 2026-02-27 12:55
+
+#    Task                                     Pass       Time       In/Out tokens  Turns
+----------------------------------------------------------------------------------------
+1    List directory                           ✓          4.8s            2191/267      2
+...
+10   Compare LLM backends                     ✓         47.5s          10594/2419      4
+----------------------------------------------------------------------------------------
+
+Score: 10/10  |  Total tokens: 75702  |  Avg time: 13.5s
+```
+
+Optional flags:
+
+| Flag | Description |
+|---|---|
+| `--backend` | `anthropic` or `local` (required) |
+| `--model` | Override the model (Anthropic model ID or HF/GGUF path for local) |
+| `--task` | Comma-separated task IDs to run, e.g. `1,2,3` |
+| `--working-dir` | Directory the agent operates in (default: project root) |
+
 ## Project structure
 
 ```
