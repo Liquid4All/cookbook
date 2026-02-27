@@ -1,6 +1,6 @@
 # Meeting Intelligence Agent
 
-A local AI agent that reads meeting transcripts and turns them into structured outputs: action items, a markdown summary, and a follow-up email — all running on your hardware.
+A local AI agent that reads meeting transcripts and turns them into structured outputs: action items, a markdown summary, and a follow-up email. Runs entirely on your hardware. Your personal or private data is not shared with any model provider.
 
 ## What it does
 
@@ -12,8 +12,6 @@ Given a meeting transcript, the agent:
 4. Creates a task record for each action item (`data/tasks.json`)
 5. Saves a structured markdown summary (`data/summaries/`)
 6. Drafts and "sends" a follow-up email (`data/sent_emails.log`)
-
-No external APIs are called. All side effects are local files.
 
 ## Setup
 
@@ -67,7 +65,7 @@ uv run mia
 | 9 | hard | Default due dates for items without explicit deadlines | ✓ | 47.8s |
 | 10 | hard | Full pipeline: custom filename and targeted email recipients | ✓ | 51.7s |
 
-**Score: 10/10** — see [`benchmark/results/summary.md`](benchmark/results/summary.md) for full token and turn counts.
+**Score: 10/10.** See [`benchmark/results/summary.md`](benchmark/results/summary.md) for full token and turn counts.
 
 **Run the benchmark:**
 ```bash
