@@ -87,6 +87,7 @@ Pass `--backend local` and `--model` to select the model. The llama-server is st
 
 ```bash
 uv run lca --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
+uv run lca --backend local --model unsloth/Qwen3.5-27B-GGUF:Q4_0
 ```
 
 If the repo requires authentication, set `HF_TOKEN` in your environment or `.env` file.
@@ -107,7 +108,7 @@ If you prefer to manage the llama-server yourself, omit `--model` and the assist
 
 ```bash
 # terminal 1 — start server manually
-llama-server --model /path/to/model.gguf --port 8080
+llama-server -hf LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --port 8080
 
 # terminal 2 — connect without auto-start
 uv run lca --backend local
