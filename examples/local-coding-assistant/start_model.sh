@@ -12,4 +12,5 @@ llama-server \
   -hf LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 \
   -hft "$HF_TOKEN" \
   --ctx-size 8192 \
-  --port 8080
+  --port 8080 \
+  --jinja

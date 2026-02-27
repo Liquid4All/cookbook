@@ -1,15 +1,13 @@
 import readline  # noqa: F401 — enables arrow-key history in input()
 import subprocess
 import sys
-import time
-import urllib.request
-from urllib.parse import urlparse
 
 import click
 
 from .agent import Agent
 from .config import Config, load_config
 from .llm import get_llm_client
+from .server import start_local_server
 from .tools import set_working_directory
 
 BANNER = """
@@ -26,47 +24,6 @@ def _model_name(config: Config) -> str:
         return config.anthropic_model
     return f"{config.local_model} @ {config.local_base_url}"
 
-
-def _start_local_server(config: Config) -> subprocess.Popen:
-    """Start llama-server for config.local_model. Returns the process."""
-    port = urlparse(config.local_base_url).port or 8080
-    model = config.local_model
-
-    cmd = [
-        "llama-server",
-        "--port", str(port),
-        "--ctx-size", str(config.local_ctx_size),
-        "--n-gpu-layers", str(config.local_n_gpu_layers),
-        "--flash-attn", "on",
-    ]
-
-    # Local file path vs HuggingFace repo path
-    if model.startswith("/") or model.startswith("./"):
-        cmd += ["--model", model]
-    else:
-        import os
-        cmd += ["-hf", model]
-        hf_token = os.environ.get("HF_TOKEN", "")
-        if hf_token:
-            cmd += ["-hft", hf_token]
-
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    # Poll /health until ready (up to 3 minutes for large model downloads/loads)
-    health_url = f"http://localhost:{port}/health"
-    print(f"  Starting llama-server for {model} ...", flush=True)
-    for _ in range(180):
-        try:
-            with urllib.request.urlopen(health_url, timeout=1) as resp:
-                if resp.status == 200:
-                    print("  llama-server ready.\n", flush=True)
-                    return proc
-        except Exception:
-            pass
-        time.sleep(1)
-
-    proc.kill()
-    raise RuntimeError("llama-server did not become ready within 3 minutes")
 
 
 @click.command()
@@ -92,7 +49,7 @@ def main(backend: str | None, model: str | None, working_dir: str | None, prompt
 
     server_proc: subprocess.Popen | None = None
     if config.backend == "local" and model:
-        server_proc = _start_local_server(config)
+        server_proc = start_local_server(config)
 
     try:
         llm = get_llm_client(config)

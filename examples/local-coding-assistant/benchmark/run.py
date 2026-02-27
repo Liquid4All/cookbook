@@ -15,12 +15,9 @@ import io
 import json
 import subprocess
 import sys
-import time
-import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlparse
 
 # Make sure the project src and benchmark/ dir are importable
 _PROJECT_ROOT = Path(__file__).parent.parent
@@ -31,49 +28,8 @@ from local_coding_assistant.agent import Agent
 from local_coding_assistant.config import Config
 from local_coding_assistant.context import ContextManager
 from local_coding_assistant.llm import LLMResponse, get_llm_client
+from local_coding_assistant.server import start_local_server
 from local_coding_assistant.tools import set_working_directory
-
-
-# ── Local server management ───────────────────────────────────────────────────
-
-def _start_local_server(config: Config) -> subprocess.Popen:
-    """Start llama-server for config.local_model. Returns the process."""
-    import os
-    port = urlparse(config.local_base_url).port or 8080
-    model = config.local_model
-
-    cmd = [
-        "llama-server",
-        "--port", str(port),
-        "--ctx-size", str(config.local_ctx_size),
-        "--n-gpu-layers", str(config.local_n_gpu_layers),
-        "--flash-attn", "on",
-    ]
-
-    if model.startswith("/") or model.startswith("./"):
-        cmd += ["--model", model]
-    else:
-        cmd += ["-hf", model]
-        hf_token = os.environ.get("HF_TOKEN", "")
-        if hf_token:
-            cmd += ["-hft", hf_token]
-
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    health_url = f"http://localhost:{port}/health"
-    print(f"  Starting llama-server for {model} ...", flush=True)
-    for _ in range(180):
-        try:
-            with urllib.request.urlopen(health_url, timeout=1) as resp:
-                if resp.status == 200:
-                    print("  llama-server ready.\n", flush=True)
-                    return proc
-        except Exception:
-            pass
-        time.sleep(1)
-
-    proc.kill()
-    raise RuntimeError("llama-server did not become ready within 3 minutes")
 
 
 # ── Metrics dataclass ─────────────────────────────────────────────────────────
@@ -300,7 +256,7 @@ def main() -> None:
     # Start local server if needed
     server_proc: subprocess.Popen | None = None
     if config.backend == "local" and args.model:
-        server_proc = _start_local_server(config)
+        server_proc = start_local_server(config)
 
     try:
         # Build instrumented LLM client (shared; reset per task)
