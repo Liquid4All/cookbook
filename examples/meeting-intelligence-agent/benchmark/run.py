@@ -3,14 +3,14 @@
 Usage:
     cd examples/meeting-intelligence-agent
 
-    # Anthropic backend
-    python benchmark/run.py --backend anthropic
+    # Auto-start llama-server for the given model
+    uv run benchmark/run.py --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
 
-    # Local llama.cpp backend (server must already be running, or pass --model to auto-start)
-    python benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
+    # Use an already-running llama-server
+    uv run benchmark/run.py
 
     # Run a subset of tasks
-    python benchmark/run.py --backend anthropic --task 1,2,3
+    uv run benchmark/run.py --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --task 1,2,3
 """
 from __future__ import annotations
 
@@ -153,8 +153,8 @@ def run_task(
 
 # ── Output helpers ────────────────────────────────────────────────────────────
 
-def print_summary(results: list[TaskResult], backend: str, model: str, date: str) -> None:
-    print(f"\nModel : {model} ({backend})")
+def print_summary(results: list[TaskResult], model: str, date: str) -> None:
+    print(f"\nModel : {model}")
     print(f"Date  : {date}\n")
 
     col_task = 44
@@ -185,19 +185,16 @@ def print_summary(results: list[TaskResult], backend: str, model: str, date: str
     )
 
 
-def save_results(
-    results: list[TaskResult], backend: str, model: str, date: str
-) -> Path:
+def save_results(results: list[TaskResult], model: str, date: str) -> Path:
     results_dir = Path(__file__).parent / "results"
     results_dir.mkdir(exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     model_slug = model.replace("/", "-").replace(":", "-").replace(" ", "_")
-    out_file = results_dir / f"{timestamp}-{backend}-{model_slug}.json"
+    out_file = results_dir / f"{timestamp}-{model_slug}.json"
 
     report = {
         "suite": "meeting-intelligence",
-        "backend": backend,
         "model": model,
         "date": date,
         "tasks": [asdict(r) for r in results],
@@ -215,12 +212,8 @@ def main() -> None:
         description="Run the Meeting Intelligence Agent benchmark"
     )
     parser.add_argument(
-        "--backend", required=True, choices=["anthropic", "local"],
-        help="LLM backend to use",
-    )
-    parser.add_argument(
         "--model", default=None,
-        help="Model name (Anthropic model ID or HuggingFace/GGUF path for local)",
+        help="Model name or HuggingFace/GGUF path (auto-starts llama-server)",
     )
     parser.add_argument(
         "--task", default=None,
@@ -239,20 +232,14 @@ def main() -> None:
 
     # Build config
     config = Config()
-    config.backend = args.backend  # type: ignore[assignment]
     if args.model:
-        if config.backend == "anthropic":
-            config.anthropic_model = args.model
-        else:
-            config.local_model = args.model
+        config.local_model = args.model
 
-    model_name = (
-        config.anthropic_model if config.backend == "anthropic" else config.local_model
-    )
+    model_name = config.local_model
 
-    # Start local server if needed
+    # Start local server if a model path was provided
     server_proc: subprocess.Popen | None = None
-    if config.backend == "local" and args.model:
+    if args.model:
         server_proc = start_local_server(config)
 
     try:
@@ -262,7 +249,7 @@ def main() -> None:
 
         print(
             f"Running {len(tasks_to_run)} task(s) | "
-            f"suite=meeting-intelligence | backend={args.backend} | model={model_name}"
+            f"suite=meeting-intelligence | model={model_name}"
         )
         print(f"Data dir: {_DATA_DIR}\n")
 
@@ -275,9 +262,9 @@ def main() -> None:
             print(f"{status} ({result.duration_s:.1f}s)")
             results.append(result)
 
-        print_summary(results, args.backend, model_name, date_str)
+        print_summary(results, model_name, date_str)
 
-        out_file = save_results(results, args.backend, model_name, date_str)
+        out_file = save_results(results, model_name, date_str)
         print(f"\nResults saved to: {out_file}")
 
     finally:

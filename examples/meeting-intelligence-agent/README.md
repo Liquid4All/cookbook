@@ -20,30 +20,24 @@ No external APIs are called. All side effects are local files.
 ```bash
 cd examples/meeting-intelligence-agent
 uv sync
-cp .env.example .env
-# Add your ANTHROPIC_API_KEY to .env
 ```
 
 ## Usage
 
-**Interactive mode (Anthropic backend):**
+**Interactive mode:**
 ```bash
-uv run mia
+uv run mia --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
 > Process the meeting transcript in data/sample_transcript.txt
 ```
 
 **Non-interactive mode:**
 ```bash
-uv run mia -p "Process data/sample_transcript.txt and save the summary as sprint-42.md"
+uv run mia --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 -p "Process data/sample_transcript.txt and save the summary as sprint-42.md"
 ```
 
-**Local model (llama.cpp):**
+**With an already-running llama-server:**
 ```bash
-# First, download the model and start the server:
-bash start_model.sh models/LFM2-24B-A2B-Q4_K_M.gguf
-
-# Then run with the local backend:
-uv run mia --backend local
+uv run mia
 > Process the meeting transcript in data/sample_transcript.txt
 ```
 
@@ -51,8 +45,6 @@ uv run mia --backend local
 
 | Environment variable    | Default                      | Description                        |
 |-------------------------|------------------------------|------------------------------------|
-| `MIA_BACKEND`           | `anthropic`                  | `anthropic` or `local`             |
-| `MIA_ANTHROPIC_MODEL`   | `claude-sonnet-4-6`          | Anthropic model ID                 |
 | `MIA_LOCAL_BASE_URL`    | `http://localhost:8080/v1`   | llama.cpp server URL               |
 | `MIA_LOCAL_MODEL`       | `local`                      | Model name or HuggingFace path     |
 | `MIA_LOCAL_CTX_SIZE`    | `32768`                      | Context window size                |
@@ -80,13 +72,10 @@ uv run mia --backend local
 **Run the benchmark:**
 ```bash
 # All tasks
-uv run benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
+uv run benchmark/run.py --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
 
 # Subset of tasks
-uv run benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --task 7,8,9,10
-
-# Anthropic backend
-uv run benchmark/run.py --backend anthropic
+uv run benchmark/run.py --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --task 7,8,9,10
 ```
 
 ## Demo outputs

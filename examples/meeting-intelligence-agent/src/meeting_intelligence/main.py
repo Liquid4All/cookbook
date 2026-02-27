@@ -18,30 +18,17 @@ BANNER = """
 """
 
 
-def _model_name(config: Config) -> str:
-    if config.backend == "anthropic":
-        return config.anthropic_model
-    return f"{config.local_model} @ {config.local_base_url}"
-
-
 @click.command()
-@click.option("--backend", default=None, help="LLM backend: anthropic or local")
-@click.option("--model", default=None, help="Model name (Anthropic model ID, or HF path/GGUF for local)")
+@click.option("--model", default=None, help="Model name or HuggingFace/GGUF path")
 @click.option("-p", "--prompt", default=None, help="Run a single prompt non-interactively and exit")
-def main(backend: str | None, model: str | None, prompt: str | None) -> None:
+def main(model: str | None, prompt: str | None) -> None:
     config = load_config()
 
-    # CLI flags override env vars
-    if backend:
-        config.backend = backend  # type: ignore[assignment]
     if model:
-        if config.backend == "anthropic":
-            config.anthropic_model = model
-        else:
-            config.local_model = model
+        config.local_model = model
 
     server_proc: subprocess.Popen | None = None
-    if config.backend == "local" and model:
+    if model:
         server_proc = start_local_server(config)
 
     try:
@@ -58,8 +45,7 @@ def main(backend: str | None, model: str | None, prompt: str | None) -> None:
             return
 
         print(BANNER)
-        print(f"  Backend : {config.backend}")
-        print(f"  Model   : {_model_name(config)}\n")
+        print(f"  Model : {config.local_model} @ {config.local_base_url}\n")
 
         while True:
             try:

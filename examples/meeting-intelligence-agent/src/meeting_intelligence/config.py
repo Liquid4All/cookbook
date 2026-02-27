@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 from dotenv import load_dotenv
@@ -9,13 +9,6 @@ load_dotenv()
 
 @dataclass
 class Config:
-    # Which backend to use
-    backend: Literal["anthropic", "local"] = "anthropic"
-
-    # Anthropic settings
-    anthropic_model: str = "claude-sonnet-4-6"
-    anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
-
     # Local llama.cpp server settings
     local_base_url: str = "http://localhost:8080/v1"
     local_model: str = "local"
@@ -31,9 +24,6 @@ class Config:
 def load_config() -> Config:
     """Load config from environment variables."""
     return Config(
-        backend=os.getenv("MIA_BACKEND", "anthropic"),  # type: ignore[arg-type]
-        anthropic_model=os.getenv("MIA_ANTHROPIC_MODEL", "claude-sonnet-4-6"),
-        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
         local_base_url=os.getenv("MIA_LOCAL_BASE_URL", "http://localhost:8080/v1"),
         local_model=os.getenv("MIA_LOCAL_MODEL", "local"),
         local_ctx_size=int(os.getenv("MIA_LOCAL_CTX_SIZE", "32768")),
