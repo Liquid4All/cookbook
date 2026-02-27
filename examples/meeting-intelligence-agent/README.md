@@ -58,6 +58,37 @@ uv run mia --backend local
 | `MIA_LOCAL_CTX_SIZE`    | `32768`                      | Context window size                |
 | `MIA_LOCAL_GPU_LAYERS`  | `99`                         | GPU layers to offload (0 = CPU)    |
 
+## Benchmark
+
+10-task suite covering easy → hard agentic scenarios, tested against `LiquidAI/LFM2-24B-A2B-GGUF:Q4_0` (local, llama-server):
+
+| # | Difficulty | Task | Pass | Time |
+|---|---|---|:---:|---:|
+| 1 | easy | Read transcript and list attendees | ✓ | 6.7s |
+| 2 | easy | Look up one team member | ✓ | 5.1s |
+| 3 | easy | Create one explicit task | ✓ | 6.1s |
+| 4 | medium | Look up three team members | ✓ | 26.7s |
+| 5 | medium | Create three tasks from a given list | ✓ | 22.4s |
+| 6 | medium | Read transcript and save a structured summary | ✓ | 19.0s |
+| 7 | hard | Full pipeline: tasks + summary + email | ✓ | 80.5s |
+| 8 | hard | Detect and flag unassigned action item | ✓ | 103.6s |
+| 9 | hard | Default due dates for items without explicit deadlines | ✓ | 47.8s |
+| 10 | hard | Full pipeline: custom filename and targeted email recipients | ✓ | 51.7s |
+
+**Score: 10/10** — see [`benchmark/results/summary.md`](benchmark/results/summary.md) for full token and turn counts.
+
+**Run the benchmark:**
+```bash
+# All tasks
+uv run benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
+
+# Subset of tasks
+uv run benchmark/run.py --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0 --task 7,8,9,10
+
+# Anthropic backend
+uv run benchmark/run.py --backend anthropic
+```
+
 ## Demo outputs
 
 After running the agent on `data/sample_transcript.txt`:
