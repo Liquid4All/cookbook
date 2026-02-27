@@ -19,6 +19,10 @@ def start_local_server(config: Config) -> subprocess.Popen:
         "--n-gpu-layers", str(config.local_n_gpu_layers),
         "--flash-attn", "on",
         "--jinja",
+        # Recommended generation parameters for LFM2-24B-A2B
+        "--temp", "0.1",
+        "--top-k", "50",
+        "--repeat-penalty", "1.05",
     ]
 
     if model.startswith("/") or model.startswith("./"):

@@ -86,6 +86,9 @@ llama-server \
   --n-gpu-layers 99 \
   --flash-attn on \
   --jinja \
+  --temp 0.1 \
+  --top-k 50 \
+  --repeat-penalty 1.05 \
   -hf LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
 
 # Then run the agent (server is reused across runs)
