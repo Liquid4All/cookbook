@@ -1,0 +1,10 @@
+[
+  {"name": "Alice Chen",   "email": "alice@acme.com",  "role": "Engineering Lead",  "team": "Platform"},
+  {"name": "Bob Martinez", "email": "bob@acme.com",    "role": "Product Manager",   "team": "Product"},
+  {"name": "Carol Davis",  "email": "carol@acme.com",  "role": "Designer",          "team": "Design"},
+  {"name": "David Kim",    "email": "david@acme.com",  "role": "Backend Engineer",  "team": "Platform"},
+  {"name": "Emma Wilson",  "email": "emma@acme.com",   "role": "QA Engineer",       "team": "Quality"},
+  {"name": "Frank Nguyen", "email": "frank@acme.com",  "role": "DevOps Engineer",   "team": "Infrastructure"},
+  {"name": "Grace Lee",    "email": "grace@acme.com",  "role": "Data Analyst",      "team": "Analytics"},
+  {"name": "Henry Patel",  "email": "henry@acme.com",  "role": "Frontend Engineer", "team": "Platform"}
+]
