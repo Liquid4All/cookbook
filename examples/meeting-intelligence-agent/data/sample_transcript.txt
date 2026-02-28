@@ -1,0 +1,41 @@
+Sprint Planning — Acme Corp Platform Team
+Date:
+Attendees: Alice Chen, Bob Martinez, Carol Davis, David Kim, Emma Wilson, Frank Nguyen, Henry Patel
+
+[00:00] Alice: Okay, let's get started. We're a bit behind so let's move quickly. Bob, do you want to kick us off with priorities for this sprint?
+
+[00:18] Bob: Sure. So the headline item is getting the new onboarding flow shipped. It's been on the roadmap for two sprints and the CEO is asking about it. Carol, the mockups you sent over yesterday are looking really solid — can you finalise the mobile screens by end of week so David can start on the backend?
+
+[00:42] Carol: Yeah, no problem. I'll have the final mobile screens done by Friday.
+
+[00:48] Bob: Perfect. David, once you have the designs, what's your timeline for the backend endpoints?
+
+[00:55] David: If I get the mockups Friday I can have the onboarding API endpoints ready by end of next week. I just need to make sure the auth tokens are scoped correctly — I'll sync with Alice on that.
+
+[01:10] Alice: Sounds good. I'll be available. Let's make sure Emma gets looped in early too.
+
+[01:18] Emma: Happy to be involved. I was going to say — I should write a test plan for the onboarding flow once Carol's designs are final. I'll draft it and circulate it to the team.
+
+[01:30] Alice: Great. No specific deadline on that, Emma, just get it done before we start QA.
+
+[01:38] Frank: I want to flag something — we don't have a staging environment that mirrors production yet. I can set that up. I'll target Monday so the team has it ready for the week.
+
+[01:52] Alice: That's actually really important, Frank. Yes, please do that. It'll unblock a lot of the testing work.
+
+[02:00] Bob: One more thing before we go into the backlog — Henry, we had that login page performance regression reported by three enterprise customers last week. Can you take that on this sprint?
+
+[02:15] Henry: Yeah, I saw that ticket. I'll dig in and get it fixed this sprint.
+
+[02:22] Bob: Great. There's no hard date but let's aim to have it resolved before the sprint ends.
+
+[02:30] Alice: Also — and I'm not sure who owns this — the API docs are out of date. A few customers have complained that the authentication section doesn't match the new token format we shipped last month. Someone needs to update that.
+
+[02:45] Bob: I can add it to the backlog. We should figure out ownership offline.
+
+[02:52] Alice: Agreed. Last item — Bob, I think you mentioned scheduling a demo with the CEO?
+
+[03:00] Bob: Right, yes. I'll set up a demo with the CEO for next Thursday. I'll send the invite today.
+
+[03:10] Alice: Perfect. Okay, I think that covers everything. Thanks everyone — let's have a good sprint.
+
+[03:15] All: Thanks, bye.
