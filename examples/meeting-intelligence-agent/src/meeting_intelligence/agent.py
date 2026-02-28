@@ -15,6 +15,9 @@ class Agent:
         """Process one user message, running the inner loop until end_turn."""
         self._context.add({"role": "user", "content": user_input})
 
+        tools_used = 0
+        nudged = False
+
         while True:
             if self._context.should_compact():
                 self._context.compact()
@@ -32,6 +35,17 @@ class Agent:
             tool_calls = [b for b in response.content if b["type"] == "tool_use"]
 
             if not tool_calls:
+                # If the model produced text without ever calling a tool, nudge it once.
+                if tools_used == 0 and not nudged:
+                    nudged = True
+                    self._context.add({
+                        "role": "user",
+                        "content": (
+                            "You must call a tool to complete this request. "
+                            "Do not describe or simulate the result — call the appropriate tool directly."
+                        ),
+                    })
+                    continue
                 # End of turn — print the final text response
                 for block in response.content:
                     if block["type"] == "text":
@@ -39,6 +53,7 @@ class Agent:
                 break
 
             # Execute all tool calls and collect results
+            tools_used += len(tool_calls)
             tool_results = []
             for call in tool_calls:
                 args_preview = ", ".join(f"{k}={v!r}" for k, v in call["input"].items())
