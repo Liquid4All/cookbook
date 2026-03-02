@@ -28,6 +28,7 @@ Ready-to-run applications showcasing agentic workflows and real-time inference o
 | Audio Car Cockpit | Voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B with LFM2-1.2B-Tool | [Code](./examples/audio-car-cockpit/README.md) |
 | Audio WebGPU Demo | Run LFM2.5-Audio-1.5B entirely in your browser for speech recognition, TTS, and conversation | [Code](./examples/audio-webgpu-demo/README.md) |
 | Vision WebGPU Demo | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) |
+| Thinking WebGPU Demo | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
 | LocalCowork | On-device AI agent for file ops, security scanning, OCR, and more, powered by LFM2-24B-A2B | [Code](./examples/localcowork/README.md) |
 
 ## 📱 Mobile App Deployment
@@ -77,24 +78,25 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 
 Open-source projects built by the community showcasing LFMs with real use cases.
 
-| Name | Description | Link |
-|------|-------------|------|
-| Image Classification on Edge | End-to-end tutorial covering fine-tuning and deployment for super fast and accurate image classification using local VLMs | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
-| Chess Game with Small LMs | End-to-end tutorial covering fine-tuning and deployment to build a Chess game using Small Language Models | [Code](https://github.com/Paulescu/chess-game) |
-| TranslatorLens | Offline translation camera for real-time text translation | [Code](https://github.com/linmx0130/TranslatorLens) |
-| Food Images Fine-tuning | Fine-tune LFM models on food image datasets | [Code](https://github.com/benitomartin/food-images-finetuning) |
-| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [Code](https://github.com/chintan-projects/meeting-prompter) |
-| Private Doc Q&A | On-device document Q&A with RAG and voice input | [Code](https://github.com/chintan-projects/private-doc-qa) |
-| Photo Triage Agent | Private photo library cleanup using LFM vision model | [Code](https://github.com/chintan-projects/photo-triage-agent) |
-| LFM-Scholar | Automated literature review agent for finding and citing papers | [Code](https://github.com/gyunggyung/LFM-Scholar) |
-| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
-| Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
-| Private Summarizer | 100% local text summarization with multi-language support | [Code](https://github.com/Private-Intelligence/private_summarizer) |
-| Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
-| LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
-| LFM-2.5 Thinking on Web | LFM2.5 1.2B parameter reasoning language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime Web | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
-| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
-| SFT + DPO Fine-tuning | Teaching a 1.2B Model to be a Grumpy Italian Chef: SFT + DPO Fine-Tuning with Unsloth | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
+| Name | Description | Stars | Link |
+|------|-------------|-------|------|
+| Image Classification on Edge | End-to-end tutorial covering fine-tuning and deployment for super fast and accurate image classification using local VLMs | ![Stars](https://img.shields.io/github/stars/Paulescu/image-classification-with-local-vlms?style=social) | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
+| Chess Game with Small LMs | End-to-end tutorial covering fine-tuning and deployment to build a Chess game using Small Language Models | ![Stars](https://img.shields.io/github/stars/Paulescu/chess-game?style=social) | [Code](https://github.com/Paulescu/chess-game) |
+| TranslatorLens | Offline translation camera for real-time text translation | ![Stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens?style=social) | [Code](https://github.com/linmx0130/TranslatorLens) |
+| Food Images Fine-tuning | Fine-tune LFM models on food image datasets | ![Stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning?style=social) | [Code](https://github.com/benitomartin/food-images-finetuning) |
+| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | ![Stars](https://img.shields.io/github/stars/chintan-projects/meeting-prompter?style=social) | [Code](https://github.com/chintan-projects/meeting-prompter) |
+| Private Doc Q&A | On-device document Q&A with RAG and voice input | ![Stars](https://img.shields.io/github/stars/chintan-projects/private-doc-qa?style=social) | [Code](https://github.com/chintan-projects/private-doc-qa) |
+| Photo Triage Agent | Private photo library cleanup using LFM vision model | ![Stars](https://img.shields.io/github/stars/chintan-projects/photo-triage-agent?style=social) | [Code](https://github.com/chintan-projects/photo-triage-agent) |
+| LFM-Scholar | Automated literature review agent for finding and citing papers | ![Stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar?style=social) | [Code](https://github.com/gyunggyung/LFM-Scholar) |
+| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | ![Stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning?style=social) | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
+| Chat with LEAP SDK | LEAP SDK integration for React Native | ![Stars](https://img.shields.io/github/stars/glody007/expo-leap-sdk?style=social) | [Code](https://github.com/glody007/expo-leap-sdk) |
+| Private Summarizer | 100% local text summarization with multi-language support | ![Stars](https://img.shields.io/github/stars/Private-Intelligence/private_summarizer?style=social) | [Code](https://github.com/Private-Intelligence/private_summarizer) |
+| Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | ![Stars](https://img.shields.io/github/stars/gyunggyung/Tiny-MoA?style=social) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
+| LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | ![Stars](https://img.shields.io/github/stars/sitammeur/lfm2.5-jp-web?style=social) | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
+| LFM-2.5 Thinking on Web | LFM2.5 1.2B parameter reasoning language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime Web | ![Stars](https://img.shields.io/github/stars/sitammeur/lfm2.5-thinking-web?style=social) | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
+| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | ![Stars](https://img.shields.io/github/stars/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions?style=social) | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
+| SFT + DPO Fine-tuning | Teaching a 1.2B Model to be a Grumpy Italian Chef: SFT + DPO Fine-Tuning with Unsloth | ![Stars](https://img.shields.io/github/stars/benitomartin/grumpy-chef-finetuning-dpo?style=social) | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
+| Tauri Plugin LEAP AI | Tauri plugin to integrate LEAP and Liquid LFMs into desktop and mobile apps built with Tauri | | [Crate](https://crates.io/crates/tauri-plugin-leap-ai) |
 
 ## 🕐 Technical Deep Dives
 
@@ -106,6 +108,7 @@ Recorded sessions (~60 minutes) covering advanced topics and hands-on implementa
 | 2025-11-27 | Building a 100% local Audio-to-Speech CLI with LFM2-Audio | [Video](https://www.youtube.com/watch?v=yeu077gPmCA) |
 | 2025-12-26 | Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv | [Video](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
 | 2026-01-22 | Local video-captioning with LFM2.5-VL-1.6B and WebGPU | [Video](https://www.youtube.com/watch?v=xsWARHFoA3E) |
+| 2026-03-05 | Build your own local AI coding assistant with LLM + tools + context engineering | [Register](https://liquid-ai.zoom.us/webinar/register/WN_Vie59kpdSJGCAX6NcgJtyg#/registration) |
 
 Join the next session! Head to the `#live-events` channel on [Discord](https://discord.com/invite/liquid-ai).
 
