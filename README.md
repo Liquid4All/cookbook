@@ -16,6 +16,19 @@
 
 **Examples**, **tutorials**, and **applications** to help you build with our open-weight [LFMs](https://huggingface.co/LiquidAI) and the [LEAP SDK](https://leap.liquid.ai/) on laptops, mobile, and edge devices.
 
+## Contents
+
+- [🤖 Local AI Apps](#-local-ai-apps)
+- [📱 Mobile App Deployment](#-mobile-app-deployment)
+  - [Android](#android)
+  - [iOS](#ios)
+- [🎯 Fine-Tuning Notebooks](#-fine-tuning-notebooks)
+- [🏭 Built with LFM](#-built-with-lfm)
+- [🌟 Community Projects](#-community-projects)
+- [🕐 Technical Deep Dives](#-technical-deep-dives)
+- [Contributing](#contributing)
+- [Support](#support)
+
 ## 🤖 Local AI Apps
 
 Ready-to-run applications showcasing agentic workflows and real-time inference on a local device.
@@ -73,6 +86,14 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
+
+## 🏭 Built with LFM
+
+Production and open-source applications that support LFM models as an inference backend, among other providers.
+
+| Name | Description | Stars | Link |
+|------|-------------|-------|------|
+| DeepCamera | Open-source AI camera system for local vision intelligence with facial recognition, person re-ID, and edge deployment on Jetson and Raspberry Pi | ![Stars](https://img.shields.io/github/stars/SharpAI/DeepCamera?style=social) | [Code](https://github.com/SharpAI/DeepCamera) |
 
 ## 🌟 Community Projects
 
