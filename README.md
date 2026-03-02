@@ -91,33 +91,33 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 
 Production and open-source applications that support LFM models as an inference backend, among other providers.
 
-| Name | Description | Stars | Link |
-|------|-------------|-------|------|
-| DeepCamera | Open-source AI camera system for local vision intelligence with facial recognition, person re-ID, and edge deployment on Jetson and Raspberry Pi | ![Stars](https://img.shields.io/github/stars/SharpAI/DeepCamera?style=social) | [Code](https://github.com/SharpAI/DeepCamera) |
+| Name | Description | Link |
+|------|-------------|------|
+| DeepCamera | Open-source AI camera system for local vision intelligence with facial recognition, person re-ID, and edge deployment on Jetson and Raspberry Pi | [Code](https://github.com/SharpAI/DeepCamera) |
 
 ## 🌟 Community Projects
 
 Open-source projects built by the community showcasing LFMs with real use cases.
 
-| Name | Description | Stars | Link |
-|------|-------------|-------|------|
-| Image Classification on Edge | End-to-end tutorial covering fine-tuning and deployment for super fast and accurate image classification using local VLMs | ![Stars](https://img.shields.io/github/stars/Paulescu/image-classification-with-local-vlms?style=social) | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
-| Chess Game with Small LMs | End-to-end tutorial covering fine-tuning and deployment to build a Chess game using Small Language Models | ![Stars](https://img.shields.io/github/stars/Paulescu/chess-game?style=social) | [Code](https://github.com/Paulescu/chess-game) |
-| TranslatorLens | Offline translation camera for real-time text translation | ![Stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens?style=social) | [Code](https://github.com/linmx0130/TranslatorLens) |
-| Food Images Fine-tuning | Fine-tune LFM models on food image datasets | ![Stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning?style=social) | [Code](https://github.com/benitomartin/food-images-finetuning) |
-| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | ![Stars](https://img.shields.io/github/stars/chintan-projects/meeting-prompter?style=social) | [Code](https://github.com/chintan-projects/meeting-prompter) |
-| Private Doc Q&A | On-device document Q&A with RAG and voice input | ![Stars](https://img.shields.io/github/stars/chintan-projects/private-doc-qa?style=social) | [Code](https://github.com/chintan-projects/private-doc-qa) |
-| Photo Triage Agent | Private photo library cleanup using LFM vision model | ![Stars](https://img.shields.io/github/stars/chintan-projects/photo-triage-agent?style=social) | [Code](https://github.com/chintan-projects/photo-triage-agent) |
-| LFM-Scholar | Automated literature review agent for finding and citing papers | ![Stars](https://img.shields.io/github/stars/gyunggyung/LFM-Scholar?style=social) | [Code](https://github.com/gyunggyung/LFM-Scholar) |
-| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | ![Stars](https://img.shields.io/github/stars/gyunggyung/LFM2-KoEn-Tuning?style=social) | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
-| Chat with LEAP SDK | LEAP SDK integration for React Native | ![Stars](https://img.shields.io/github/stars/glody007/expo-leap-sdk?style=social) | [Code](https://github.com/glody007/expo-leap-sdk) |
-| Private Summarizer | 100% local text summarization with multi-language support | ![Stars](https://img.shields.io/github/stars/Private-Intelligence/private_summarizer?style=social) | [Code](https://github.com/Private-Intelligence/private_summarizer) |
-| Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | ![Stars](https://img.shields.io/github/stars/gyunggyung/Tiny-MoA?style=social) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
-| LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | ![Stars](https://img.shields.io/github/stars/sitammeur/lfm2.5-jp-web?style=social) | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
-| LFM-2.5 Thinking on Web | LFM2.5 1.2B parameter reasoning language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime Web | ![Stars](https://img.shields.io/github/stars/sitammeur/lfm2.5-thinking-web?style=social) | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
-| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | ![Stars](https://img.shields.io/github/stars/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions?style=social) | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
-| SFT + DPO Fine-tuning | Teaching a 1.2B Model to be a Grumpy Italian Chef: SFT + DPO Fine-Tuning with Unsloth | ![Stars](https://img.shields.io/github/stars/benitomartin/grumpy-chef-finetuning-dpo?style=social) | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
-| Tauri Plugin LEAP AI | Tauri plugin to integrate LEAP and Liquid LFMs into desktop and mobile apps built with Tauri | | [Crate](https://crates.io/crates/tauri-plugin-leap-ai) |
+| Name | Description | Link |
+|------|-------------|------|
+| Image Classification on Edge | End-to-end tutorial covering fine-tuning and deployment for super fast and accurate image classification using local VLMs | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
+| Chess Game with Small LMs | End-to-end tutorial covering fine-tuning and deployment to build a Chess game using Small Language Models | [Code](https://github.com/Paulescu/chess-game) |
+| TranslatorLens | Offline translation camera for real-time text translation | [Code](https://github.com/linmx0130/TranslatorLens) |
+| Food Images Fine-tuning | Fine-tune LFM models on food image datasets | [Code](https://github.com/benitomartin/food-images-finetuning) |
+| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [Code](https://github.com/chintan-projects/meeting-prompter) |
+| Private Doc Q&A | On-device document Q&A with RAG and voice input | [Code](https://github.com/chintan-projects/private-doc-qa) |
+| Photo Triage Agent | Private photo library cleanup using LFM vision model | [Code](https://github.com/chintan-projects/photo-triage-agent) |
+| LFM-Scholar | Automated literature review agent for finding and citing papers | [Code](https://github.com/gyunggyung/LFM-Scholar) |
+| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
+| Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
+| Private Summarizer | 100% local text summarization with multi-language support | [Code](https://github.com/Private-Intelligence/private_summarizer) |
+| Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
+| LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
+| LFM-2.5 Thinking on Web | LFM2.5 1.2B parameter reasoning language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime Web | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
+| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
+| SFT + DPO Fine-tuning | Teaching a 1.2B Model to be a Grumpy Italian Chef: SFT + DPO Fine-Tuning with Unsloth | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
+| Tauri Plugin LEAP AI | Tauri plugin to integrate LEAP and Liquid LFMs into desktop and mobile apps built with Tauri | [Crate](https://crates.io/crates/tauri-plugin-leap-ai) |
 
 ## 🕐 Technical Deep Dives
 
