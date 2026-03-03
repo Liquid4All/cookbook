@@ -18,17 +18,17 @@ export const STATES = {
   C: { label: 'WORKING',         bg: '#f0fdf4' },
   D: { label: 'TIRED',           bg: '#fff7ed' },
   E: { label: 'STRESSED',        bg: '#fef2f2' },
-  F: { label: 'AWAY',            bg: '#f9fafb' },
+  F: { label: 'BREAK',           bg: '#f9fafb' },
 }
 
 export const PROMPT = [
-  'Look at this image of a person at their desk. Classify with one letter:',
-  'A = drinking water (large bottle or glass at or near mouth),',
-  'B = drinking coffee (small cup or mug at or near mouth),',
-  'C = working or focused (looking at screen, typing, or reading),',
-  'D = tired or drowsy (drooping eyes, yawning, head drooping),',
-  'E = stressed or tense (leaning forward intensely, furrowed brows, jaw tight),',
-  'F = away or not visible (person absent or not at desk).',
+  'Classify the scene with one letter. If no person is clearly visible in the frame, you MUST reply F.',
+  'A = person drinking water (bottle or glass at or near mouth),',
+  'B = person drinking coffee (cup or mug at or near mouth),',
+  'C = person working or focused (face visible, looking at screen, typing, or reading),',
+  'D = person tired or drowsy (face visible, drooping eyes, yawning, or head drooping),',
+  'E = person stressed or tense (face visible, leaning forward intensely, furrowed brows, or jaw tight),',
+  'F = no person visible, or person not at desk, or unclear.',
   'Reply with only the letter.',
 ].join(' ')
 

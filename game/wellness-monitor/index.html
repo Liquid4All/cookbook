@@ -128,7 +128,53 @@
     .state-badge.C { background: #f0fdf4; color: #166534; }
     .state-badge.D { background: #fff7ed; color: #9a3412; }
     .state-badge.E { background: #fef2f2; color: #991b1b; }
-    .state-badge.F { background: #f9fafb; color: #6b7280; }
+    .state-badge.F { background: #e5e7eb; color: #6b7280; }
+
+    /* ── timeline ── */
+    .timeline-section {
+      padding: 16px 32px 28px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .timeline-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+    }
+    #btnDownload {
+      font-size: 11px;
+      font-family: system-ui, monospace;
+      font-weight: 600;
+      padding: 4px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      background: #fff;
+      color: #374151;
+      cursor: pointer;
+    }
+    #btnDownload:hover { background: #f3f4f6; }
+    .timeline-wrap { position: relative; }
+    #timeline {
+      display: block;
+      width: 100%;
+      height: 60px;
+      pointer-events: none;
+    }
+    .timeline-scroller {
+      overflow-x: auto;
+      overflow-y: hidden;
+      height: 20px;
+      cursor: grab;
+    }
+    .timeline-scroller:active { cursor: grabbing; }
+    #timelineSpacer { height: 1px; }
 
     /* ── loading overlay ── */
     #overlay {
@@ -226,6 +272,20 @@ Model is cached after first download.</div>
   <div class="recent-bar">
     <span class="recent-label">Recent</span>
     <div id="recentStates"></div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="timeline-section">
+    <div class="timeline-header">
+      <span class="timeline-label">Today</span>
+      <button id="btnDownload">Download transcript</button>
+    </div>
+    <div class="timeline-wrap">
+      <canvas id="timeline"></canvas>
+      <div class="timeline-scroller" id="timelineScroll">
+        <div id="timelineSpacer"></div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/main.js"></script>

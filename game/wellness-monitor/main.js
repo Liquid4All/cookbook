@@ -23,21 +23,66 @@ const coffeeCountEl = document.getElementById('coffeeCount')
 const lastDrinkEl   = document.getElementById('lastDrink')
 const focusStreakEl = document.getElementById('focusStreak')
 const recentEl      = document.getElementById('recentStates')
-const nudgeBanner   = document.getElementById('nudgeBanner')
-const inferenceDot  = document.getElementById('inferenceDot')
+const nudgeBanner      = document.getElementById('nudgeBanner')
+const inferenceDot     = document.getElementById('inferenceDot')
+const timelineEl       = document.getElementById('timeline')
+const timelineScrollEl = document.getElementById('timelineScroll')
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const TODAY   = new Date().toISOString().slice(0, 10)  // 'YYYY-MM-DD'
+const LS_KEY  = `wellness-${TODAY}`
+const VIEW_MS = 10 * 60 * 1000  // 10-minute visible window
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+
+function persistData() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ waterLog, coffeeLog, stateHistory }))
+  } catch (e) { /* ignore quota errors */ }
+}
+
+function loadPersistedData() {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    waterLog.push(...(data.waterLog ?? []))
+    coffeeLog.push(...(data.coffeeLog ?? []))
+    stateHistory.push(...(data.stateHistory ?? []))
+    // Seed recentStates from tail of restored history
+    recentStates.push(...stateHistory.slice(-RECENT_STATES_MAX).map(e => e.key))
+    // Restore focus streak if last recorded state was C
+    if (stateHistory.at(-1)?.key === 'C') {
+      focusStart = stateHistory.at(-1).ts
+    }
+  } catch (e) {
+    console.warn('[wellness] could not restore persisted data', e)
+  }
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let model         = null
 let running       = false
 
-const waterLog    = []   // timestamps of A detections
-const coffeeLog   = []   // timestamps of B detections
-const recentStates = []  // last RECENT_STATES_MAX state keys
+const waterLog     = []   // timestamps of A detections
+const coffeeLog    = []   // timestamps of B detections
+const recentStates = []   // last RECENT_STATES_MAX state keys
+const stateHistory = []   // { key, ts } — every state transition, persisted
 
-let focusStart    = null // timestamp when current C streak began
+let lastStateKey      = null   // last key pushed to stateHistory
+let focusStart        = null   // timestamp when current C streak began
+let lastUserScrollTime = 0     // last time the user manually scrolled the timeline
 const lastNudgeTimes = new Map()  // nudgeId -> timestamp
 
 let nudgeDismissTimer = null
+
+loadPersistedData()
+// Render restored history and position the timeline before the model loads
+requestAnimationFrame(() => {
+  syncScrollerWidth()
+  scrollToNow()
+  renderStats()
+})
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function log(msg) {
@@ -67,11 +112,12 @@ function formatStreak(ms) {
 
 // ── Drink logging ─────────────────────────────────────────────────────────────
 function tryLogDrink(type) {
-  const log = type === 'A' ? waterLog : coffeeLog
-  const now = Date.now()
-  const last = log.at(-1) ?? 0
+  const drinkLog = type === 'A' ? waterLog : coffeeLog
+  const now  = Date.now()
+  const last = drinkLog.at(-1) ?? 0
   if (now - last >= DRINK_DEBOUNCE_MS) {
-    log.push(now)
+    drinkLog.push(now)
+    persistData()
   }
 }
 
@@ -156,6 +202,13 @@ function applyState(key) {
   recentStates.push(key)
   if (recentStates.length > RECENT_STATES_MAX) recentStates.shift()
 
+  // Record state transitions to history
+  if (key !== lastStateKey) {
+    lastStateKey = key
+    stateHistory.push({ key, ts: Date.now() })
+    persistData()
+  }
+
   renderStats()
   checkNudges()
 }
@@ -178,7 +231,113 @@ function renderStats() {
   recentEl.innerHTML = recentStates
     .map(k => `<span class="state-badge ${k}">${STATES[k]?.label ?? k}</span>`)
     .join(' ')
+
+  if (Date.now() - lastUserScrollTime > 10_000) scrollToNow()
+  renderTimeline()
 }
+
+// ── Timeline chart ────────────────────────────────────────────────────────────
+function timelinePxPerMs() {
+  return timelineEl ? timelineEl.clientWidth / VIEW_MS : 1
+}
+
+function syncScrollerWidth() {
+  const spacer = document.getElementById('timelineSpacer')
+  if (!spacer || !timelineEl) return
+  spacer.style.width = (24 * 60 * 60 * 1000 * timelinePxPerMs()) + 'px'
+}
+
+function scrollToNow() {
+  if (!timelineScrollEl || !timelineEl) return
+  const dayStart = new Date(TODAY + 'T00:00:00').getTime()
+  // Position "now" at 90% from the left of the visible window
+  const targetLeft = (Date.now() - VIEW_MS * 0.9 - dayStart) * timelinePxPerMs()
+  timelineScrollEl.scrollLeft = Math.max(0, targetLeft)
+}
+
+function renderTimeline() {
+  if (!timelineEl) return
+
+  const dpr = window.devicePixelRatio || 1
+  const W   = timelineEl.clientWidth
+  const H   = timelineEl.clientHeight
+  if (W === 0) return
+
+  if (timelineEl.width !== W * dpr || timelineEl.height !== H * dpr) {
+    timelineEl.width  = W * dpr
+    timelineEl.height = H * dpr
+  }
+
+  const ctx = timelineEl.getContext('2d')
+  ctx.save()
+  ctx.scale(dpr, dpr)
+
+  const LABEL_H  = 20
+  const BAR_H    = H - LABEL_H
+  const now      = Date.now()
+  const dayStart = new Date(TODAY + 'T00:00:00').getTime()
+  const pxPerMs  = W / VIEW_MS
+
+  // Derive the visible window from the scroll position
+  const scrollLeft = timelineScrollEl ? timelineScrollEl.scrollLeft : 0
+  const viewStart  = dayStart + scrollLeft / pxPerMs
+  const viewEnd    = viewStart + VIEW_MS
+  const tsToX      = ts => (ts - viewStart) * pxPerMs
+
+  // Clear full canvas (bar + label area), then fill only the bar background
+  ctx.clearRect(0, 0, W, H)
+  ctx.fillStyle = '#f3f4f6'
+  ctx.fillRect(0, 0, W, BAR_H)
+
+  // State segments
+  for (let i = 0; i < stateHistory.length; i++) {
+    const { key, ts } = stateHistory[i]
+    const segEnd = i < stateHistory.length - 1 ? stateHistory[i + 1].ts : now
+    if (segEnd < viewStart || ts > viewEnd) continue
+    const x1 = Math.max(0, tsToX(ts))
+    const x2 = Math.min(W, tsToX(segEnd))
+    if (x2 <= x1) continue
+    ctx.fillStyle = STATES[key]?.bg ?? '#f3f4f6'
+    ctx.fillRect(x1, 0, x2 - x1, BAR_H)
+  }
+
+  // Tick lines every minute, labels every 5 minutes
+  ctx.font = '10px system-ui, monospace'
+  ctx.textAlign = 'center'
+  const firstMinute = Math.ceil(viewStart / 60_000) * 60_000
+  for (let t = firstMinute; t <= viewEnd; t += 60_000) {
+    const x = tsToX(t)
+    const d = new Date(t)
+    const isMajor = d.getMinutes() % 5 === 0
+    ctx.fillStyle = isMajor ? '#d1d5db' : '#e5e7eb'
+    ctx.fillRect(x, 0, 1, BAR_H)
+    if (isMajor) {
+      const label = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+      ctx.fillStyle = '#9ca3af'
+      ctx.fillText(label, x, H - 4)
+    }
+  }
+
+  // "Now" indicator
+  const nowX = tsToX(now)
+  if (nowX >= 0 && nowX <= W) {
+    ctx.fillStyle = '#374151'
+    ctx.fillRect(nowX - 1, 0, 2, BAR_H)
+  }
+
+  ctx.restore()
+}
+
+timelineScrollEl?.addEventListener('scroll', () => {
+  lastUserScrollTime = Date.now()
+  renderTimeline()
+}, { passive: true })
+
+window.addEventListener('resize', () => {
+  syncScrollerWidth()
+  scrollToNow()
+  renderTimeline()
+})
 
 // Refresh relative times every 30s without re-running inference
 setInterval(renderStats, 30_000)
@@ -274,4 +433,29 @@ btnLoad.addEventListener('click', async () => {
     console.error(err)
     btnLoad.disabled = false
   }
+})
+
+// ── Transcript download ────────────────────────────────────────────────────────
+document.getElementById('btnDownload').addEventListener('click', () => {
+  if (stateHistory.length === 0) return
+
+  const fmt = ts => {
+    const d = new Date(ts)
+    const date = d.toLocaleDateString('en-CA')  // YYYY-MM-DD
+    const time = d.toLocaleTimeString('en-GB')  // HH:MM:SS
+    return `${date} ${time}`
+  }
+
+  const rows = ['timestamp,state']
+  for (const { key, ts } of stateHistory) {
+    rows.push(`${fmt(ts)},${STATES[key]?.label ?? key}`)
+  }
+
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
+  const url  = URL.createObjectURL(blob)
+  const a    = document.createElement('a')
+  a.href     = url
+  a.download = `wellness-${TODAY}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 })
