@@ -31,6 +31,7 @@ export interface McpServerStatus {
   readonly name: string;
   readonly status: "initialized" | "starting" | "failed" | "unavailable";
   readonly toolCount: number;
+  readonly toolNames: readonly string[];
   readonly lastCheck: string;
   readonly error?: string;
 }

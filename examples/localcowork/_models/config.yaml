@@ -10,7 +10,7 @@
 #   Model paths below use ${LOCALCOWORK_MODELS_DIR} for interpolation.
 #   The config-loader resolves environment variables at load time.
 
-active_model: lfm2-24b-a2b  # Hybrid MoE: 24B total, ~2B active — 78% tool accuracy (benchmarked)
+active_model: lfm2-24b-a2b  # Sparse MoE: 24B total, 2.3B active, 64 experts top-4 — 80% tool accuracy
 
 # Default model directory for non-Ollama model files (GGUF, MLX, etc.)
 models_dir: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}"
@@ -26,6 +26,7 @@ enabled_servers:
   - security
   - system
   - clipboard
+  - calendar
 
 # Curated tool allowlist: 20 high-accuracy tools across 6 servers.
 # Every tool here scores ≥80% single-step accuracy and participates in at
@@ -45,12 +46,12 @@ enabled_tools:
   - audit.get_tool_log
   - audit.generate_audit_report
   - audit.export_audit_pdf
-  # security — scanning and encryption (5 tools, 90%)
+  # security — scanning and cleanup (4 tools, 90%)
+  # encrypt_file removed — model chains to it after scans but can't construct params
   - security.scan_for_pii
   - security.scan_for_secrets
   - security.find_duplicates
   - security.propose_cleanup
-  - security.encrypt_file
   # system — system info and disk usage (3 tools, 80%)
   - system.get_system_info
   - system.get_disk_usage
@@ -59,6 +60,11 @@ enabled_tools:
   - clipboard.get_clipboard
   - clipboard.set_clipboard
   - clipboard.clipboard_history
+  # calendar — scheduling (4 tools, 100% accuracy — strongest category)
+  - calendar.list_events
+  - calendar.create_event
+  - calendar.find_free_slots
+  - calendar.create_time_block
 
 models:
   # Development proxy — GPT-OSS-20B via Ollama
@@ -95,7 +101,7 @@ models:
       - tool_calling
 
   # LFM2-24B-A2B — Liquid AI's MoE hybrid model (private preview)
-  # Architecture: 24B total params, ~2B active per token (hybrid conv + GQA, same as LFM2-8B-A1B scaled up)
+  # Architecture: 24B total, 2.3B active per token, 64 experts top-4, 40 layers (1:3 attn:conv ratio)
   # Download GGUF from: https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview (gated — request access)
   # Benchmark plan: docs/model-analysis/lfm2-24b-a2b-benchmark.md
   # Run: llama-server --model <path> --port 8080 --ctx-size 32768 --n-gpu-layers 99 --flash-attn

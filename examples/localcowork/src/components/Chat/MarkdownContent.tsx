@@ -20,9 +20,14 @@ interface MarkdownContentProps {
 export function MarkdownContent({
   content,
 }: MarkdownContentProps): React.JSX.Element {
+  // Small LLMs (LFM2-24B-A2B) sometimes emit literal "\n" (two characters:
+  // backslash + n) instead of real newline characters. Normalize these so
+  // react-markdown can parse them as line breaks.
+  const normalized = content.replace(/\\n/g, "\n");
+
   return (
     <div className="md-content">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalized}</ReactMarkdown>
     </div>
   );
 }

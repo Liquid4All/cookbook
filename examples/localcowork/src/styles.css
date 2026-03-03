@@ -1,21 +1,49 @@
 /* ─── LocalCowork — Global Styles ─────────────────────────────────────────── */
 
 :root {
-  --color-bg: #0f1117;
-  --color-surface: #1a1d27;
-  --color-border: #2a2d3a;
-  --color-text: #e4e4e7;
-  --color-text-muted: #8b8b9e;
-  --color-accent: #6366f1;
-  --color-accent-soft: #6366f120;
-  --color-accent-hover: #818cf8;
-  --color-user-bg: #1e293b;
-  --color-assistant-bg: #1a1d27;
-  --color-tool-bg: #172126;
+  /* Liquid AI brand: #5505AF (purple), #CD82F0 (light purple), #FF5F1E (orange) */
+
+  /* ── Background layers (neutral grays — no purple tint) ── */
+  --color-bg: #111113;
+  --color-surface: #1c1c1e;
+  --color-elevated: #252527;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* ── Text hierarchy (4 levels) ── */
+  --color-text: #ededef;
+  --color-text-muted: #8e8e93;
+  --color-text-faint: #636366;
+
+  /* ── Accent — Liquid AI (purple only here) ── */
+  --color-accent: #CD82F0;
+  --color-accent-soft: rgba(205, 130, 240, 0.10);
+  --color-accent-hover: #dba6f5;
+  --color-cta: #FF5F1E;
+  --color-cta-hover: #ff7a45;
+
+  /* ── Messages ── */
+  --color-user-bg: #232325;
+  --color-assistant-bg: #18181a;
+  --color-tool-bg: #151517;
+
+  /* ── Status ── */
   --color-error: #ef4444;
-  --color-error-bg: #ef444420;
+  --color-error-bg: rgba(239, 68, 68, 0.10);
   --color-warning: #f59e0b;
   --color-success: #10b981;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.65);
+
+  /* ── Glow effects ── */
+  --glow-accent: 0 0 14px rgba(205, 130, 240, 0.30);
+  --glow-cta: 0 0 18px rgba(255, 95, 30, 0.35);
+
+  /* ── Fonts ── */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
 }
@@ -54,15 +82,36 @@ body {
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-sm);
   -webkit-app-region: drag;
   flex-shrink: 0;
+}
+
+.app-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .app-header h1 {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.app-subtitle {
+  font-size: 10px;
+  color: var(--color-text-faint);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
 }
 
 .app-badge {
@@ -97,7 +146,7 @@ body {
 }
 
 .app-settings-btn:hover {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: rgba(255, 255, 255, 0.06);
   color: var(--color-text);
 }
 
@@ -164,10 +213,10 @@ body {
 .message-list {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 24px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .message-list-empty {
@@ -317,8 +366,8 @@ body {
 
 .message-bubble {
   max-width: 85%;
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
   animation: fadeIn 0.15s ease-in-out;
 }
 
@@ -330,19 +379,20 @@ body {
 .message-user {
   align-self: flex-end;
   background-color: var(--color-user-bg);
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: var(--shadow-sm);
 }
 
 .message-assistant {
   align-self: flex-start;
   background-color: var(--color-assistant-bg);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-subtle);
 }
 
 .message-tool {
   align-self: flex-start;
   background-color: var(--color-tool-bg);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-subtle);
   font-family: var(--font-mono);
   font-size: 12px;
 }
@@ -376,12 +426,12 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-text-muted);
+  color: var(--color-text-faint);
 }
 
 .message-time {
   font-size: 10px;
-  color: var(--color-text-muted);
+  color: var(--color-text-faint);
 }
 
 .message-content {
@@ -571,9 +621,10 @@ body {
 
 .tool-trace-container {
   margin-top: 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
   background-color: var(--color-tool-bg);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
   overflow: hidden;
 }
 
@@ -717,14 +768,45 @@ body {
   max-width: 300px;
 }
 
+.trace-timing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .trace-time {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--color-text-muted);
-  padding: 1px 4px;
-  background-color: rgba(255, 255, 255, 0.05);
+  padding: 1px 6px;
   border-radius: 4px;
   flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.trace-time::before {
+  margin-right: 2px;
+}
+
+.trace-time-inference {
+  color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
+.trace-time-inference::before {
+  content: "🧠";
+  font-size: 9px;
+}
+
+.trace-time-tool {
+  color: var(--color-success);
+  background-color: rgba(16, 185, 129, 0.10);
+}
+
+.trace-time-tool::before {
+  content: "⚡";
+  font-size: 9px;
 }
 
 /* ─── Trace Results ──────────────────────────────────────────────────────── */
@@ -844,7 +926,8 @@ body {
 .message-input-wrapper {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-subtle);
+  box-shadow: 0 -4px 12px rgba(20, 5, 40, 0.3);
   background-color: var(--color-surface);
   flex-shrink: 0;
 }
@@ -869,11 +952,12 @@ body {
   background-color: var(--color-bg);
   outline: none;
   max-height: 200px;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .message-input:focus {
   border-color: var(--color-accent);
+  box-shadow: 0 0 10px rgba(205, 130, 240, 0.2);
 }
 
 .message-input:disabled {
@@ -893,20 +977,29 @@ body {
   height: 40px;
   border: none;
   border-radius: 10px;
-  background-color: var(--color-accent);
+  background-color: var(--color-cta);
   color: white;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: all 0.15s ease;
   flex-shrink: 0;
+  box-shadow: var(--glow-cta);
 }
 
 .send-button:hover:not(:disabled) {
-  background-color: var(--color-accent-hover);
+  background-color: var(--color-cta-hover);
+  transform: scale(1.06);
+  box-shadow: 0 0 30px rgba(255, 95, 30, 0.55);
+}
+
+.send-button:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow: 0 0 8px rgba(255, 95, 30, 0.2);
 }
 
 .send-button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* ─── Input Toolbar (below textarea) ─────────────────────────────────────── */
@@ -959,7 +1052,7 @@ body {
 
 .input-toolbar-folder-chip:hover {
   border-color: var(--color-accent);
-  background-color: rgba(99, 102, 241, 0.15);
+  background-color: rgba(205, 130, 240, 0.12);
 }
 
 .input-toolbar-folder-icon {
@@ -993,7 +1086,9 @@ body {
 .confirmation-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(5, 3, 10, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1002,12 +1097,13 @@ body {
 }
 
 .confirmation-dialog {
-  background-color: var(--color-surface);
+  background-color: var(--color-elevated);
   border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 24px;
   max-width: 440px;
   width: 90%;
+  box-shadow: var(--shadow-xl);
 }
 
 .confirmation-header {
@@ -1101,10 +1197,12 @@ body {
   background-color: var(--color-accent);
   color: white;
   border-color: var(--color-accent);
+  box-shadow: var(--glow-accent);
 }
 
 .confirm-btn.confirm:hover {
   background-color: var(--color-accent-hover);
+  box-shadow: 0 0 16px rgba(205, 130, 240, 0.35);
 }
 
 .confirm-btn.destructive {
@@ -1114,7 +1212,8 @@ body {
 }
 
 .confirm-btn.destructive:hover {
-  opacity: 0.9;
+  opacity: 1;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
 }
 
 /* ─── File Browser Sidebar ───────────────────────────────────────────────── */
@@ -1124,7 +1223,8 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border-subtle);
+  box-shadow: 2px 0 12px rgba(20, 5, 40, 0.25);
   background-color: var(--color-surface);
   overflow: hidden;
 }
@@ -1354,7 +1454,7 @@ body {
 }
 
 .tree-node-working-dir {
-  background-color: rgba(99, 102, 241, 0.08);
+  background-color: rgba(205, 130, 240, 0.06);
 }
 
 .tree-node-working-dir .tree-node-name {
@@ -1369,7 +1469,7 @@ body {
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background-color: rgba(99, 102, 241, 0.08);
+  background-color: rgba(205, 130, 240, 0.06);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
@@ -1415,14 +1515,14 @@ body {
   border: 1px dashed var(--color-accent);
   border-left: none;
   border-right: none;
-  background: rgba(99, 102, 241, 0.04);
+  background: rgba(205, 130, 240, 0.04);
   cursor: pointer;
   flex-shrink: 0;
   transition: background-color 0.15s;
 }
 
 .working-dir-choose-btn:hover {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(205, 130, 240, 0.08);
 }
 
 .working-dir-choose-icon {
@@ -1447,7 +1547,9 @@ body {
 .settings-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(5, 3, 10, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 200;
   display: flex;
   justify-content: flex-end;
@@ -1459,7 +1561,8 @@ body {
   max-width: 90%;
   height: 100%;
   background-color: var(--color-surface);
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1870,27 +1973,60 @@ body {
 .settings-server-card {
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  padding: 10px 12px;
   background-color: var(--color-bg);
+  overflow: hidden;
 }
 
-.settings-server-header {
+.settings-server-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-align: left;
+  color: var(--color-text);
+  transition: background-color 0.15s;
+}
+
+.settings-server-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.settings-server-chevron {
+  font-size: 8px;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  width: 12px;
+}
+
+.settings-server-chevron[data-expanded="true"] {
+  transform: rotate(90deg);
 }
 
 .settings-server-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text);
+  flex: 1;
+}
+
+.settings-server-tool-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-faint);
+  margin-right: 4px;
 }
 
 .server-status-indicator {
   display: flex;
   align-items: center;
   gap: 5px;
+  flex-shrink: 0;
 }
 
 .server-status-dot {
@@ -1921,19 +2057,46 @@ body {
   color: var(--color-text-muted);
 }
 
-.settings-server-meta {
+/* ── Expanded tool list ── */
+
+.settings-server-tools-list {
+  padding: 2px 12px 10px 32px;
   display: flex;
-  gap: 12px;
-  font-size: 11px;
-  color: var(--color-text-muted);
+  flex-direction: column;
+  gap: 3px;
 }
 
-.settings-server-tools {
+.settings-server-tool-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
   font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  padding: 2px 0;
+}
+
+.settings-tool-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.settings-tool-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-tool-name-muted {
+  color: var(--color-text-faint);
+  font-style: italic;
 }
 
 .settings-server-error {
-  margin-top: 6px;
+  margin: 0 12px 10px;
   font-size: 11px;
   color: var(--color-error);
   padding: 4px 8px;
@@ -2254,7 +2417,7 @@ body {
 
 .model-option-primary {
   border-color: var(--color-accent);
-  background-color: rgba(99, 102, 241, 0.04);
+  background-color: rgba(205, 130, 240, 0.04);
 }
 
 .model-option-secondary {
@@ -2276,7 +2439,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--color-accent);
-  background-color: rgba(99, 102, 241, 0.12);
+  background-color: rgba(205, 130, 240, 0.10);
   padding: 2px 8px;
   border-radius: 4px;
 }

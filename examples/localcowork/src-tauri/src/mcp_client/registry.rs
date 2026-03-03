@@ -123,6 +123,18 @@ impl ToolRegistry {
             .count()
     }
 
+    /// Return fully-qualified tool names belonging to a specific server.
+    pub fn tool_names_for_server(&self, server_name: &str) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .tools
+            .iter()
+            .filter(|(_, (srv, _))| srv == server_name)
+            .map(|(name, _)| name.clone())
+            .collect();
+        names.sort();
+        names
+    }
+
     /// Retain only tools whose fully-qualified names appear in the allowlist.
     ///
     /// Removes all tools not in the set. Used by `enabled_tools` config to

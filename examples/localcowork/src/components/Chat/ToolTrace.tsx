@@ -21,7 +21,10 @@ interface TraceStep {
   readonly status: TraceStepStatus;
   readonly result?: unknown;
   readonly error?: string;
+  /** Time the MCP tool took to execute (ms). */
   readonly executionTimeMs?: number;
+  /** Time the model took to decide which tool to call (ms). */
+  readonly inferenceTimeMs?: number;
 }
 
 interface ToolTraceProps {
@@ -84,7 +87,12 @@ function buildTraceSteps(
   // Build a map of toolCallId → tool result message
   const resultMap = new Map<
     string,
-    { result: unknown; error?: string; executionTimeMs?: number }
+    {
+      result: unknown;
+      error?: string;
+      executionTimeMs?: number;
+      inferenceTimeMs?: number;
+    }
   >();
 
   for (const msg of allMessages) {
@@ -96,6 +104,7 @@ function buildTraceSteps(
             result?: unknown;
             error?: string;
             executionTimeMs?: number;
+            inferenceTimeMs?: number;
           }
         | string
         | undefined;
@@ -105,6 +114,7 @@ function buildTraceSteps(
           result: toolResult.result ?? toolResult,
           error: toolResult.error,
           executionTimeMs: toolResult.executionTimeMs,
+          inferenceTimeMs: toolResult.inferenceTimeMs,
         });
       } else {
         resultMap.set(msg.toolCallId, {
@@ -127,6 +137,7 @@ function buildTraceSteps(
         result: resultEntry.result,
         error: resultEntry.error,
         executionTimeMs: resultEntry.executionTimeMs,
+        inferenceTimeMs: resultEntry.inferenceTimeMs,
       };
     }
     // No result yet — either pending or executing
@@ -200,9 +211,18 @@ function TraceStepRow({
           <span className="trace-tool-args">
             {abbreviateArgs(step.arguments)}
           </span>
-          {step.executionTimeMs != null && (
-            <span className="trace-time">
-              {formatDuration(step.executionTimeMs)}
+          {(step.inferenceTimeMs != null || step.executionTimeMs != null) && (
+            <span className="trace-timing">
+              {step.inferenceTimeMs != null && (
+                <span className="trace-time trace-time-inference" title="Model inference time">
+                  {formatDuration(step.inferenceTimeMs)}
+                </span>
+              )}
+              {step.executionTimeMs != null && (
+                <span className="trace-time trace-time-tool" title="Tool execution time">
+                  {formatDuration(step.executionTimeMs)}
+                </span>
+              )}
             </span>
           )}
         </div>
@@ -261,10 +281,15 @@ export function ToolTrace({
     (s) => s.status === "complete" || s.status === "error",
   ).length;
   const totalCount = steps.length;
-  const totalTimeMs = steps.reduce(
+  const totalToolMs = steps.reduce(
     (sum, s) => sum + (s.executionTimeMs ?? 0),
     0,
   );
+  const totalInferenceMs = steps.reduce(
+    (sum, s) => sum + (s.inferenceTimeMs ?? 0),
+    0,
+  );
+  const totalTimeMs = totalInferenceMs + totalToolMs;
   const hasErrors = steps.some((s) => s.status === "error");
 
   const toggleExpand = useCallback(() => {

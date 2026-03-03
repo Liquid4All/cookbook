@@ -69,17 +69,20 @@ pub struct SessionInfo {
 
 /// Identity and intro — static portion of the system prompt.
 ///
-/// The capabilities section (dynamic, from MCP registry) is inserted between
-/// this intro and the rules below.
+/// Kept short: research shows small LLMs perform better with concise identity
+/// statements. The capabilities section (dynamic) is inserted after this.
 const SYSTEM_PROMPT_INTRO: &str = "\
-You are LocalCowork, an on-device AI assistant running locally on the user's machine \
-with full privacy. You have access to tools across multiple capability areas.";
+You are LocalCowork, a private on-device AI assistant. You call tools to help the user.";
 
 /// Behavioral rules and few-shot examples — dynamic portion of the system prompt.
 ///
-/// Injects the actual user home directory into path examples so the model
-/// generates platform-correct absolute paths on both macOS and Windows.
-fn system_prompt_rules() -> String {
+/// Optimized for small LLMs (24B MoE) based on research:
+/// - XML section tags for clear structure (models parse sections, not paragraphs)
+/// - Pre-computed relative dates (model doesn't need to reason about "today")
+/// - ≤6 rules (small models lose track beyond 5-7 instructions)
+/// - Calendar/date example in position 1 (primacy effect)
+/// - Concrete dates in examples (no indirection)
+fn system_prompt_rules(today: &str, tomorrow: &str, week_start: &str, week_end: &str) -> String {
     let home = dirs::home_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|| {
@@ -93,64 +96,91 @@ fn system_prompt_rules() -> String {
         });
 
     format!("\
-IMPORTANT: Always use the fully-qualified tool name with the server prefix \
-(e.g., filesystem.list_dir, NOT list_dir).\n\n\
-Rules:\n\
-1. ALWAYS use absolute paths (e.g. {home}/Documents/file.png). Never use ~/.\n\
-2. For READ operations: call the tool immediately, no need to ask.\n\
-3. For WRITE operations: call the tool directly — the system will show the user \
-a confirmation dialog before executing. Do NOT ask for confirmation in text.\n\
-4. Be concise, direct, and action-oriented.\n\
-5. SEQUENTIAL PROCESSING: For tasks involving multiple files, process ONE file completely \
-(read/analyze/act) before moving to the next. Never batch-read all files first.\n\
-6. NO REDUNDANT CALLS: Never call a tool with the same arguments twice in one conversation. \
-If you already listed a directory or read a file, use the result you received.\n\
-7. PROGRESS TRACKING: After completing each file, briefly state what you did and which \
-file you will process next. This keeps your work organized.\n\
-8. TRUTHFULNESS: Only report results you actually received from tool calls. If you did \
-not process a file or did not receive a result, say so explicitly. Never guess or \
-invent information.\n\
-9. COMPLETE ALL FILES: Do NOT stop and produce a summary until you have processed \
-EVERY file that matches the user's request. If you listed 7 files to process and have \
-only processed 3, keep going — call the next tool. Only produce a final text response \
-when there are zero files remaining.\n\
-10. KNOW WHEN TO STOP: After you have called 3-5 tools and collected results, produce \
-your response. Do NOT keep calling tools to find more data unless the user explicitly \
-asked for exhaustive processing. Quality of analysis beats quantity of tool calls.\n\n\
-Examples of CORRECT tool usage:\n\n\
-Example 1 — single tool call (correct name + absolute path):\n\
-  User: \"List the files in my Documents folder.\"\n\
-  You call: filesystem.list_dir({{\"path\": \"{home}/Documents\"}})\n\
-  WRONG: list_dir({{\"path\": \"~/Documents\"}})\n\n\
-Example 2 — multi-step security scan + audit:\n\
-  User: \"Scan my Projects folder for secrets and show me the audit trail.\"\n\
-  Step 1: security.scan_for_secrets({{\"path\": \"{home}/Projects\"}})\n\
-  Step 2: Read the scan results. Report what was found.\n\
-  Step 3: audit.get_tool_log({{\"session_id\": \"current\"}})\n\
-  Step 4: Summarize the audit trail for the user.\n\n\
-Example 3 — document comparison:\n\
-  User: \"Compare these two contracts.\"\n\
-  Step 1: document.extract_text({{\"path\": \"{home}/Documents/contract_v1.pdf\"}})\n\
-  Step 2: document.extract_text({{\"path\": \"{home}/Documents/contract_v2.pdf\"}})\n\
-  Step 3: document.diff_documents({{\"path_a\": \"{home}/Documents/contract_v1.pdf\", \
-\"path_b\": \"{home}/Documents/contract_v2.pdf\"}})")
+<rules>\n\
+1. Use fully-qualified tool names: filesystem.list_dir, NOT list_dir.\n\
+2. Use absolute paths: {home}/Documents/file.txt, NOT ~/Documents/file.txt. \
+If a WORKING FOLDER is set, use ONLY the exact paths listed there.\n\
+3. READ tools: call immediately. WRITE tools: call directly (system shows confirmation).\n\
+4. After a scan returns results, present findings and STOP. Do NOT auto-chain to \
+mutable tools (encrypt, delete, move) without the user asking.\n\
+5. Never call the same tool with the same arguments twice. Use the result you already have.\n\
+6. Be concise. Respond after 1-3 tool calls unless the user asked for exhaustive processing.\n\
+</rules>\n\n\
+<examples>\n\
+Example 1 — calendar query (use pre-computed dates, never ask the user):\n\
+  User: \"What's on my calendar today?\"\n\
+  You call: calendar.list_events({{\"start_date\": \"{today}\", \"end_date\": \"{today}\"}})\n\
+  User: \"Any meetings tomorrow?\"\n\
+  You call: calendar.list_events({{\"start_date\": \"{tomorrow}\", \"end_date\": \"{tomorrow}\"}})\n\
+  User: \"What do I have this week?\"\n\
+  You call: calendar.list_events({{\"start_date\": \"{week_start}\", \"end_date\": \"{week_end}\"}})\n\
+  WRONG: Asking the user what today's date is. You already know it.\n\n\
+Example 2 — file listing:\n\
+  User: \"List my Documents folder.\"\n\
+  You call: filesystem.list_dir({{\"path\": \"{home}/Documents\"}})\n\n\
+Example 3 — security scan:\n\
+  User: \"Scan for secrets.\"\n\
+  You call: security.scan_for_secrets({{\"path\": \"{home}/Projects\"}})\n\
+  Then: present findings and STOP.\n\
+</examples>")
 }
 
 /// Build the system prompt with dynamic tool capabilities from the MCP registry.
 ///
-/// The prompt has three parts:
-/// 1. Identity and intro (static)
-/// 2. Capability summary (dynamic — generated from registered MCP tools)
-/// 3. Two-pass category instruction (optional — only when two-pass mode is active)
-/// 4. Behavioral rules and examples (dynamic — includes platform-correct paths)
+/// Structure (optimized for small LLMs):
+/// ```text
+/// Identity (1 line)
+/// <datetime> block with pre-computed dates </datetime>
+/// <capabilities> from MCP registry </capabilities>
+/// <rules> consolidated behavioral rules </rules>
+/// <examples> few-shot examples (calendar first) </examples>
+/// ```
 ///
-/// This ensures the model's self-knowledge always matches its actual tools.
+/// Key optimizations for 24B MoE models:
+/// - XML section tags (research: small models parse structured prompts better)
+/// - Pre-computed relative dates (today, tomorrow, week range) — no reasoning needed
+/// - Date block at position 2 (high primacy) and repeated in rules reminder
+/// - ≤6 rules instead of 12 (small models lose track beyond 5-7)
 fn build_system_prompt(
     registry: &crate::mcp_client::registry::ToolRegistry,
     two_pass_active: bool,
 ) -> String {
+    use chrono::{Datelike, Duration};
+
     let capabilities = registry.capability_summary();
-    let rules = system_prompt_rules();
+
+    // Pre-compute all relative dates so the model never needs to reason about them.
+    // Research: small LLMs fail at date arithmetic; pre-computing eliminates the problem.
+    let now = chrono::Local::now();
+    let today = now.format("%Y-%m-%d").to_string();
+    let day_of_week = now.format("%A").to_string(); // e.g. "Monday"
+    let tomorrow = (now + Duration::days(1)).format("%Y-%m-%d").to_string();
+
+    // Compute Monday (start) and Sunday (end) of the current week
+    let weekday_num = now.weekday().num_days_from_monday(); // Mon=0, Sun=6
+    let week_start = (now - Duration::days(weekday_num as i64))
+        .format("%Y-%m-%d")
+        .to_string();
+    let week_end = (now + Duration::days((6 - weekday_num) as i64))
+        .format("%Y-%m-%d")
+        .to_string();
+
+    let time_str = now.format("%H:%M").to_string();
+
+    // Date block — prominent, structured, with pre-computed values.
+    // Placed immediately after identity for maximum primacy.
+    let date_block = format!(
+        "<datetime>\n\
+         today = {today} ({day_of_week})\n\
+         tomorrow = {tomorrow}\n\
+         this_week = {week_start} to {week_end}\n\
+         current_time = {time_str}\n\
+         Use these exact values when the user says \"today\", \"tomorrow\", \"this week\".\n\
+         NEVER ask the user for a date.\n\
+         </datetime>"
+    );
+
+    let rules = system_prompt_rules(&today, &tomorrow, &week_start, &week_end);
 
     if two_pass_active {
         let two_pass_instruction = "\n\nIMPORTANT: You will first see category-level tools \
@@ -159,9 +189,20 @@ fn build_system_prompt(
             Always select the categories FIRST before trying to use specific tools. \
             After selecting categories and receiving the expanded tools, call the minimum \
             tools needed to answer the user's question, then provide your response.";
-        format!("{SYSTEM_PROMPT_INTRO}\n\n{capabilities}{two_pass_instruction}\n\n{rules}")
+        format!(
+            "{SYSTEM_PROMPT_INTRO}\n\n\
+             {date_block}\n\n\
+             <capabilities>\n{capabilities}\n</capabilities>\
+             {two_pass_instruction}\n\n\
+             {rules}"
+        )
     } else {
-        format!("{SYSTEM_PROMPT_INTRO}\n\n{capabilities}\n\n{rules}")
+        format!(
+            "{SYSTEM_PROMPT_INTRO}\n\n\
+             {date_block}\n\n\
+             <capabilities>\n{capabilities}\n</capabilities>\n\n\
+             {rules}"
+        )
     }
 }
 
@@ -203,9 +244,15 @@ const MAX_SAME_TOOL_FAILURES: usize = 3;
 /// arguments) before the agent loop breaks.
 ///
 /// When the model gets stuck calling the same tool repeatedly with identical
-/// params (e.g., `list_directory("~/Downloads")` 8 times in a row), the loop
-/// should detect this and exit. Two duplicates in a row is a strong signal
-/// the model is stuck — the results won't change on the third call.
+/// params (e.g., `list_directory("~/Downloads")` 3× in a row), the loop
+/// should detect this and exit.
+///
+/// Note: `consecutive_duplicate_count()` returns 1 for the first occurrence,
+/// so a threshold of 2 means "one genuine duplicate" (the tool was called
+/// twice with identical args). Before reaching this hard break, the soft
+/// interception in the tool execution loop will skip the redundant call and
+/// inject a "you already have these results" nudge, giving the model a
+/// chance to produce text.
 const MAX_DUPLICATE_TOOL_CALLS: usize = 2;
 
 /// Minimum remaining token budget to start a new agent loop round.
@@ -1222,7 +1269,108 @@ pub async fn send_message(
             .map_err(|e| format!("Failed to build messages: {e}"))?
     };
 
-    // 1b. Inject working directory context + file listing into the system message.
+    // 1b. Inject date context directly into the user message when temporal words
+    //     are detected. Small LLMs (24B) have strong training priors for 2023/2024
+    //     dates and will ignore system prompt dates. Putting the date IN the user
+    //     message forces the model to see it as part of the query itself.
+    {
+        use chrono::{Datelike, Duration};
+
+        let content_lower = content.to_lowercase();
+        let has_temporal = content_lower.contains("today")
+            || content_lower.contains("tomorrow")
+            || content_lower.contains("this week")
+            || content_lower.contains("next week")
+            || content_lower.contains("yesterday")
+            || content_lower.contains("calendar")
+            || content_lower.contains("schedule")
+            || content_lower.contains("meeting");
+
+        if has_temporal {
+            let now = chrono::Local::now();
+            let today_str = now.format("%Y-%m-%d").to_string();
+            let tomorrow_str = (now + Duration::days(1)).format("%Y-%m-%d").to_string();
+            let weekday_num = now.weekday().num_days_from_monday();
+            let week_start = (now - Duration::days(weekday_num as i64))
+                .format("%Y-%m-%d")
+                .to_string();
+            let week_end = (now + Duration::days((6 - weekday_num) as i64))
+                .format("%Y-%m-%d")
+                .to_string();
+
+            let date_prefix = format!(
+                "[Today is {today_str}. Tomorrow is {tomorrow_str}. \
+                 This week is {week_start} to {week_end}.]\n"
+            );
+
+            // Find the last user message and prepend the date context
+            if let Some(last_user_msg) = messages
+                .iter_mut()
+                .rev()
+                .find(|m| m.role == crate::inference::types::Role::User)
+            {
+                if let Some(ref mut msg_content) = last_user_msg.content {
+                    let original = msg_content.clone();
+                    msg_content.clear();
+                    msg_content.push_str(&date_prefix);
+                    msg_content.push_str(&original);
+                    tracing::info!(
+                        date_injected = %today_str,
+                        "injected date context into user message"
+                    );
+                }
+            }
+        }
+    }
+
+    // 1b2. Inject working folder PATH (not file listing) into the user message.
+    //      Same strategy as date injection: small LLMs ignore system prompt paths
+    //      and hallucinate /path/to/... from training data. Putting the folder
+    //      path IN the user message makes it impossible to ignore.
+    //
+    //      IMPORTANT: Only the path goes here, NOT the file listing. If we put
+    //      files in the user message, the model skips tool calls (it already has
+    //      the answer) and the user never sees the tool trace UI. The full file
+    //      listing stays in the system prompt to guide tool argument selection.
+    if let Some(ref dir) = working_directory {
+        if let Some(last_user_msg) = messages
+            .iter_mut()
+            .rev()
+            .find(|m| m.role == crate::inference::types::Role::User)
+        {
+            if let Some(ref mut msg_content) = last_user_msg.content {
+                let folder_prefix = format!(
+                    "[Working folder: {dir}. Use tools on files in this folder.]\n"
+                );
+
+                // Prepend — but AFTER any date prefix that may already be there
+                let original = msg_content.clone();
+                msg_content.clear();
+                if original.starts_with("[Today is") {
+                    // Date prefix exists — insert folder after it
+                    if let Some(newline_pos) = original.find("]\n") {
+                        let after_date = newline_pos + 2; // skip "]\n"
+                        msg_content.push_str(&original[..after_date]);
+                        msg_content.push_str(&folder_prefix);
+                        msg_content.push_str(&original[after_date..]);
+                    } else {
+                        msg_content.push_str(&folder_prefix);
+                        msg_content.push_str(&original);
+                    }
+                } else {
+                    msg_content.push_str(&folder_prefix);
+                    msg_content.push_str(&original);
+                }
+
+                tracing::info!(
+                    working_directory = %dir,
+                    "injected working folder into user message"
+                );
+            }
+        }
+    }
+
+    // 1c. Inject working directory context + file listing into the system message.
     //     This is a per-request overlay — not persisted in the DB — so it
     //     automatically reflects the user's current folder selection.
     //     Including the actual file listing is a product-level optimization:
@@ -1235,7 +1383,12 @@ pub async fn send_message(
         if let Some(system_msg) = messages.first_mut() {
             if system_msg.role == crate::inference::types::Role::System {
                 if let Some(ref mut content) = system_msg.content {
-                    let mut folder_ctx = format!("\n\nWORKING FOLDER: {dir}");
+                    // Build the working folder context block with XML tags
+                    let mut folder_ctx = format!(
+                        "<working_folder path=\"{dir}\">\n\
+                         Use ONLY the file paths listed below. \
+                         Do NOT invent or guess paths."
+                    );
 
                     // List directory contents (skip hidden files, cap at 50)
                     if let Ok(entries) = std::fs::read_dir(dir) {
@@ -1250,9 +1403,9 @@ pub async fn send_message(
                                 let full_path =
                                     e.path().to_string_lossy().into_owned();
                                 if e.path().is_dir() {
-                                    format!("- {full_path}/")
+                                    format!("  {full_path}/")
                                 } else {
-                                    format!("- {full_path}")
+                                    format!("  {full_path}")
                                 }
                             })
                             .collect();
@@ -1268,16 +1421,69 @@ pub async fn send_message(
                             ));
                         }
                         if !files.is_empty() {
-                            folder_ctx.push_str("\nFiles in this folder:\n");
+                            folder_ctx.push_str("\nFiles:\n");
                             folder_ctx.push_str(&files.join("\n"));
                         }
                     }
 
-                    folder_ctx.push_str(&format!(
-                        "\nWhen the user refers to files, use absolute paths \
-                         from this directory (e.g., {dir}/<filename>)."
-                    ));
-                    content.push_str(&folder_ctx);
+                    folder_ctx.push_str("\n</working_folder>\n");
+
+                    // RECENCY REMINDER: shorter repetition block for the end.
+                    // Research shows repeating key instructions at the end improves
+                    // accuracy for smaller models (primacy + recency positions).
+                    let mut folder_reminder = format!(
+                        "\n\n<reminder>\n\
+                         working_folder = {dir}\n\
+                         Files:"
+                    );
+                    if let Ok(entries) = std::fs::read_dir(dir) {
+                        let mut files: Vec<String> = entries
+                            .filter_map(|e| e.ok())
+                            .filter(|e| {
+                                !e.file_name()
+                                    .to_string_lossy()
+                                    .starts_with('.')
+                            })
+                            .map(|e| {
+                                let full_path =
+                                    e.path().to_string_lossy().into_owned();
+                                format!("  {full_path}")
+                            })
+                            .collect();
+                        files.sort();
+                        if files.len() > MAX_FOLDER_ENTRIES {
+                            files.truncate(MAX_FOLDER_ENTRIES);
+                        }
+                        if !files.is_empty() {
+                            folder_reminder.push('\n');
+                            folder_reminder.push_str(&files.join("\n"));
+                        }
+                    }
+                    folder_reminder.push_str(
+                        "\nUse ONLY these paths. Do NOT invent paths.\n\
+                         </reminder>"
+                    );
+
+                    // SANDWICH PATTERN: insert working folder at TOP and BOTTOM
+                    // of system prompt. The model sees the file paths at the
+                    // strongest positions (primacy + recency).
+                    let original = content.clone();
+                    content.clear();
+
+                    // TOP: Insert after the first paragraph (identity intro)
+                    if let Some(pos) = original.find("\n\n") {
+                        content.push_str(&original[..pos]);
+                        content.push_str("\n\n");
+                        content.push_str(&folder_ctx);
+                        content.push_str(&original[pos..]);
+                    } else {
+                        content.push_str(&folder_ctx);
+                        content.push_str("\n\n");
+                        content.push_str(&original);
+                    }
+
+                    // BOTTOM: Append reminder at the very end
+                    content.push_str(&folder_reminder);
                 }
             }
         }
@@ -1419,6 +1625,17 @@ pub async fn send_message(
     let mut empty_response_count: usize = 0;
     let mut tool_call_history: Vec<String> = Vec::new();
 
+    // ── Turn-level tool call accumulator ──────────────────────────────
+    // The bracket format emits one tool call per inference round, so a
+    // multi-tool response spans multiple rounds:
+    //   assistant(toolCalls:[A]) → tool(resultA) → assistant(toolCalls:[B]) → ...
+    //
+    // To present this as a single "2 tools executed" block in the UI, we
+    // accumulate all tool calls under a stable message ID and re-emit the
+    // growing list on each round. The frontend upserts by ID.
+    let turn_message_id = chrono::Utc::now().timestamp_millis();
+    let mut turn_tool_calls: Vec<serde_json::Value> = Vec::new();
+
     // Skip entirely if the orchestrator already produced a response.
     if full_response.is_empty() {
 
@@ -1461,6 +1678,9 @@ pub async fn send_message(
 
         let mut round_text = String::new();
         let mut tool_calls_detected: Vec<crate::inference::types::ToolCall> = Vec::new();
+
+        // Measure model inference time (from request to full response parsed).
+        let inference_start = std::time::Instant::now();
 
         match client
             .chat_completion_stream(messages.clone(), Some(tools.clone()), Some(tool_turn_sampling))
@@ -1517,12 +1737,15 @@ pub async fn send_message(
             }
         }
 
+        let inference_time_ms = inference_start.elapsed().as_millis() as u64;
+
         tracing::info!(
             session_id = %session_id,
             round = round,
             round_text_len = round_text.len(),
             tool_calls_count = tool_calls_detected.len(),
             tool_names = ?tool_calls_detected.iter().map(|tc| tc.name.as_str()).collect::<Vec<_>>(),
+            inference_time_ms = inference_time_ms,
             "=== MODEL RESPONSE ==="
         );
 
@@ -1721,21 +1944,27 @@ pub async fn send_message(
                 .map_err(|e| format!("Failed to save tool call: {e}"))?;
         }
 
-        // Emit tool-call to frontend for ToolTrace display
+        // ── Accumulate tool calls for the turn ─────────────────────────
+        // Push this round's calls into the turn-level accumulator, then
+        // emit ALL accumulated calls under the same stable message ID.
+        // The frontend upserts by ID, so the ToolTrace grows in-place
+        // rather than spawning a new block each round.
+        for tc in &tool_calls_detected {
+            turn_tool_calls.push(serde_json::json!({
+                "id": tc.id,
+                "name": tc.name,
+                "arguments": tc.arguments,
+            }));
+        }
+
         let _ = app_handle.emit(
             "tool-call",
             serde_json::json!({
-                "id": chrono::Utc::now().timestamp_millis(),
+                "id": turn_message_id,
                 "sessionId": session_id,
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "role": "assistant",
-                "toolCalls": tool_calls_detected.iter().map(|tc| {
-                    serde_json::json!({
-                        "id": tc.id,
-                        "name": tc.name,
-                        "arguments": tc.arguments,
-                    })
-                }).collect::<Vec<_>>(),
+                "toolCalls": turn_tool_calls,
                 "tokenCount": 10,
             }),
         );
@@ -1937,6 +2166,56 @@ pub async fn send_message(
                 }
             }
 
+            // ── Duplicate call interception ──────────────────────────
+            // If the model is requesting the exact same tool+args as a
+            // previous call in this conversation, skip execution entirely.
+            // Instead, feed back a short "you already have this" nudge so
+            // the model transitions to summarising the results it already
+            // has. This is cheaper and more robust than executing the
+            // duplicate and relying on post-hoc detection to break the loop.
+            let call_sig = (tc.name.clone(), tc.arguments.to_string());
+            let is_duplicate = tool_call_signatures.contains(&call_sig);
+
+            if is_duplicate {
+                tracing::info!(
+                    session_id = %session_id,
+                    round = round,
+                    tool = %tc.name,
+                    "skipping duplicate tool call — returning cached nudge"
+                );
+
+                let nudge = format!(
+                    "You already called {} with these exact arguments. \
+                     The results are in the conversation above. \
+                     Summarize those results for the user now.",
+                    tc.name
+                );
+
+                // Record the signature so the hard-break counter still works
+                tool_call_history.push(tc.name.clone());
+                tool_call_signatures.push(call_sig);
+
+                // Push the nudge as the tool result so the model sees it
+                messages.push(crate::inference::types::ChatMessage {
+                    role: crate::inference::types::Role::Tool,
+                    content: Some(nudge.clone()),
+                    tool_call_id: Some(tc.id.clone()),
+                    tool_calls: None,
+                });
+
+                // Persist so windowed rebuild includes it
+                {
+                    let mgr = state
+                        .lock()
+                        .map_err(|e| format!("Lock error: {e}"))?;
+                    let nudge_json = serde_json::Value::String(nudge);
+                    mgr.add_tool_result_message(&session_id, &tc.id, &nudge_json)
+                        .map_err(|e| format!("Failed to save nudge: {e}"))?;
+                }
+
+                continue; // skip to next tool call (or next round)
+            }
+
             // ── Execute tool ─────────────────────────────────────────
             let tool_start = std::time::Instant::now();
             let outcome = {
@@ -2038,6 +2317,8 @@ pub async fn send_message(
                         "result": result_text,
                         "toolCallId": tc.id,
                         "toolName": tc.name,
+                        "executionTimeMs": execution_time_ms,
+                        "inferenceTimeMs": inference_time_ms,
                     },
                     "tokenCount": result_text.len() / 4,
                 }),
@@ -2523,7 +2804,9 @@ mod tests {
         assert!(prompt.contains("email (1)"));
         assert!(prompt.contains("2 tools across 2 servers"));
         assert!(prompt.contains("LocalCowork"));
-        assert!(prompt.contains("IMPORTANT: Always use the fully-qualified"));
+        // Should include XML-tagged rules section
+        assert!(prompt.contains("<rules>"));
+        assert!(prompt.contains("fully-qualified tool names"));
     }
 
     #[test]
@@ -2533,10 +2816,10 @@ mod tests {
         let registry = ToolRegistry::new();
         let prompt = build_system_prompt(&registry, false);
         assert!(prompt.contains("No MCP tools currently available"));
-        assert!(prompt.contains("list_dir"));
-        assert!(prompt.contains("scan_for_secrets"));
-        // Should still include the rules section
-        assert!(prompt.contains("IMPORTANT: Always use the fully-qualified"));
+        // Should still include the rules and examples sections
+        assert!(prompt.contains("<rules>"));
+        assert!(prompt.contains("<examples>"));
+        assert!(prompt.contains("filesystem.list_dir"));
     }
 
     #[test]
@@ -2547,6 +2830,21 @@ mod tests {
         let prompt = build_system_prompt(&registry, true);
         assert!(prompt.contains("category-level tools"));
         assert!(prompt.contains("file_browse"));
+    }
+
+    #[test]
+    fn test_build_system_prompt_has_precomputed_dates() {
+        use crate::mcp_client::registry::ToolRegistry;
+
+        let registry = ToolRegistry::new();
+        let prompt = build_system_prompt(&registry, false);
+        // Must contain the <datetime> block with pre-computed dates
+        assert!(prompt.contains("<datetime>"));
+        assert!(prompt.contains("</datetime>"));
+        assert!(prompt.contains("today ="));
+        assert!(prompt.contains("tomorrow ="));
+        assert!(prompt.contains("this_week ="));
+        assert!(prompt.contains("NEVER ask the user for a date"));
     }
 
     // ── has_unverified_completion tests ──────────────────────────────

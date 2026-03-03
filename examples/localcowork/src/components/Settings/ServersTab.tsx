@@ -9,8 +9,7 @@
 import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
-import type { McpServerStatus } from "../../types";
-import type { PythonEnvStatus } from "../../types";
+import type { McpServerStatus, PythonEnvStatus } from "../../types";
 
 /** Python MCP server names that can be repaired. */
 const PYTHON_SERVER_NAMES = new Set([
@@ -58,21 +57,25 @@ function StatusIndicator({
   );
 }
 
-/** Format a timestamp for display. */
-function formatTimestamp(iso: string): string {
-  try {
-    return new Date(iso).toLocaleTimeString();
-  } catch {
-    return iso;
-  }
-}
-
 export function ServersTab({
   statuses,
   onRefresh,
 }: ServersTabProps): React.JSX.Element {
   const [repairingServer, setRepairingServer] = useState<string | null>(null);
   const [repairResult, setRepairResult] = useState<string | null>(null);
+  const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = useCallback((serverName: string) => {
+    setExpandedServers((prev) => {
+      const next = new Set(prev);
+      if (next.has(serverName)) {
+        next.delete(serverName);
+      } else {
+        next.add(serverName);
+      }
+      return next;
+    });
+  }, []);
 
   const handleRefresh = useCallback(() => {
     onRefresh();
@@ -129,30 +132,50 @@ export function ServersTab({
             (server.status === "failed" || server.status === "unavailable");
           const isRepairing = repairingServer === server.name;
 
+          const isExpanded = expandedServers.has(server.name);
+
           return (
             <div key={server.name} className="settings-server-card">
-              <div className="settings-server-header">
+              <button
+                className="settings-server-toggle"
+                onClick={() => toggleExpanded(server.name)}
+                type="button"
+              >
+                <span className="settings-server-chevron" data-expanded={isExpanded}>
+                  &#9654;
+                </span>
                 <span className="settings-server-name">{server.name}</span>
+                <span className="settings-server-tool-count">
+                  {server.toolCount} tool{server.toolCount !== 1 ? "s" : ""}
+                </span>
                 <StatusIndicator status={server.status} />
                 {canRepair && (
                   <button
                     className="server-repair-btn"
-                    onClick={() => void handleRepair(server.name)}
+                    onClick={(e) => { e.stopPropagation(); void handleRepair(server.name); }}
                     disabled={isRepairing}
                     type="button"
                   >
                     {isRepairing ? "Repairing..." : "Repair"}
                   </button>
                 )}
-              </div>
-              <div className="settings-server-meta">
-                <span className="settings-server-tools">
-                  {server.toolCount} tool{server.toolCount !== 1 ? "s" : ""}
-                </span>
-                <span className="settings-server-check">
-                  Last check: {formatTimestamp(server.lastCheck)}
-                </span>
-              </div>
+              </button>
+              {isExpanded && (
+                <div className="settings-server-tools-list">
+                  {server.toolNames.length > 0 ? (
+                    server.toolNames.map((toolName) => (
+                      <div key={toolName} className="settings-server-tool-item">
+                        <span className="settings-tool-dot" />
+                        <span className="settings-tool-name">{toolName}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="settings-server-tool-item">
+                      <span className="settings-tool-name-muted">No tools registered</span>
+                    </div>
+                  )}
+                </div>
+              )}
               {server.error != null && (
                 <div className="settings-server-error">{server.error}</div>
               )}

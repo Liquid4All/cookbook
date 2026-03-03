@@ -46,11 +46,6 @@ check_optional_command() {
 
 echo "Checking prerequisites..."
 check_command "node" "Install Node.js 20+ from https://nodejs.org"
-NODE_MAJOR=$(node -e "process.stdout.write(process.versions.node.split('.')[0])")
-if [ "$NODE_MAJOR" -lt 20 ]; then
-    echo "❌ Node.js 20+ required, found $(node --version). Install from https://nodejs.org"
-    exit 1
-fi
 check_command "npm" "Comes with Node.js"
 check_command "python3" "Install Python 3.11+ from https://python.org"
 check_command "cargo" "Install Rust from https://rustup.rs"
@@ -69,6 +64,14 @@ if ! cargo tauri --version &> /dev/null; then
 fi
 echo "✅ tauri-cli $(cargo tauri --version 2>/dev/null || echo 'installed')"
 
+cd src-tauri
+if [ -f Cargo.toml ]; then
+    cargo check 2>/dev/null && echo "✅ Rust deps OK" || echo "⚠️  Cargo check failed — Cargo.toml may need setup"
+else
+    echo "⚠️  No Cargo.toml yet — skip (will be created during Foundation phase)"
+fi
+cd ..
+
 # ── Install TypeScript dependencies ────────────────────────────────────────
 
 echo ""
@@ -82,13 +85,6 @@ else
     echo "⚠️  No root package.json yet — skip"
 fi
 
-# Build frontend so that cargo check / cargo tauri dev can find ../dist
-if [ -f package.json ]; then
-    echo "  Building frontend (required for Tauri proc macro)..."
-    npm run build --silent
-    echo "✅ Frontend built (dist/ ready)"
-fi
-
 # TypeScript MCP servers
 for server_dir in mcp-servers/filesystem mcp-servers/calendar mcp-servers/email mcp-servers/task mcp-servers/data mcp-servers/audit mcp-servers/clipboard mcp-servers/system; do
     if [ -f "$server_dir/package.json" ]; then
@@ -100,18 +96,6 @@ for server_dir in mcp-servers/filesystem mcp-servers/calendar mcp-servers/email 
 done
 
 echo "✅ TypeScript deps installed"
-
-# ── Verify Rust build ──────────────────────────────────────────────────────
-
-echo ""
-echo "Verifying Rust build..."
-if [ -f src-tauri/Cargo.toml ]; then
-    cd src-tauri
-    cargo check 2>/dev/null && echo "✅ Rust deps OK" || echo "⚠️  Cargo check failed — run 'cargo check' in src-tauri/ for details"
-    cd ..
-else
-    echo "⚠️  No src-tauri/Cargo.toml yet — skip"
-fi
 
 # ── Install Python dependencies ────────────────────────────────────────────
 
@@ -203,7 +187,7 @@ echo "  Models directory: $MODELS_DIR"
 echo ""
 
 # Primary model: LFM2-24B-A2B (production, 80% tool-calling accuracy)
-MAIN_MODEL="LFM2-24B-A2B-Q4_K_M.gguf"
+MAIN_MODEL="LFM2-24B-A2B-Preview-Q4_K_M.gguf"
 if [ -f "$MODELS_DIR/$MAIN_MODEL" ]; then
     MAIN_SIZE=$(du -h "$MODELS_DIR/$MAIN_MODEL" | cut -f1)
     echo "✅ LFM2-24B-A2B found ($MAIN_SIZE)"
@@ -211,12 +195,12 @@ else
     echo "❌ LFM2-24B-A2B not found — this is the primary production model"
     echo ""
     echo "   Download from HuggingFace (gated — request access first):"
-    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
+    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview"
     echo ""
     echo "   pip install huggingface-hub"
     echo "   python3 -c \""
     echo "     from huggingface_hub import hf_hub_download"
-    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',"
+    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',"
     echo "                     '$MAIN_MODEL',"
     echo "                     local_dir='$MODELS_DIR')"
     echo "   \""

@@ -3,6 +3,11 @@
  *
  * Auto-scrolls to the bottom on new messages and displays a streaming
  * indicator when the assistant is generating.
+ *
+ * Tool round grouping is handled at the backend level: the agent loop
+ * accumulates tool calls across rounds and emits a single growing
+ * message that the store upserts by ID. No presentation-layer merging
+ * is needed here.
  */
 
 import { useEffect, useRef } from "react";
@@ -17,6 +22,8 @@ interface MessageListProps {
   readonly isGenerating: boolean;
   readonly streamingContent: string;
 }
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function MessageList({
   messages,

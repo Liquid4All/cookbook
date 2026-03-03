@@ -40,6 +40,7 @@ pub struct McpServerStatusInfo {
     pub name: String,
     pub status: String,
     pub tool_count: u32,
+    pub tool_names: Vec<String>,
     pub last_check: String,
     pub error: Option<String>,
 }
@@ -97,6 +98,7 @@ pub async fn get_mcp_servers_status(
         .map(|name| {
             let is_running = mcp.is_server_running(&name);
             let tool_count = mcp.registry.tools_for_server(&name) as u32;
+            let tool_names = mcp.registry.tool_names_for_server(&name);
 
             McpServerStatusInfo {
                 status: if is_running {
@@ -105,6 +107,7 @@ pub async fn get_mcp_servers_status(
                     "failed".to_string()
                 },
                 tool_count,
+                tool_names,
                 last_check: now.clone(),
                 error: if is_running {
                     None

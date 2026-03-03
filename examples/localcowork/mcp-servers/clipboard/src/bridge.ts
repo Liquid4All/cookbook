@@ -73,6 +73,46 @@ export class MockClipboardBridge implements ClipboardBridge {
   }
 }
 
+// ── Shell Bridge (macOS) ─────────────────────────────────────────────────────
+
+/**
+ * OS clipboard access via shell commands.
+ *
+ * macOS: uses `pbpaste` (read) and `pbcopy` (write).
+ * Falls back to MockClipboardBridge on unsupported platforms.
+ */
+export class ShellBridge implements ClipboardBridge {
+  async read(): Promise<{ content: string; type: string }> {
+    const { execSync } = await import('node:child_process');
+    try {
+      const content = execSync('pbpaste', {
+        encoding: 'utf-8',
+        timeout: 3000,
+        maxBuffer: 1024 * 1024, // 1 MB max clipboard size
+      });
+      return { content, type: 'text/plain' };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to read clipboard via pbpaste: ${msg}`);
+    }
+  }
+
+  async write(content: string): Promise<boolean> {
+    const { execSync } = await import('node:child_process');
+    try {
+      execSync('pbcopy', {
+        input: content,
+        encoding: 'utf-8',
+        timeout: 3000,
+      });
+      return true;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to write clipboard via pbcopy: ${msg}`);
+    }
+  }
+}
+
 // ── Tauri Bridge (placeholder) ───────────────────────────────────────────────
 
 /**
@@ -91,7 +131,16 @@ export class TauriBridge implements ClipboardBridge {
 
 // ── Bridge Accessor ──────────────────────────────────────────────────────────
 
-let currentBridge: ClipboardBridge = new MockClipboardBridge();
+/** Create the default bridge based on platform. */
+function createDefaultBridge(): ClipboardBridge {
+  if (process.platform === 'darwin') {
+    return new ShellBridge();
+  }
+  // Non-macOS: fall back to in-memory mock (cross-platform support is later)
+  return new MockClipboardBridge();
+}
+
+let currentBridge: ClipboardBridge = createDefaultBridge();
 
 /** Get the active clipboard bridge instance. */
 export function getBridge(): ClipboardBridge {

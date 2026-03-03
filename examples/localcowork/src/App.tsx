@@ -21,8 +21,13 @@ export function App(): React.JSX.Element {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>LocalCowork</h1>
-        <span className="app-badge">on-device</span>
+        <div className="app-title-group">
+          <div className="app-title-row">
+            <h1>LocalCowork</h1>
+            <span className="app-badge">on-device</span>
+          </div>
+          <span className="app-subtitle">powered by LFM2-24B-A2B from Liquid AI</span>
+        </div>
         <div className="app-header-spacer" />
         <button
           className="app-settings-btn"

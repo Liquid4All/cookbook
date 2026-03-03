@@ -266,13 +266,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }),
     );
 
-    // Tool call — assistant message with tool calls (before results)
+    // Tool call — assistant message with tool calls (before results).
+    // The backend accumulates tool calls across agent loop rounds and
+    // re-emits the growing list under a stable message ID. We upsert
+    // by ID so the ToolTrace grows in-place instead of spawning a new
+    // block each round.
     unlisteners.push(
       await listen<ChatMessage>("tool-call", (event) => {
-        set((state) => ({
-          messages: [...state.messages, event.payload],
-          streamingContent: "",
-        }));
+        set((state) => {
+          const idx = state.messages.findIndex(
+            (m) => m.id === event.payload.id,
+          );
+          if (idx >= 0) {
+            // Update existing message — replace with the growing payload.
+            const updated = [...state.messages];
+            updated[idx] = event.payload;
+            return { messages: updated, streamingContent: "" };
+          }
+          // First emission — append normally.
+          return {
+            messages: [...state.messages, event.payload],
+            streamingContent: "",
+          };
+        });
       }),
     );
 

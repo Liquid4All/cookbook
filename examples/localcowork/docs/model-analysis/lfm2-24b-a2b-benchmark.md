@@ -7,6 +7,9 @@
 
 > **Related:** For the dual-model orchestrator A/B test results (single-model vs dual-model),
 > see [Dual-Model Orchestrator Performance](./dual-model-orchestrator-performance.md).
+>
+> **Related:** For prompt engineering patterns validated with this model, see
+> [Prompt Engineering for Small On-Device LLMs](../patterns/prompt-engineering-small-llms.md).
 
 ---
 
@@ -15,23 +18,35 @@
 | Property         | Value                                                              |
 | ---------------- | ------------------------------------------------------------------ |
 | Model            | LFM2-24B-A2B-Preview                                               |
-| Architecture     | Hybrid MoE (convolution + grouped query attention)                 |
-| Total params     | ~24B                                                               |
-| Active per token | ~2B                                                                |
+| Architecture     | Sparse MoE: gated short convolution + grouped query attention (GQA) |
+| Total params     | 24B                                                                |
+| Active per token | 2.3B                                                               |
+| Layers           | 40 (first 2 dense for training stability)                          |
+| Experts          | 64 per MoE block, top-4 routing                                   |
+| Hidden dim       | 2048                                                               |
+| Attn:Conv ratio  | ~1:3 (10 attention layers of 40)                                   |
+| Expert intermediate | 1536                                                            |
+| Training tokens  | 17T (pre-training still running as of launch)                      |
+| Post-training    | Lightweight instruct tuning, no reasoning traces                   |
 | Context window   | 32,768 tokens                                                      |
-| Quantization     | Q4_K_M                                                             |
-| VRAM             | ~13 GB (GGUF file size)                                            |
+| Quantization     | Q4_K_M (also available: Q4_0, Q5_K_M, Q6_K, Q8_0, F16)           |
+| RAM footprint    | Fits in 32 GB RAM                                                  |
+| VRAM (Q4_K_M)    | ~13 GB                                                             |
 | Runtime          | llama-server (llama.cpp)                                           |
 | Port             | 8080                                                               |
 | Decode speed     | ~121 tokens/sec (Apple Silicon, Metal)                             |
+| GPU throughput   | ~26.8K tok/s @ 1024 concurrent (H100 SXM5, vLLM)                  |
 | Tool call format | LFM bracket syntax (`<\|tool_call_start\|>...<\|tool_call_end\|>`) |
 | Source           | https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview (gated)       |
+| Blog             | https://www.liquid.ai/blog/lfm2-24b-a2b                            |
 
 ### Why this model
 
-LFM2-24B-A2B shares the same hybrid architecture as LFM2-8B-A1B (double-gated short-range convolution blocks + grouped query attention blocks) but scaled to 24B total / ~2B active per token. The key hypothesis: Liquid AI's convolution-heavy hybrid architecture may handle tool schemas differently than pure transformer MoE models (Qwen3-30B-A3B), potentially breaking through the cross-server transition failure that all previously tested models exhibited.
+LFM2-24B-A2B is a sparse MoE with 64 experts (top-4 routing) across 40 layers, using a ~1:3 attention-to-convolution ratio (10 GQA layers, 30 gated short-convolution layers). Only 2.3B of its 24B parameters are active per token, so inference latency tracks that of a small dense model while quality scales with the full 24B parameter count. Trained on 17T tokens with lightweight instruct post-training (no reasoning traces).
 
-Additionally, LFM2 models are optimized for on-device deployment with native tool-calling support, making this a strong candidate for the production target originally designated for LFM2.5-24B.
+The key hypothesis: Liquid AI's convolution-heavy hybrid architecture may handle tool schemas differently than pure transformer MoE models (Qwen3-30B-A3B with 3.3B active, gpt-oss-20b with 3.6B active), potentially breaking through the cross-server transition failure that all previously tested models exhibited — while using fewer active parameters than both competitors.
+
+Additionally, LFM2 models are optimized for on-device deployment (fits in 32 GB RAM at Q4_K_M) with native tool-calling support, making this a strong candidate for the production target originally designated for LFM2.5-24B.
 
 ---
 

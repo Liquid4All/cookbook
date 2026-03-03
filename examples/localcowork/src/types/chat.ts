@@ -22,7 +22,10 @@ export interface ToolResult {
   readonly success: boolean;
   readonly result?: unknown;
   readonly error?: string;
+  /** Time the MCP tool took to execute (ms). */
   readonly executionTimeMs: number;
+  /** Time the model took to decide which tool to call (ms). */
+  readonly inferenceTimeMs?: number;
 }
 
 /** A single message in the chat history. */
