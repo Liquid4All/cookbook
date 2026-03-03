@@ -129,25 +129,9 @@
     .state-badge.D { background: #fff7ed; color: #9a3412; }
     .state-badge.E { background: #fef2f2; color: #991b1b; }
     .state-badge.F { background: #e5e7eb; color: #6b7280; }
+    .state-badge.G { background: #fae8ff; color: #7e22ce; }
 
-    /* ── timeline ── */
-    .timeline-section {
-      padding: 16px 32px 28px;
-      border-top: 1px solid rgba(0,0,0,0.08);
-    }
-    .timeline-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-    .timeline-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #9ca3af;
-    }
+    /* ── transcript ── */
     #btnDownload {
       font-size: 11px;
       font-family: system-ui, monospace;
@@ -160,21 +144,37 @@
       cursor: pointer;
     }
     #btnDownload:hover { background: #f3f4f6; }
-    .timeline-wrap { position: relative; }
-    #timeline {
+
+    .transcript-section {
+      padding: 0 32px 32px;
+    }
+    .transcript-label {
       display: block;
-      width: 100%;
-      height: 60px;
-      pointer-events: none;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 8px;
     }
-    .timeline-scroller {
-      overflow-x: auto;
-      overflow-y: hidden;
-      height: 20px;
-      cursor: grab;
+    #transcript {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
-    .timeline-scroller:active { cursor: grabbing; }
-    #timelineSpacer { height: 1px; }
+    .transcript-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .transcript-time {
+      font-size: 12px;
+      font-family: monospace;
+      color: #6b7280;
+      flex-shrink: 0;
+    }
 
     /* ── loading overlay ── */
     #overlay {
@@ -274,18 +274,13 @@ Model is cached after first download.</div>
     <div id="recentStates"></div>
   </div>
 
-  <!-- Timeline -->
-  <div class="timeline-section">
-    <div class="timeline-header">
-      <span class="timeline-label">Today</span>
-      <button id="btnDownload">Download transcript</button>
+  <!-- Transcript -->
+  <div class="transcript-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span class="transcript-label" style="margin-bottom:0">Transcript</span>
+      <button id="btnDownload">Download CSV</button>
     </div>
-    <div class="timeline-wrap">
-      <canvas id="timeline"></canvas>
-      <div class="timeline-scroller" id="timelineScroll">
-        <div id="timelineSpacer"></div>
-      </div>
-    </div>
+    <div id="transcript"></div>
   </div>
 
   <script type="module" src="/main.js"></script>

@@ -25,13 +25,11 @@ const focusStreakEl = document.getElementById('focusStreak')
 const recentEl      = document.getElementById('recentStates')
 const nudgeBanner      = document.getElementById('nudgeBanner')
 const inferenceDot     = document.getElementById('inferenceDot')
-const timelineEl       = document.getElementById('timeline')
-const timelineScrollEl = document.getElementById('timelineScroll')
+const transcriptEl     = document.getElementById('transcript')
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const TODAY   = new Date().toISOString().slice(0, 10)  // 'YYYY-MM-DD'
 const LS_KEY  = `wellness-${TODAY}`
-const VIEW_MS = 10 * 60 * 1000  // 10-minute visible window
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 
@@ -69,20 +67,14 @@ const coffeeLog    = []   // timestamps of B detections
 const recentStates = []   // last RECENT_STATES_MAX state keys
 const stateHistory = []   // { key, ts } — every state transition, persisted
 
-let lastStateKey      = null   // last key pushed to stateHistory
-let focusStart        = null   // timestamp when current C streak began
-let lastUserScrollTime = 0     // last time the user manually scrolled the timeline
+let lastStateKey = null   // last key pushed to stateHistory
+let focusStart   = null   // timestamp when current C streak began
 const lastNudgeTimes = new Map()  // nudgeId -> timestamp
 
 let nudgeDismissTimer = null
 
 loadPersistedData()
-// Render restored history and position the timeline before the model loads
-requestAnimationFrame(() => {
-  syncScrollerWidth()
-  scrollToNow()
-  renderStats()
-})
+requestAnimationFrame(() => renderStats())
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
 function log(msg) {
@@ -142,16 +134,6 @@ function checkNudges() {
       triggered = (now - lastWater) > NO_WATER_THRESHOLD_MS
     }
 
-    if (rule.id === 'tired') {
-      const last5 = recentStates.slice(-5)
-      triggered = last5.filter(s => s === 'D').length >= 3
-    }
-
-    if (rule.id === 'stressed') {
-      const last5 = recentStates.slice(-5)
-      triggered = last5.filter(s => s === 'E').length >= 3
-    }
-
     if (rule.id === 'focus-no-drink') {
       if (focusStart !== null) {
         const streakMs = now - focusStart
@@ -188,11 +170,8 @@ function applyState(key) {
   document.body.style.backgroundColor = state.bg
   stateLabel.textContent = state.label
 
-  // Drink logging with debounce
-  if (key === 'A' || key === 'B') tryLogDrink(key)
-
   // Focus streak tracking
-  if (key === 'C') {
+  if (key === 'A') {
     if (focusStart === null) focusStart = Date.now()
   } else {
     focusStart = null
@@ -232,112 +211,32 @@ function renderStats() {
     .map(k => `<span class="state-badge ${k}">${STATES[k]?.label ?? k}</span>`)
     .join(' ')
 
-  if (Date.now() - lastUserScrollTime > 10_000) scrollToNow()
-  renderTimeline()
+  renderTranscript()
 }
 
-// ── Timeline chart ────────────────────────────────────────────────────────────
-function timelinePxPerMs() {
-  return timelineEl ? timelineEl.clientWidth / VIEW_MS : 1
-}
-
-function syncScrollerWidth() {
-  const spacer = document.getElementById('timelineSpacer')
-  if (!spacer || !timelineEl) return
-  spacer.style.width = (24 * 60 * 60 * 1000 * timelinePxPerMs()) + 'px'
-}
-
-function scrollToNow() {
-  if (!timelineScrollEl || !timelineEl) return
-  const dayStart = new Date(TODAY + 'T00:00:00').getTime()
-  // Position "now" at 90% from the left of the visible window
-  const targetLeft = (Date.now() - VIEW_MS * 0.9 - dayStart) * timelinePxPerMs()
-  timelineScrollEl.scrollLeft = Math.max(0, targetLeft)
-}
-
-function renderTimeline() {
-  if (!timelineEl) return
-
-  const dpr = window.devicePixelRatio || 1
-  const W   = timelineEl.clientWidth
-  const H   = timelineEl.clientHeight
-  if (W === 0) return
-
-  if (timelineEl.width !== W * dpr || timelineEl.height !== H * dpr) {
-    timelineEl.width  = W * dpr
-    timelineEl.height = H * dpr
+function renderTranscript() {
+  if (!transcriptEl) return
+  if (stateHistory.length === 0) {
+    transcriptEl.innerHTML = ''
+    return
   }
 
-  const ctx = timelineEl.getContext('2d')
-  ctx.save()
-  ctx.scale(dpr, dpr)
-
-  const LABEL_H  = 20
-  const BAR_H    = H - LABEL_H
-  const now      = Date.now()
-  const dayStart = new Date(TODAY + 'T00:00:00').getTime()
-  const pxPerMs  = W / VIEW_MS
-
-  // Derive the visible window from the scroll position
-  const scrollLeft = timelineScrollEl ? timelineScrollEl.scrollLeft : 0
-  const viewStart  = dayStart + scrollLeft / pxPerMs
-  const viewEnd    = viewStart + VIEW_MS
-  const tsToX      = ts => (ts - viewStart) * pxPerMs
-
-  // Clear full canvas (bar + label area), then fill only the bar background
-  ctx.clearRect(0, 0, W, H)
-  ctx.fillStyle = '#f3f4f6'
-  ctx.fillRect(0, 0, W, BAR_H)
-
-  // State segments
-  for (let i = 0; i < stateHistory.length; i++) {
-    const { key, ts } = stateHistory[i]
-    const segEnd = i < stateHistory.length - 1 ? stateHistory[i + 1].ts : now
-    if (segEnd < viewStart || ts > viewEnd) continue
-    const x1 = Math.max(0, tsToX(ts))
-    const x2 = Math.min(W, tsToX(segEnd))
-    if (x2 <= x1) continue
-    ctx.fillStyle = STATES[key]?.bg ?? '#f3f4f6'
-    ctx.fillRect(x1, 0, x2 - x1, BAR_H)
+  const fmt = ts => {
+    const d = new Date(ts)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
   }
 
-  // Tick lines every minute, labels every 5 minutes
-  ctx.font = '10px system-ui, monospace'
-  ctx.textAlign = 'center'
-  const firstMinute = Math.ceil(viewStart / 60_000) * 60_000
-  for (let t = firstMinute; t <= viewEnd; t += 60_000) {
-    const x = tsToX(t)
-    const d = new Date(t)
-    const isMajor = d.getMinutes() % 5 === 0
-    ctx.fillStyle = isMajor ? '#d1d5db' : '#e5e7eb'
-    ctx.fillRect(x, 0, 1, BAR_H)
-    if (isMajor) {
-      const label = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-      ctx.fillStyle = '#9ca3af'
-      ctx.fillText(label, x, H - 4)
-    }
-  }
-
-  // "Now" indicator
-  const nowX = tsToX(now)
-  if (nowX >= 0 && nowX <= W) {
-    ctx.fillStyle = '#374151'
-    ctx.fillRect(nowX - 1, 0, 2, BAR_H)
-  }
-
-  ctx.restore()
+  // Most recent first
+  transcriptEl.innerHTML = stateHistory
+    .slice()
+    .reverse()
+    .map(({ key, ts }) => `
+      <div class="transcript-row">
+        <span class="transcript-time">${fmt(ts)}</span>
+        <span class="state-badge ${key}">${STATES[key]?.label ?? key}</span>
+      </div>`)
+    .join('')
 }
-
-timelineScrollEl?.addEventListener('scroll', () => {
-  lastUserScrollTime = Date.now()
-  renderTimeline()
-}, { passive: true })
-
-window.addEventListener('resize', () => {
-  syncScrollerWidth()
-  scrollToNow()
-  renderTimeline()
-})
 
 // Refresh relative times every 30s without re-running inference
 setInterval(renderStats, 30_000)
@@ -363,7 +262,7 @@ async function captureLoop() {
         { maxNewTokens: 1, images, messageImageMap },
       )
 
-      const key = output.trim().toUpperCase().match(/[A-F]/)?.[0]
+      const key = output.trim().toUpperCase().match(/[A-B]/)?.[0]
       if (key) applyState(key)
       flashDot()
     } catch (err) {
