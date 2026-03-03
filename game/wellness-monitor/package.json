@@ -1,0 +1,16 @@
+{
+  "name": "wellness-monitor",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.1",
+    "onnxruntime-web": "^1.23.2"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

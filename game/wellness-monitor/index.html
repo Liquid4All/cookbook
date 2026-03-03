@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Work Wellness Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-color: #f9fafb;
+      transition: background-color 0.8s ease;
+    }
+
+    /* ── nudge banner ── */
+    #nudgeBanner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #fbbf24;
+      color: #78350f;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 12px 20px;
+      text-align: center;
+      z-index: 20;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    #nudgeBanner.visible { display: block; }
+
+    /* ── main layout ── */
+    .main-content {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 32px;
+      padding: 32px;
+      flex: 1;
+    }
+
+    /* ── video ── */
+    .video-wrap {
+      position: relative;
+      width: 480px;
+      height: 360px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      flex-shrink: 0;
+    }
+    video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+      background: #1a1a1a;
+    }
+    .inference-dot {
+      position: absolute;
+      top: 10px; right: 10px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .inference-dot.flash { opacity: 1; }
+
+    /* ── stats panel ── */
+    .stats-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-top: 8px;
+      min-width: 220px;
+    }
+    .stat-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: #111827;
+      letter-spacing: -0.5px;
+    }
+    .stat-value.state-label {
+      font-size: 18px;
+    }
+
+    /* ── recent states ── */
+    .recent-bar {
+      padding: 16px 32px;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .recent-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-right: 4px;
+    }
+    .state-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: rgba(0,0,0,0.08);
+      color: #374151;
+    }
+    .state-badge.A { background: #dbeafe; color: #1e40af; }
+    .state-badge.B { background: #fef3c7; color: #92400e; }
+    .state-badge.C { background: #f0fdf4; color: #166534; }
+    .state-badge.D { background: #fff7ed; color: #9a3412; }
+    .state-badge.E { background: #fef2f2; color: #991b1b; }
+    .state-badge.F { background: #f9fafb; color: #6b7280; }
+
+    /* ── loading overlay ── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 30;
+      font-family: monospace;
+    }
+    #overlay h2 { font-size: 18px; color: #aaa; }
+    #overlay button {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-family: monospace;
+      cursor: pointer;
+      border: 1px solid #888;
+      background: #222;
+      color: #eee;
+      border-radius: 4px;
+    }
+    #overlay button:disabled { opacity: 0.35; cursor: default; }
+    #progress {
+      font-size: 12px;
+      color: #888;
+      white-space: pre-wrap;
+      max-width: 420px;
+      text-align: center;
+      min-height: 60px;
+    }
+    .progress-bar-track {
+      width: 320px; height: 4px;
+      background: #333; border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; width: 0%;
+      background: #4af;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nudge banner -->
+  <div id="nudgeBanner"></div>
+
+  <!-- Loading overlay -->
+  <div id="overlay">
+    <h2>Work Wellness Monitor</h2>
+    <button id="btnLoad">Load Model (~1.8 GB)</button>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div id="progress">Uses LFM2.5-VL-1.6B running locally in your browser via WebGPU.
+Model is cached after first download.</div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main-content">
+    <div class="video-wrap">
+      <video id="video" autoplay muted playsinline></video>
+      <div class="inference-dot" id="inferenceDot"></div>
+    </div>
+
+    <div class="stats-panel">
+      <div class="stat-row">
+        <span class="stat-label">State</span>
+        <span class="stat-value state-label" id="stateLabel">...</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Water today</span>
+        <span class="stat-value" id="waterCount">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Coffee today</span>
+        <span class="stat-value" id="coffeeCount">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Last drink</span>
+        <span class="stat-value" id="lastDrink">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Focus streak</span>
+        <span class="stat-value" id="focusStreak">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent states bar -->
+  <div class="recent-bar">
+    <span class="recent-label">Recent</span>
+    <div id="recentStates"></div>
+  </div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

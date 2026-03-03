@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Emotion Mirror</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #f3f4f6;
+      transition: background-color 0.8s ease;
+      gap: 24px;
+      padding: 24px;
+    }
+
+    /* ── video ── */
+    .video-wrap {
+      position: relative;
+      width: 480px;
+      height: 360px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror */
+      background: #1a1a1a;
+    }
+
+    /* countdown bar at bottom of video */
+    .countdown-track {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 4px;
+      background: rgba(0,0,0,0.15);
+    }
+    .countdown-bar {
+      height: 100%;
+      width: 100%;
+      background: rgba(0,0,0,0.4);
+      transform-origin: left;
+      transition: transform linear;
+    }
+
+    /* ── emotion label ── */
+    .emotion-label {
+      font-size: 64px;
+      font-weight: 900;
+      letter-spacing: -2px;
+      text-transform: uppercase;
+      color: #374151;
+      transition: color 0.6s ease, transform 0.15s ease;
+      min-height: 80px;
+      text-align: center;
+    }
+    .emotion-label.pop {
+      transform: scale(1.12);
+    }
+
+    /* ── history trail ── */
+    .history {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-height: 28px;
+    }
+    .history-item {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: rgba(0,0,0,0.08);
+      color: #374151;
+      opacity: 0.5;
+      transition: opacity 0.4s;
+    }
+    .history-item:last-child { opacity: 1; }
+
+    /* ── loading overlay ── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 10;
+      font-family: monospace;
+    }
+    #overlay h2 { font-size: 18px; color: #aaa; }
+    #overlay button {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-family: monospace;
+      cursor: pointer;
+      border: 1px solid #888;
+      background: #222;
+      color: #eee;
+      border-radius: 4px;
+    }
+    #overlay button:disabled { opacity: 0.35; cursor: default; }
+    #progress {
+      font-size: 12px;
+      color: #888;
+      white-space: pre-wrap;
+      max-width: 420px;
+      text-align: center;
+      min-height: 60px;
+    }
+    .progress-bar-track {
+      width: 320px; height: 4px;
+      background: #333; border-radius: 2px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; width: 0%;
+      background: #4af;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading overlay -->
+  <div id="overlay">
+    <h2>Emotion Mirror</h2>
+    <button id="btnLoad">Load Model (~1.8 GB)</button>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div id="progress">Uses LFM2.5-VL-1.6B running locally in your browser via WebGPU.
+Model is cached after first download.</div>
+  </div>
+
+  <!-- Main UI (shown after model loads) -->
+  <div class="video-wrap">
+    <video id="video" autoplay muted playsinline></video>
+    <div class="countdown-track">
+      <div class="countdown-bar" id="countdownBar"></div>
+    </div>
+  </div>
+
+  <div class="emotion-label" id="emotionLabel">...</div>
+
+  <div class="history" id="history"></div>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
