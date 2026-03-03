@@ -1,5 +1,9 @@
 # Hand & Voice Racer
 
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
+
+![Hand & Voice Racer demo](media/demo.png)
+
 **A browser driving game you control with your hands and voice, powered by models running fully local.**
 
 Steer by holding both hands up like a steering wheel. Speak commands to accelerate, brake, toggle headlights, and play music. No cloud calls, no server round-trips. Everything runs in your browser tab.
@@ -55,3 +59,9 @@ Browser tab
 ```
 
 The game loop runs on `requestAnimationFrame`. Hand detection is throttled to ~30 fps so it does not block rendering. Voice processing happens off the main thread and delivers results via `postMessage`.
+
+## Need help?
+
+Join the [Liquid AI Discord Community](https://discord.com/invite/liquid-ai) and ask.
+
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
