@@ -2,56 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Steering Angle — MediaPipe Hands Spike</title>
+  <title>Hand Steering Racer</title>
   <style>
-    body { font-family: monospace; padding: 24px; max-width: 900px; background: #111; color: #eee; margin: 0 auto; }
-    h1 { font-size: 16px; margin-bottom: 16px; color: #aaa; }
-    .layout { display: flex; gap: 32px; align-items: flex-start; }
-    .video-wrap {
-      position: relative;
-      width: 480px;
-      height: 360px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      flex-shrink: 0;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: monospace;
     }
-    .video-wrap video,
-    .video-wrap canvas {
+
+    .game-wrap {
+      position: relative;
+      width: 700px;
+      height: 525px;
+      overflow: hidden;
+    }
+
+    canvas#game {
+      display: block;
+      width: 700px;
+      height: 525px;
+    }
+
+    /* Webcam picture-in-picture */
+    .pip {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 192px;
+      height: 144px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 4px;
+      overflow: hidden;
+      background: #000;
+    }
+    .pip video,
+    .pip canvas {
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
     }
-    .sidebar { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-    canvas#wheel { border: 1px solid #333; background: #1a1a1a; }
-    .angle { font-size: 40px; font-weight: bold; color: #fff; min-height: 48px; text-align: center; }
-    .controls { display: flex; gap: 10px; margin: 16px 0; }
-    button {
-      padding: 7px 18px; font-size: 13px; font-family: monospace;
-      cursor: pointer; border: 1px solid #888; background: #222; color: #eee;
+    .pip-label {
+      position: absolute;
+      bottom: 4px;
+      left: 6px;
+      font-size: 9px;
+      color: rgba(255,255,255,0.4);
+      pointer-events: none;
     }
-    button:disabled { opacity: 0.35; cursor: default; }
-    #status { font-size: 12px; color: #888; min-height: 18px; }
+
+    /* Start overlay */
+    .start-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: rgba(0,0,0,0.78);
+    }
+    .start-overlay h1 {
+      color: #fff;
+      font-size: 24px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .start-overlay p { color: #888; font-size: 13px; }
+    .start-overlay button {
+      margin-top: 6px;
+      padding: 10px 32px;
+      font-size: 14px;
+      font-family: monospace;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      border: 1px solid #666;
+      background: #1a1a1a;
+      color: #eee;
+      text-transform: uppercase;
+    }
+    .start-overlay button:hover { background: #2a2a2a; }
+    .start-overlay button:disabled { opacity: 0.35; cursor: default; }
+    #status { font-size: 11px; color: #555; min-height: 16px; }
   </style>
 </head>
 <body>
-  <h1>MediaPipe Hands — Steering Angle Spike</h1>
+  <div class="game-wrap">
+    <canvas id="game" width="700" height="525"></canvas>
 
-  <div class="layout">
-    <div>
-      <div class="video-wrap">
-        <video id="video" autoplay muted playsinline></video>
-        <canvas id="overlay"></canvas>
-      </div>
-      <div class="controls">
-        <button id="btnStart">Start Webcam</button>
-      </div>
-      <div id="status">Click "Start Webcam" to begin.</div>
+    <div class="pip">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="overlay"></canvas>
+      <span class="pip-label">HANDS CAM</span>
     </div>
 
-    <div class="sidebar">
-      <label style="font-size:12px;color:#888;">Steering angle</label>
-      <canvas id="wheel" width="160" height="160"></canvas>
-      <div class="angle" id="angle"></div>
+    <div class="start-overlay" id="startOverlay">
+      <h1>Hand Steering Racer</h1>
+      <p>Hold both hands up like a steering wheel to drive</p>
+      <button id="btnStart">Start</button>
+      <div id="status">Click Start to begin.</div>
     </div>
   </div>
 
