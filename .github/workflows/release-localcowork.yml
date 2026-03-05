@@ -1,0 +1,126 @@
+name: Release LocalCowork
+
+on:
+  push:
+    tags:
+      - "localcowork-v*"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: examples/localcowork
+
+jobs:
+  build-macos:
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-apple-darwin
+            runner: macos-13
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Install MCP server dependencies
+        run: |
+          for dir in mcp-servers/filesystem mcp-servers/calendar mcp-servers/email mcp-servers/task mcp-servers/data mcp-servers/audit mcp-servers/clipboard mcp-servers/system; do
+            if [ -f "$dir/package.json" ]; then
+              cd "$dir" && npm ci && cd -
+            fi
+          done
+
+      - name: Build Tauri app
+        run: cargo tauri build --target ${{ matrix.target }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release-artifacts
+          # Find and copy .dmg files
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.dmg" -exec cp {} release-artifacts/ \;
+          # Find and copy .app.tar.gz files (for Homebrew)
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.app.tar.gz" -exec cp {} release-artifacts/ \;
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.app.tar.gz.sig" -exec cp {} release-artifacts/ \;
+          ls -lh release-artifacts/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: localcowork-${{ matrix.target }}
+          path: examples/localcowork/release-artifacts/*
+
+  create-release:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#localcowork-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: |
+          shasum -a 256 * > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "LocalCowork v${{ steps.version.outputs.version }}"
+          body: |
+            ## LocalCowork v${{ steps.version.outputs.version }}
+
+            On-device AI assistant powered by LFM2-24B-A2B. No cloud, no data leaving your machine.
+
+            ### Install via Homebrew
+            ```bash
+            brew tap pierretokns/localcowork
+            brew install --cask localcowork
+            ```
+
+            ### Prerequisites
+            - llama.cpp: `brew install llama.cpp`
+            - LFM2-24B-A2B model (~14 GB): see README for download instructions
+
+            ### Checksums
+            ```
+            $(cat artifacts/checksums.txt)
+            ```
+          files: artifacts/*
+          draft: false
+          prerelease: false
