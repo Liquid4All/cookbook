@@ -5,8 +5,116 @@
 //! MCP server status from the running McpClient.
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
+
+static SETTINGS_CHANGED: AtomicBool = AtomicBool::new(false);
+
+pub fn settings_changed() {
+    SETTINGS_CHANGED.store(true, Ordering::SeqCst);
+}
+
+pub fn has_settings_changed() -> bool {
+    SETTINGS_CHANGED.swap(false, Ordering::SeqCst)
+}
+
+/// Unified app settings that persist across restarts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    /// Currently active model key from _models/config.yaml
+    pub active_model_key: Option<String>,
+    /// Allowed filesystem paths for sandboxed operations
+    pub allowed_paths: Vec<String>,
+    /// UI theme preference
+    pub theme: String,
+    /// Whether to show tool traces
+    pub show_tool_traces: bool,
+    /// Sampling config (integrated from existing system)
+    pub sampling: SamplingConfig,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            active_model_key: None,
+            allowed_paths: Vec::new(),
+            theme: "system".to_string(),
+            show_tool_traces: true,
+            sampling: SamplingConfig::default(),
+        }
+        // Default allowed paths
+    }
+}
+
+impl AppSettings {
+    const FILE_NAME: &'static str = "settings.json";
+
+    fn persist_path() -> PathBuf {
+        crate::data_dir().join(Self::FILE_NAME)
+    }
+
+    pub fn load_or_default() -> Self {
+        let path = Self::persist_path();
+        if !path.exists() {
+            return Self::default();
+        }
+        match std::fs::read_to_string(&path) {
+            Ok(content) => match serde_json::from_str::<Self>(&content) {
+                Ok(settings) => {
+                    tracing::info!(path = %path.display(), "loaded app settings");
+                    settings
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "failed to parse settings, using defaults");
+                    Self::default()
+                }
+            },
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to read settings, using defaults");
+                Self::default()
+            }
+        }
+    }
+
+    pub fn save(&self) {
+        let path = Self::persist_path();
+        let content = match serde_json::to_string_pretty(self) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!(error = %e, "failed to serialize settings");
+                return;
+            }
+        };
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let tmp_path = path.with_extension("json.tmp");
+        if let Err(e) = std::fs::write(&tmp_path, &content) {
+            tracing::error!(error = %e, "failed to write settings temp file");
+            return;
+        }
+        if let Err(e) = std::fs::rename(&tmp_path, &path) {
+            tracing::error!(error = %e, "failed to rename settings file");
+            return;
+        }
+        settings_changed();
+        tracing::debug!("saved app settings");
+    }
+
+    pub fn export_to_json(&self) -> Result<String, String> {
+        serde_json::to_string_pretty(self).map_err(|e| format!("export failed: {}", e))
+    }
+
+    pub fn import_from_json(json: &str) -> Result<Self, String> {
+        let settings: Self =
+            serde_json::from_str(json).map_err(|e| format!("invalid settings JSON: {}", e))?;
+        settings.sampling.save();
+        settings.save();
+        Ok(settings)
+    }
+}
 
 /// Model configuration exposed to the frontend.
 #[derive(Debug, Clone, Serialize)]
@@ -288,4 +396,67 @@ pub async fn reset_sampling_config(
     cfg.save();
     tracing::info!("sampling config reset to defaults");
     Ok(cfg.clone())
+}
+
+// ─── Unified App Settings ────────────────────────────────────────────────────
+
+/// Get the current app settings.
+#[tauri::command]
+pub fn get_app_settings() -> AppSettings {
+    AppSettings::load_or_default()
+}
+
+/// Update app settings and persist to disk.
+#[tauri::command]
+pub fn update_app_settings(settings: AppSettings) -> AppSettings {
+    settings.save();
+    tracing::info!(
+        active_model = ?settings.active_model_key,
+        theme = %settings.theme,
+        allowed_paths = settings.allowed_paths.len(),
+        "app settings updated"
+    );
+    settings
+}
+
+/// Add an allowed path to settings.
+#[tauri::command]
+pub fn add_allowed_path(path: String) -> AppSettings {
+    let mut settings = AppSettings::load_or_default();
+    if !settings.allowed_paths.contains(&path) {
+        settings.allowed_paths.push(path.clone());
+        settings.save();
+        tracing::info!(path = %path, "allowed path added");
+    }
+    settings
+}
+
+/// Remove an allowed path from settings.
+#[tauri::command]
+pub fn remove_allowed_path(path: String) -> AppSettings {
+    let mut settings = AppSettings::load_or_default();
+    let path_clone = path.clone();
+    settings.allowed_paths.retain(|p| p != &path);
+    settings.save();
+    tracing::info!(path = %path_clone, "allowed path removed");
+    settings
+}
+
+/// Export settings to JSON string.
+#[tauri::command]
+pub fn export_settings() -> Result<String, String> {
+    let settings = AppSettings::load_or_default();
+    settings.export_to_json()
+}
+
+/// Import settings from JSON string.
+#[tauri::command]
+pub fn import_settings(json: String) -> Result<AppSettings, String> {
+    AppSettings::import_from_json(&json)
+}
+
+/// Check if settings have changed since last check (for file watching).
+#[tauri::command]
+pub fn poll_settings_changed() -> bool {
+    has_settings_changed()
 }

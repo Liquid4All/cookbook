@@ -34,6 +34,11 @@ pub(crate) fn data_dir() -> std::path::PathBuf {
         .join(".localcowork")
 }
 
+/// Returns the cache directory for the app (embedding indexes, etc.).
+pub(crate) fn cache_dir() -> std::path::PathBuf {
+    data_dir().join("cache")
+}
+
 /// Initialize the tracing subscriber — writes structured logs to the app data directory.
 ///
 /// On each app startup:
@@ -608,6 +613,13 @@ pub fn run() {
             commands::settings::get_sampling_config,
             commands::settings::update_sampling_config,
             commands::settings::reset_sampling_config,
+            commands::settings::get_app_settings,
+            commands::settings::update_app_settings,
+            commands::settings::add_allowed_path,
+            commands::settings::remove_allowed_path,
+            commands::settings::export_settings,
+            commands::settings::import_settings,
+            commands::settings::poll_settings_changed,
             commands::hardware::detect_hardware,
             commands::model_download::download_model,
             commands::model_download::verify_model,
