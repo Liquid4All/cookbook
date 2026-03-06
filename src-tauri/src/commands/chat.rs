@@ -23,6 +23,7 @@ use crate::inference::config::{find_config_path, load_models_config};
 use crate::inference::types::{SamplingOverrides, ToolDefinition};
 use crate::inference::InferenceClient;
 use crate::mcp_client::{CategoryRegistry, McpClient, ToolResolution};
+use crate::SamplingConfig;
 use crate::{PendingConfirmation, TokioMutex};
 
 // ─── Two-Pass Tool Selection ────────────────────────────────────────────────
@@ -264,8 +265,21 @@ const MAX_DUPLICATE_TOOL_CALLS: usize = 2;
 const MIN_ROUND_TOKEN_BUDGET: u32 = 1500;
 
 /// Configuration for tool result compression.
+/// These values can be made configurable via SamplingConfig in the future.
 const COMPRESSION_THRESHOLD_CHARS: usize = 3_000;
 const MAX_TOOL_RESULT_CHARS: usize = 6_000;
+
+impl SamplingConfig {
+    /// Get compression threshold or use default.
+    pub fn compression_threshold(&self) -> usize {
+        self.compression_threshold_chars.unwrap_or(COMPRESSION_THRESHOLD_CHARS)
+    }
+
+    /// Get max tool result chars or use default.
+    pub fn max_tool_result_chars(&self) -> usize {
+        self.max_tool_result_chars.unwrap_or(MAX_TOOL_RESULT_CHARS)
+    }
+}
 
 /// Truncate a tool result if it exceeds `MAX_TOOL_RESULT_CHARS`.
 ///

@@ -19,10 +19,16 @@ pub fn has_settings_changed() -> bool {
     SETTINGS_CHANGED.swap(false, Ordering::SeqCst)
 }
 
+/// Current settings schema version for migrations.
+const SETTINGS_VERSION: u32 = 1;
+
 /// Unified app settings that persist across restarts.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
+    /// Schema version for future migrations
+    #[serde(default)]
+    pub version: u32,
     /// Currently active model key from _models/config.yaml
     pub active_model_key: Option<String>,
     /// Allowed filesystem paths for sandboxed operations
@@ -35,16 +41,29 @@ pub struct AppSettings {
     pub sampling: SamplingConfig,
 }
 
+impl AppSettings {
+    /// Migrate settings from older versions to current.
+    pub fn migrate(&mut self) {
+        if self.version < SETTINGS_VERSION {
+            // Migrate from v0 to v1
+            if self.version == 0 {
+                // Add any v1 fields here
+                self.version = 1;
+            }
+        }
+    }
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            version: SETTINGS_VERSION,
             active_model_key: None,
             allowed_paths: Vec::new(),
             theme: "system".to_string(),
             show_tool_traces: true,
             sampling: SamplingConfig::default(),
         }
-        // Default allowed paths
     }
 }
 
@@ -62,7 +81,8 @@ impl AppSettings {
         }
         match std::fs::read_to_string(&path) {
             Ok(content) => match serde_json::from_str::<Self>(&content) {
-                Ok(settings) => {
+                Ok(mut settings) => {
+                    settings.migrate();
                     tracing::info!(path = %path.display(), "loaded app settings");
                     settings
                 }
@@ -282,7 +302,8 @@ pub async fn revoke_permission(
 ///
 /// Persisted to `sampling_config.json` in the app data directory.
 /// The agent loop reads these at the start of each `send_message` call
-/// instead of using hardcoded constants.
+/// Sampling configuration for LLM inference.
+/// These values can be made configurable via the settings UI in the future.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SamplingConfig {
@@ -290,6 +311,12 @@ pub struct SamplingConfig {
     pub tool_top_p: f32,
     pub conversational_temperature: f32,
     pub conversational_top_p: f32,
+    /// Compression threshold in characters (default: 3000)
+    #[serde(default)]
+    pub compression_threshold_chars: Option<usize>,
+    /// Max tool result characters (default: 6000)
+    #[serde(default)]
+    pub max_tool_result_chars: Option<usize>,
 }
 
 impl Default for SamplingConfig {
@@ -299,6 +326,8 @@ impl Default for SamplingConfig {
             tool_top_p: 0.2,
             conversational_temperature: 0.7,
             conversational_top_p: 0.9,
+            compression_threshold_chars: None,
+            max_tool_result_chars: None,
         }
     }
 }
@@ -523,6 +552,8 @@ mod tests {
             tool_top_p: 0.3,
             conversational_temperature: 0.8,
             conversational_top_p: 0.95,
+            compression_threshold_chars: Some(5000),
+            max_tool_result_chars: Some(10000),
         };
         let json = serde_json::to_string(&cfg).unwrap();
         assert!(json.contains("0.5"));
@@ -703,6 +734,7 @@ mod tests {
     #[test]
     fn test_app_settings_export_import_roundtrip() {
         let original = AppSettings {
+            version: 1,
             active_model_key: Some("test-model".to_string()),
             allowed_paths: vec!["/home/user".to_string()],
             theme: "dark".to_string(),
@@ -712,6 +744,8 @@ mod tests {
                 tool_top_p: 0.25,
                 conversational_temperature: 0.75,
                 conversational_top_p: 0.85,
+                compression_threshold_chars: None,
+                max_tool_result_chars: None,
             },
         };
 
