@@ -421,7 +421,15 @@ impl InferenceClient {
 
         match self.http.get(&url).timeout(CONNECT_TIMEOUT).send().await {
             Ok(resp) => Ok(resp.status().is_success()),
-            Err(_) => Ok(false),
+            Err(e) => {
+                if e.is_connect() || e.is_timeout() {
+                    // Provide helpful hint for LM Studio users
+                    if self.current_model.base_url.contains("1234") {
+                        tracing::debug!("LM Studio may not be running - connection to port 1234 failed");
+                    }
+                }
+                Ok(false)
+            }
         }
     }
 
