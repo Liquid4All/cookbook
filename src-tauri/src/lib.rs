@@ -4,7 +4,6 @@ pub mod inference;
 pub mod mcp_client;
 
 use std::collections::HashMap;
-use std::sync::Mutex;
 
 use agent_core::{AgentDatabase, ConversationManager, ConfirmationResponse, PermissionStore};
 use commands::settings::SamplingConfig;
@@ -39,6 +38,7 @@ pub(crate) fn data_dir() -> std::path::PathBuf {
 }
 
 /// Returns the cache directory for the app (embedding indexes, etc.).
+#[allow(dead_code)]
 pub(crate) fn cache_dir() -> std::path::PathBuf {
     data_dir().join("cache")
 }
@@ -61,11 +61,17 @@ fn init_tracing() {
     // Rotate: agent.log.2 → .3, .1 → .2, agent.log → .1
     rotate_log_file(&log_path, 3);
 
-    let log_file = std::fs::OpenOptions::new()
+    let log_file = match std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(&log_path)
-        .expect("failed to open agent.log");
+    {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("failed to open agent.log: {}", e);
+            return;
+        }
+    };
 
     let flushing_writer = FlushingWriter::new(log_file);
 
@@ -534,7 +540,13 @@ pub fn run() {
 
     // Initialize the SQLite-backed ConversationManager
     let db_path = resolve_db_path();
-    let db = AgentDatabase::open(&db_path).expect("failed to open agent database");
+    let db = match AgentDatabase::open(&db_path) {
+        Ok(db) => db,
+        Err(e) => {
+            tracing::error!(error = %e, path = %db_path, "failed to open agent database");
+            std::process::exit(1);
+        }
+    };
     let conversation_manager = ConversationManager::new(db);
 
     tracing::info!(db_path = %db_path, "agent database initialized");
@@ -549,14 +561,14 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_dialog::init())
-        .manage(Mutex::new(conversation_manager))
-        .manage(TokioMutex::new(McpClient::new(empty_mcp_config, None)))
-        .manage(TokioMutex::new(PermissionStore::new()))
+        .manage(TokioMutex::new(conversation_manager))
+        .manage(TokioMutex::new(InFlightRequests::default()))
+        .manage(TokioMutex::new(McpClient::default()))
+        .manage(TokioMutex::new(empty_mcp_config))
+        .manage(TokioMutex::new(PermissionStore::default()))
         .manage(TokioMutex::new(SamplingConfig::load_or_default()))
         .manage(TokioMutex::new(None::<tokio::sync::oneshot::Sender<ConfirmationResponse>>)
             as PendingConfirmation)
-        .manage(TokioMutex::new(HashMap::<String, bool>::new()) as InFlightRequests)
         .setup(|app| {
             // Initialize MCP client asynchronously during app setup.
             // Once servers are started, replace the empty client via lock.
@@ -639,7 +651,10 @@ pub fn run() {
             commands::python_env::ensure_all_python_envs,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|e| {
+            tracing::error!(error = %e, "error while running tauri application");
+            std::process::exit(1);
+        });
 }
 
 #[cfg(test)]
