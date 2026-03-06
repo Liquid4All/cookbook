@@ -28,6 +28,20 @@ fi
 
 WARNINGS=()
 
+# ── Check 0: Shell scripts pass shellcheck ───────────────────────────────────
+
+for file in $STAGED_FILES; do
+    case "$file" in
+        *.sh)
+            if command -v shellcheck >/dev/null 2>&1; then
+                if ! shellcheck -s bash "$file" >/dev/null 2>&1; then
+                    WARNINGS+=("shellcheck failed for $file (run: shellcheck -s bash $file)")
+                fi
+            fi
+            ;;
+    esac
+done
+
 # ── Check 1: Source files changed but PROGRESS.yaml not staged ──────────────
 
 HAS_SOURCE_CHANGES=false
