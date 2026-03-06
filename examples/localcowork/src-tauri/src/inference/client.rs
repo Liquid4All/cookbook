@@ -540,6 +540,24 @@ mod tests {
                 role: None,
             },
         );
+        models.insert(
+            "lmstudio-model".to_string(),
+            ModelConfig {
+                display_name: "LM Studio Model".to_string(),
+                runtime: "lmstudio".to_string(),
+                model_name: Some("lmstudio/default".to_string()),
+                model_path: None,
+                base_url: "http://localhost:1234/v1".to_string(),
+                context_window: 32768,
+                tool_call_format: ToolCallFormat::NativeJson,
+                temperature: 0.7,
+                max_tokens: 4096,
+                estimated_vram_gb: Some(8.0),
+                capabilities: vec!["text".to_string(), "tool_calling".to_string()],
+                force_json_response: false,
+                role: None,
+            },
+        );
 
         ModelsConfig {
             active_model: "model-a".to_string(),
@@ -577,6 +595,16 @@ mod tests {
         // No more fallbacks
         let result = client.try_next_fallback();
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_lmstudio_model_config() {
+        let config = test_config();
+        // Create client targeting LM Studio model directly
+        let client = InferenceClient::from_config_with_model(config, "lmstudio-model").unwrap();
+        assert_eq!(client.current_model_key, "lmstudio-model");
+        assert_eq!(client.current_model_name(), "LM Studio Model");
+        assert_eq!(client.current_base_url(), "http://localhost:1234/v1");
     }
 
     #[test]
