@@ -62,7 +62,17 @@ impl AppSettings {
         }
         match std::fs::read_to_string(&path) {
             Ok(content) => match serde_json::from_str::<Self>(&content) {
-                Ok(settings) => {
+                Ok(mut settings) => {
+                    // Validate and clean up non-existent paths
+                    let original_count = settings.allowed_paths.len();
+                    settings.allowed_paths.retain(|p| {
+                        std::path::PathBuf::from(p).exists()
+                    });
+                    let removed = original_count - settings.allowed_paths.len();
+                    if removed > 0 {
+                        tracing::warn!(removed_paths = removed, "removed non-existent allowed paths");
+                        settings.save();
+                    }
                     tracing::info!(path = %path.display(), "loaded app settings");
                     settings
                 }
@@ -421,14 +431,27 @@ pub fn update_app_settings(settings: AppSettings) -> AppSettings {
 
 /// Add an allowed path to settings.
 #[tauri::command]
-pub fn add_allowed_path(path: String) -> AppSettings {
+pub fn add_allowed_path(path: String) -> Result<AppSettings, String> {
+    // Validate path exists or can be created
+    let path_buf = std::path::PathBuf::from(&path);
+    if !path_buf.exists() {
+        // Check if parent exists (to allow creating new directories)
+        if let Some(parent) = path_buf.parent() {
+            if !parent.exists() {
+                return Err(format!("Parent directory does not exist: {}", parent.display()));
+            }
+        } else {
+            return Err("Invalid path".to_string());
+        }
+    }
+    
     let mut settings = AppSettings::load_or_default();
     if !settings.allowed_paths.contains(&path) {
         settings.allowed_paths.push(path.clone());
         settings.save();
         tracing::info!(path = %path, "allowed path added");
     }
-    settings
+    Ok(settings)
 }
 
 /// Remove an allowed path from settings.
