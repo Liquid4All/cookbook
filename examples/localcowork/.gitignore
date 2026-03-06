@@ -17,6 +17,7 @@ src-tauri/gen/
 _models/*.gguf
 _models/*.bin
 _models/*.safetensors
+_models/.cache/
 
 # ─── IDE ──────────────────────────────────────────────────────────────────
 .vscode/
