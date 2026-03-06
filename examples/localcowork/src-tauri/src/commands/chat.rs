@@ -1240,6 +1240,11 @@ pub async fn send_message(
 ) -> Result<(), String> {
     use tauri::Emitter;
 
+    // Generate trace ID for this request (for correlation across logs)
+    let trace_id = uuid::Uuid::new_v4().to_string()[..8].to_string();
+    
+    tracing::info!(trace_id = %trace_id, session_id = %session_id, content_len = content.len(), "starting message processing");
+
     // Read sampling config once at the start of this request.
     let sampling_cfg = sampling_state.lock().await.clone();
     let tool_turn_sampling = SamplingOverrides {
