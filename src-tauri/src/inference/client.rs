@@ -415,22 +415,27 @@ impl InferenceClient {
     /// Check if the current model endpoint is reachable.
     ///
     /// Sends a lightweight request to verify connectivity. Does not consume
-    /// inference tokens.
+    /// inference tokens. Uses retry with backoff for reliability.
     pub async fn health_check(&self) -> Result<bool, InferenceError> {
         let url = format!("{}/models", self.current_model.base_url);
-
-        match self.http.get(&url).timeout(CONNECT_TIMEOUT).send().await {
-            Ok(resp) => Ok(resp.status().is_success()),
-            Err(e) => {
-                if e.is_connect() || e.is_timeout() {
-                    // Provide helpful hint for LM Studio users
-                    if self.current_model.base_url.contains("1234") {
-                        tracing::debug!("LM Studio may not be running - connection to port 1234 failed");
-                    }
+        
+        // Retry with backoff for transient failures
+        let attempts = 3;
+        let base_delay = std::time::Duration::from_millis(200);
+        
+        for attempt in 0..attempts {
+            match self.http.get(&url).timeout(CONNECT_TIMEOUT).send().await {
+                Ok(resp) if resp.status().is_success() => return Ok(true),
+                Ok(_resp) => return Ok(false),
+                Err(e) if attempt < attempts - 1 => {
+                    let delay = base_delay * 2u32.pow(attempt as u32);
+                    tokio::time::sleep(delay).await;
                 }
-                Ok(false)
+                Err(_) => return Ok(false),
             }
         }
+        
+        Ok(false)
     }
 
     /// Get detailed model status including endpoint info.
