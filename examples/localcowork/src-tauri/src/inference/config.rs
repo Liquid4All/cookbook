@@ -193,7 +193,9 @@ pub fn load_models_config(path: &Path) -> Result<ModelsConfig, InferenceError> {
 /// Returns `(model_key, ModelConfig)` for the first available model.
 /// "Available" here means it exists in the config — actual connectivity is
 /// checked at runtime by the client.
-pub fn resolve_active_model(config: &ModelsConfig) -> Result<(String, ModelConfig), InferenceError> {
+pub fn resolve_active_model(
+    config: &ModelsConfig,
+) -> Result<(String, ModelConfig), InferenceError> {
     // Try the explicitly active model first
     if let Some(model) = config.models.get(&config.active_model) {
         return Ok((config.active_model.clone(), model.clone()));
@@ -338,6 +340,65 @@ mod tests {
         "#;
         let config: ModelsConfig = serde_yaml::from_str(yaml).unwrap();
         let model = config.models.get("test").unwrap();
-        assert!(!model.force_json_response, "force_json_response should default to false");
+        assert!(
+            !model.force_json_response,
+            "force_json_response should default to false"
+        );
+    }
+
+    #[test]
+    fn test_lmstudio_model_config() {
+        let yaml = r#"
+            active_model: lmstudio-model
+            models:
+              lmstudio-model:
+                display_name: "LM Studio Model"
+                runtime: lmstudio
+                model_name: "lmstudio/default"
+                base_url: "http://localhost:1234/v1"
+                context_window: 32768
+                tool_call_format: native_json
+                temperature: 0.7
+                max_tokens: 4096
+                capabilities:
+                  - text
+                  - tool_calling
+        "#;
+        let config: ModelsConfig = serde_yaml::from_str(yaml).unwrap();
+        let model = config.models.get("lmstudio-model").unwrap();
+        assert_eq!(model.runtime, "lmstudio");
+        assert_eq!(model.base_url, "http://localhost:1234/v1");
+        assert_eq!(model.model_name.as_deref(), Some("lmstudio/default"));
+        assert_eq!(model.tool_call_format, ToolCallFormat::NativeJson);
+    }
+
+    #[test]
+    fn test_lmstudio_runtime_config() {
+        // Test that ModelsConfig can parse YAML with unknown runtimes field
+        // (the runtimes section is ignored but should not cause deserialization errors)
+        let yaml = r#"
+            active_model: test
+            runtimes:
+              lmstudio:
+                health_check: "http://localhost:1234/v1/models"
+                startup_timeout_seconds: 30
+            ollama:
+              command: "ollama serve"
+              health_check: "http://localhost:11434/api/tags"
+            models:
+              test:
+                display_name: "Test"
+                runtime: lmstudio
+                base_url: "http://localhost:1234/v1"
+                context_window: 4096
+                tool_call_format: native_json
+                temperature: 0.7
+                max_tokens: 1024
+        "#;
+        // Verify that unknown runtimes field is ignored and parsing succeeds
+        let config: ModelsConfig = serde_yaml::from_str(yaml).unwrap();
+        assert_eq!(config.active_model, "test");
+        assert!(config.models.contains_key("test"));
+        assert_eq!(config.models.get("test").unwrap().runtime, "lmstudio");
     }
 }
