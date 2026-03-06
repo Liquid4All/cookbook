@@ -49,6 +49,8 @@ pub(crate) fn cache_dir() -> std::path::PathBuf {
 /// 1. Rotates existing logs (agent.log → agent.log.1 → .2 → .3, keeps last 3).
 /// 2. Opens a fresh agent.log with a line-flushing writer for crash resilience.
 /// 3. Logs a startup banner with the data directory path for discoverability.
+///
+/// Returns early on error since logging is not critical to app functionality.
 fn init_tracing() {
     use tracing_subscriber::fmt;
     use tracing_subscriber::EnvFilter;
@@ -67,6 +69,7 @@ fn init_tracing() {
         .open(&log_path)
     {
         Ok(file) => file,
+        // Use eprintln since tracing isn't initialized yet
         Err(e) => {
             eprintln!("failed to open agent.log: {}", e);
             return;
