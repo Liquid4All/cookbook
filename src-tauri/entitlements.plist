@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Allow spawning child processes (Node.js/Python MCP servers) -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <!-- Allow loading external dynamic libraries (Python packages, Node modules) -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <!-- Allow outbound network connections (localhost Ollama API) -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <!-- Allow read/write to user-selected files (via open/save dialogs) -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+</dict>
+</plist>
