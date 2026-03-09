@@ -7,7 +7,7 @@ import os
 from .config import FineTuningConfig
 from .paths import get_path_to_media
 
-config = FineTuningConfig.from_yaml(file_name='lfm2_350m_debugging.yaml')
+config = FineTuningConfig.from_yaml(file_name="lfm2_350m_debug.yaml")
 system_prompt = config.system_prompt
 max_steps = config.max_steps
 dataset_prompt = config.default_goal
@@ -24,6 +24,7 @@ def parse_action(response_text: str) -> str:
 
     # Fallback to noop if no valid action found
     return "noop()"
+
 
 def make_user_prompt(goal: str, step_num: int, axtree: str, error: str = "") -> str:
     """Create user prompt from observation."""
@@ -45,25 +46,21 @@ def make_user_prompt(goal: str, step_num: int, axtree: str, error: str = "") -> 
 
     return "\n\n".join(prompt_parts)
 
+
 def save_screenshot(screenshot, episode: int, step: int) -> str:
     """Save screenshot to media directory and return the path."""
     media_dir = get_path_to_media()
     screenshot_array = np.array(screenshot, dtype=np.uint8)
     screenshot_image = Image.fromarray(screenshot_array)
-    screenshot_path = os.path.join(media_dir, f'episode_{episode}_step_{step}.png')
+    screenshot_path = os.path.join(media_dir, f"episode_{episode}_step_{step}.png")
     screenshot_image.save(screenshot_path)
     return screenshot_path
 
-def test_click_in_browsergym(
-    env,
-    model,
-    tokenizer,
-    episodes: int
-):
-    
-    for episode in range(episodes):
 
-        print(f'Episode {episode}')
+def test_click_in_browsergym(env, model, tokenizer, episodes: int):
+
+    for episode in range(episodes):
+        print(f"Episode {episode}")
 
         result = env.reset()
         observation = result.observation
@@ -71,7 +68,7 @@ def test_click_in_browsergym(
 
         # save screenshot to media/ dir
         screenshot_path = save_screenshot(screenshot, episode, step=0)
-        print(f'Saved screenshot to {screenshot_path}')
+        print(f"Saved screenshot to {screenshot_path}")
 
         for step_num in range(max_steps):
             if result.done:
@@ -93,13 +90,12 @@ def test_click_in_browsergym(
                 tokenize=False,
             )
 
-            model_inputs = tokenizer([prompt_text], return_tensors="pt").to(model.device)
-
-            generated_ids = model.generate(
-                **model_inputs,
-                max_new_tokens=512
+            model_inputs = tokenizer([prompt_text], return_tensors="pt").to(
+                model.device
             )
-            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
+
+            generated_ids = model.generate(**model_inputs, max_new_tokens=512)
+            output_ids = generated_ids[0][len(model_inputs.input_ids[0]) :]
 
             # Decode and extract model response
             generated_text = tokenizer.decode(output_ids, skip_special_tokens=True)
@@ -111,9 +107,12 @@ def test_click_in_browsergym(
             result = env.step(BrowserGymAction(action_str=action_str))
             observation = result.observation
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     client = BrowserGymEnv(base_url=config.browsergym_url)
-    model = AutoModelForCausalLM.from_pretrained(model_name, dtype="auto", device_map="auto")
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, dtype="auto", device_map="auto"
+    )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     test_click_in_browsergym(client, model, tokenizer, episodes=10)
