@@ -33,7 +33,7 @@ def convert_to_gguf():
     """使用llama.cpp转换HuggingFace checkpoint为GGUF"""
 
     # 配置路径
-    checkpoint_dir = Path("checkpoints/LFM2-350M-browsergym-20260226-031516")
+    checkpoint_dir = Path("checkpoints/LFM2-350M-browsergym-20260227-031350")
     output_dir = Path("gguf_models_local")
     llama_cpp_dir = Path("llama.cpp")
 
@@ -123,10 +123,7 @@ def main():
 
     # 检查CUDA
     if not check_cuda():
-        print("\n⚠️ 警告: CUDA不可用，但仍可使用CPU进行转换（会较慢）")
-        response = input("是否继续? (y/n): ")
-        if response.lower() != "y":
-            return
+        print("\n⚠️ 警告: CUDA不可用，使用CPU进行转换")
 
     print()
 
