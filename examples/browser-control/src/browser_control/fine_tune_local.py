@@ -113,6 +113,9 @@ class BrowserGymHTTPClient:
 # ---------------------------------------------------------------------------
 
 
+import re as _re
+
+
 def browsergym_reward_func(
     prompts: list[str],
     completions: list[str],
@@ -121,17 +124,48 @@ def browsergym_reward_func(
 ) -> list[float | None]:
     """
     TRL reward_func 接口。
-    rollout_func 返回的 "reward" 键会作为 extra_fields 传入 inputs，
-    再通过 reward_kwargs 以 kwargs["reward"] 的形式传到这里。
-    直接返回即可，让 GRPO 使用真实的 BrowserGym 环境奖励。
+    奖励分级：
+      1.0  = BrowserGym 任务成功（环境返回 reward=1）
+      0.3  = 最后一个非空行格式正确（click('数字') 或 noop()）
+      0.1  = 输出中任意位置包含 click('数字') 或 noop()
+      0.0  = 完全没有正确格式
     """
-    rewards = kwargs.get("reward", None)
-    if rewards is None:
-        return [None] * len(prompts)
-    # rewards 是 list（已被 TRL 按 generation 重复展开）
-    if isinstance(rewards, (list, tuple)):
-        return [float(r) for r in rewards]
-    return [float(rewards)] * len(prompts)
+    env_rewards = kwargs.get("reward", None)
+    print(f"[reward_func] completions={[c[:60] for c in completions]}")
+    print(f"[reward_func] env_rewards={env_rewards}")
+
+    _action_pat = _re.compile(r"click\('\d+'\)|noop\(\)", _re.IGNORECASE)
+
+    results = []
+    for i, completion in enumerate(completions):
+        # 取环境奖励
+        if env_rewards is not None:
+            if isinstance(env_rewards, (list, tuple)):
+                env_r = float(env_rewards[i]) if i < len(env_rewards) else 0.0
+            else:
+                env_r = float(env_rewards)
+        else:
+            env_r = 0.0
+
+        # 任务成功：直接用环境奖励
+        if env_r >= 1.0:
+            results.append(1.0)
+            continue
+
+        # 取最后一个非空行
+        lines = [l.strip() for l in completion.splitlines() if l.strip()]
+        last_line = lines[-1] if lines else ""
+
+        # 最后一行完全匹配正确格式 → 0.3
+        if _re.fullmatch(r"click\('\d+'\)|noop\(\)", last_line, _re.IGNORECASE):
+            results.append(0.3)
+        # 输出中任意位置包含正确格式 → 0.1（有格式意识但位置不对）
+        elif _action_pat.search(completion):
+            results.append(0.1)
+        else:
+            results.append(0.0)
+
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -294,8 +328,22 @@ def rollout_once(
     print(f"[DEBUG /reset] url={obs.get('url', '(none)')!r}")
     print(f"[DEBUG /reset] observation_text:\n{observation_text!r}")
 
-    # 把页面观察（axtree）连同 goal 一起呈现给模型
-    obs_message = f"Goal: {goal}\n\nPage observation:\n{observation_text}"
+    # 使用与 Android PromptFormatter.kt 完全一致的格式：
+    # Step N
+    #
+    # Goal: <goal>
+    #
+    # Page structure:
+    # <axtree>
+    #
+    # What action do you take?
+    step_num = 1
+    obs_message = (
+        f"Step {step_num}\n\n"
+        f"Goal: {goal}\n\n"
+        f"Page structure:\n{observation_text}\n\n"
+        f"What action do you take?"
+    )
     messages.append({"role": "user", "content": obs_message})
 
     done = False
@@ -352,10 +400,32 @@ def rollout_once(
             completion_ids, skip_special_tokens=True
         ).strip()
 
+        # 尝试从输出中提取最后一个有效动作行（去掉模型的解释文字）
+        _lines = [l.strip() for l in action_str.splitlines() if l.strip()]
+        # 大小写不敏感匹配 click('<digits>') 或 noop()
+        _action_re = _re.compile(r"click\('\d+'\)|noop\(\)", _re.IGNORECASE)
+        # 优先取最后一行完整匹配的；否则取任意位置包含该模式的行并规范化大小写
+        _matched = [l for l in _lines if _action_re.fullmatch(l)]
+        if _matched:
+            action_for_gym = _matched[-1].lower()  # 规范化为小写
+        else:
+            # 尝试从任意行中提取动作模式
+            _found = None
+            for l in reversed(_lines):
+                m = _action_re.search(l)
+                if m:
+                    _found = m.group(0).lower()
+                    break
+            action_for_gym = _found if _found else "noop()"
+
         print(f"[rollout_once] step {step + 1}, action={action_str!r:.80}")
+        if action_for_gym != action_str:
+            print(f"[rollout_once] extracted action: {action_for_gym!r}")
 
         try:
-            step_resp = gym_client.step(session_id=session_id, action_str=action_str)
+            step_resp = gym_client.step(
+                session_id=session_id, action_str=action_for_gym
+            )
         except requests.HTTPError as e:
             print(f"[ERROR] /step error: {e}，清除 session_id")
             persistent_state.pop("session_id", None)
@@ -378,11 +448,17 @@ def rollout_once(
 
         messages.append({"role": "assistant", "content": action_str})
         if not done:
-            # 把 last_action_error 反馈给模型，帮助它纠正下一步动作
-            obs_message = f"Page observation:\n{observation_text}"
+            # 后续步骤：与 Android PromptFormatter.kt 格式一致，step_num 递增
+            step_num += 1
+            obs_message = (
+                f"Step {step_num}\n\n"
+                f"Goal: {goal}\n\n"
+                f"Page structure:\n{observation_text}\n\n"
+                f"What action do you take?"
+            )
             if last_action_error:
                 obs_message = (
-                    f"[Error from last action: {last_action_error}]\n\n" + obs_message
+                    f"Previous action error: {last_action_error}\n\n" + obs_message
                 )
             messages.append({"role": "user", "content": obs_message})
 

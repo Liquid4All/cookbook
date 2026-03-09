@@ -1,0 +1,59 @@
+#########################################################
+# LFM2-350M 本地Docker训练配置（完整训练 v2）
+# 修改自 lfm2_350m_local_full.yaml
+# 变更（run37）：修复训练/Android AXTree 节点不一致问题
+#   - browsergym_environment.py 现在遍历所有元素（含 canvas, reward-display 等）
+#   - AXTree 结构与 Android WebViewAccessibility.kt 完全一致
+#   - system_prompt 去掉硬编码 [5] 示例（节点号随完整页结构变化）
+#   - 改用通用示例，模型自行从 AXTree 中找到正确节点号
+#########################################################
+
+seed: 42
+# resume_from_checkpoint: null
+
+# Language Model parameters
+model_name: LiquidAI/LFM2-350M
+max_seq_length: 2048
+system_prompt: |
+  You control a web browser. Complete the given task.
+
+  Available actions:
+  - click('N') - click the element whose ID is N (the number in [N])
+  - noop() - do nothing
+
+  Page structure example:
+  [1] body
+    [2] div
+      [3] button 'Submit'
+
+  To click the Submit button: click('3')
+
+  Rules:
+  - Output ONE action only, nothing else.
+  - Use the number from [N] as the argument to click().
+  - Look at the Page structure to find the correct [N] for the target element.
+
+# BrowserGym environment (本地Docker容器)
+browsergym_url: http://localhost:8000
+dataset_size: 50  # 50步训练
+default_goal: Complete the web task successfully.
+
+# How long and how aggressive do we train?
+learning_rate: 3.0e-6
+warmup_steps: 3
+
+# vLLM inference (针对NVIDIA GB10优化)
+per_device_train_batch_size: 1
+num_generations: 4
+generation_batch_size: 4
+max_steps: 5   # 每个 episode 最多走 5 步
+max_completion_length: 128
+use_vllm: true
+vllm_mode: "colocate"
+vllm_gpu_memory_utilization: 0.3
+
+# Experiment tracking (本地TensorBoard)
+wandb_enabled: true  # 复用字段名，实际使用TensorBoard
+wandb_project_name: "browser-control-local-full-v2"
+logging_steps: 1
+push_to_hf: false

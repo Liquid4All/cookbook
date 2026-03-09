@@ -37,6 +37,11 @@ fine-tune-local-full:
 	@echo "启动本地Docker训练（完整配置）..."
 	cd docker && CONFIG_FILE=lfm2_350m_local_full.yaml bash scripts/train.sh
 
+.PHONY: fine-tune-local-full-v2
+fine-tune-local-full-v2:
+	@echo "启动本地Docker训练（完整配置 v2，修复 bid 幻觉问题）..."
+	cd docker && CONFIG_FILE=lfm2_350m_local_full_v2.yaml bash scripts/train.sh
+
 .PHONY: tensorboard
 tensorboard:
 	@echo "启动TensorBoard (http://localhost:6006)..."
