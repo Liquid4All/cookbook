@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[oc]
+*.egg-info
+.venv
+build/
+dist/
+
+# Env
+.env
+
+# Workflow metadata
+.project/
+.learnings/
+
+# Model files
+checkpoints/
+gguf_models/
+gguf_models_local/
+llama.cpp/
+*.gguf
+
+# Docker runtime
+docker/logs/
+docker/*/OpenEnv/
+docker/miniwob/OpenEnv/
+
+# Mac
+.DS_Store

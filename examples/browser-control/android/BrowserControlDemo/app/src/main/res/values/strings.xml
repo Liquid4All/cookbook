@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">BrowserControlDemo</string>
+    <string name="loading">加载中...</string>
+    <string name="model_loading">模型加载中...</string>
+    <string name="task_goal">任务目标</string>
+    <string name="task_description">在浏览器中执行自动化任务</string>
+    <string name="start_task">开始任务</string>
+    <string name="stop_task">停止任务</string>
+    <string name="action_log">动作日志</string>
+    <string name="browser_view">浏览器视图</string>
+    <string name="error_model_load">模型加载失败</string>
+    <string name="error_network">网络错误</string>
+</resources>

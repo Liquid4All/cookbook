@@ -1,0 +1,218 @@
+构建Docker镜像...
+cd docker && docker compose -f docker-compose.training.yml build
+time="2026-02-24T14:22:24+08:00" level=warning msg="/home/tony/project/cookbook/examples/browser-control/docker/docker-compose.training.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image docker-browsergym Building 
+ Image docker-training Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.11kB done
+#1 DONE 0.0s
+
+#2 [training internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.50kB done
+#2 DONE 0.0s
+
+#3 [browsergym internal] load build definition from Dockerfile
+#3 transferring dockerfile: 1.37kB done
+#3 DONE 0.0s
+
+#4 [browsergym internal] load metadata for docker.io/library/python:3.11-slim
+#4 DONE 0.7s
+
+#5 [training internal] load metadata for docker.io/nvidia/cuda:13.0.0-devel-ubuntu22.04
+#5 ...
+
+#6 [browsergym internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [browsergym  1/10] FROM docker.io/library/python:3.11-slim@sha256:0b23cfb7425d065008b778022a17b1551c82f8b4866ee5a7a200084b7e2eafbf
+#7 DONE 0.0s
+
+#8 [browsergym internal] load build context
+#8 transferring context: 59B done
+#8 DONE 0.0s
+
+#9 [browsergym  6/10] RUN git clone --depth 1 https://github.com/Farama-Foundation/miniwob-plusplus.git &&     cd miniwob-plusplus &&     pip install --no-cache-dir -e .
+#9 CACHED
+
+#10 [browsergym  7/10] RUN pip install --no-cache-dir     fastapi     uvicorn[standard]     python-multipart
+#10 CACHED
+
+#11 [browsergym  8/10] COPY server.py /app/server.py
+#11 CACHED
+
+#12 [browsergym  4/10] RUN pip install --no-cache-dir playwright &&     python -m playwright install chromium --with-deps
+#12 CACHED
+
+#13 [browsergym  3/10] WORKDIR /app
+#13 CACHED
+
+#14 [browsergym  2/10] RUN apt-get update && apt-get install -y --no-install-recommends     git     curl     ca-certificates     chromium     chromium-driver     xvfb     x11vnc     fluxbox     && rm -rf /var/lib/apt/lists/*
+#14 CACHED
+
+#15 [browsergym  9/10] COPY start.sh /app/start.sh
+#15 CACHED
+
+#16 [browsergym  5/10] RUN pip install --no-cache-dir browsergym browsergym-miniwob
+#16 CACHED
+
+#17 [browsergym 10/10] RUN chmod +x /app/start.sh
+#17 CACHED
+
+#18 [browsergym] exporting to image
+#18 exporting layers done
+#18 writing image sha256:388af37061cf59f36d746595a0850275e307d83b60381f5d9acf3e9c04c4d711 done
+#18 naming to docker.io/library/docker-browsergym done
+#18 DONE 0.0s
+
+#19 [browsergym] resolving provenance for metadata file
+#19 DONE 0.0s
+
+#5 [training internal] load metadata for docker.io/nvidia/cuda:13.0.0-devel-ubuntu22.04
+#5 DONE 1.2s
+
+#20 [training internal] load .dockerignore
+#20 transferring context: 2B done
+#20 DONE 0.0s
+
+#21 [training  1/11] FROM docker.io/nvidia/cuda:13.0.0-devel-ubuntu22.04@sha256:1470d2d7904fac4e5cb3bdfd4993305c46d3ee76deb0213eaaf248e5cf9c7400
+#21 DONE 0.0s
+
+#22 [training  2/11] RUN apt-get update && apt-get install -y --no-install-recommends     git     curl     ca-certificates     build-essential     software-properties-common     && rm -rf /var/lib/apt/lists/*
+#22 CACHED
+
+#23 [training  3/11] RUN curl -LsSf https://astral.sh/uv/install.sh | sh &&     ln -s /root/.cargo/bin/uv /usr/local/bin/uv
+#23 2.843 downloading uv 0.10.5 aarch64-unknown-linux-gnu
+#23 842.5 no checksums to verify
+#23 842.8 installing to /root/.local/bin
+#23 842.8   uv
+#23 842.8   uvx
+#23 842.8 everything's installed!
+#23 842.8 
+#23 842.8 To add $HOME/.local/bin to your PATH, either restart your shell or run:
+#23 842.8 
+#23 842.8     source $HOME/.local/bin/env (sh, bash, zsh)
+#23 842.8     source $HOME/.local/bin/env.fish (fish)
+#23 DONE 842.9s
+
+#24 [training  4/11] RUN add-apt-repository ppa:deadsnakes/ppa &&     apt-get update &&     apt-get install -y python3.12 python3.12-dev python3.12-venv &&     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 &&     curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 &&     rm -rf /var/lib/apt/lists/*
+#24 8.818 Repository: 'deb https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu/ jammy main'
+#24 8.819 Description:
+#24 8.819 This PPA contains more recent Python versions packaged for Ubuntu.
+#24 8.819 
+#24 8.819 Disclaimer: there's no guarantee of timely updates in case of security problems or other issues. If you want to use them in a security-or-otherwise-critical environment (say, on a production server), you do so at your own risk.
+#24 8.819 
+#24 8.819 Update Note
+#24 8.819 ===========
+#24 8.819 Please use this repository instead of ppa:fkrull/deadsnakes.
+#24 8.819 
+#24 8.819 Reporting Issues
+#24 8.819 ================
+#24 8.819 
+#24 8.819 Issues can be reported in the master issue tracker at:
+#24 8.819 https://github.com/deadsnakes/issues/issues
+#24 8.819 
+#24 8.819 Supported Ubuntu and Python Versions
+#24 8.819 ====================================
+#24 8.819 
+#24 8.819 - Ubuntu 22.04 (jammy) Python3.7 - Python3.9, Python3.11 - Python3.13
+#24 8.819 - Ubuntu 24.04 (noble) Python3.7 - Python3.11, Python3.13
+#24 8.819 - Note: Python 3.10 (jammy), Python3.12 (noble) are not provided by deadsnakes as upstream ubuntu provides those packages.
+#24 8.819 
+#24 8.819 Why some packages aren't built:
+#24 8.819 - Note: for jammy and noble, older python versions requre libssl<3 so they are not currently built
+#24 8.819 - If you need these, reach out to asottile to set up a private ppa
+#24 8.819 
+#24 8.819 The packages may also work on other versions of Ubuntu or Debian, but that is not tested or supported.
+#24 8.819 
+#24 8.819 Packages
+#24 8.819 ========
+#24 8.819 
+#24 8.819 The packages provided here are loosely based on the debian upstream packages with some modifications to make them more usable as non-default pythons and on ubuntu.  As such, the packages follow debian's patterns and often do not include a full python distribution with just `apt install python#.#`.  Here is a list of packages that may be useful along with the default install:
+#24 8.819 
+#24 8.819 - `python#.#-dev`: includes development headers for building C extensions
+#24 8.819 - `python#.#-venv`: provides the standard library `venv` module
+#24 8.819 - `python#.#-distutils`: provides the standard library `distutils` module
+#24 8.819 - `python#.#-lib2to3`: provides the `2to3-#.#` utility as well as the standard library `lib2to3` module
+#24 8.819 - `python#.#-gdbm`: provides the standard library `dbm.gnu` module
+#24 8.819 - `python#.#-tk`: provides the standard library `tkinter` module
+#24 8.819 
+#24 8.819 Third-Party Python Modules
+#24 8.819 ==========================
+#24 8.819 
+#24 8.819 Python modules in the official Ubuntu repositories are packaged to work with the Python interpreters from the official repositories. Accordingly, they generally won't work with the Python interpreters from this PPA. As an exception, pure-Python modules for Python 3 will work, but any compiled extension modules won't.
+#24 8.819 
+#24 8.819 To install 3rd-party Python modules, you should use the common Python packaging tools.  For an introduction into the Python packaging ecosystem and its tools, refer to the Python Packaging User Guide:
+#24 8.819 https://packaging.python.org/installing/
+#24 8.819 
+#24 8.819 Sources
+#24 8.819 =======
+#24 8.819 The package sources are available at:
+#24 8.819 https://github.com/deadsnakes/
+#24 8.819 
+#24 8.819 Nightly Builds
+#24 8.819 ==============
+#24 8.819 
+#24 8.819 For nightly builds, see ppa:deadsnakes/nightly https://launchpad.net/~deadsnakes/+archive/ubuntu/nightly
+#24 8.819 More info: https://launchpad.net/~deadsnakes/+archive/ubuntu/ppa
+#24 8.819 Adding repository.
+#24 8.836 Adding deb entry to /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-jammy.list
+#24 8.837 Adding disabled deb-src entry to /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-jammy.list
+#24 9.463 Adding key to /etc/apt/trusted.gpg.d/deadsnakes-ubuntu-ppa.gpg with fingerprint F23C5A6CF475977595C89F51BA6932366A755776
+#24 10.19 Get:1 http://ports.ubuntu.com/ubuntu-ports jammy InRelease [270 kB]
+#24 10.93 Get:3 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy InRelease [18.1 kB]
+#24 11.34 Get:4 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy/main arm64 Packages [39.2 kB]
+#24 12.15 Get:2 https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2204/sbsa  InRelease [1579 B]
+#24 12.37 Get:5 https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2204/sbsa  Packages [1868 kB]
+#24 13.34 Get:6 http://ports.ubuntu.com/ubuntu-ports jammy-updates InRelease [128 kB]
+#24 14.51 Get:7 http://ports.ubuntu.com/ubuntu-ports jammy-backports InRelease [127 kB]
+#24 15.57 Get:8 http://ports.ubuntu.com/ubuntu-ports jammy-security InRelease [129 kB]
+#24 17.17 Get:9 http://ports.ubuntu.com/ubuntu-ports jammy/universe arm64 Packages [17.2 MB]
+#24 52.23 Get:10 http://ports.ubuntu.com/ubuntu-ports jammy/multiverse arm64 Packages [224 kB]
+#24 52.54 Get:11 http://ports.ubuntu.com/ubuntu-ports jammy/restricted arm64 Packages [24.2 kB]
+#24 52.54 Get:12 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 Packages [1758 kB]
+#24 54.88 Get:13 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 Packages [3862 kB]
+#24 58.22 Get:14 http://ports.ubuntu.com/ubuntu-ports jammy-updates/multiverse arm64 Packages [47.7 kB]
+#24 58.22 Get:15 http://ports.ubuntu.com/ubuntu-ports jammy-updates/universe arm64 Packages [1659 kB]
+#24 59.77 Get:16 http://ports.ubuntu.com/ubuntu-ports jammy-updates/restricted arm64 Packages [6616 kB]
+#24 65.62 Get:17 http://ports.ubuntu.com/ubuntu-ports jammy-backports/main arm64 Packages [83.5 kB]
+#24 65.68 Get:18 http://ports.ubuntu.com/ubuntu-ports jammy-backports/universe arm64 Packages [35.3 kB]
+#24 65.68 Get:19 http://ports.ubuntu.com/ubuntu-ports jammy-security/restricted arm64 Packages [6342 kB]
+#24 70.38 Get:20 http://ports.ubuntu.com/ubuntu-ports jammy-security/main arm64 Packages [3522 kB]
+#24 72.49 Get:21 http://ports.ubuntu.com/ubuntu-ports jammy-security/multiverse arm64 Packages [41.2 kB]
+#24 72.49 Get:22 http://ports.ubuntu.com/ubuntu-ports jammy-security/universe arm64 Packages [1351 kB]
+#24 73.67 Fetched 45.4 MB in 1min 4s (707 kB/s)
+#24 73.67 Reading package lists...
+#24 76.46 Hit:1 https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2204/sbsa  InRelease
+#24 77.05 Hit:2 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy InRelease
+#24 78.31 Hit:3 http://ports.ubuntu.com/ubuntu-ports jammy InRelease
+#24 78.56 Hit:4 http://ports.ubuntu.com/ubuntu-ports jammy-updates InRelease
+#24 78.85 Hit:5 http://ports.ubuntu.com/ubuntu-ports jammy-backports InRelease
+#24 79.09 Hit:6 http://ports.ubuntu.com/ubuntu-ports jammy-security InRelease
+#24 79.17 Reading package lists...
+#24 79.76 Reading package lists...
+#24 80.31 Building dependency tree...
+#24 80.48 Reading state information...
+#24 80.59 The following additional packages will be installed:
+#24 80.59   file libexpat1 libexpat1-dev libmagic-mgc libmagic1 libpython3.12
+#24 80.59   libpython3.12-dev libpython3.12-stdlib mailcap mime-support tzdata
+#24 80.65 The following NEW packages will be installed:
+#24 80.65   file libexpat1-dev libmagic-mgc libmagic1 libpython3.12 libpython3.12-dev
+#24 80.65   libpython3.12-stdlib mailcap mime-support python3.12 python3.12-dev
+#24 80.65   python3.12-venv tzdata
+#24 80.65 The following packages will be upgraded:
+#24 80.65   libexpat1
+#24 81.76 1 upgraded, 13 newly installed, 0 to remove and 102 not upgraded.
+#24 81.76 Need to get 16.6 MB of archives.
+#24 81.76 After this operation, 72.6 MB of additional disk space will be used.
+#24 81.76 Get:1 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libexpat1 arm64 2.4.7-1ubuntu0.7 [77.5 kB]
+#24 83.35 Get:2 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 tzdata all 2025b-0ubuntu0.22.04.1 [347 kB]
+#24 85.25 Get:3 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libmagic-mgc arm64 1:5.41-3ubuntu0.1 [257 kB]
+#24 85.26 Get:4 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy/main arm64 libpython3.12-stdlib arm64 3.12.12-1+jammy1 [2875 kB]
+#24 86.37 Get:5 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libmagic1 arm64 1:5.41-3ubuntu0.1 [85.0 kB]
+#24 86.44 Get:6 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 file arm64 1:5.41-3ubuntu0.1 [21.6 kB]
+#24 86.63 Get:7 http://ports.ubuntu.com/ubuntu-ports jammy-updates/main arm64 libexpat1-dev arm64 2.4.7-1ubuntu0.7 [130 kB]
+#24 87.27 Get:8 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 mailcap all 3.70+nmu1ubuntu1 [23.8 kB]
+#24 87.27 Get:9 http://ports.ubuntu.com/ubuntu-ports jammy/main arm64 mime-support all 3.66 [3696 B]
+#24 278.3 Get:10 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy/main arm64 libpython3.12 arm64 3.12.12-1+jammy1 [2322 kB]
+#24 468.7 Get:11 https://ppa.launchpadcontent.net/deadsnakes/ppa/ubuntu jammy/main arm64 libpython3.12-dev arm64 3.12.12-1+jammy1 [5635 kB]
