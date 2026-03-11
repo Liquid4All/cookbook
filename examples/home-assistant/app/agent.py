@@ -1,10 +1,19 @@
 import json
+import os
+from dotenv import load_dotenv
 from openai import OpenAI
 from app.tools.schemas import TOOL_SCHEMAS
 from app.tools.handlers import TOOL_HANDLERS
 
-client = OpenAI(base_url="http://localhost:8080/v1", api_key="unused")
+load_dotenv()
 
+local_client  = OpenAI(base_url="http://localhost:8080/v1", api_key="unused")
+openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+
+BACKENDS = {
+    "local":  {"client": local_client,  "model": "local"},
+    "openai": {"client": openai_client, "model": "gpt-4o-mini"},
+}
 
 SYSTEM_PROMPT = (
     "You are a home assistant AI. Use tools to control the home; respond in text when no tool is needed. "
@@ -19,9 +28,14 @@ SYSTEM_PROMPT = (
 def run_agent(
     user_message: str,
     history: list[dict] | None = None,
+    backend: str = "local",
     on_tool_call=None,
 ) -> str:
     """Runs the agent loop and returns the final text response."""
+
+    backend_cfg = BACKENDS[backend]
+    client = backend_cfg["client"]
+    model  = backend_cfg["model"]
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -33,7 +47,7 @@ def run_agent(
     max_iter = 5
     for _ in range(max_iter):
         response = client.chat.completions.create(
-            model="local",
+            model=model,
             messages=messages,
             tools=TOOL_SCHEMAS,
             tool_choice="auto",
@@ -79,7 +93,7 @@ def run_agent(
     # Forced text-only call: model summarises what it just did.
     # Reached when the model loops on duplicate tool calls or hits max_iter.
     final = client.chat.completions.create(
-        model="local",
+        model=model,
         messages=messages,
         tools=TOOL_SCHEMAS,
         tool_choice="none",

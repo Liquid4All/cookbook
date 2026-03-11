@@ -13,7 +13,10 @@
     <span>LFM Home Assistant</span>
     <div class="meta">
       <span id="model-label">Model: …</span>
-      <span class="badge">Metal GPU</span>
+      <div class="backend-toggle">
+        <button class="backend-btn active" data-backend="local">LFM Local</button>
+        <button class="backend-btn" data-backend="openai">GPT-4o-mini</button>
+      </div>
     </div>
   </header>
 
@@ -239,11 +242,41 @@
   sendBtn.addEventListener("click", sendMessage);
   inputEl.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
 
-  fetch("/model")
+  // ── Backend toggle ────────────────────────────────────────
+
+  async function refreshModel() {
+    try {
+      const d = await fetch("/model").then(r => r.json());
+      document.getElementById("model-label").textContent = `Model: ${d.name}`;
+    } catch (e) {}
+  }
+
+  function setActiveBackendBtn(backend) {
+    document.querySelectorAll(".backend-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.backend === backend);
+    });
+  }
+
+  document.querySelectorAll(".backend-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const backend = btn.dataset.backend;
+      await fetch("/backend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ backend }),
+      });
+      setActiveBackendBtn(backend);
+      await refreshModel();
+      messagesEl.innerHTML = "";
+    });
+  });
+
+  fetch("/backend")
     .then(r => r.json())
-    .then(d => { document.getElementById("model-label").textContent = `Model: ${d.name}`; })
+    .then(d => setActiveBackendBtn(d.backend))
     .catch(() => {});
 
+  refreshModel();
   refreshState();
 </script>
 </body>

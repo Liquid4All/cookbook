@@ -56,6 +56,26 @@ header .badge {
   font-size: 11px;
 }
 
+.backend-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.backend-btn {
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.backend-btn:hover { color: var(--text); border-color: var(--accent); }
+.backend-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
 main {
   display: grid;
   grid-template-columns: 75% 25%;
