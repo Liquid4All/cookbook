@@ -1,13 +1,245 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LFM Home Assistant</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LFM Home Assistant</title>
+  <link rel="stylesheet" href="/assets/style.css?v=2"/>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <span>LFM Home Assistant</span>
+    <div class="meta">
+      <span>Model: LFM2.5-1.2B-Instruct</span>
+      <span class="badge">Metal GPU</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left: device control panel -->
+    <div id="house-panel">
+      <div id="control-panel">
+
+        <!-- Lights -->
+        <div class="control-section">
+          <div class="section-heading">Lights</div>
+          <div class="device-grid">
+            <div class="device-card" id="light-bedroom">
+              <span class="device-name">Bedroom</span>
+              <span class="status-dot light-off"></span>
+            </div>
+            <div class="device-card" id="light-bathroom">
+              <span class="device-name">Bathroom</span>
+              <span class="status-dot light-off"></span>
+            </div>
+            <div class="device-card" id="light-office">
+              <span class="device-name">Office</span>
+              <span class="status-dot light-off"></span>
+            </div>
+            <div class="device-card" id="light-hallway">
+              <span class="device-name">Hallway</span>
+              <span class="status-dot light-off"></span>
+            </div>
+            <div class="device-card" id="light-kitchen">
+              <span class="device-name">Kitchen</span>
+              <span class="status-dot light-off"></span>
+            </div>
+            <div class="device-card" id="light-living_room">
+              <span class="device-name">Living Room</span>
+              <span class="status-dot light-off"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thermostat -->
+        <div class="control-section">
+          <div class="section-heading">Thermostat</div>
+          <div class="thermo-card">
+            <span id="state-thermostat-temp">68°F</span>
+            <span id="state-thermostat-mode">auto</span>
+          </div>
+        </div>
+
+        <!-- Doors -->
+        <div class="control-section">
+          <div class="section-heading">Doors</div>
+          <div class="device-grid">
+            <div class="device-card" id="door-front">
+              <span class="device-name">Front</span>
+              <span class="door-badge door-locked">locked</span>
+            </div>
+            <div class="device-card" id="door-back">
+              <span class="device-name">Back</span>
+              <span class="door-badge door-locked">locked</span>
+            </div>
+            <div class="device-card" id="door-garage">
+              <span class="device-name">Garage</span>
+              <span class="door-badge door-locked">locked</span>
+            </div>
+            <div class="device-card" id="door-side">
+              <span class="device-name">Side</span>
+              <span class="door-badge door-locked">locked</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scenes -->
+        <div class="control-section">
+          <div class="section-heading">Scenes</div>
+          <div class="scene-pills">
+            <span class="scene-pill" id="scene-movie_night">Movie Night</span>
+            <span class="scene-pill" id="scene-bedtime">Bedtime</span>
+            <span class="scene-pill" id="scene-morning">Morning</span>
+            <span class="scene-pill" id="scene-away">Away</span>
+            <span class="scene-pill" id="scene-party">Party</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right: chat -->
+    <div id="chat-panel">
+      <div id="messages"></div>
+      <div id="input-bar">
+        <input id="user-input" type="text" placeholder="Type a command..." autocomplete="off"/>
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  const messagesEl = document.getElementById("messages");
+  const inputEl    = document.getElementById("user-input");
+  const sendBtn    = document.getElementById("send-btn");
+
+  // ── Helpers ──────────────────────────────────────────────
+
+  function appendMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = `msg ${role}`;
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  function appendTyping() {
+    const div = document.createElement("div");
+    div.className = "typing";
+    div.innerHTML = "<span></span><span></span><span></span>";
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  function appendToolCalls(toolCalls) {
+    if (!toolCalls || toolCalls.length === 0) return;
+    const details = document.createElement("details");
+    details.className = "tool-calls";
+    details.innerHTML =
+      `<summary>Tool calls (${toolCalls.length})</summary>` +
+      `<pre>${JSON.stringify(toolCalls, null, 2)}</pre>`;
+    messagesEl.appendChild(details);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // ── State rendering ───────────────────────────────────────
+
+  function updateHouseVisualization(state) {
+    for (const [room, light] of Object.entries(state.lights || {})) {
+      const el = document.getElementById(`light-${room}`);
+      if (el) {
+        const dot = el.querySelector(".status-dot");
+        if (dot) {
+          dot.classList.remove("light-on", "light-off");
+          dot.classList.add(light.state === "on" ? "light-on" : "light-off");
+        }
+      }
+    }
+  }
+
+  function updateStateCards(state) {
+    const t = state.thermostat || {};
+    const tempEl = document.getElementById("state-thermostat-temp");
+    const modeEl = document.getElementById("state-thermostat-mode");
+    if (tempEl) tempEl.textContent = t.temperature != null ? `${t.temperature}°F` : "68°F";
+    if (modeEl) modeEl.textContent = t.mode || "auto";
+
+    for (const [door, doorState] of Object.entries(state.doors || {})) {
+      const el = document.getElementById(`door-${door}`);
+      if (el) {
+        const badge = el.querySelector(".door-badge");
+        if (badge) {
+          badge.classList.remove("door-locked", "door-unlocked");
+          badge.classList.add(doorState === "locked" ? "door-locked" : "door-unlocked");
+          badge.textContent = doorState === "locked" ? "locked" : "unlocked";
+        }
+      }
+    }
+
+    document.querySelectorAll(".scene-pill").forEach(el => el.classList.remove("scene-active"));
+    if (state.active_scene) {
+      const sceneEl = document.getElementById(`scene-${state.active_scene}`);
+      if (sceneEl) sceneEl.classList.add("scene-active");
+    }
+  }
+
+  async function refreshState() {
+    try {
+      const state = await fetch("/state").then(r => r.json());
+      updateHouseVisualization(state);
+      updateStateCards(state);
+    } catch (e) {
+      console.warn("Could not fetch state:", e);
+    }
+  }
+
+  // ── Send message ──────────────────────────────────────────
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    inputEl.value = "";
+    sendBtn.disabled = true;
+    inputEl.disabled = true;
+
+    appendMessage("user", text);
+    const typing = appendTyping();
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+
+      const data = await res.json();
+      typing.remove();
+      appendMessage("assistant", data.text || "(no response)");
+      appendToolCalls(data.tool_calls);
+      await refreshState();
+    } catch (e) {
+      typing.remove();
+      appendMessage("assistant", "Error: could not reach the server.");
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  // ── Event listeners ───────────────────────────────────────
+
+  sendBtn.addEventListener("click", sendMessage);
+  inputEl.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+
+  refreshState();
+</script>
+</body>
 </html>

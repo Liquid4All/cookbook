@@ -1,0 +1,313 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --border: #2a2d3a;
+  --text: #e2e8f0;
+  --text-muted: #6b7280;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --user-bubble: #1e3a5f;
+  --assistant-bubble: #1e2535;
+  --room-on: rgba(255, 200, 50, 0.45);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Layout ── */
+#app {
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  height: 100vh;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+header .meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 12px;
+}
+
+header .badge {
+  background: #1a3a1a;
+  color: #4ade80;
+  border: 1px solid #166534;
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+main {
+  display: grid;
+  grid-template-columns: 75% 25%;
+  overflow: hidden;
+}
+
+/* ── House panel ── */
+#house-panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Control panel ── */
+#control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.control-section {}
+
+.section-heading {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.device-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.device-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.device-name {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+
+.status-dot.light-on  { background: #f59e0b; }
+.status-dot.light-off { background: #374151; }
+
+.door-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.door-badge.door-locked   { background: #7f1d1d; color: #fca5a5; }
+.door-badge.door-unlocked { background: #14532d; color: #86efac; }
+
+.thermo-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+#state-thermostat-temp {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+#state-thermostat-mode {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.scene-pills {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scene-pill {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: default;
+  transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+.scene-pill.scene-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Chat panel ── */
+#chat-panel {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  overflow: hidden;
+}
+
+#messages {
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.msg {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: var(--user-bubble);
+  border-bottom-right-radius: 3px;
+}
+
+.msg.assistant {
+  align-self: flex-start;
+  background: var(--assistant-bubble);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 3px;
+}
+
+/* Tool call inspector */
+.tool-calls {
+  align-self: flex-start;
+  width: 100%;
+  max-width: 560px;
+}
+
+.tool-calls summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 4px 0;
+  user-select: none;
+}
+
+.tool-calls summary:hover { color: var(--text); }
+
+.tool-calls pre {
+  margin-top: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
+  overflow-x: auto;
+  color: #a5f3a0;
+}
+
+/* Input bar */
+#input-bar {
+  display: flex;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+#input-bar input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+#input-bar input:focus { border-color: var(--accent); }
+#input-bar input::placeholder { color: var(--text-muted); }
+
+#input-bar button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#input-bar button:hover:not(:disabled) { background: var(--accent-hover); }
+#input-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Typing indicator */
+.typing {
+  align-self: flex-start;
+  display: flex;
+  gap: 5px;
+  padding: 12px 16px;
+  background: var(--assistant-bubble);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  border-bottom-left-radius: 3px;
+}
+
+.typing span {
+  width: 7px; height: 7px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: bounce 1.2s infinite;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%            { transform: translateY(-6px); }
+}
