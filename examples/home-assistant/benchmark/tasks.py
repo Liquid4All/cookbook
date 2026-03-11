@@ -15,19 +15,17 @@ class Task:
 ALL_ROOMS = {"living_room", "bedroom", "kitchen", "bathroom", "office", "hallway"}
 
 
-def _find_call(tool_calls: list[dict], tool_name: str) -> dict | None:
-    for call in tool_calls:
-        if call["name"] == tool_name:
-            return call
-    return None
-
-
 def _find_all_calls(tool_calls: list[dict], tool_name: str) -> list[dict]:
     return [call for call in tool_calls if call["name"] == tool_name]
 
 
+def _find_last_call(tool_calls: list[dict], tool_name: str) -> dict | None:
+    calls = _find_all_calls(tool_calls, tool_name)
+    return calls[-1] if calls else None
+
+
 def _verify_task_1(tool_calls, duration):
-    call = _find_call(tool_calls, "toggle_lights")
+    call = _find_last_call(tool_calls, "toggle_lights")
     passed = (
         call is not None
         and call["args"].get("room") == "kitchen"
@@ -37,7 +35,7 @@ def _verify_task_1(tool_calls, duration):
 
 
 def _verify_task_2(tool_calls, duration):
-    call = _find_call(tool_calls, "lock_door")
+    call = _find_last_call(tool_calls, "lock_door")
     passed = (
         call is not None
         and call["args"].get("door") == "front"
@@ -47,7 +45,7 @@ def _verify_task_2(tool_calls, duration):
 
 
 def _verify_task_3(tool_calls, duration):
-    call = _find_call(tool_calls, "set_thermostat")
+    call = _find_last_call(tool_calls, "set_thermostat")
     passed = (
         call is not None
         and call["args"].get("temperature") == 72
@@ -57,7 +55,7 @@ def _verify_task_3(tool_calls, duration):
 
 
 def _verify_task_4(tool_calls, duration):
-    call = _find_call(tool_calls, "get_device_status")
+    call = _find_last_call(tool_calls, "get_device_status")
     passed = (
         call is not None
         and call["args"].get("device_type") == "all"
@@ -66,7 +64,7 @@ def _verify_task_4(tool_calls, duration):
 
 
 def _verify_task_5(tool_calls, duration):
-    call = _find_call(tool_calls, "set_scene")
+    call = _find_last_call(tool_calls, "set_scene")
     passed = (
         call is not None
         and call["args"].get("scene") == "movie_night"
@@ -75,7 +73,7 @@ def _verify_task_5(tool_calls, duration):
 
 
 def _verify_task_6(tool_calls, duration):
-    call = _find_call(tool_calls, "lock_door")
+    call = _find_last_call(tool_calls, "lock_door")
     passed = (
         call is not None
         and call["args"].get("door") == "garage"
@@ -85,7 +83,7 @@ def _verify_task_6(tool_calls, duration):
 
 
 def _verify_task_7(tool_calls, duration):
-    call = _find_call(tool_calls, "get_device_status")
+    call = _find_last_call(tool_calls, "get_device_status")
     passed = (
         call is not None
         and call["args"].get("device_type") == "lights"
@@ -95,7 +93,7 @@ def _verify_task_7(tool_calls, duration):
 
 
 def _verify_task_8(tool_calls, duration):
-    call = _find_call(tool_calls, "set_thermostat")
+    call = _find_last_call(tool_calls, "set_thermostat")
     passed = (
         call is not None
         and call["args"].get("temperature") == 74
@@ -106,7 +104,7 @@ def _verify_task_8(tool_calls, duration):
 
 def _verify_task_9(tool_calls, duration):
     # Requires inferring "heading out for the day" -> scene="away"
-    call = _find_call(tool_calls, "set_scene")
+    call = _find_last_call(tool_calls, "set_scene")
     passed = (
         call is not None
         and call["args"].get("scene") == "away"
@@ -115,15 +113,15 @@ def _verify_task_9(tool_calls, duration):
 
 
 def _verify_task_10(tool_calls, duration):
-    # Requires calling two tools in one turn
-    door_call   = _find_call(tool_calls, "lock_door")
-    lights_call = _find_call(tool_calls, "toggle_lights")
+    # Requires calling two tools in one turn; check last call per target to avoid correct-then-undone
+    back_door_calls   = [c for c in _find_all_calls(tool_calls, "lock_door")    if c["args"].get("door") == "back"]
+    office_light_calls = [c for c in _find_all_calls(tool_calls, "toggle_lights") if c["args"].get("room") == "office"]
+    door_call   = back_door_calls[-1]   if back_door_calls   else None
+    lights_call = office_light_calls[-1] if office_light_calls else None
     passed = (
         door_call is not None
-        and door_call["args"].get("door") == "back"
         and door_call["args"].get("state") == "lock"
         and lights_call is not None
-        and lights_call["args"].get("room") == "office"
         and lights_call["args"].get("state") == "off"
     )
     call = door_call or lights_call
@@ -131,13 +129,15 @@ def _verify_task_10(tool_calls, duration):
 
 
 def _verify_task_11(tool_calls, duration):
-    # Requires calling toggle_lights once per room, all with state="on"
+    # Requires all rooms to be on in their FINAL state (last call per room wins)
     calls = _find_all_calls(tool_calls, "toggle_lights")
-    rooms_on = {
-        c["args"]["room"]
-        for c in calls
-        if c["args"].get("state") == "on" and "room" in c["args"]
-    }
+    final_state = {}
+    for c in calls:
+        room = c["args"].get("room")
+        state = c["args"].get("state")
+        if room and state:
+            final_state[room] = state
+    rooms_on = {room for room, state in final_state.items() if state == "on"}
     passed = rooms_on == ALL_ROOMS
     call = calls[0] if calls else None
     return _result(11, "Turn on all lights (multi-tool)", "hard", passed, call, duration)
@@ -145,7 +145,7 @@ def _verify_task_11(tool_calls, duration):
 
 def _verify_task_12(tool_calls, duration):
     # "switch it off" after turning on the bedroom light - pronoun reference
-    call = _find_call(tool_calls, "toggle_lights")
+    call = _find_last_call(tool_calls, "toggle_lights")
     passed = (
         call is not None
         and call["args"].get("room") == "bedroom"
@@ -170,7 +170,7 @@ def _verify_task_13(tool_calls, duration):
 
 def _verify_task_14(tool_calls, duration):
     # "bump it up by 2 degrees" after setting thermostat to 68 - relative adjustment
-    call = _find_call(tool_calls, "set_thermostat")
+    call = _find_last_call(tool_calls, "set_thermostat")
     passed = (
         call is not None
         and call["args"].get("temperature") == 70
@@ -180,12 +180,10 @@ def _verify_task_14(tool_calls, duration):
 
 def _verify_task_15(tool_calls, duration):
     # "unlock the first one" after locking front then garage - back-reference
-    call = _find_call(tool_calls, "lock_door")
-    passed = (
-        call is not None
-        and call["args"].get("door") == "front"
-        and call["args"].get("state") == "unlock"
-    )
+    # Check the LAST call on the front door to catch correct-then-undone sequences
+    front_calls = [c for c in _find_all_calls(tool_calls, "lock_door") if c["args"].get("door") == "front"]
+    call = front_calls[-1] if front_calls else None
+    passed = call is not None and call["args"].get("state") == "unlock"
     return _result(15, "Unlock first door (3-turn back-reference)", "hard", passed, call, duration)
 
 

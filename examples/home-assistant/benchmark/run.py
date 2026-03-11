@@ -1,4 +1,5 @@
 import sys
+import copy
 import time
 import argparse
 from dataclasses import dataclass
@@ -8,7 +9,11 @@ from pathlib import Path
 sys.path.insert(0, ".")
 
 from app.agent import run_agent, get_model_name
+from app.state import home_state
 from benchmark.tasks import TASKS
+
+# Capture default state once at import time, before any task mutates it
+_DEFAULT_STATE = copy.deepcopy(home_state)
 
 
 @dataclass
@@ -23,6 +28,10 @@ class TaskResult:
 
 
 def run_task(task, backend: str = "local") -> TaskResult:
+    # Reset home state to defaults before each task so results are order-independent
+    home_state.clear()
+    home_state.update(copy.deepcopy(_DEFAULT_STATE))
+
     tool_calls_seen = []
 
     def capture(name, args, result):
