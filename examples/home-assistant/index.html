@@ -12,7 +12,7 @@
   <header>
     <span>LFM Home Assistant</span>
     <div class="meta">
-      <span>Model: LFM2.5-1.2B-Instruct</span>
+      <span id="model-label">Model: …</span>
       <span class="badge">Metal GPU</span>
     </div>
   </header>
@@ -238,6 +238,11 @@
 
   sendBtn.addEventListener("click", sendMessage);
   inputEl.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+
+  fetch("/model")
+    .then(r => r.json())
+    .then(d => { document.getElementById("model-label").textContent = `Model: ${d.name}`; })
+    .catch(() => {});
 
   refreshState();
 </script>

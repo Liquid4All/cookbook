@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from app.agent import run_agent
+from app.agent import client, run_agent
 from app.state import home_state
 
 app = FastAPI()
@@ -15,6 +15,16 @@ conversation_history: list[dict] = []
 @app.get("/")
 def serve_index():
     return FileResponse("index.html")
+
+
+@app.get("/model")
+def get_model():
+    try:
+        models = client.models.list()
+        name = models.data[0].id.split("_", 2)[-1] if models.data else "unknown"
+    except Exception:
+        name = "unknown"
+    return JSONResponse({"name": name})
 
 
 @app.get("/state")
