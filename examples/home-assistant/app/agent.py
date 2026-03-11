@@ -25,6 +25,16 @@ SYSTEM_PROMPT = (
 )
 
 
+def get_model_name(backend: str) -> str:
+    if backend == "local":
+        try:
+            models = local_client.models.list()
+            return models.data[0].id.split("_", 2)[-1] if models.data else "unknown"
+        except Exception:
+            return "unknown"
+    return BACKENDS[backend]["model"]
+
+
 def run_agent(
     user_message: str,
     history: list[dict] | None = None,
@@ -51,7 +61,7 @@ def run_agent(
             messages=messages,
             tools=TOOL_SCHEMAS,
             tool_choice="auto",
-            temperature=0.1,
+            temperature=0,
             max_tokens=512,
         )
         message = response.choices[0].message
@@ -97,7 +107,7 @@ def run_agent(
         messages=messages,
         tools=TOOL_SCHEMAS,
         tool_choice="none",
-        temperature=0.1,
+        temperature=0,
         max_tokens=256,
     )
     return final.choices[0].message.content or "Done."

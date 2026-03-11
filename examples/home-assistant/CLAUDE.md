@@ -24,14 +24,20 @@ llama-server \
 uv run uvicorn app.server:app --port 5173 --reload
 ```
 
-**Run the full benchmark** (requires model server running on port 8080)
+**Run the full benchmark against the local model** (requires model server running on port 8080)
 ```bash
 uv run python benchmark/run.py
+```
+
+**Run the full benchmark against OpenAI gpt-4o-mini** (requires `OPENAI_API_KEY` in `.env`)
+```bash
+uv run python benchmark/run.py --backend openai
 ```
 
 **Run a single benchmark task**
 ```bash
 uv run python benchmark/run.py --task <1-10>
+uv run python benchmark/run.py --task <1-10> --backend openai
 ```
 
 ## Architecture

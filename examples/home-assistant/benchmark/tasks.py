@@ -9,6 +9,7 @@ class Task:
     difficulty: str
     prompt: str
     verifier: Callable
+    history: list[dict] | None = None
 
 
 ALL_ROOMS = {"living_room", "bedroom", "kitchen", "bathroom", "office", "hallway"}
@@ -142,6 +143,52 @@ def _verify_task_11(tool_calls, duration):
     return _result(11, "Turn on all lights (multi-tool)", "hard", passed, call, duration)
 
 
+def _verify_task_12(tool_calls, duration):
+    # "switch it off" after turning on the bedroom light - pronoun reference
+    call = _find_call(tool_calls, "toggle_lights")
+    passed = (
+        call is not None
+        and call["args"].get("room") == "bedroom"
+        and call["args"].get("state") == "off"
+    )
+    return _result(12, "Turn off bedroom light (pronoun reference)", "hard", passed, call, duration)
+
+
+def _verify_task_13(tool_calls, duration):
+    # "keep the hallway one off" after turning on all lights - correction
+    # Accept either: explicit toggle_lights(hallway, off) OR re-applying all lights
+    # except hallway (model replays the scene). Both leave hallway off correctly.
+    calls = _find_all_calls(tool_calls, "toggle_lights")
+    hallway_turned_on = any(
+        c["args"].get("room") == "hallway" and c["args"].get("state") == "on"
+        for c in calls
+    )
+    passed = len(calls) > 0 and not hallway_turned_on
+    call = calls[0] if calls else None
+    return _result(13, "Correct bulk action (hallway off)", "hard", passed, call, duration)
+
+
+def _verify_task_14(tool_calls, duration):
+    # "bump it up by 2 degrees" after setting thermostat to 68 - relative adjustment
+    call = _find_call(tool_calls, "set_thermostat")
+    passed = (
+        call is not None
+        and call["args"].get("temperature") == 70
+    )
+    return _result(14, "Relative thermostat increase (+2 degrees)", "hard", passed, call, duration)
+
+
+def _verify_task_15(tool_calls, duration):
+    # "unlock the first one" after locking front then garage - back-reference
+    call = _find_call(tool_calls, "lock_door")
+    passed = (
+        call is not None
+        and call["args"].get("door") == "front"
+        and call["args"].get("state") == "unlock"
+    )
+    return _result(15, "Unlock first door (3-turn back-reference)", "hard", passed, call, duration)
+
+
 def _result(task_id, name, difficulty, passed, call, duration):
     from benchmark.run import TaskResult
     return TaskResult(
@@ -167,4 +214,26 @@ TASKS = [
     Task(9,  "Away scene via indirect phrasing",            "hard",   "I'm heading out for the day, set the house accordingly",            _verify_task_9),
     Task(10, "Lock back door + off office lights",          "hard",   "Lock the back door and turn off the office lights",                 _verify_task_10),
     Task(11, "Turn on all lights (multi-tool)",             "hard",   "switch on all the lights",                                          _verify_task_11),
+    Task(12, "Turn off bedroom light (pronoun reference)",  "hard",   "switch it off",                                                     _verify_task_12,
+         history=[
+             {"role": "user",      "content": "switch on the bedroom light"},
+             {"role": "assistant", "content": "The bedroom light has been turned on."},
+         ]),
+    Task(13, "Correct bulk action (hallway off)",           "hard",   "actually keep the hallway one off",                                 _verify_task_13,
+         history=[
+             {"role": "user",      "content": "turn on all the lights"},
+             {"role": "assistant", "content": "All lights have been turned on."},
+         ]),
+    Task(14, "Relative thermostat increase (+2 degrees)",   "hard",   "bump it up by 2 degrees",                                           _verify_task_14,
+         history=[
+             {"role": "user",      "content": "set the thermostat to 68 degrees"},
+             {"role": "assistant", "content": "The thermostat has been set to 68°F."},
+         ]),
+    Task(15, "Unlock first door (3-turn back-reference)",   "hard",   "unlock the first one",                                              _verify_task_15,
+         history=[
+             {"role": "user",      "content": "lock the front door"},
+             {"role": "assistant", "content": "The front door has been locked."},
+             {"role": "user",      "content": "and the garage too"},
+             {"role": "assistant", "content": "The garage door has been locked."},
+         ]),
 ]
