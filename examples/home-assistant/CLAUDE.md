@@ -40,6 +40,23 @@ uv run python benchmark/run.py --task <1-10>
 uv run python benchmark/run.py --task <1-10> --backend openai
 ```
 
+**Generate a golden SFT dataset** (requires `OPENAI_API_KEY` in `.env`)
+```bash
+# Full run: 20 runs x ~4 prompts x 15 tasks ≈ 1 200 examples
+uv run python benchmark/generate_dataset.py
+
+# Quick sanity check (1 run per prompt)
+uv run python benchmark/generate_dataset.py --runs 1
+
+# Use the local model instead
+uv run python benchmark/generate_dataset.py --backend local
+```
+
+Output is a timestamped JSONL file in `benchmark/datasets/`. Each line is a verified,
+correct conversation trace (system + user + tool calls + tool results + assistant reply)
+paired with the full `TOOL_SCHEMAS`. Only runs that pass the task verifier are kept.
+Paraphrases for all 15 tasks are defined in `benchmark/generate_dataset.py`.
+
 ## Architecture
 
 ```

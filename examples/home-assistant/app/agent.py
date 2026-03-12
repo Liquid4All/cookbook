@@ -40,6 +40,7 @@ def run_agent(
     history: list[dict] | None = None,
     backend: str = "local",
     on_tool_call=None,
+    messages_out: list | None = None,
 ) -> str:
     """Runs the agent loop and returns the final text response."""
 
@@ -55,6 +56,7 @@ def run_agent(
 
     seen_calls: set[str] = set()  # Guard against repeated identical tool calls
     max_iter = 5
+    final_response = None
     for _ in range(max_iter):
         response = client.chat.completions.create(
             model=model,
@@ -67,7 +69,9 @@ def run_agent(
         message = response.choices[0].message
 
         if not message.tool_calls:
-            return message.content
+            messages.append({"role": "assistant", "content": message.content})
+            final_response = message.content
+            break
 
         # Check for duplicate calls before appending to messages, so the
         # messages list stays in a valid state for the forced-text fallback.
@@ -79,7 +83,18 @@ def run_agent(
         if duplicate:
             break
 
-        messages.append(message)
+        messages.append({
+            "role": "assistant",
+            "content": message.content,
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in message.tool_calls
+            ],
+        })
 
         for tool_call in message.tool_calls:
             name = tool_call.function.name
@@ -100,14 +115,21 @@ def run_agent(
                 "content": json.dumps(result),
             })
 
-    # Forced text-only call: model summarises what it just did.
-    # Reached when the model loops on duplicate tool calls or hits max_iter.
-    final = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        tools=TOOL_SCHEMAS,
-        tool_choice="none",
-        temperature=0,
-        max_tokens=256,
-    )
-    return final.choices[0].message.content or "Done."
+    if final_response is None:
+        # Forced text-only call: model summarises what it just did.
+        # Reached when the model loops on duplicate tool calls or hits max_iter.
+        final = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=TOOL_SCHEMAS,
+            tool_choice="none",
+            temperature=0,
+            max_tokens=256,
+        )
+        final_response = final.choices[0].message.content or "Done."
+        messages.append({"role": "assistant", "content": final_response})
+
+    if messages_out is not None:
+        messages_out.extend(messages)
+
+    return final_response
