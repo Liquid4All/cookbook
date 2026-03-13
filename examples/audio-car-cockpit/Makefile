@@ -4,7 +4,7 @@
 	test-search test-quick test-full test-toolcall \
 	llama-liquid-audio-runner \
 	LFM2-1.2B-Tool-GGUF \
-	install-deps
+	install-deps clean
 
 all: help
 
@@ -111,8 +111,11 @@ LLAMA_CPP_COMMIT := d03c45c9c56795af8b0e899762bf266c14fd2028
 ifdef HAS_ROCM
   $(info ROCm detected at /opt/rocm — building with HIP GPU acceleration)
 
-  HIP_ARCH   ?= gfx1150
+  _DETECTED_HIP_ARCH := $(shell rocminfo 2>/dev/null | grep -oP 'gfx\w+' | head -1)
+  HIP_ARCH   ?= $(or $(_DETECTED_HIP_ARCH),gfx1150)
+  $(info Using HIP_ARCH=$(HIP_ARCH))
   CMAKE_ARGS := -DGGML_HIP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_HIP_ARCHITECTURES="$(HIP_ARCH)"
+  GPU_FLAGS  := --n-gpu-layers 9999
 
   # ROCm: clone PR #18641 which includes liquid-audio tools
   llama.cpp:
@@ -128,6 +131,7 @@ else
   $(info ROCm not found — building CPU-only, downloading pre-built audio runner)
 
   CMAKE_ARGS := -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON
+  GPU_FLAGS  :=
 
   # No ROCm: clone llama.cpp at a known-good commit on main
   llama.cpp:
@@ -221,7 +225,7 @@ audioserver: $(AUDIO_SERVER_TARGET) LFM2.5-Audio-1.5B-GGUF  ## Start audio serve
 		-mm LFM2.5-Audio-1.5B-GGUF/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
 		-mv LFM2.5-Audio-1.5B-GGUF/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
 		--tts-speaker-file LFM2.5-Audio-1.5B-GGUF/tokenizer-LFM2.5-Audio-1.5B-Q8_0.gguf \
-	-t ${THREADS} --host 127.0.0.1 --port ${AUDIO_SERVER_PORT} &>/dev/null
+	$(GPU_FLAGS) -t ${THREADS} --host 127.0.0.1 --port ${AUDIO_SERVER_PORT} &>/dev/null
 
 
 # ┌──────────────────────────────────────────────────────────┐
@@ -250,6 +254,9 @@ test-toolcall:  ## Tool call with the string "play the next song"
 # ┌──────────────────────────────────────────────────────────┐
 # │                        Utilities                         │
 # └──────────────────────────────────────────────────────────┘
+
+clean:  ## Remove build artifacts (llama.cpp, binaries, runners)
+	rm -rf llama.cpp llama-server llama-liquid-audio-server llama-liquid-audio runners
 
 UV_FROZEN_DEV = $(UV) run --only-group dev --frozen
 
