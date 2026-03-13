@@ -97,7 +97,11 @@ else
   $(error Unsupported arch: $(UNAME_M))
 endif
 
-HAS_ROCM := $(shell rocm-smi --showproductname 2>/dev/null | grep "Card Series" >/dev/null && echo 1)
+ifdef CPU
+  HAS_ROCM :=
+else
+  HAS_ROCM := $(shell rocm-smi --showproductname 2>/dev/null | grep "Card Series" >/dev/null && echo 1)
+endif
 
 LLAMA_CPP_REPO   := https://github.com/ggml-org/llama.cpp.git
 LLAMA_CPP_PR     := 18641
@@ -128,7 +132,11 @@ ifdef HAS_ROCM
   AUDIO_SERVER_TARGET := llama-liquid-audio-server
 
 else
-  $(info ROCm not found — building CPU-only, downloading pre-built audio runner)
+  ifdef CPU
+    $(info CPU=1 set — forcing CPU-only build)
+  else
+    $(info ROCm not found — building CPU-only, downloading pre-built audio runner)
+  endif
 
   CMAKE_ARGS := -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON
   GPU_FLAGS  :=
