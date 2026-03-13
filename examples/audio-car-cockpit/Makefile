@@ -97,7 +97,7 @@ else
   $(error Unsupported arch: $(UNAME_M))
 endif
 
-HAS_ROCM := $(shell test -d /opt/rocm && echo 1)
+HAS_ROCM := $(shell rocm-smi --showproductname 2>/dev/null | grep "Card Series" >/dev/null && echo 1)
 
 LLAMA_CPP_REPO   := https://github.com/ggml-org/llama.cpp.git
 LLAMA_CPP_PR     := 18641
@@ -109,9 +109,9 @@ LLAMA_CPP_COMMIT := d03c45c9c56795af8b0e899762bf266c14fd2028
 # └──────────────────────────────────────────────────────────┘
 
 ifdef HAS_ROCM
-  $(info ROCm detected at /opt/rocm — building with HIP GPU acceleration)
+  $(info ROCm detected — building with HIP GPU acceleration)
 
-  _DETECTED_HIP_ARCH := $(shell rocminfo 2>/dev/null | grep -oP 'gfx\w+' | head -1)
+  _DETECTED_HIP_ARCH := $(shell rocm-smi --showproductname 2>/dev/null | grep -oP 'gfx\w+' | head -1)
   HIP_ARCH   ?= $(or $(_DETECTED_HIP_ARCH),gfx1150)
   $(info Using HIP_ARCH=$(HIP_ARCH))
   CMAKE_ARGS := -DGGML_HIP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_HIP_ARCHITECTURES="$(HIP_ARCH)"
