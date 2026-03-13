@@ -169,13 +169,16 @@ async def websocket_audio_endpoint(websocket: WebSocket):
                     transcribed_text += _text_content
                     await websocket.send_json({"type": "text", "data": _text_content})
 
-                audio_data = getattr(delta, "audio", None) or getattr(delta, "audio_chunk", None)
-                if audio_data:
+                audio_obj = getattr(delta, "audio", None)
+                audio_chunk_obj = getattr(delta, "audio_chunk", None)
+                if audio_obj:
                     await websocket.send_json({
-                        "type": "audio",
-                        "data": audio_data["data"],
-                        "format": audio_data.get("format", "f32"),
-                        "sample_rate": audio_data.get("sample_rate", 24000),
+                        "type": "audio", "data": audio_obj["data"],
+                        "format": "pcm", "sample_rate": audio_obj.get("sample_rate", 24000),
+                    })
+                elif audio_chunk_obj:
+                    await websocket.send_json({
+                        "type": "audio", "data": audio_chunk_obj["data"], "sample_rate": 24000,
                     })
 
             # If ASR mode, process through tool calling and then TTS
@@ -250,13 +253,16 @@ async def websocket_audio_endpoint(websocket: WebSocket):
                 async for chunk in tts_stream:
                     delta = chunk.choices[0].delta
 
-                    audio_data = getattr(delta, "audio", None) or getattr(delta, "audio_chunk", None)
-                    if audio_data:
+                    audio_obj = getattr(delta, "audio", None)
+                    audio_chunk_obj = getattr(delta, "audio_chunk", None)
+                    if audio_obj:
                         await websocket.send_json({
-                            "type": "audio",
-                            "data": audio_data["data"],
-                            "format": audio_data.get("format", "f32"),
-                            "sample_rate": audio_data.get("sample_rate", 24000),
+                            "type": "audio", "data": audio_obj["data"],
+                            "format": "pcm", "sample_rate": audio_obj.get("sample_rate", 24000),
+                        })
+                    elif audio_chunk_obj:
+                        await websocket.send_json({
+                            "type": "audio", "data": audio_chunk_obj["data"], "sample_rate": 24000,
                         })
 
             await websocket.send_json({"type": "done"})

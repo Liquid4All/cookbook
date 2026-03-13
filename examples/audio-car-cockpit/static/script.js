@@ -851,13 +851,6 @@
     queueAudioChunk(base64Data, sampleRate, format) {
       const pcmBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
-      // Auto-detect format if not provided: try float32, if values are out of
-      // range it's int16 PCM (2 bytes/sample vs 4 bytes/sample)
-      if (!format) {
-        const probe = new Float32Array(pcmBytes.buffer.slice(0, 16));
-        format = probe.some(v => Math.abs(v) > 2.0 || isNaN(v)) ? 'pcm' : 'f32';
-      }
-
       let floatArray;
       if (format === 'pcm') {
         const int16 = new Int16Array(pcmBytes.buffer);
