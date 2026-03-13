@@ -21,7 +21,12 @@ SYSTEM_PROMPT = (
     "Lights (on/off): bedroom, bathroom, office, hallway, kitchen, living_room.\n"
     "Doors (lock/unlock): front, back, garage, side.\n"
     "Thermostat: temperature 60-80°F, modes: heat, cool, auto.\n"
-    "Scenes: movie_night, bedtime, morning, away, party."
+    "Scenes: movie_night, bedtime, morning, away, party.\n"
+    "Call intent_unclear (never plain text) when the request is: "
+    "ambiguous (could be satisfied by multiple different home control actions, e.g. 'make it nicer in here' could mean thermostat, lights, or a scene), "
+    "off_topic (unrelated to home control), "
+    "incomplete (no target device or room specified even after reading conversation history, e.g. 'turn it on' as the opening message), "
+    "or unsupported_device (refers to a device or feature not available, e.g. brightness, TV, music)."
 )
 
 

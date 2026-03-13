@@ -46,11 +46,14 @@ def _verify_task_3(tool_calls, duration, state):
 
 
 def _verify_task_4(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "get_device_status")
+    calls = _find_all_calls(tool_calls, "get_device_status")
+    device_types = {c["args"].get("device_type") for c in calls}
+    # Accept a single "all" call or individual calls covering all three types
     passed = (
-        call is not None
-        and call["args"].get("device_type") == "all"
+        "all" in device_types
+        or {"lights", "thermostat", "door"}.issubset(device_types)
     )
+    call = _find_last_call(tool_calls, "get_device_status")
     return _result(4, "Get status of all devices", "easy", passed, call, duration)
 
 
@@ -135,11 +138,41 @@ def _verify_task_13(tool_calls, duration, state):
     return _result(13, "Correct bulk action (hallway off)", "hard", passed, call, duration)
 
 
-def _verify_task_14(tool_calls, duration, state):
+def _verify_task_14(tool_calls, duration, state, initial_state=None):
     # "bump it up by 2 degrees" after setting thermostat to 68 - relative adjustment
     call = _find_last_call(tool_calls, "set_thermostat")
-    passed = state["thermostat"]["temperature"] == 70
+    initial_temp = (initial_state["thermostat"]["temperature"]
+                    if initial_state is not None else 68)
+    passed = state["thermostat"]["temperature"] == initial_temp + 2
     return _result(14, "Relative thermostat increase (+2 degrees)", "hard", passed, call, duration)
+
+
+def _verify_task_16(tool_calls, duration, state):
+    # "Dim the lights to 50%" - brightness control is unsupported
+    call = _find_last_call(tool_calls, "intent_unclear")
+    passed = call is not None and call["args"].get("reason") == "unsupported_device"
+    return _result(16, "Reject: unsupported device (dim lights)", "easy", passed, call, duration)
+
+
+def _verify_task_17(tool_calls, duration, state):
+    # "Order a pizza" - off-topic request
+    call = _find_last_call(tool_calls, "intent_unclear")
+    passed = call is not None and call["args"].get("reason") == "off_topic"
+    return _result(17, "Reject: off-topic request", "easy", passed, call, duration)
+
+
+def _verify_task_18(tool_calls, duration, state):
+    # "Turn it on" with no prior context - incomplete request
+    call = _find_last_call(tool_calls, "intent_unclear")
+    passed = call is not None and call["args"].get("reason") == "incomplete"
+    return _result(18, "Reject: incomplete request", "easy", passed, call, duration)
+
+
+def _verify_task_19(tool_calls, duration, state):
+    # "Make it comfortable" - ambiguous request
+    call = _find_last_call(tool_calls, "intent_unclear")
+    passed = call is not None and call["args"].get("reason") == "ambiguous"
+    return _result(19, "Reject: ambiguous request", "easy", passed, call, duration)
 
 
 def _verify_task_15(tool_calls, duration, state):
@@ -197,4 +230,8 @@ TASKS = [
              {"role": "user",      "content": "and the garage too"},
              {"role": "assistant", "content": "The garage door has been locked."},
          ]),
+    Task(16, "Reject: unsupported device (dim lights)",    "easy",   "Dim the living room lights to 50%",                                 _verify_task_16),
+    Task(17, "Reject: off-topic request",                  "easy",   "Order a pizza for delivery",                                        _verify_task_17),
+    Task(18, "Reject: incomplete request",                 "easy",   "Turn it on",                                                        _verify_task_18),
+    Task(19, "Reject: ambiguous request",                  "easy",   "Make it more comfortable in here",                                  _verify_task_19),
 ]

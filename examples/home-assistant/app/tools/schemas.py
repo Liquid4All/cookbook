@@ -77,7 +77,13 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "intent_unclear",
-            "description": "Use when the user's request is ambiguous, off-topic, incomplete, or refers to an unsupported device.",
+            "description": (
+                "Call this tool instead of responding with text when the request cannot be fulfilled. "
+                "Reason 'ambiguous': request could mean multiple things. "
+                "Reason 'off_topic': completely outside home automation (ordering food, weather, music, etc.). "
+                "Reason 'incomplete': pronoun or reference with no prior context (e.g. 'turn it on'). "
+                "Reason 'unsupported_device': within home domain but feature unavailable (brightness, TV, cameras)."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
