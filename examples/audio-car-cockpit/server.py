@@ -169,10 +169,14 @@ async def websocket_audio_endpoint(websocket: WebSocket):
                     transcribed_text += _text_content
                     await websocket.send_json({"type": "text", "data": _text_content})
 
-                if hasattr(delta, "audio_chunk") and delta.audio_chunk:
-                    chunk_data = delta.audio_chunk["data"]
-                    # Send audio chunk immediately for low latency
-                    await websocket.send_json({"type": "audio", "data": chunk_data, "sample_rate": 24000})
+                audio_data = getattr(delta, "audio", None) or getattr(delta, "audio_chunk", None)
+                if audio_data:
+                    await websocket.send_json({
+                        "type": "audio",
+                        "data": audio_data["data"],
+                        "format": audio_data.get("format", "f32"),
+                        "sample_rate": audio_data.get("sample_rate", 24000),
+                    })
 
             # If ASR mode, process through tool calling and then TTS
             if mode == "asr" and transcribed_text:
@@ -246,10 +250,14 @@ async def websocket_audio_endpoint(websocket: WebSocket):
                 async for chunk in tts_stream:
                     delta = chunk.choices[0].delta
 
-                    if hasattr(delta, "audio_chunk") and delta.audio_chunk:
-                        chunk_data = delta.audio_chunk["data"]
-                        # Send audio chunk immediately for low latency
-                        await websocket.send_json({"type": "audio", "data": chunk_data, "sample_rate": 24000})
+                    audio_data = getattr(delta, "audio", None) or getattr(delta, "audio_chunk", None)
+                    if audio_data:
+                        await websocket.send_json({
+                            "type": "audio",
+                            "data": audio_data["data"],
+                            "format": audio_data.get("format", "f32"),
+                            "sample_rate": audio_data.get("sample_rate", 24000),
+                        })
 
             await websocket.send_json({"type": "done"})
 

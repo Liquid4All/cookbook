@@ -749,8 +749,7 @@
               this.captions.updateModel(msg.text, msg.tool, msg.tool_valid);
             }
           } else if (msg.type === 'audio') {
-            // Queue audio chunk for streaming playback
-            this.queueAudioChunk(msg.data, msg.sample_rate);
+            this.queueAudioChunk(msg.data, msg.sample_rate, msg.format);
           } else if (msg.type === 'done') {
             // Server has completed the full pipeline (ASR → Tool Calling → TTS)
             if (this.audio.transcribedText) {
@@ -849,12 +848,27 @@
       return buffer;
     }
 
-    queueAudioChunk(base64Data, sampleRate) {
-      // Decode PCM data
+    queueAudioChunk(base64Data, sampleRate, format) {
       const pcmBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      const floatArray = new Float32Array(pcmBytes.buffer);
 
-      // Calculate chunk duration in seconds
+      // Auto-detect format if not provided: try float32, if values are out of
+      // range it's int16 PCM (2 bytes/sample vs 4 bytes/sample)
+      if (!format) {
+        const probe = new Float32Array(pcmBytes.buffer.slice(0, 16));
+        format = probe.some(v => Math.abs(v) > 2.0 || isNaN(v)) ? 'pcm' : 'f32';
+      }
+
+      let floatArray;
+      if (format === 'pcm') {
+        const int16 = new Int16Array(pcmBytes.buffer);
+        floatArray = new Float32Array(int16.length);
+        for (let i = 0; i < int16.length; i++) {
+          floatArray[i] = int16[i] / 32768.0;
+        }
+      } else {
+        floatArray = new Float32Array(pcmBytes.buffer);
+      }
+
       const durationSec = floatArray.length / sampleRate;
 
       // Add to queue
