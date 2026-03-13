@@ -10,5 +10,11 @@ dependencies = [
     "sse-starlette>=2.1.0",
 ]
 
+[dependency-groups]
+finetune = [
+    "datasets>=2.0",
+    "huggingface_hub>=0.22",
+]
+
 [tool.uv]
 dev-dependencies = []
