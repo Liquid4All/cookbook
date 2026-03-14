@@ -53,6 +53,10 @@ scripts/sync-to-cookbook.sh
 # ─── Demo scripts (personal, not shared) ─────────────────────────────────
 docs/demo/demo-script-4min.md
 
+# ─── Build artifacts ──────────────────────────────────────────────────────
+llama.cpp/
+llama-server
+
 # ─── Environment ─────────────────────────────────────────────────────────
 .env
 .env.local

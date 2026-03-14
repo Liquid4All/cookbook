@@ -51,22 +51,25 @@ for arg in "$@"; do
     esac
 done
 
-# ── Check llama-server ───────────────────────────────────────────────────────
+# ── Find llama-server ────────────────────────────────────────────────────────
 
-if ! command -v llama-server &> /dev/null; then
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+LLAMA_SERVER=""
+
+if [ -x "$SCRIPT_DIR/llama-server" ]; then
+    LLAMA_SERVER="$SCRIPT_DIR/llama-server"
+elif command -v llama-server &> /dev/null; then
+    LLAMA_SERVER="$(command -v llama-server)"
+else
     echo "❌ llama-server not found."
     echo ""
-    echo "Install via Homebrew (macOS):"
-    echo "  brew install llama.cpp"
+    echo "Build with:  make llama-server  (auto-detects ROCm GPU)"
     echo ""
-    echo "Or build from source:"
-    echo "  git clone https://github.com/ggml-org/llama.cpp"
-    echo "  cd llama.cpp && cmake -B build && cmake --build build --config Release"
-    echo "  # Binary at: build/bin/llama-server"
+    echo "Or install via Homebrew (macOS):  brew install llama.cpp"
     exit 1
 fi
 
-echo "✅ llama-server found: $(command -v llama-server)"
+echo "✅ llama-server found: $LLAMA_SERVER"
 
 # ── Check model files ────────────────────────────────────────────────────────
 
@@ -140,7 +143,7 @@ echo "  API:     http://localhost:$MAIN_PORT/v1"
 echo ""
 
 # Start main model in background
-llama-server \
+"$LLAMA_SERVER" \
     --model "$MAIN_PATH" \
     --port "$MAIN_PORT" \
     --ctx-size "$MAIN_CTX" \
@@ -173,7 +176,7 @@ if [ "$START_VISION" = true ] && [ -f "$VISION_PATH" ] && [ -f "$MMPROJ_PATH" ];
     echo "  Starting LFM2.5-VL-1.6B on port $VISION_PORT"
     echo "═══════════════════════════════════════════════════"
 
-    llama-server \
+    "$LLAMA_SERVER" \
         --model "$VISION_PATH" \
         --mmproj "$MMPROJ_PATH" \
         --port "$VISION_PORT" \

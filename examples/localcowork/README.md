@@ -120,7 +120,12 @@ Full study with 8 models, 150+ scenarios, and 12 failure modes: [`docs/model-ana
 git clone <repo-url> && cd examples/localcowork/
 ./scripts/setup-dev.sh
 
-# 2. Download LFM2-24B-A2B (~14 GB)
+# 2. Build llama-server (auto-detects ROCm GPU on Linux)
+#    macOS: brew install llama.cpp (skip this step)
+#    Linux: builds from source with GPU acceleration if available
+make llama-server
+
+# 3. Download LFM2-24B-A2B (~14 GB)
 #    https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF
 source .venv/bin/activate
 pip install huggingface-hub
@@ -131,10 +136,10 @@ hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',
                 local_dir='$HOME/Projects/_models/')
 "
 
-# 3. Start the model server
+# 4. Start the model server
 ./scripts/start-model.sh
 
-# 4. Launch the app (in another terminal)
+# 5. Launch the app (in another terminal)
 cargo tauri dev
 ```
 
@@ -242,8 +247,12 @@ source ~/.cargo/env
 sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
     librsvg2-dev patchelf libssl-dev
 
-# llama.cpp (build from source for GPU support, or use a pre-built binary)
-# See https://github.com/ggml-org/llama.cpp for build instructions
+# Build dependencies for llama.cpp
+make install-deps
+
+# Build llama-server (auto-detects ROCm GPU, falls back to CPU)
+make llama-server
+# To force CPU-only build: make CPU=1 llama-server
 
 # Increase file watcher limit (required for Vite dev server)
 echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf
