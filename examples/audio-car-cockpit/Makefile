@@ -120,14 +120,16 @@ ifdef HAS_ROCM
   $(info Using HIP_ARCH=$(HIP_ARCH))
   CMAKE_ARGS := -DGGML_HIP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_HIP_ARCHITECTURES="$(HIP_ARCH)"
   GPU_FLAGS  := --n-gpu-layers 9999
+  AUDIO_PCM_FORMAT := int16
+  LLAMA_CPP_DIR := llama.cpp-rocm
 
-  # ROCm: clone PR #18641 which includes liquid-audio tools
-  llama.cpp:
-	git clone $(LLAMA_CPP_REPO) && \
-		cd llama.cpp && \
+  llama.cpp-rocm:
+	git clone $(LLAMA_CPP_REPO) $@ && \
+		cd $@ && \
 		git fetch origin pull/$(LLAMA_CPP_PR)/head:pr-$(LLAMA_CPP_PR) && \
 		git checkout pr-$(LLAMA_CPP_PR)
 
+  LLAMA_SERVER        := llama-server-rocm
   AUDIO_SERVER        := ./llama-liquid-audio-server
   AUDIO_SERVER_TARGET := llama-liquid-audio-server
 
@@ -140,13 +142,15 @@ else
 
   CMAKE_ARGS := -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON
   GPU_FLAGS  :=
+  AUDIO_PCM_FORMAT := float32
+  LLAMA_CPP_DIR := llama.cpp-cpu
 
-  # No ROCm: clone llama.cpp at a known-good commit on main
-  llama.cpp:
-	git clone $(LLAMA_CPP_REPO) && \
-		cd llama.cpp && \
+  llama.cpp-cpu:
+	git clone $(LLAMA_CPP_REPO) $@ && \
+		cd $@ && \
 		git checkout $(LLAMA_CPP_COMMIT)
 
+  LLAMA_SERVER        := llama-server-cpu
   AUDIO_SERVER        := ./llama-liquid-audio/llama-liquid-audio-server
   AUDIO_SERVER_TARGET := llama-liquid-audio/llama-liquid-audio-server
 
@@ -191,32 +195,31 @@ else
 endif
 
 
-llama.cpp/build/bin/llama-server: llama.cpp
+$(LLAMA_CPP_DIR)/build/bin/llama-server: $(LLAMA_CPP_DIR)
 ifeq ($(UNAME_S),Linux)
 	@dpkg -s libssl-dev >/dev/null 2>&1 || \
 		(echo "Error: libssl-dev not found — llama-server would build without HTTPS support." \
 		     "Run 'make install-deps' first." && exit 1)
 endif
-	cd llama.cpp && \
+	cd $(LLAMA_CPP_DIR) && \
 		cmake -B build $(CMAKE_ARGS) && \
 		cmake --build build --config Release -t llama-server -j 8
 
-llama-server:  ## Build llama-server (auto-detects ROCm)
-	@# Make doesn't allow non-recursive dependencies, adding the check here instead
-	test -e $@ || $(MAKE) llama.cpp/build/bin/llama-server && \
-		cp llama.cpp/build/bin/llama-server $@
-	touch llama-server
+$(LLAMA_SERVER):  ## Build llama-server (auto-detects ROCm)
+	test -e $@ || $(MAKE) $(LLAMA_CPP_DIR)/build/bin/llama-server && \
+		cp $(LLAMA_CPP_DIR)/build/bin/llama-server $@
+	touch $@
 
 ifdef HAS_ROCM
-llama.cpp/build/bin/llama-liquid-audio-server: llama.cpp
-	cd llama.cpp && \
+$(LLAMA_CPP_DIR)/build/bin/llama-liquid-audio-server: $(LLAMA_CPP_DIR)
+	cd $(LLAMA_CPP_DIR) && \
 		cmake -B build $(CMAKE_ARGS) && \
 		cmake --build build --config Release -t llama-liquid-audio-server -j 8
 
 llama-liquid-audio-server:  ## Build llama-liquid-audio-server with ROCm/HIP (from PR #18641)
-	test -e $@ || $(MAKE) llama.cpp/build/bin/llama-liquid-audio-server && \
-		cp llama.cpp/build/bin/llama-liquid-audio-server $@
-	touch llama-liquid-audio-server
+	test -e $@ || $(MAKE) $(LLAMA_CPP_DIR)/build/bin/llama-liquid-audio-server && \
+		cp $(LLAMA_CPP_DIR)/build/bin/llama-liquid-audio-server $@
+	touch $@
 endif
 
 
@@ -224,8 +227,8 @@ endif
 # │                         Servers                          │
 # └──────────────────────────────────────────────────────────┘
 
-serve: llama-server  ## Start FastAPI server
-	$(UV) run --frozen server.py
+serve: $(LLAMA_SERVER)  ## Start FastAPI server
+	AUDIO_PCM_FORMAT=$(AUDIO_PCM_FORMAT) $(UV) run --frozen server.py
 
 audioserver: $(AUDIO_SERVER_TARGET) LFM2.5-Audio-1.5B-GGUF  ## Start audio server
 	$(AUDIO_SERVER) \
@@ -264,7 +267,8 @@ test-toolcall:  ## Tool call with the string "play the next song"
 # └──────────────────────────────────────────────────────────┘
 
 clean:  ## Remove build artifacts (llama.cpp, binaries, runners)
-	rm -rf llama.cpp llama-server llama-liquid-audio-server llama-liquid-audio runners
+	rm -rf llama.cpp-rocm llama.cpp-cpu llama-server-rocm llama-server-cpu \
+		llama-liquid-audio-server llama-liquid-audio runners
 
 UV_FROZEN_DEV = $(UV) run --only-group dev --frozen
 

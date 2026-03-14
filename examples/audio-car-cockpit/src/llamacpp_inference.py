@@ -61,7 +61,9 @@ def spawn_embedding_runtime(
 
     port = find_available_port(preferred_port=8989)
     host = "127.0.0.1"
-    executable = str((Path.cwd() / "llama-server").resolve())
+    cwd = Path.cwd()
+    candidates = [cwd / "llama-server-rocm", cwd / "llama-server-cpu", cwd / "llama-server"]
+    executable = str(next((p for p in candidates if p.exists()), candidates[-1]).resolve())
 
     command = [
         executable,
