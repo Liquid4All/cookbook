@@ -48,6 +48,11 @@ echo "Checking prerequisites..."
 check_command "node" "Install Node.js 20+ from https://nodejs.org"
 check_command "npm" "Comes with Node.js"
 check_command "python3" "Install Python 3.11+ from https://python.org"
+if ! python3 -m venv --help &> /dev/null; then
+    PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    echo "❌ python3-venv is not installed. Run: sudo apt install -y python${PY_VER}-venv"
+    exit 1
+fi
 check_command "cargo" "Install Rust from https://rustup.rs"
 check_optional_command "ollama" "Install Ollama from https://ollama.ai (needed for model tests)"
 
@@ -187,7 +192,7 @@ echo "  Models directory: $MODELS_DIR"
 echo ""
 
 # Primary model: LFM2-24B-A2B (production, 80% tool-calling accuracy)
-MAIN_MODEL="LFM2-24B-A2B-Preview-Q4_K_M.gguf"
+MAIN_MODEL="LFM2-24B-A2B-Q4_K_M.gguf"
 if [ -f "$MODELS_DIR/$MAIN_MODEL" ]; then
     MAIN_SIZE=$(du -h "$MODELS_DIR/$MAIN_MODEL" | cut -f1)
     echo "✅ LFM2-24B-A2B found ($MAIN_SIZE)"
@@ -195,12 +200,12 @@ else
     echo "❌ LFM2-24B-A2B not found — this is the primary production model"
     echo ""
     echo "   Download from HuggingFace (gated — request access first):"
-    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview"
+    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
     echo ""
     echo "   pip install huggingface-hub"
     echo "   python3 -c \""
     echo "     from huggingface_hub import hf_hub_download"
-    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',"
+    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',"
     echo "                     '$MAIN_MODEL',"
     echo "                     local_dir='$MODELS_DIR')"
     echo "   \""

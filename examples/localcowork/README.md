@@ -4,7 +4,7 @@
 
 **Tool-calling that actually feels instant on a laptop.**
 
-Building a local AI agent sounds great until you try to use one all day. The hard part isn't getting a model to understand you -- it's getting it to choose the right tool and do it fast enough that the experience feels interactive. This is where [LFM2-24B-A2B](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) shines: it's designed for tool dispatch on consumer hardware, where latency and memory aren't abstract constraints -- they decide whether your agent is a product or a demo.
+Building a local AI agent sounds great until you try to use one all day. The hard part isn't getting a model to understand you -- it's getting it to choose the right tool and do it fast enough that the experience feels interactive. This is where [LFM2-24B-A2B](https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF) shines: it's designed for tool dispatch on consumer hardware, where latency and memory aren't abstract constraints -- they decide whether your agent is a product or a demo.
 
 LocalCowork is a desktop AI agent that runs entirely on-device. No cloud APIs, no data leaving your machine. The model calls pre-built tools via the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP), and every tool execution is logged to a local audit trail.
 
@@ -117,16 +117,17 @@ Full study with 8 models, 150+ scenarios, and 12 failure modes: [`docs/model-ana
 
 ```bash
 # 1. Clone and set up
-git clone <repo-url> && cd localCoWork
+git clone <repo-url> && cd examples/localcowork/
 ./scripts/setup-dev.sh
 
-# 2. Download LFM2-24B-A2B (~14 GB, requires HuggingFace access)
-#    Request access: https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview
+# 2. Download LFM2-24B-A2B (~14 GB)
+#    https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF
+source .venv/bin/activate
 pip install huggingface-hub
 python3 -c "
 from huggingface_hub import hf_hub_download
-hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',
-                'LFM2-24B-A2B-Preview-Q4_K_M.gguf',
+hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',
+                'LFM2-24B-A2B-Q4_K_M.gguf',
                 local_dir='$HOME/Projects/_models/')
 "
 
@@ -211,9 +212,43 @@ Tool definitions live in [`docs/mcp-tool-registry.yaml`](docs/mcp-tool-registry.
 | Node.js | 20+ | TypeScript MCP servers, React frontend |
 | Python | 3.11+ | Python MCP servers (document, OCR, security, etc.) |
 | Rust | 1.77+ | Tauri backend, Agent Core |
-| llama.cpp | latest | Serves LFM2 models (`brew install llama.cpp`) |
+| llama.cpp | latest | Serves LFM2 models |
 
 Optional: [Ollama](https://ollama.ai) (alternative runtime), [Tesseract](https://github.com/tesseract-ocr/tesseract) (fallback OCR).
+
+### macOS
+
+```bash
+brew install llama.cpp cmake node python3
+# Xcode Command Line Tools required:
+xcode-select --install
+```
+
+### Ubuntu / Debian
+
+```bash
+# Node.js 22+
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Python venv support
+sudo apt install -y python3-venv
+
+# Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source ~/.cargo/env
+
+# Tauri system dependencies (GTK, WebKit)
+sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+    librsvg2-dev patchelf libssl-dev
+
+# llama.cpp (build from source for GPU support, or use a pre-built binary)
+# See https://github.com/ggml-org/llama.cpp for build instructions
+
+# Increase file watcher limit (required for Vite dev server)
+echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf
+sudo sysctl -p /etc/sysctl.d/99-inotify.conf
+```
 
 ## Tests
 
