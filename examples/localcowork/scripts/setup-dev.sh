@@ -10,46 +10,130 @@ echo "  LocalCowork — Dev Environment Setup"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
-# ── Ensure common tool paths are on PATH ─────────────────────────────────
+# ── Detect OS ─────────────────────────────────────────────────────────────
 
-# /usr/local/bin — where Ollama and other macOS tools live
-[[ ":$PATH:" != *":/usr/local/bin:"* ]] && export PATH="/usr/local/bin:$PATH"
+OS="$(uname -s)"
+echo "Detected OS: $OS"
+echo ""
 
-# Cargo / Rust
-if ! command -v cargo &> /dev/null; then
-    if [ -f "$HOME/.cargo/env" ]; then
-        # shellcheck source=/dev/null
-        source "$HOME/.cargo/env"
-    elif [ -x "$HOME/.cargo/bin/cargo" ]; then
-        export PATH="$HOME/.cargo/bin:$PATH"
+# ── Install system prerequisites ──────────────────────────────────────────
+
+echo "Installing system prerequisites..."
+
+if [ "$OS" = "Darwin" ]; then
+    # ── macOS ──
+    if ! command -v brew &> /dev/null; then
+        echo "❌ Homebrew not found. Install from https://brew.sh"
+        exit 1
     fi
+
+    if ! command -v node &> /dev/null; then
+        echo "  Installing Node.js..."
+        brew install node
+    fi
+
+    if ! command -v python3 &> /dev/null; then
+        echo "  Installing Python..."
+        brew install python3
+    fi
+
+    if ! command -v cargo &> /dev/null; then
+        echo "  Installing Rust..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
+    fi
+
+    if ! command -v cmake &> /dev/null; then
+        echo "  Installing cmake..."
+        brew install cmake
+    fi
+
+    if ! xcode-select -p &> /dev/null; then
+        echo "  Installing Xcode Command Line Tools..."
+        xcode-select --install
+        echo "  ⚠️  Please complete the Xcode CLT install dialog, then re-run this script."
+        exit 1
+    fi
+
+elif [ "$OS" = "Linux" ]; then
+    # ── Ubuntu / Debian ──
+    if ! command -v apt-get &> /dev/null; then
+        echo "❌ apt-get not found. This script supports macOS and Debian/Ubuntu."
+        exit 1
+    fi
+
+    NEEDS_APT=()
+
+    if ! command -v node &> /dev/null; then
+        echo "  Installing Node.js 22..."
+        curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+    fi
+
+    if ! python3 -m venv --help &> /dev/null; then
+        PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        NEEDS_APT+=("python${PY_VER}-venv")
+    fi
+
+    for pkg in build-essential cmake libssl-dev libcurl4-openssl-dev \
+               libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+               librsvg2-dev patchelf; do
+        if ! dpkg -s "$pkg" &> /dev/null; then
+            NEEDS_APT+=("$pkg")
+        fi
+    done
+
+    if [ ${#NEEDS_APT[@]} -gt 0 ]; then
+        echo "  Installing: ${NEEDS_APT[*]}"
+        sudo apt-get install -y "${NEEDS_APT[@]}"
+    fi
+
+    if ! command -v cargo &> /dev/null; then
+        if [ -f "$HOME/.cargo/env" ]; then
+            source "$HOME/.cargo/env"
+        else
+            echo "  Installing Rust..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            source "$HOME/.cargo/env"
+        fi
+    fi
+
+    # Increase inotify watcher limit for Vite dev server
+    if [ "$(cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null)" -lt 524288 ] 2>/dev/null; then
+        echo "  Increasing inotify watcher limit..."
+        echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf > /dev/null
+        sudo sysctl -p /etc/sysctl.d/99-inotify.conf > /dev/null
+    fi
+
+else
+    echo "❌ Unsupported OS: $OS (supported: macOS, Linux/Ubuntu)"
+    exit 1
 fi
 
-# ── Check prerequisites ────────────────────────────────────────────────────
+# ── Ensure common tool paths are on PATH ─────────────────────────────────
 
-check_command() {
-    if ! command -v "$1" &> /dev/null; then
-        echo "❌ $1 is not installed. $2"
+[[ ":$PATH:" != *":/usr/local/bin:"* ]] && export PATH="/usr/local/bin:$PATH"
+[ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+
+# ── Verify prerequisites ─────────────────────────────────────────────────
+
+echo ""
+echo "Verifying prerequisites..."
+
+check_ok() {
+    if command -v "$1" &> /dev/null; then
+        echo "✅ $1 found: $(command -v "$1")"
+    else
+        echo "❌ $1 not found after install attempt. $2"
         exit 1
-    else
-        echo "✅ $1 found: $(command -v "$1")"
     fi
 }
 
-check_optional_command() {
-    if ! command -v "$1" &> /dev/null; then
-        echo "⚠️  $1 is not installed (optional). $2"
-    else
-        echo "✅ $1 found: $(command -v "$1")"
-    fi
-}
-
-echo "Checking prerequisites..."
-check_command "node" "Install Node.js 20+ from https://nodejs.org"
-check_command "npm" "Comes with Node.js"
-check_command "python3" "Install Python 3.11+ from https://python.org"
-check_command "cargo" "Install Rust from https://rustup.rs"
-check_optional_command "ollama" "Install Ollama from https://ollama.ai (needed for model tests)"
+check_ok "node" "Install Node.js 20+ from https://nodejs.org"
+check_ok "npm" "Comes with Node.js"
+check_ok "python3" "Install Python 3.11+ from https://python.org"
+check_ok "cargo" "Install Rust from https://rustup.rs"
+check_ok "cmake" "Install cmake"
 
 echo ""
 
@@ -187,7 +271,7 @@ echo "  Models directory: $MODELS_DIR"
 echo ""
 
 # Primary model: LFM2-24B-A2B (production, 80% tool-calling accuracy)
-MAIN_MODEL="LFM2-24B-A2B-Preview-Q4_K_M.gguf"
+MAIN_MODEL="LFM2-24B-A2B-Q4_K_M.gguf"
 if [ -f "$MODELS_DIR/$MAIN_MODEL" ]; then
     MAIN_SIZE=$(du -h "$MODELS_DIR/$MAIN_MODEL" | cut -f1)
     echo "✅ LFM2-24B-A2B found ($MAIN_SIZE)"
@@ -195,12 +279,12 @@ else
     echo "❌ LFM2-24B-A2B not found — this is the primary production model"
     echo ""
     echo "   Download from HuggingFace (gated — request access first):"
-    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview"
+    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
     echo ""
     echo "   pip install huggingface-hub"
     echo "   python3 -c \""
     echo "     from huggingface_hub import hf_hub_download"
-    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',"
+    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',"
     echo "                     '$MAIN_MODEL',"
     echo "                     local_dir='$MODELS_DIR')"
     echo "   \""
@@ -208,11 +292,18 @@ else
 fi
 
 # Check for llama-server (required to serve LFM2 models)
-if command -v llama-server &> /dev/null; then
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -x "$SCRIPT_DIR/llama-server" ]; then
+    echo "✅ llama-server found: $SCRIPT_DIR/llama-server"
+elif command -v llama-server &> /dev/null; then
     echo "✅ llama-server found: $(command -v llama-server)"
 else
-    echo "⚠️  llama-server not found (needed to serve LFM2 models)"
-    echo "    Install via: brew install llama.cpp"
+    echo "⚠️  llama-server not found"
+    if [ "$OS" = "Darwin" ]; then
+        echo "    Install via: brew install llama.cpp"
+    else
+        echo "    Build via:   make llama-server  (auto-detects ROCm GPU)"
+    fi
 fi
 
 # Alternative: Ollama with GPT-OSS-20B (optional, for development/comparison)
@@ -263,12 +354,15 @@ echo "  Setup Complete!"
 echo "═══════════════════════════════════════════════════"
 echo ""
 echo "Next steps:"
-echo "  1. Start model server:  ./scripts/start-model.sh"
-echo "  2. Start dev server:    cargo tauri dev  (in another terminal)"
-echo "  3. Run tests:           npm test"
-echo "  4. Validate servers:    ./scripts/validate-mcp-servers.sh"
-echo "  5. Check progress:      (in Claude Code) /progress"
+if [ ! -x "$SCRIPT_DIR/llama-server" ] && ! command -v llama-server &> /dev/null; then
+    echo "  1. Build llama-server:  make llama-server  (auto-detects ROCm GPU)"
+    echo "  2. Download model:      see README.md"
+    echo "  3. Start model server:  ./scripts/start-model.sh"
+    echo "  4. Start dev server:    cargo tauri dev  (in another terminal)"
+else
+    echo "  1. Start model server:  ./scripts/start-model.sh"
+    echo "  2. Start dev server:    cargo tauri dev  (in another terminal)"
+fi
 echo ""
 echo "  Note: The model server must be running before 'cargo tauri dev'."
-echo "  See README.md for alternative model setups (Ollama, vision model)."
 echo ""
