@@ -221,42 +221,13 @@ Tool definitions live in [`docs/mcp-tool-registry.yaml`](docs/mcp-tool-registry.
 
 Optional: [Ollama](https://ollama.ai) (alternative runtime), [Tesseract](https://github.com/tesseract-ocr/tesseract) (fallback OCR).
 
-### macOS
+All prerequisites are installed automatically by `./scripts/setup-dev.sh`, which detects your OS (macOS or Ubuntu/Debian) and installs the required packages. On macOS it uses Homebrew; on Ubuntu it uses apt and installs Tauri GTK/WebKit dependencies, Rust, Node.js, cmake, and adjusts the inotify watcher limit.
+
+After setup, build `llama-server` (Linux only — macOS uses `brew install llama.cpp`):
 
 ```bash
-brew install llama.cpp cmake node python3
-# Xcode Command Line Tools required:
-xcode-select --install
-```
-
-### Ubuntu / Debian
-
-```bash
-# Node.js 22+
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Python venv support
-sudo apt install -y python3-venv
-
-# Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source ~/.cargo/env
-
-# Tauri system dependencies (GTK, WebKit)
-sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
-    librsvg2-dev patchelf libssl-dev
-
-# Build dependencies for llama.cpp
-make install-deps
-
-# Build llama-server (auto-detects ROCm GPU, falls back to CPU)
-make llama-server
-# To force CPU-only build: make CPU=1 llama-server
-
-# Increase file watcher limit (required for Vite dev server)
-echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf
-sudo sysctl -p /etc/sysctl.d/99-inotify.conf
+make llama-server            # auto-detects ROCm GPU, falls back to CPU
+make CPU=1 llama-server      # force CPU-only build
 ```
 
 ## Tests
