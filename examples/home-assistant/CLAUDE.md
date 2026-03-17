@@ -9,20 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 uv sync
 ```
 
-**Start the model server** (required before running the app or benchmarks)
-```bash
-llama-server \
-  --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
-  --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf \
-  --port 8080 \
-  --ctx-size 4096 \
-  --n-gpu-layers 99
-```
-
 **Start the app server**
 ```bash
 uv run uvicorn app.server:app --port 5173 --reload
 ```
+
+The app auto-starts `llama-server` in the background when you select a model in the UI.
+No need to start `llama-server` manually before running the app.
 
 **Run the full benchmark against the local model** (requires model server running on port 8080)
 ```bash
@@ -56,6 +49,37 @@ Output is a timestamped JSONL file in `benchmark/datasets/`. Each line is a veri
 correct conversation trace (system + user + tool calls + tool results + assistant reply)
 paired with the full `TOOL_SCHEMAS`. Only runs that pass the task verifier are kept.
 Paraphrases for all 15 tasks are defined in `benchmark/generate_dataset.py`.
+
+**Run a full GPU fine-tune on HF Jobs** (requires `HF_TOKEN` secret, ~4h on a10g-small)
+```bash
+hf jobs run \
+    --flavor a10g-small \
+    --secrets HF_TOKEN \
+    --timeout 4h \
+    pytorch/pytorch:2.6.0-cuda12.4-cudnn9-devel \
+    bash -c 'pip install -q huggingface_hub "trl>=0.15.0" datasets trackio unsloth && \
+             python3 -c "import os; from huggingface_hub import hf_hub_download; \
+             hf_hub_download(\"Paulescu/hf-cli-jobs-uv-run-scripts\", \"train.py\", \
+             repo_type=\"dataset\", local_dir=\"/tmp/s\", token=os.environ.get(\"HF_TOKEN\",\"\"))" && \
+             python3 /tmp/s/train.py \
+               --dataset-repo Paulescu/home-assistant-sft \
+               --model LiquidAI/LFM2.5-1.2B-Instruct \
+               --output-repo Paulescu/LFM2.5-1.2B-home-assistant-sft'
+```
+
+Use `--max-steps 5` (without `--output-repo`) for a quick debug smoke-test.
+
+Note: use `hf jobs run` (Docker), NOT `hf jobs uv run`. The `uv run` variant uses a plain
+Debian image with no CUDA drivers regardless of `--flavor`, so GPU is never available.
+Before running, ensure the latest `finetune/train.py` is uploaded to the scripts repo:
+```bash
+uv run --group finetune python3 -c "
+from huggingface_hub import HfApi; import os; from dotenv import load_dotenv; load_dotenv()
+HfApi(token=os.getenv('HF_TOKEN')).upload_file(
+    path_or_fileobj='finetune/train.py', path_in_repo='train.py',
+    repo_id='Paulescu/hf-cli-jobs-uv-run-scripts', repo_type='dataset')
+"
+```
 
 ## Architecture
 

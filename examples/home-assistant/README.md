@@ -30,44 +30,26 @@ generating SFT training data.
 
 ## Quickstart
 
-**1. Start the model server**
-
-Pick a model and quantization level. llama-server downloads and caches it automatically:
-
-```bash
-# Model options:
-#   LiquidAI/LFM2.5-1.2B-Instruct-GGUF
-#   LiquidAI/LFM2.5-1.2B-Thinking-GGUF
-#
-# Quantization options (smallest to largest):
-#   Q4_0 (696 MB), Q4_K_M (731 MB), Q5_K_M (843 MB),
-#   Q6_K (963 MB), Q8_0 (1.25 GB)
-
-llama-server \
-  --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
-  --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf \
-  --port 8080 \
-  --ctx-size 4096 \
-  --n-gpu-layers 99
-```
-
-**2. Install dependencies**
+**1. Install dependencies**
 
 ```bash
 uv sync
 ```
 
-**3. Start the app server**
+**2. Start the app server**
 
 ```bash
 uv run uvicorn app.server:app --port 5173 --reload
 ```
 
-**4. Open the app**
+**3. Open the app**
 
 ```bash
 open http://localhost:5173
 ```
+
+The UI includes a model selector. When you pick a model, the app automatically downloads
+and starts `llama-server` in the background. No manual model server setup is needed.
 
 ## Synthetic data generation
 
@@ -273,11 +255,11 @@ uv run python benchmark/generate_dataset.py
 Then push the latest JSONL to HF Hub (auto-detected from `benchmark/datasets/`):
 
 ```bash
-uv run --group finetune finetune/push_to_hub.py \
-    --hub-repo USERNAME/home-assistant-sft
+uv run --group finetune finetune/push_to_hub.py
 ```
 
-The dataset is pushed as a private repo with a 90/10 train/test split.
+The repo name is derived from `HF_USERNAME` in `.env` (`HF_USERNAME/home-assistant-sft`).
+Pass `--hub-repo` to override. The dataset is pushed as a private repo with a 90/10 train/test split.
 
 ### Step 3: Submit fine-tuning jobs
 
