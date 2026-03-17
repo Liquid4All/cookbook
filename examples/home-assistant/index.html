@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LFM Home Assistant</title>
-  <link rel="stylesheet" href="/assets/style.css?v=2"/>
+  <link rel="stylesheet" href="/assets/style.css?v=3"/>
 </head>
 <body>
 <div id="app">
@@ -14,8 +14,16 @@
     <div class="meta">
       <span id="model-label">Model: …</span>
       <div class="backend-toggle">
-        <button class="backend-btn active" data-backend="local">LFM Local</button>
-        <button class="backend-btn" data-backend="openai">GPT-4o-mini</button>
+        <div class="local-wrapper">
+          <button class="backend-btn active" id="local-btn" data-backend="local">LFM Local ▾</button>
+          <div class="model-dropdown" id="model-dropdown">
+            <div class="status-row">
+              <span class="status-pill idle" id="status-pill">idle</span>
+            </div>
+            <div id="model-options"></div>
+          </div>
+        </div>
+        <button class="backend-btn" id="openai-btn" data-backend="openai">GPT-4o-mini</button>
       </div>
     </div>
   </header>
@@ -202,6 +210,110 @@
     }
   }
 
+  // ── Local model management ────────────────────────────────
+
+  let localModels = [];
+  let llamaStatus = "idle";
+  let statusPollTimer = null;
+  let dropdownOpen = false;
+
+  function updateStatusPill(status, error) {
+    const pill = document.getElementById("status-pill");
+    if (!pill) return;
+    pill.className = `status-pill ${status}`;
+    if (status === "starting") {
+      pill.innerHTML = '<span class="spinner"></span>Loading\u2026';
+    } else {
+      const labels = { idle: "idle", ready: "Ready", error: "Error" };
+      pill.textContent = labels[status] || status;
+    }
+    if (status === "error" && error) pill.title = error;
+  }
+
+  function updateModelOptions(activeModelId) {
+    document.querySelectorAll(".model-option").forEach(el => {
+      el.classList.toggle("selected", el.dataset.modelId === activeModelId);
+    });
+  }
+
+  function updateInputState() {
+    const localActive = document.getElementById("local-btn").classList.contains("active");
+    const blocked = localActive && llamaStatus === "starting";
+    sendBtn.disabled = blocked;
+    inputEl.disabled = blocked;
+    inputEl.placeholder = blocked ? "Model loading, please wait\u2026" : "Type a command\u2026";
+  }
+
+  async function fetchLocalModelStatus() {
+    try {
+      const d = await fetch("/local-model-status").then(r => r.json());
+      llamaStatus = d.status;
+      updateStatusPill(d.status, d.error);
+      updateModelOptions(d.model_id);
+      updateInputState();
+      if (d.status === "starting") {
+        if (!statusPollTimer) {
+          statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
+        }
+      } else {
+        if (statusPollTimer) {
+          clearInterval(statusPollTimer);
+          statusPollTimer = null;
+        }
+      }
+    } catch (e) {}
+  }
+
+  async function fetchLocalModels() {
+    try {
+      localModels = await fetch("/local-models").then(r => r.json());
+      const container = document.getElementById("model-options");
+      container.innerHTML = "";
+      localModels.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "model-option";
+        div.dataset.modelId = m.id;
+        div.innerHTML =
+          `<span class="model-radio"></span>` +
+          `<span class="model-info">` +
+          `<span class="model-name">${m.name}</span>` +
+          `<span class="model-meta">${m.size_label} \u00b7 ${m.score_label}</span>` +
+          `</span>`;
+        div.addEventListener("click", () => selectLocalModel(m.id));
+        container.appendChild(div);
+      });
+    } catch (e) {}
+  }
+
+  async function selectLocalModel(modelId) {
+    toggleDropdown(false);
+    await fetch("/local-model", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_id: modelId }),
+    });
+    llamaStatus = "starting";
+    updateModelOptions(modelId);
+    updateStatusPill("starting");
+    updateInputState();
+    if (!statusPollTimer) {
+      statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
+    }
+  }
+
+  function toggleDropdown(forceOpen) {
+    const dropdown = document.getElementById("model-dropdown");
+    dropdownOpen = forceOpen !== undefined ? forceOpen : !dropdownOpen;
+    dropdown.classList.toggle("open", dropdownOpen);
+  }
+
+  document.addEventListener("click", e => {
+    const wrapper = document.querySelector(".local-wrapper");
+    if (wrapper && !wrapper.contains(e.target)) {
+      toggleDropdown(false);
+    }
+  });
+
   // ── Send message ──────────────────────────────────────────
 
   async function sendMessage() {
@@ -231,9 +343,8 @@
       typing.remove();
       appendMessage("assistant", "Error: could not reach the server.");
     } finally {
-      sendBtn.disabled = false;
-      inputEl.disabled = false;
-      inputEl.focus();
+      updateInputState();
+      if (!sendBtn.disabled) inputEl.focus();
     }
   }
 
@@ -257,18 +368,38 @@
     });
   }
 
-  document.querySelectorAll(".backend-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const backend = btn.dataset.backend;
+  document.getElementById("local-btn").addEventListener("click", async () => {
+    const isActive = document.getElementById("local-btn").classList.contains("active");
+    if (isActive) {
+      toggleDropdown();
+    } else {
       await fetch("/backend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ backend }),
+        body: JSON.stringify({ backend: "local" }),
       });
-      setActiveBackendBtn(backend);
+      setActiveBackendBtn("local");
       await refreshModel();
       messagesEl.innerHTML = "";
+      toggleDropdown(true);
+      if (llamaStatus === "idle" && localModels.length > 0) {
+        selectLocalModel(localModels[0].id);
+      } else {
+        fetchLocalModelStatus();
+      }
+    }
+  });
+
+  document.getElementById("openai-btn").addEventListener("click", async () => {
+    toggleDropdown(false);
+    await fetch("/backend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ backend: "openai" }),
     });
+    setActiveBackendBtn("openai");
+    await refreshModel();
+    messagesEl.innerHTML = "";
   });
 
   fetch("/backend")
@@ -278,6 +409,8 @@
 
   refreshModel();
   refreshState();
+  fetchLocalModels();
+  fetchLocalModelStatus();
 </script>
 </body>
 </html>

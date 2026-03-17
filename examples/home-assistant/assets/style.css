@@ -331,3 +331,105 @@ main {
   0%, 60%, 100% { transform: translateY(0); }
   30%            { transform: translateY(-6px); }
 }
+
+/* ── Model dropdown ── */
+.local-wrapper {
+  position: relative;
+}
+
+.model-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 300px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.model-dropdown.open { display: flex; }
+
+.model-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.model-option:hover { background: var(--bg); }
+.model-option.selected { background: rgba(99, 102, 241, 0.15); }
+
+.model-radio {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.model-option.selected .model-radio {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-name {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.model-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Status pill ── */
+.status-row {
+  padding: 4px 2px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.status-pill.idle     { background: #374151; color: #9ca3af; }
+.status-pill.starting { background: #78350f; color: #fcd34d; }
+.status-pill.ready    { background: #14532d; color: #86efac; }
+.status-pill.error    { background: #7f1d1d; color: #fca5a5; }
+
+.spinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
