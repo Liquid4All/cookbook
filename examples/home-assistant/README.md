@@ -1,34 +1,72 @@
-# Home assistant
+# Home Assistant powered by a local LFM model
 
-A natural-language home automation demo powered by a locally running LLM. Send plain-text
-commands to control lights, doors, the thermostat, and preset scenes. The project also
-includes a 19-task benchmark for evaluating tool-calling accuracy and a pipeline for
-generating SFT training data.
+This project builds a home assistant system powered entirely by a local LFM model. The focus
+is practical: every step of the journey is covered, from a first working prototype to a
+fine-tuned model running fully on your own hardware.
 
-## Contents
+This tutorial is about one thing: tool calling with small language models running locally. Tool calling is the capability that lets a model interact with the real world by invoking functions, and it is the core skill any practical AI assistant needs. Here we show you how to build a real solution around it, from scratch, without relying on any cloud API.
 
-- [Quickstart](#quickstart)
-- [Synthetic data generation](#synthetic-data-generation)
-  - [What a training example looks like](#what-a-training-example-looks-like)
-  - [Step-by-step pipeline](#step-by-step-pipeline)
-  - [State diversity: randomized initial conditions](#state-diversity-randomized-initial-conditions)
-  - [Paraphrase diversity: template-based generation](#paraphrase-diversity-template-based-generation)
-  - [History variants for multi-turn tasks](#history-variants-for-multi-turn-tasks)
-  - [`intent_unclear` rejection examples](#intent_unclear-rejection-examples-tasks-16-19)
-  - [Call-quality filters](#call-quality-filters)
-  - [Dataset size](#dataset-size)
-  - [Running the generator](#running-the-generator)
-- [Fine-tuning](#fine-tuning)
-  - [Overview](#overview)
-  - [Step 1: Install dependencies and log in](#step-1-install-dependencies-and-log-in)
-  - [Step 2: Generate and upload the dataset](#step-2-generate-and-upload-the-dataset)
-  - [Step 3: Submit fine-tuning jobs](#step-3-submit-fine-tuning-jobs)
-  - [Step 4: Benchmark the fine-tuned model](#step-4-benchmark-the-fine-tuned-model)
-- [Agent design notes](#agent-design-notes)
-  - [Maintain conversation history across requests](#1-maintain-conversation-history-across-requests)
-  - [Force a text response after tool execution](#2-force-a-text-response-after-tool-execution-with-tool_choicenone)
+You will learn how to:
 
-## Quickstart
+1. Build a proof of concept that accepts plain-text commands to control lights, doors, the thermostat, and preset scenes.
+2. Benchmark its tool-calling accuracy so you have a clear baseline to improve on.
+3. Prepare a high-quality dataset for fine-tuning using synthetic data generation.
+4. Fine-tune the model yourself and measure the improvement.
+
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Quick start](#quick-start)
+- [Building a proof of concept](#proof-of-concept)
+- [Benchmarking its tool-calling accuracy](#benchmark)
+- [Preparing a high-quality dataset](#synthetic-data-generation)
+- [Fine-tuning the model](#fine-tuning)
+
+## Architecture
+
+The main components of our solution are:
+
+- **Browser** renders the UI and sends chat messages to the server
+- **FastAPI server** handles HTTP requests, manages home state, and starts the llama.cpp server on model selection
+- **Agent loop** drives the conversation, calls the model for inference, and dispatches tool calls
+- **Tools** read and mutate the home state (lights, thermostat, doors, scenes)
+- **llama.cpp server** runs the LFM model locally and exposes an OpenAI-compatible API
+
+The sequence diagram below shows how the system starts and processes a chat message step by step. Solid arrows are calls, dashed arrows are responses:
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant FastAPI as FastAPI server
+    participant Agent as Agent loop
+    participant Tools
+    participant LFM as llama.cpp server
+
+    Note over Browser,LFM: Startup
+    Browser->>FastAPI: select model
+    FastAPI->>LFM: start process (background thread)
+    LFM-->>FastAPI: ready
+
+    Note over Browser,LFM: Chat request
+    Browser->>FastAPI: POST /chat
+    FastAPI->>Agent: run(message, history)
+    Agent->>LFM: inference request (with tool schemas)
+    LFM-->>Agent: tool call
+    Agent->>Tools: execute tool
+    Tools-->>Agent: result
+    Agent->>LFM: inference request (with tool result)
+    LFM-->>Agent: text response
+    Agent-->>FastAPI: text response
+    FastAPI-->>Browser: text response
+    Browser->>FastAPI: GET /state
+    FastAPI-->>Browser: updated home state
+```
+
+The FastAPI server, the agent loop, and the tools are all implemented in Python. That said, feel free to re-implement them in any other language for higher performance. Rust, for example, would be a natural fit.
+
+
+## Quick start
 
 **1. Install dependencies**
 
@@ -50,6 +88,8 @@ open http://localhost:5173
 
 The UI includes a model selector. When you pick a model, the app automatically downloads
 and starts `llama-server` in the background. No manual model server setup is needed.
+
+## Proof of concept
 
 ## Synthetic data generation
 
