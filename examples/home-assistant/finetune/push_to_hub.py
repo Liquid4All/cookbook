@@ -1,9 +1,12 @@
 """Upload the home-assistant SFT dataset to HuggingFace Hub.
 
 Usage:
+  uv run --group finetune finetune/push_to_hub.py
   uv run --group finetune finetune/push_to_hub.py \\
-      --hub-repo USERNAME/home-assistant-sft \\
       [--dataset-path benchmark/datasets/TIMESTAMP_golden_dataset.jsonl]
+
+HF_USERNAME in .env is used to derive the default repo name
+(HF_USERNAME/home-assistant-sft). Pass --hub-repo to override.
 
 The script auto-discovers the latest JSONL in benchmark/datasets/ when
 --dataset-path is omitted.  It converts each line to a HF Dataset row and
@@ -11,19 +14,27 @@ pushes with a 90/10 train/test split as a private repo.
 """
 
 import argparse
-import glob
 import json
 import os
 import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def _default_hub_repo() -> str | None:
+    username = os.getenv("HF_USERNAME", "").strip()
+    return f"{username}/home-assistant-sft" if username else None
 
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Push SFT dataset to HuggingFace Hub")
     p.add_argument(
         "--hub-repo",
-        required=True,
-        help="HF Hub dataset repo, e.g. USERNAME/home-assistant-sft",
+        default=_default_hub_repo(),
+        help="HF Hub dataset repo (default: HF_USERNAME/home-assistant-sft from .env)",
     )
     p.add_argument(
         "--dataset-path",
@@ -63,6 +74,11 @@ def load_jsonl(path: Path) -> list[dict]:
 
 def main() -> None:
     args = parse_args()
+
+    if not args.hub_repo:
+        sys.exit(
+            "Error: set HF_USERNAME in .env or pass --hub-repo USERNAME/home-assistant-sft"
+        )
 
     dataset_path = Path(args.dataset_path) if args.dataset_path else find_latest_dataset()
 

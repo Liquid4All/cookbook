@@ -18,6 +18,8 @@ LoRA config mirrors the mobile-actions fine-tune (same base model, same hardware
 
 import argparse
 
+import unsloth  # noqa: F401 — must be imported before trl/transformers to apply patches
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Fine-tune LFM2 on home-assistant SFT dataset")
@@ -28,8 +30,14 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--output-repo",
-        required=True,
-        help="HF Hub model path for the fine-tuned model, e.g. USERNAME/LFM2.5-1.2B-home-assistant-sft",
+        default=None,
+        help="HF Hub model path for the fine-tuned model, e.g. USERNAME/LFM2.5-1.2B-home-assistant-sft. Omit to skip push-to-hub.",
+    )
+    p.add_argument(
+        "--max-steps",
+        type=int,
+        default=-1,
+        help="Stop after N optimizer steps. -1 means run all epochs (default: -1).",
     )
     p.add_argument(
         "--model",
@@ -67,6 +75,10 @@ def main() -> None:
         max_seq_length=2048,
     )
 
+    # Unsloth may reset eos_token to '<EOS_TOKEN>' which doesn't exist in LFM2's
+    # vocabulary. Reset it to the actual end-of-turn token used in LFM2's chat template.
+    tokenizer.eos_token = "<|im_end|>"
+
     # 2. Attach LoRA adapters (same target modules as mobile-actions fine-tune)
     print(f"Attaching LoRA adapters (rank={args.rank})")
     model = FastLanguageModel.get_peft_model(
@@ -102,12 +114,15 @@ def main() -> None:
         return {"text": text}
 
     dataset = dataset.map(format_example, desc="Applying chat template")
+    # Remove raw columns so SFTTrainer uses the pre-formatted "text" field
+    # and doesn't try to re-apply the chat template internally.
+    dataset = dataset.remove_columns(["messages", "tools"])
 
     # 4. SFTTrainer
     print("Initialising SFTTrainer ...")
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         train_dataset=dataset["train"],
         eval_dataset=dataset["test"],
         args=SFTConfig(
@@ -115,19 +130,20 @@ def main() -> None:
             per_device_train_batch_size=2,
             gradient_accumulation_steps=4,
             num_train_epochs=args.epochs,
+            max_steps=args.max_steps,
             learning_rate=2e-4,
             lr_scheduler_type="linear",
-            warmup_ratio=0.05,
+            warmup_steps=min(10, max(1, args.max_steps)) if args.max_steps > 0 else 10,
             dataset_text_field="text",
-            max_seq_length=2048,
-            fp16=True,
-            logging_steps=10,
-            eval_strategy="epoch",
-            save_strategy="epoch",
-            load_best_model_at_end=True,
-            push_to_hub=True,
+            eos_token="<|im_end|>",
+            bf16=True,
+            logging_steps=1,
+            eval_strategy="no" if args.max_steps > 0 else "epoch",
+            save_strategy="no" if args.max_steps > 0 else "epoch",
+            load_best_model_at_end=False if args.max_steps > 0 else True,
+            push_to_hub=args.output_repo is not None,
             hub_model_id=args.output_repo,
-            report_to="trackio",
+            report_to="trackio" if args.output_repo else "none",
         ),
     )
 
@@ -143,8 +159,9 @@ def main() -> None:
     print("Training ...")
     trainer.train()
 
-    print(f"Pushing fine-tuned model to {args.output_repo} ...")
-    trainer.push_to_hub()
+    if args.output_repo:
+        print(f"Pushing fine-tuned model to {args.output_repo} ...")
+        trainer.push_to_hub()
     print("Done.")
 
 
