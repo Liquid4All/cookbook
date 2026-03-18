@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LFM Home Assistant</title>
+  <title>Home Assistant powered by LFM 2.5</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/style.css?v=5"/>
+  <link rel="stylesheet" href="/assets/style.css?v=9"/>
   <script>(function(){var t=localStorage.getItem("theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
 </head>
 <body>
@@ -15,12 +15,9 @@
 
   <header>
     <div class="brand">
-      <svg class="brand-icon" width="16" height="20" viewBox="0 0 16 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 0C8 0 0 7.6 0 12.8C0 16.8 3.6 20 8 20C12.4 20 16 16.8 16 12.8C16 7.6 8 0 8 0Z"/>
-      </svg>
-      <span>Liquid</span>
+      <img class="brand-logo" src="/assets/liquid-ai-logo.png" alt="Liquid AI"/>
       <span class="brand-sep">/</span>
-      <span class="brand-app">Home Assistant</span>
+      <span class="brand-app">Home Assistant powered by LFM 2.5</span>
     </div>
     <div class="meta">
       <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle theme">
@@ -57,10 +54,10 @@
         <div class="panel-body fp-body">
           <div class="house-body">
             <!-- Door markers (absolutely positioned, out of grid flow) -->
-            <div class="fp-door locked" id="fp-door-back"><div class="fp-door-dot"></div></div>
-            <div class="fp-door locked" id="fp-door-garage"><div class="fp-door-dot"></div></div>
-            <div class="fp-door locked" id="fp-door-side"><div class="fp-door-dot"></div></div>
-            <div class="fp-door locked" id="fp-door-front"><div class="fp-door-dot"></div></div>
+            <div class="fp-door locked" id="fp-door-back"><div class="fp-door-seg"></div></div>
+            <div class="fp-door locked" id="fp-door-garage"><div class="fp-door-seg"></div></div>
+            <div class="fp-door locked" id="fp-door-side"><div class="fp-door-seg"></div></div>
+            <div class="fp-door locked" id="fp-door-front"><div class="fp-door-seg"></div></div>
             <!-- Room grid cells -->
             <div class="fp-room" id="fp-room-bedroom"><span class="fp-room-label">Bedroom</span></div>
             <div class="fp-room" id="fp-room-bathroom"><span class="fp-room-label">Bathroom</span></div>
@@ -570,6 +567,7 @@
   refreshState();
   fetchLocalModels();
   fetchLocalModelStatus();
+
 </script>
 </body>
 </html>

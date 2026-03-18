@@ -16,7 +16,10 @@
   --green-dim:       rgba(34, 197, 94, 0.10);
   --red:             #ef4444;
   --user-bubble:     #1a0f2e;
-  --assistant-bubble:#111111;
+  --assistant-bubble:#161616;
+  --radius-sm:       4px;
+  --radius-md:       8px;
+  --radius-lg:       12px;
 }
 
 /* ── Light theme overrides (Liquid brand) ── */
@@ -24,7 +27,7 @@
   --bg:              #f5f4f1;
   --surface:         #ffffff;
   --surface-2:       #fafafa;
-  --border:          #e8e8e5;
+  --border:          #e0ddd8;
   --text:            #0a0a0a;
   --text-muted:      #6b6b6b;
   --accent:          #a855f7;
@@ -36,7 +39,7 @@
   --green-dim:       rgba(22, 163, 74, 0.07);
   --red:             #dc2626;
   --user-bubble:     #faf5ff;
-  --assistant-bubble:#ffffff;
+  --assistant-bubble:#f9f9f9;
 }
 
 [data-theme="light"] .status-pill.idle     { background: #f5f4f1; color: #6b6b6b; }
@@ -52,7 +55,7 @@
 .theme-toggle {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 4px 6px;
   cursor: pointer;
   color: var(--text-muted);
@@ -99,9 +102,14 @@ header {
   font-size: 15px;
 }
 
-.brand-icon {
-  color: var(--text);
+.brand-logo {
+  height: 20px;
+  width: auto;
   flex-shrink: 0;
+}
+
+[data-theme="dark"] .brand-logo {
+  filter: invert(1);
 }
 
 .brand-sep {
@@ -136,7 +144,7 @@ header .meta {
   background: var(--bg);
   color: var(--text-muted);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 2px 10px;
   font-size: 11px;
   font-weight: 500;
@@ -152,6 +160,7 @@ main {
   display: grid;
   grid-template-columns: 70% 30%;
   overflow: hidden;
+  height: 100%;
 }
 
 /* ── House panel: 3-row × 2-col cockpit grid ── */
@@ -163,6 +172,7 @@ main {
   background: var(--border);   /* 1px gap shows as divider lines */
   border-right: 1px solid var(--border);
   overflow: hidden;
+  height: 100%;
 }
 
 /* ── Floor plan panel ── */
@@ -185,9 +195,10 @@ main {
   grid-template-columns: 38% 24% 38%;
   grid-template-rows: 40% 12% 48%;
   gap: 1px;
-  background: #222226;   /* shows as 1px room divider lines */
+  background: #2a2a2e;   /* shows as 1px room divider lines */
   overflow: hidden;
-  border-radius: 3px;
+  border: 2px solid #2a2a2e;
+  border-radius: var(--radius-md);
 }
 
 .fp-room {
@@ -234,26 +245,45 @@ main {
 }
 
 /* Back door: top edge, center */
-#fp-door-back   { top: 5px;    left: 50%; transform: translateX(-50%); }
+#fp-door-back   { top: 0;    left: 50%; transform: translateX(-50%); }
 /* Front door: bottom edge, center */
-#fp-door-front  { bottom: 5px; left: 50%; transform: translateX(-50%); }
+#fp-door-front  { bottom: 0; left: 50%; transform: translateX(-50%); }
 /* Garage: left edge, kitchen level (row 3 midpoint ≈ 76% from top) */
-#fp-door-garage { left: 5px;   top: 76%;  transform: translateY(-50%); }
+#fp-door-garage { left: 0;   top: 76%;  transform: translateY(-50%); }
 /* Side: right edge, living room level (same row 3 midpoint) */
-#fp-door-side   { right: 5px;  top: 76%;  transform: translateY(-50%); }
+#fp-door-side   { right: 0;  top: 76%;  transform: translateY(-50%); }
 
-.fp-door-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  transition: background 0.3s ease, box-shadow 0.3s ease;
+/* Horizontal segment: back and front doors sit on top/bottom walls */
+:is(#fp-door-back, #fp-door-front) .fp-door-seg {
+  width: 36px;
+  height: 5px;
 }
 
-.fp-door.locked   .fp-door-dot { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68,  0.75); }
-.fp-door.unlocked .fp-door-dot { background: #22c55e; box-shadow: 0 0 6px rgba(34,  197, 94, 0.75); }
+/* Vertical segment: garage and side doors sit on left/right walls */
+:is(#fp-door-garage, #fp-door-side) .fp-door-seg {
+  width: 5px;
+  height: 36px;
+}
+
+.fp-door-seg {
+  border-radius: 0;
+  transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.fp-door.locked   .fp-door-seg {
+  background: rgba(239, 68, 68, 0.20);
+  border: 1px solid rgba(239, 68, 68, 0.40);
+  box-shadow: none;
+}
+
+.fp-door.unlocked .fp-door-seg {
+  background: rgba(34, 197, 94, 0.50);
+  border: 1px solid rgba(34, 197, 94, 0.80);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.80), 0 0 4px rgba(34, 197, 94, 0.95);
+}
 
 /* Light-theme overrides */
-[data-theme="light"] .house-body  { background: #d4d2ce; }
+[data-theme="light"] .house-body  { background: #c8c5c0; border-color: #c8c5c0; }
 [data-theme="light"] .fp-room     { background: #eeede9; }
 [data-theme="light"] .fp-room-label { color: #b8b4ae; }
 [data-theme="light"] .fp-room.lit {
@@ -293,7 +323,6 @@ main {
   width: 14px;
   height: 2px;
   background: var(--gradient);
-  border-radius: 1px;
 }
 
 .panel-body {
@@ -301,38 +330,42 @@ main {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  min-height: 0;
 }
 
 /* ── Device cards (shared by lights + doors) ── */
 .device-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
 }
 
 .device-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .device-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: var(--text-muted);
   flex-shrink: 0;
   transition: color 0.3s ease;
 }
 
 .device-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--text-muted);
   transition: color 0.3s ease;
@@ -407,56 +440,43 @@ main {
 
 /* ── Scenes ── */
 .scene-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
 }
 
 .scene-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
   display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  gap: 8px;
+  overflow: hidden;
   cursor: default;
   transition: background 0.25s ease, border-color 0.25s ease;
 }
 
-.scene-radio {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid var(--text-muted);
-  flex-shrink: 0;
-  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
-}
-
 .scene-icon {
-  font-size: 14px;
+  font-size: 18px;
   line-height: 1;
-  width: 18px;
-  text-align: center;
+  width: auto;
+  text-align: left;
 }
 
 .scene-name {
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: 11px;
   font-weight: 500;
+  color: var(--text-muted);
   transition: color 0.25s ease;
 }
 
-.scene-item.scene-active {
-  background: var(--accent-dim);
-  border-color: rgba(168, 85, 247, 0.25);
-}
-
-.scene-item.scene-active .scene-radio {
-  background: var(--gradient);
-  border-color: transparent;
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.18);
-}
-
+.scene-item.scene-active { background: var(--accent-dim); border-color: rgba(168,85,247,0.25); }
 .scene-item.scene-active .scene-name { color: var(--text); }
 
 /* ── Chat panel ── */
@@ -518,7 +538,7 @@ main {
 .msg {
   max-width: 85%;
   padding: 9px 13px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
@@ -528,15 +548,15 @@ main {
 .msg.user {
   align-self: flex-end;
   background: var(--user-bubble);
-  border: 1px solid rgba(8, 145, 178, 0.22);
-  border-bottom-right-radius: 3px;
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  border-bottom-right-radius: var(--radius-sm);
 }
 
 .msg.assistant {
   align-self: flex-start;
   background: var(--assistant-bubble);
   border: 1px solid var(--border);
-  border-bottom-left-radius: 3px;
+  border-bottom-left-radius: var(--radius-sm);
 }
 
 /* Tool call inspector */
@@ -557,7 +577,7 @@ main {
   margin-top: 6px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   font-size: 11px;
   overflow-x: auto;
@@ -577,7 +597,7 @@ main {
   flex: 1;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 8px 12px;
   color: var(--text);
   font-size: 13px;
@@ -593,7 +613,7 @@ main {
   background: var(--gradient);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
@@ -613,8 +633,8 @@ main {
   padding: 10px 14px;
   background: var(--assistant-bubble);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  border-bottom-left-radius: 3px;
+  border-radius: var(--radius-lg);
+  border-bottom-left-radius: var(--radius-sm);
 }
 
 .typing span {
@@ -641,7 +661,7 @@ main {
   z-index: 100;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   padding: 8px;
   min-width: 300px;
   display: none;
@@ -657,7 +677,7 @@ main {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -696,7 +716,7 @@ main {
   gap: 5px;
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 20px;
   font-family: inherit;
 }
 
@@ -716,3 +736,4 @@ main {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
