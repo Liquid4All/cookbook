@@ -44,6 +44,7 @@ Ready-to-run applications showcasing agentic workflows and real-time inference o
 | Thinking WebGPU Demo | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
 | LocalCowork | On-device AI agent for file ops, security scanning, OCR, and more, powered by LFM2-24B-A2B | [Code](./examples/localcowork/README.md) |
 | Hand & Voice Racer | Browser driving game controlled by hand gestures (MediaPipe) and voice commands (LFM2.5-Audio-1.5B), running fully local | [Code](./examples/hand-voice-racer/README.md) |
+| Discord Moderator | Use LFM2.5-1.2b to check messages that exceed a predetermined character limit for suspicious content. | [Code](https://github.com/badluma/liquid-mod)
 
 ## 📱 Mobile App Deployment
 
