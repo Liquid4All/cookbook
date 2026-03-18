@@ -4,14 +4,33 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LFM Home Assistant</title>
-  <link rel="stylesheet" href="/assets/style.css?v=3"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/style.css?v=5"/>
+  <script>(function(){var t=localStorage.getItem("theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
 </head>
 <body>
 <div id="app">
 
   <header>
-    <span>LFM Home Assistant</span>
+    <div class="brand">
+      <svg class="brand-icon" width="16" height="20" viewBox="0 0 16 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 0C8 0 0 7.6 0 12.8C0 16.8 3.6 20 8 20C12.4 20 16 16.8 16 12.8C16 7.6 8 0 8 0Z"/>
+      </svg>
+      <span>Liquid</span>
+      <span class="brand-sep">/</span>
+      <span class="brand-app">Home Assistant</span>
+    </div>
     <div class="meta">
+      <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle theme">
+        <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
+        </svg>
+        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>
+        </svg>
+      </button>
       <span id="model-label">Model: …</span>
       <div class="backend-toggle">
         <div class="local-wrapper">
@@ -29,93 +48,191 @@
   </header>
 
   <main>
-    <!-- Left: device control panel -->
+    <!-- Left: 3-row × 2-col cockpit grid -->
     <div id="house-panel">
-      <div id="control-panel">
 
-        <!-- Lights -->
-        <div class="control-section">
-          <div class="section-heading">Lights</div>
+      <!-- Row 1: Floor plan, spans both columns -->
+      <div class="panel panel-floorplan">
+        <div class="panel-label">Floor Plan</div>
+        <div class="panel-body fp-body">
+          <div class="house-body">
+            <!-- Door markers (absolutely positioned, out of grid flow) -->
+            <div class="fp-door locked" id="fp-door-back"><div class="fp-door-dot"></div></div>
+            <div class="fp-door locked" id="fp-door-garage"><div class="fp-door-dot"></div></div>
+            <div class="fp-door locked" id="fp-door-side"><div class="fp-door-dot"></div></div>
+            <div class="fp-door locked" id="fp-door-front"><div class="fp-door-dot"></div></div>
+            <!-- Room grid cells -->
+            <div class="fp-room" id="fp-room-bedroom"><span class="fp-room-label">Bedroom</span></div>
+            <div class="fp-room" id="fp-room-bathroom"><span class="fp-room-label">Bathroom</span></div>
+            <div class="fp-room" id="fp-room-office"><span class="fp-room-label">Office</span></div>
+            <div class="fp-room" id="fp-room-hallway"><span class="fp-room-label">Hallway</span></div>
+            <div class="fp-room" id="fp-room-kitchen"><span class="fp-room-label">Kitchen</span></div>
+            <div class="fp-room" id="fp-room-living_room"><span class="fp-room-label">Living Room</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2–3: four device panels -->
+
+      <!-- Top-left: Lights -->
+      <div class="panel">
+        <div class="panel-label">Lights</div>
+        <div class="panel-body">
           <div class="device-grid">
+
             <div class="device-card" id="light-bedroom">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
+              </svg>
               <span class="device-name">Bedroom</span>
               <span class="status-dot light-off"></span>
             </div>
+
             <div class="device-card" id="light-bathroom">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
+              </svg>
               <span class="device-name">Bathroom</span>
               <span class="status-dot light-off"></span>
             </div>
+
             <div class="device-card" id="light-office">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
+              </svg>
               <span class="device-name">Office</span>
               <span class="status-dot light-off"></span>
             </div>
+
             <div class="device-card" id="light-hallway">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
+              </svg>
               <span class="device-name">Hallway</span>
               <span class="status-dot light-off"></span>
             </div>
+
             <div class="device-card" id="light-kitchen">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
+              </svg>
               <span class="device-name">Kitchen</span>
               <span class="status-dot light-off"></span>
             </div>
+
             <div class="device-card" id="light-living_room">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
+              </svg>
               <span class="device-name">Living Room</span>
               <span class="status-dot light-off"></span>
             </div>
+
           </div>
         </div>
+      </div>
 
-        <!-- Thermostat -->
-        <div class="control-section">
-          <div class="section-heading">Thermostat</div>
-          <div class="thermo-card">
-            <span id="state-thermostat-temp">68°F</span>
-            <span id="state-thermostat-mode">auto</span>
+      <!-- Top-right: Climate -->
+      <div class="panel">
+        <div class="panel-label">Climate</div>
+        <div class="panel-body climate-body">
+          <div class="thermo-display">
+            <div class="thermo-temp" id="state-thermostat-temp">68°F</div>
+            <div class="thermo-mode">
+              <span class="mode-icon" id="state-thermostat-mode-icon">⟳</span>
+              <span class="mode-text" id="state-thermostat-mode" data-mode="auto">auto</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <!-- Doors -->
-        <div class="control-section">
-          <div class="section-heading">Doors</div>
+      <!-- Bottom-left: Doors -->
+      <div class="panel">
+        <div class="panel-label">Doors</div>
+        <div class="panel-body">
           <div class="device-grid">
+
             <div class="device-card" id="door-front">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+              </svg>
               <span class="device-name">Front</span>
               <span class="door-badge door-locked">locked</span>
             </div>
+
             <div class="device-card" id="door-back">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+              </svg>
               <span class="device-name">Back</span>
               <span class="door-badge door-locked">locked</span>
             </div>
+
             <div class="device-card" id="door-garage">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+              </svg>
               <span class="device-name">Garage</span>
               <span class="door-badge door-locked">locked</span>
             </div>
+
             <div class="device-card" id="door-side">
+              <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+              </svg>
               <span class="device-name">Side</span>
               <span class="door-badge door-locked">locked</span>
             </div>
+
           </div>
         </div>
-
-        <!-- Scenes -->
-        <div class="control-section">
-          <div class="section-heading">Scenes</div>
-          <div class="scene-pills">
-            <span class="scene-pill" id="scene-movie_night">Movie Night</span>
-            <span class="scene-pill" id="scene-bedtime">Bedtime</span>
-            <span class="scene-pill" id="scene-morning">Morning</span>
-            <span class="scene-pill" id="scene-away">Away</span>
-            <span class="scene-pill" id="scene-party">Party</span>
-          </div>
-        </div>
-
       </div>
+
+      <!-- Bottom-right: Scenes -->
+      <div class="panel">
+        <div class="panel-label">Scenes</div>
+        <div class="panel-body">
+          <div class="scene-list">
+            <div class="scene-item" id="scene-movie_night">
+              <span class="scene-radio"></span>
+              <span class="scene-icon">🎬</span>
+              <span class="scene-name">Movie Night</span>
+            </div>
+            <div class="scene-item" id="scene-bedtime">
+              <span class="scene-radio"></span>
+              <span class="scene-icon">🌙</span>
+              <span class="scene-name">Bedtime</span>
+            </div>
+            <div class="scene-item" id="scene-morning">
+              <span class="scene-radio"></span>
+              <span class="scene-icon">☀️</span>
+              <span class="scene-name">Morning</span>
+            </div>
+            <div class="scene-item" id="scene-away">
+              <span class="scene-radio"></span>
+              <span class="scene-icon">🏠</span>
+              <span class="scene-name">Away</span>
+            </div>
+            <div class="scene-item" id="scene-party">
+              <span class="scene-radio"></span>
+              <span class="scene-icon">🎉</span>
+              <span class="scene-name">Party</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Right: chat -->
     <div id="chat-panel">
+      <div class="chat-header">
+        <span class="chat-title">AI Assistant</span>
+        <span class="assistant-dot" id="assistant-dot"></span>
+      </div>
       <div id="messages"></div>
       <div id="input-bar">
-        <input id="user-input" type="text" placeholder="Type a command..." autocomplete="off"/>
+        <input id="user-input" type="text" placeholder="Type a command…" autocomplete="off"/>
         <button id="send-btn">Send</button>
       </div>
     </div>
@@ -159,6 +276,12 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
+  function setAssistantDot(state) {
+    const dot = document.getElementById("assistant-dot");
+    if (!dot) return;
+    dot.className = "assistant-dot" + (state ? ` ${state}` : "");
+  }
+
   // ── State rendering ───────────────────────────────────────
 
   function updateHouseVisualization(state) {
@@ -174,12 +297,21 @@
     }
   }
 
+  const MODE_ICONS = { heat: "🔥", cool: "❄", auto: "⟳" };
+
   function updateStateCards(state) {
     const t = state.thermostat || {};
-    const tempEl = document.getElementById("state-thermostat-temp");
-    const modeEl = document.getElementById("state-thermostat-mode");
+    const tempEl     = document.getElementById("state-thermostat-temp");
+    const modeEl     = document.getElementById("state-thermostat-mode");
+    const modeIconEl = document.getElementById("state-thermostat-mode-icon");
+
     if (tempEl) tempEl.textContent = t.temperature != null ? `${t.temperature}°F` : "68°F";
-    if (modeEl) modeEl.textContent = t.mode || "auto";
+    if (modeEl) {
+      const mode = t.mode || "auto";
+      modeEl.textContent = mode;
+      modeEl.setAttribute("data-mode", mode);
+    }
+    if (modeIconEl) modeIconEl.textContent = MODE_ICONS[t.mode] || "⟳";
 
     for (const [door, doorState] of Object.entries(state.doors || {})) {
       const el = document.getElementById(`door-${door}`);
@@ -193,10 +325,24 @@
       }
     }
 
-    document.querySelectorAll(".scene-pill").forEach(el => el.classList.remove("scene-active"));
+    document.querySelectorAll(".scene-item").forEach(el => el.classList.remove("scene-active"));
     if (state.active_scene) {
       const sceneEl = document.getElementById(`scene-${state.active_scene}`);
       if (sceneEl) sceneEl.classList.add("scene-active");
+    }
+  }
+
+  function updateFloorplan(state) {
+    for (const [room, light] of Object.entries(state.lights || {})) {
+      const el = document.getElementById(`fp-room-${room}`);
+      if (el) el.classList.toggle("lit", light.state === "on");
+    }
+    for (const [door, doorState] of Object.entries(state.doors || {})) {
+      const el = document.getElementById(`fp-door-${door}`);
+      if (el) {
+        el.classList.toggle("locked",   doorState === "locked");
+        el.classList.toggle("unlocked", doorState === "unlocked");
+      }
     }
   }
 
@@ -205,6 +351,7 @@
       const state = await fetch("/state").then(r => r.json());
       updateHouseVisualization(state);
       updateStateCards(state);
+      updateFloorplan(state);
     } catch (e) {
       console.warn("Could not fetch state:", e);
     }
@@ -242,6 +389,7 @@
     sendBtn.disabled = blocked;
     inputEl.disabled = blocked;
     inputEl.placeholder = blocked ? "Model loading, please wait\u2026" : "Type a command\u2026";
+    setAssistantDot(blocked ? "loading" : llamaStatus === "ready" ? "ready" : "");
   }
 
   async function fetchLocalModelStatus() {
@@ -309,9 +457,15 @@
 
   document.addEventListener("click", e => {
     const wrapper = document.querySelector(".local-wrapper");
-    if (wrapper && !wrapper.contains(e.target)) {
-      toggleDropdown(false);
-    }
+    if (wrapper && !wrapper.contains(e.target)) toggleDropdown(false);
+  });
+
+  // ── Theme toggle ──────────────────────────────────────────
+
+  document.getElementById("theme-toggle").addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
   });
 
   // ── Send message ──────────────────────────────────────────
@@ -323,6 +477,7 @@
     inputEl.value = "";
     sendBtn.disabled = true;
     inputEl.disabled = true;
+    setAssistantDot("loading");
 
     appendMessage("user", text);
     const typing = appendTyping();
@@ -400,11 +555,15 @@
     setActiveBackendBtn("openai");
     await refreshModel();
     messagesEl.innerHTML = "";
+    setAssistantDot("ready");
   });
 
   fetch("/backend")
     .then(r => r.json())
-    .then(d => setActiveBackendBtn(d.backend))
+    .then(d => {
+      setActiveBackendBtn(d.backend);
+      if (d.backend === "openai") setAssistantDot("ready");
+    })
     .catch(() => {});
 
   refreshModel();
