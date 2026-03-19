@@ -46,6 +46,7 @@ def run_agent(
     backend: str = "local",
     on_tool_call=None,
     messages_out: list | None = None,
+    temperature: float = 0.0,
 ) -> str:
     """Runs the agent loop and returns the final text response."""
 
@@ -68,7 +69,7 @@ def run_agent(
             messages=messages,
             tools=TOOL_SCHEMAS,
             tool_choice="auto",
-            temperature=0,
+            temperature=temperature,
             max_tokens=512,
         )
         message = response.choices[0].message
@@ -128,7 +129,7 @@ def run_agent(
             messages=messages,
             tools=TOOL_SCHEMAS,
             tool_choice="none",
-            temperature=0,
+            temperature=temperature,
             max_tokens=256,
         )
         final_response = final.choices[0].message.content or "Done."

@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, ".")
 
-from app.agent import run_agent, SYSTEM_PROMPT
+from app.agent import run_agent, SYSTEM_PROMPT, openai_client
 from app.state import home_state, randomize_state
 from app.tools.schemas import TOOL_SCHEMAS
 from benchmark.tasks import TASKS, _find_last_call, _find_all_calls
@@ -345,11 +345,70 @@ def _make_first_door_verifier(door: str):
 
 
 # ---------------------------------------------------------------------------
+# Paraphrase generation and deduplication
+# ---------------------------------------------------------------------------
+
+def generate_paraphrases(task_prompt: str, existing: list[str], n: int = 10) -> list[str]:
+    existing_block = "\n".join(f"- {p}" for p in existing) if existing else "(none)"
+    user = f"""\
+Generate {n} paraphrases of the following home-assistant user request.
+
+Original: "{task_prompt}"
+
+Already-existing phrases (DO NOT repeat or closely echo these):
+{existing_block}
+
+Requirements:
+- Vary register: casual, clipped, formal, frustrated, polite, terse.
+- Vary phrasing: imperatives, questions, hints, indirect requests.
+- Include some with typos or dropped words, as a real user might type.
+- Include some very short (2-4 words) and some longer ones.
+- Every phrase must have the same underlying intent as the original.
+- Output ONLY the phrases, one per line, no numbering, no explanation.
+"""
+    response = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a linguistic diversity assistant."},
+            {"role": "user",   "content": user},
+        ],
+        temperature=1.0,
+        max_tokens=512,
+    )
+    raw = response.choices[0].message.content or ""
+    lines = [ln.strip().strip("-").strip() for ln in raw.splitlines()]
+    return [ln for ln in lines if ln]
+
+
+def jaccard_dedup(examples: list[dict], threshold: float = 0.8) -> list[dict]:
+    def bigrams(text: str) -> set[tuple[str, str]]:
+        words = text.lower().split()
+        return set(zip(words, words[1:])) if len(words) >= 2 else {(w, "") for w in words}
+
+    def user_message(ex: dict) -> str:
+        for msg in ex["messages"]:
+            if msg["role"] == "user":
+                return msg["content"]
+        return ""
+
+    kept: list[dict] = []
+    kept_bigrams: list[set] = []
+    for ex in examples:
+        bg = bigrams(user_message(ex))
+        if not any(len(prev & bg) / len(prev | bg) >= threshold
+                   for prev in kept_bigrams if prev | bg):
+            kept.append(ex)
+            kept_bigrams.append(bg)
+    return kept
+
+
+# ---------------------------------------------------------------------------
 # Core generation logic
 # ---------------------------------------------------------------------------
 
 def collect_example(task, prompt, backend="openai",
-                    history_override=None, verifier_override=None):
+                    history_override=None, verifier_override=None,
+                    temperature: float = 0.7):
     home_state.clear()
     home_state.update(copy.deepcopy(_DEFAULT_STATE))
 
@@ -366,7 +425,8 @@ def collect_example(task, prompt, backend="openai",
 
     history = history_override if history_override is not None else task.history
     run_agent(prompt, history=history, backend=backend,
-              on_tool_call=capture, messages_out=messages_out)
+              on_tool_call=capture, messages_out=messages_out,
+              temperature=temperature)
 
     final_state = copy.deepcopy(home_state)
     verifier = verifier_override if verifier_override is not None else task.verifier
@@ -391,13 +451,20 @@ def collect_example(task, prompt, backend="openai",
     }
 
 
-def generate_dataset(runs=20, backend="openai"):
+def generate_dataset(runs=20, backend="openai", temperature=0.7, n_paraphrases=10):
     examples = []
     stats = {}
 
     for task in TASKS:
         variants = TASK_HISTORY_VARIANTS.get(task.id) or [None]
-        prompts = [task.prompt] + TASK_PARAPHRASES.get(task.id, [])
+        static = TASK_PARAPHRASES.get(task.id, [])
+        if backend == "openai" and n_paraphrases > 0:
+            generated = generate_paraphrases(task.prompt,
+                                             existing=[task.prompt] + static,
+                                             n=n_paraphrases)
+        else:
+            generated = []
+        prompts = [task.prompt] + static + generated
         passed = failed = 0
 
         for variant in variants:
@@ -413,7 +480,8 @@ def generate_dataset(runs=20, backend="openai"):
                 for _ in range(runs):
                     ex = collect_example(task, prompt, backend,
                                          history_override=history_override,
-                                         verifier_override=verifier_override)
+                                         verifier_override=verifier_override,
+                                         temperature=temperature)
                     if ex:
                         examples.append(ex)
                         passed += 1
@@ -427,12 +495,23 @@ def generate_dataset(runs=20, backend="openai"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate golden SFT dataset using gpt-4o-mini.")
-    parser.add_argument("--runs",    type=int, default=20, help="Runs per prompt (default 20)")
-    parser.add_argument("--backend", default="openai", choices=["local", "openai"])
+    parser.add_argument("--runs",            type=int,   default=5,      help="Runs per prompt (default 5)")
+    parser.add_argument("--temperature",     type=float, default=0.7,    help="Sampling temperature for agent (default 0.7)")
+    parser.add_argument("--n-paraphrases",   type=int,   default=10,     help="LLM-generated paraphrases per task (default 10)")
+    parser.add_argument("--dedup-threshold", type=float, default=0.8,    help="Jaccard similarity threshold for dedup (default 0.8)")
+    parser.add_argument("--backend",         default="openai", choices=["local", "openai"])
     args = parser.parse_args()
 
-    print(f"Generating dataset: {args.runs} runs per prompt, backend={args.backend}")
-    examples, stats = generate_dataset(runs=args.runs, backend=args.backend)
+    print(f"Generating dataset: {args.runs} runs per prompt, backend={args.backend}, "
+          f"temperature={args.temperature}, n_paraphrases={args.n_paraphrases}")
+    examples, stats = generate_dataset(
+        runs=args.runs, backend=args.backend,
+        temperature=args.temperature, n_paraphrases=args.n_paraphrases,
+    )
+
+    before = len(examples)
+    examples = jaccard_dedup(examples, threshold=args.dedup_threshold)
+    print(f"Dedup removed {before - len(examples)} near-duplicate examples.")
 
     print(f"\n{'ID':<4} {'Task':<45} {'Prompts':<8} {'Passed':<8} {'Failed'}")
     print("-" * 78)
