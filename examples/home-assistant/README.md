@@ -103,51 +103,49 @@ The FastAPI server, the agent loop, and the tools are all implemented in Python.
 
 Local Small models give you solid accuracy out of the box. Not perfect, but solid. Good enough to build a proof of concept and see that the thing more or less works.
 
-But production is a different story. You cannot ship to production based on vibes. You ship based on good benchmarks and evals.
+But production is a different story. You cannot ship to production based on vibes or things that more or less work. You ship based on good benchmarks and evals.
 
-### What's a good benchmark in this case?
+### What's a good benchmark?
 
-A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition.
+A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition. Here is the methodology we used to build `benchmark/`, a 100-task suite designed from the ground up around these principles.
 
-For example, for a home assistant, five dimensions determine whether a request is easy or hard for the model. Each dimension isolates a distinct failure mode.
+**1. Start with a taxonomy**
+
+Define the input space BEFORE writing prompts. A taxonomy makes coverage gaps visible and prevents accidental clustering around the examples you happened to think of first.
+
+Our taxonomy has three dimensions:
 
 | Dimension | Values |
 |-----------|--------|
-| Tool | `toggle_lights`, `lock_door`, `set_thermostat`, `get_device_status`, `set_scene`, `intent_unclear` |
-| Phrasing style | direct, colloquial, indirect, ambiguous |
-| Context | fresh turn, pronoun reference, correction, multi-turn back-reference |
-| Complexity | single-tool, parallel multi-tool, sequential multi-tool |
+| Capability | `lights`, `thermostat`, `doors`, `status`, `scene`, `rejection`, `multi_tool` |
+| Phrasing | `imperative`, `colloquial`, `implicit`, `question` |
+| Inference depth | `literal` (words map 1:1 to tool + args), `semantic` (requires translation), `boundary` (model must reject) |
 
-The benchmark contains 101 tasks, each covering a distinct cell in the taxonomy: a specific
-- tool
-- phrasing style
-- context type, and
-- complexity level.
+**2. Sample from every cell**
 
-Each task sends a natural-language prompt to the agent and checks whether the correct tool was called with the correct arguments.
+The Cartesian product of those dimensions defines the universe of task types. Sample at least one task per non-empty cell. This forces you to write prompts you would not have thought of otherwise, such as 
+- an implicit-semantic thermostat request ("It feels like a sauna in here") or
+- a boundary-case door request ("Is the house secure right now?").
 
-A sample across the three difficulty levels:
+**3. Write programmatic verifiers**
 
-| # | Task | Difficulty | Prompt | Expected tool |
-|---|------|------------|--------|---------------|
-| 1 | Turn on kitchen lights | easy | "Turn on the kitchen lights" | `toggle_lights` |
-| 2 | Lock the front door | easy | "Lock the front door" | `lock_door` |
-| 3 | Heat house to 72 degrees | easy | "Heat the house to 72 degrees" | `set_thermostat` |
-| 4 | Check bedroom light status | medium | "Are the bedroom lights on?" | `get_device_status` |
-| 5 | Activate movie night scene | medium | "Activate movie night mode" | `set_scene` |
-| 6 | Away scene via indirect phrasing | hard | "I'm heading out for the day, set the house accordingly" | `set_scene` |
-| 7 | Lock back door + turn off office lights | hard | "Lock the back door and turn off the office lights" | `lock_door` + `toggle_lights` |
-| 8 | Turn off bedroom light (pronoun reference) | hard | "switch it off" (after turning on bedroom light) | `toggle_lights` |
-| 9 | Relative thermostat increase | hard | "bump it up by 2 degrees" (after setting to 68°F) | `set_thermostat` |
-| 10 | Reject: ambiguous request | easy | "Make it more comfortable in here" | `intent_unclear` |
+Every task has a pure Python verifier that inspects the final `home_state` dict (or captured `tool_calls` for read-only and rejection tasks). No LLM-as-judge. Deterministic, fast, cheap.
 
-Each task has a verifier: a small function that inspects the tool calls the agent made and the final home state after execution.
+```python
+# State check: was the right final state reached?
+passed = state["lights"]["kitchen"]["state"] == "on"
 
-- Turn on the kitchen lights? The verifier checks that `state["lights"]["kitchen"]["state"] == "on"`.
+# Tool-call check (for status queries and rejections): was the right tool called with the right args?
+call = _find_last_call(tool_calls, "intent_unclear")
+passed = call is not None and call["args"].get("reason") == "off_topic"
+```
 
-- Lock the front door? It checks `state["doors"]["front"] == "locked"`. 
+State verifiers are deliberately lenient about the path: a model that uses `set_scene` to turn off all the lights is still correct if the final state matches.
 
-No fuzzy matching, no LLM-as-judge. Just hard assertions on state.
+**4. Never share prompts between training and evaluation**
+
+The same taxonomy that drives the benchmark can drive SFT dataset generation. The key constraint: you MUST never share specific prompt phrasings between the training split and the evaluation split. The taxonomy defines the distribution (shared), but each concrete prompt belongs exclusively to one split. If a model sees the exact evaluation prompt during training, the benchmark score becomes meaningless. In practice: generate train and eval prompts in separate sampling passes with distinct paraphrase templates, and treat the eval set as a held-out partition from day one.
+
 
 You can run the benchmark for a given model as follows:
 
@@ -181,15 +179,17 @@ uv run python benchmark/run.py --backend openai
 
 Results are printed to the console and saved as a Markdown file in `benchmark/results/`.
 
-**Baseline results**
+**Evaluatiom results**
 
 | Model | Parameters | Score | Accuracy |
 |-------|------------|-------|----------|
-| gpt-4o-mini | n/a | 98/101 | 97% |
-| LFM2.5-1.2B-Instruct Q4_0 | 1.2B | 81/101 | 80% |
-| LFM2-350M Q8_0 | 350M | 41/101 | 41% |
+| gpt-4o-mini | n/a | 93/100 | 93% |
+| LFM2.5-1.2B-Instruct Q4_0 | 1.2B | 71/100 | 71% |
+| LFM2-350M Q8_0 | 350M | 28/100 | 28% |
 
-The hardest tasks involve multi-tool calls, pronoun references, and requests the model must correctly reject. These are where small models diverge most from GPT-4o-mini, and where fine-tuning will have the most impact.
+These are not vibes anymore. These are actual numbers we can use to understand where we stand.
+
+In the following sections, we will see how to improve the performance of our local LFM models to match gpt-4o-mini.
 
 
 ## Step 3: Generate synthetic data <a name="step-3-generate-synthetic-data"></a>

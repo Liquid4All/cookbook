@@ -1,24 +1,60 @@
-from dataclasses import dataclass
+"""
+benchmark2/tasks.py
+-------------------
+100 tasks designed around a principled 3-dimensional taxonomy.
+
+Dimension 1 - Capability (7 categories):
+  lights       toggle_lights
+  thermostat   set_thermostat
+  doors        lock_door
+  status       get_device_status
+  scene        set_scene
+  rejection    intent_unclear
+  multi_tool   2+ tools in one turn
+
+Dimension 2 - Phrasing (4 styles):
+  imperative   direct command
+  colloquial   casual / informal
+  implicit     context-driven
+  question     interrogative
+
+Dimension 3 - Inference Depth (3 levels):
+  literal      words map 1:1 to tool + args
+  semantic     meaning is clear but requires translation
+  boundary     model must recognise it cannot fulfil the request
+"""
+
+import copy
+from dataclasses import dataclass, field
 from typing import Callable
 
+
+# ---------------------------------------------------------------------------
+# Dataclass
+# ---------------------------------------------------------------------------
 
 @dataclass
 class Task:
     id: int
     name: str
-    difficulty: str
+    capability: str   # lights | thermostat | doors | status | scene | rejection | multi_tool
+    phrasing: str     # imperative | colloquial | implicit | question
+    depth: str        # literal | semantic | boundary
     prompt: str
     verifier: Callable
-    history: list[dict] | None = None
-    capability: str = ""   # e.g. "toggle_lights.kitchen.on"
-    phrasing: str = ""     # direct | colloquial | indirect | question
+    initial_state: dict | None = None   # partial state override applied before each run
+    history: list[dict] = field(default_factory=list)
 
 
 ALL_ROOMS = {"living_room", "bedroom", "kitchen", "bathroom", "office", "hallway"}
 
 
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
 def _find_all_calls(tool_calls: list[dict], tool_name: str) -> list[dict]:
-    return [call for call in tool_calls if call["name"] == tool_name]
+    return [c for c in tool_calls if c["name"] == tool_name]
 
 
 def _find_last_call(tool_calls: list[dict], tool_name: str) -> dict | None:
@@ -26,416 +62,483 @@ def _find_last_call(tool_calls: list[dict], tool_name: str) -> dict | None:
     return calls[-1] if calls else None
 
 
-def _result(task_id, name, difficulty, passed, call, duration):
-    from benchmark.run import TaskResult
+def _deep_get(d: dict, dotted_path: str):
+    """Retrieve a nested value using a dotted key path, e.g. 'lights.kitchen.state'."""
+    for key in dotted_path.split("."):
+        if not isinstance(d, dict) or key not in d:
+            return None
+        d = d[key]
+    return d
+
+
+# ---------------------------------------------------------------------------
+# TaskResult (imported by run.py)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class TaskResult:
+    task_id: int
+    name: str
+    capability: str
+    phrasing: str
+    depth: str
+    passed: bool
+    tool_called: bool
+    args_correct: bool
+    duration_s: float
+
+
+# ---------------------------------------------------------------------------
+# Verifier factory helpers
+# ---------------------------------------------------------------------------
+
+def _state_result(task_id, name, capability, phrasing, depth, passed, tool_calls, duration):
     return TaskResult(
         task_id=task_id,
         name=name,
-        difficulty=difficulty,
+        capability=capability,
+        phrasing=phrasing,
+        depth=depth,
         passed=passed,
-        tool_called=call["name"] if call else None,
+        tool_called=bool(tool_calls),
         args_correct=passed,
         duration_s=duration,
     )
 
 
+def _tool_result(task_id, name, capability, phrasing, depth, passed, tool_called, args_correct, duration):
+    return TaskResult(
+        task_id=task_id,
+        name=name,
+        capability=capability,
+        phrasing=phrasing,
+        depth=depth,
+        passed=passed,
+        tool_called=tool_called,
+        args_correct=args_correct,
+        duration_s=duration,
+    )
+
+
 # ---------------------------------------------------------------------------
-# Verifier factory functions
+# Factory: lights
 # ---------------------------------------------------------------------------
 
-def _make_light_verifier(task_id, name, difficulty, room, expected_state):
-    def v(tool_calls, duration, state):
-        call = _find_last_call(tool_calls, "toggle_lights")
+def _make_lights_task(tid, name, phrasing, depth, prompt, room, expected_state, initial_state=None):
+    def verifier(tool_calls, duration, state):
         passed = state["lights"][room]["state"] == expected_state
-        return _result(task_id, name, difficulty, passed, call, duration)
-    return v
+        return _state_result(tid, name, "lights", phrasing, depth, passed, tool_calls, duration)
+    return Task(
+        id=tid, name=name, capability="lights", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier, initial_state=initial_state,
+    )
 
 
-def _make_door_verifier(task_id, name, difficulty, door, expected_state):
-    def v(tool_calls, duration, state):
-        call = _find_last_call(tool_calls, "lock_door")
+# ---------------------------------------------------------------------------
+# Factory: thermostat
+# ---------------------------------------------------------------------------
+
+def _make_thermostat_task(tid, name, phrasing, depth, prompt, temperature, mode, initial_state=None):
+    def verifier(tool_calls, duration, state):
+        passed = (
+            state["thermostat"]["temperature"] == temperature
+            and state["thermostat"]["mode"] == mode
+        )
+        return _state_result(tid, name, "thermostat", phrasing, depth, passed, tool_calls, duration)
+    return Task(
+        id=tid, name=name, capability="thermostat", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier, initial_state=initial_state,
+    )
+
+
+def _make_thermostat_mode_task(tid, name, phrasing, depth, prompt, expected_mode, initial_state=None):
+    """Verifies only the mode (semantic tasks where the exact temp is flexible)."""
+    def verifier(tool_calls, duration, state):
+        passed = state["thermostat"]["mode"] == expected_mode
+        return _state_result(tid, name, "thermostat", phrasing, depth, passed, tool_calls, duration)
+    return Task(
+        id=tid, name=name, capability="thermostat", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier, initial_state=initial_state,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Factory: doors
+# ---------------------------------------------------------------------------
+
+def _make_door_task(tid, name, phrasing, depth, prompt, door, expected_state, initial_state=None):
+    def verifier(tool_calls, duration, state):
         passed = state["doors"][door] == expected_state
-        return _result(task_id, name, difficulty, passed, call, duration)
-    return v
+        return _state_result(tid, name, "doors", phrasing, depth, passed, tool_calls, duration)
+    return Task(
+        id=tid, name=name, capability="doors", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier, initial_state=initial_state,
+    )
 
 
-def _make_thermostat_verifier(task_id, name, difficulty, temp, mode):
-    def v(tool_calls, duration, state):
-        call = _find_last_call(tool_calls, "set_thermostat")
-        passed = (state["thermostat"]["temperature"] == temp
-                  and state["thermostat"]["mode"] == mode)
-        return _result(task_id, name, difficulty, passed, call, duration)
-    return v
+# ---------------------------------------------------------------------------
+# Factory: status
+# ---------------------------------------------------------------------------
 
-
-def _make_thermostat_mode_verifier(task_id, name, difficulty, expected_mode):
-    def v(tool_calls, duration, state):
-        call = _find_last_call(tool_calls, "set_thermostat")
-        passed = call is not None and state["thermostat"]["mode"] == expected_mode
-        return _result(task_id, name, difficulty, passed, call, duration)
-    return v
-
-
-def _make_scene_verifier(task_id, name, difficulty, scene_name):
-    def v(tool_calls, duration, state):
-        call = _find_last_call(tool_calls, "set_scene")
-        passed = state["active_scene"] == scene_name
-        return _result(task_id, name, difficulty, passed, call, duration)
-    return v
-
-
-def _make_status_verifier(task_id, name, difficulty, device_type, room=None):
-    def v(tool_calls, duration, state):
+def _make_status_task(tid, name, phrasing, depth, prompt, device_type, room=None):
+    def verifier(tool_calls, duration, state):
         calls = _find_all_calls(tool_calls, "get_device_status")
         if room is not None:
-            call = next((c for c in calls
-                         if c["args"].get("device_type") in {device_type, "all"}
-                         and c["args"].get("room") == room), None)
+            match = next(
+                (c for c in calls
+                 if c["args"].get("device_type") in {device_type, "all"}
+                 and c["args"].get("room") == room),
+                None,
+            )
         else:
-            call = next((c for c in calls
-                         if c["args"].get("device_type") in {device_type, "all"}), None)
-        passed = call is not None
-        return _result(task_id, name, difficulty, passed, call, duration)
-    return v
+            match = next(
+                (c for c in calls
+                 if c["args"].get("device_type") in {device_type, "all"}),
+                None,
+            )
+        tool_called = bool(calls)
+        args_correct = match is not None
+        passed = args_correct
+        return _tool_result(tid, name, "status", phrasing, depth, passed, tool_called, args_correct, duration)
+    return Task(
+        id=tid, name=name, capability="status", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier,
+    )
 
 
-def _make_reject_verifier(task_id, name, difficulty, reason):
-    def v(tool_calls, duration, state):
+# ---------------------------------------------------------------------------
+# Factory: scene
+# ---------------------------------------------------------------------------
+
+def _make_scene_task(tid, name, phrasing, depth, prompt, scene_name, initial_state=None):
+    def verifier(tool_calls, duration, state):
+        passed = state["active_scene"] == scene_name
+        return _state_result(tid, name, "scene", phrasing, depth, passed, tool_calls, duration)
+    return Task(
+        id=tid, name=name, capability="scene", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier, initial_state=initial_state,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Factory: rejection
+# ---------------------------------------------------------------------------
+
+def _make_rejection_task(tid, name, phrasing, depth, prompt, reason):
+    def verifier(tool_calls, duration, state):
         call = _find_last_call(tool_calls, "intent_unclear")
-        passed = call is not None and call["args"].get("reason") == reason
-        return _result(task_id, name, difficulty, passed, call, duration)
-    return v
+        tool_called = bool(tool_calls)
+        args_correct = call is not None and call["args"].get("reason") == reason
+        passed = args_correct
+        return _tool_result(tid, name, "rejection", phrasing, depth, passed, tool_called, args_correct, duration)
+    return Task(
+        id=tid, name=name, capability="rejection", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier,
+    )
 
 
 # ---------------------------------------------------------------------------
-# Existing task verifiers (IDs 1-19)
+# Factory: multi_tool
 # ---------------------------------------------------------------------------
 
-def _verify_task_1(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "toggle_lights")
-    passed = state["lights"]["kitchen"]["state"] == "on"
-    return _result(1, "Turn on kitchen lights", "easy", passed, call, duration)
-
-
-def _verify_task_2(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "lock_door")
-    passed = state["doors"]["front"] == "locked"
-    return _result(2, "Lock the front door", "easy", passed, call, duration)
-
-
-def _verify_task_3(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "set_thermostat")
-    passed = (
-        state["thermostat"]["temperature"] == 72
-        and state["thermostat"]["mode"] == "heat"
+def _make_multi_task(tid, name, phrasing, depth, prompt, expected: dict, initial_state=None):
+    """
+    expected: dict of dotted-path assertions checked against final state.
+    Example: {"lights.kitchen.state": "on", "doors.front": "locked"}
+    """
+    def verifier(tool_calls, duration, state):
+        passed = all(_deep_get(state, path) == val for path, val in expected.items())
+        return _state_result(tid, name, "multi_tool", phrasing, depth, passed, tool_calls, duration)
+    return Task(
+        id=tid, name=name, capability="multi_tool", phrasing=phrasing, depth=depth,
+        prompt=prompt, verifier=verifier, initial_state=initial_state,
     )
-    return _result(3, "Heat house to 72 degrees", "easy", passed, call, duration)
-
-
-def _verify_task_4(tool_calls, duration, state):
-    calls = _find_all_calls(tool_calls, "get_device_status")
-    device_types = {c["args"].get("device_type") for c in calls}
-    # Accept a single "all" call or individual calls covering all three types
-    passed = (
-        "all" in device_types
-        or {"lights", "thermostat", "door"}.issubset(device_types)
-    )
-    call = _find_last_call(tool_calls, "get_device_status")
-    return _result(4, "Get status of all devices", "easy", passed, call, duration)
-
-
-def _verify_task_5(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "set_scene")
-    passed = state["active_scene"] == "movie_night"
-    return _result(5, "Activate movie night scene", "medium", passed, call, duration)
-
-
-def _verify_task_6(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "lock_door")
-    passed = state["doors"]["garage"] == "unlocked"
-    return _result(6, "Unlock the garage door", "medium", passed, call, duration)
-
-
-def _verify_task_7(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "get_device_status")
-    passed = (
-        call is not None
-        and call["args"].get("device_type") == "lights"
-        and call["args"].get("room") == "bedroom"
-    )
-    return _result(7, "Check bedroom light status", "medium", passed, call, duration)
-
-
-def _verify_task_8(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "set_thermostat")
-    passed = (
-        state["thermostat"]["temperature"] == 74
-        and state["thermostat"]["mode"] == "cool"
-    )
-    return _result(8, "Cool house to 74 degrees", "medium", passed, call, duration)
-
-
-def _verify_task_9(tool_calls, duration, state):
-    # Requires inferring "heading out for the day" -> scene="away" AND handler applied full away state
-    call = _find_last_call(tool_calls, "set_scene")
-    passed = (
-        state["active_scene"] == "away"
-        and all(state["lights"][r]["state"] == "off" for r in ALL_ROOMS)
-        and all(v == "locked" for v in state["doors"].values())
-        and state["thermostat"]["temperature"] == 65
-    )
-    return _result(9, "Away scene via indirect phrasing", "hard", passed, call, duration)
-
-
-def _verify_task_10(tool_calls, duration, state):
-    # Requires calling two tools in one turn
-    back_door_calls    = [c for c in _find_all_calls(tool_calls, "lock_door")     if c["args"].get("door") == "back"]
-    office_light_calls = [c for c in _find_all_calls(tool_calls, "toggle_lights") if c["args"].get("room") == "office"]
-    call = (back_door_calls[-1] if back_door_calls else None) or (office_light_calls[-1] if office_light_calls else None)
-    passed = (
-        state["doors"]["back"] == "locked"
-        and state["lights"]["office"]["state"] == "off"
-    )
-    return _result(10, "Lock back door + off office lights (multi-tool)", "hard", passed, call, duration)
-
-
-def _verify_task_11(tool_calls, duration, state):
-    calls = _find_all_calls(tool_calls, "toggle_lights")
-    call = calls[0] if calls else None
-    passed = all(state["lights"][r]["state"] == "on" for r in ALL_ROOMS)
-    return _result(11, "Turn on all lights (multi-tool)", "hard", passed, call, duration)
-
-
-def _verify_task_12(tool_calls, duration, state):
-    # "switch it off" after turning on the bedroom light - pronoun reference
-    call = _find_last_call(tool_calls, "toggle_lights")
-    passed = state["lights"]["bedroom"]["state"] == "off"
-    return _result(12, "Turn off bedroom light (pronoun reference)", "hard", passed, call, duration)
-
-
-def _verify_task_13(tool_calls, duration, state):
-    # "keep the hallway one off" after turning on all lights - correction
-    calls = _find_all_calls(tool_calls, "toggle_lights")
-    call = calls[0] if calls else None
-    non_hallway = ALL_ROOMS - {"hallway"}
-    passed = (
-        all(state["lights"][r]["state"] == "on" for r in non_hallway)
-        and state["lights"]["hallway"]["state"] == "off"
-    )
-    return _result(13, "Correct bulk action (hallway off)", "hard", passed, call, duration)
-
-
-def _verify_task_14(tool_calls, duration, state, initial_state=None):
-    # "bump it up by 2 degrees" after setting thermostat to 68 - relative adjustment
-    call = _find_last_call(tool_calls, "set_thermostat")
-    initial_temp = (initial_state["thermostat"]["temperature"]
-                    if initial_state is not None else 68)
-    passed = state["thermostat"]["temperature"] == initial_temp + 2
-    return _result(14, "Relative thermostat increase (+2 degrees)", "hard", passed, call, duration)
-
-
-def _verify_task_15(tool_calls, duration, state):
-    # "unlock the first one" after locking front then garage - back-reference
-    front_calls = [c for c in _find_all_calls(tool_calls, "lock_door") if c["args"].get("door") == "front"]
-    call = front_calls[-1] if front_calls else None
-    passed = state["doors"]["front"] == "unlocked"
-    return _result(15, "Unlock first door (3-turn back-reference)", "hard", passed, call, duration)
-
-
-def _verify_task_16(tool_calls, duration, state):
-    # "Dim the lights to 50%" - brightness control is unsupported
-    call = _find_last_call(tool_calls, "intent_unclear")
-    passed = call is not None and call["args"].get("reason") == "unsupported_device"
-    return _result(16, "Reject: unsupported device (dim lights)", "easy", passed, call, duration)
-
-
-def _verify_task_17(tool_calls, duration, state):
-    # "Order a pizza" - off-topic request
-    call = _find_last_call(tool_calls, "intent_unclear")
-    passed = call is not None and call["args"].get("reason") == "off_topic"
-    return _result(17, "Reject: off-topic request", "easy", passed, call, duration)
-
-
-def _verify_task_18(tool_calls, duration, state):
-    # "Turn it on" with no prior context - incomplete request
-    call = _find_last_call(tool_calls, "intent_unclear")
-    passed = call is not None and call["args"].get("reason") == "incomplete"
-    return _result(18, "Reject: incomplete request", "easy", passed, call, duration)
-
-
-def _verify_task_19(tool_calls, duration, state):
-    # "Make it comfortable" - ambiguous request
-    call = _find_last_call(tool_calls, "intent_unclear")
-    passed = call is not None and call["args"].get("reason") == "ambiguous"
-    return _result(19, "Reject: ambiguous request", "easy", passed, call, duration)
 
 
 # ---------------------------------------------------------------------------
-# Adversarial verifiers for IDs 51, 52, 68
+# Task definitions (100 total)
 # ---------------------------------------------------------------------------
 
-def _verify_task_51(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "toggle_lights")
-    passed = (call is not None and call["args"].get("state") == "on"
-              and any(state["lights"][r]["state"] == "on" for r in ALL_ROOMS))
-    return _result(51, "Lights on: implicit dark-room (adversarial)", "hard", passed, call, duration)
+TASKS: list[Task] = [
+
+    # =========================================================================
+    # LIGHTS (24 tasks: IDs 1-24)
+    # imperative(8), colloquial(6), implicit(6), question(4)
+    # literal(14), semantic(6), boundary(4)
+    # =========================================================================
+
+    # --- imperative / literal (6) ---
+    _make_lights_task(1,  "Kitchen lights on (imp/lit)",       "imperative", "literal",  "Turn on the kitchen lights",              "kitchen",     "on"),
+    _make_lights_task(2,  "Bedroom lights off (imp/lit)",      "imperative", "literal",  "Turn off the bedroom lights",             "bedroom",     "off"),
+    _make_lights_task(3,  "Hallway light on (imp/lit)",        "imperative", "literal",  "Switch on the hallway light",             "hallway",     "on"),
+    _make_lights_task(4,  "Office lights off (imp/lit)",       "imperative", "literal",  "Turn off the office lights",              "office",      "off"),
+    _make_lights_task(5,  "Bathroom light on (imp/lit)",       "imperative", "literal",  "Turn on the bathroom light",              "bathroom",    "on"),
+    _make_lights_task(6,  "Living room lights off (imp/lit)",  "imperative", "literal",  "Turn off the living room lights",         "living_room", "off"),
+
+    # --- imperative / semantic (2) ---
+    _make_lights_task(7,  "Bedroom lights on for reading (imp/sem)",  "imperative", "semantic", "Get the bedroom lights ready for reading",  "bedroom",  "on"),
+    _make_lights_task(8,  "Kitchen lights off after dinner (imp/sem)", "imperative", "semantic", "Shut the kitchen down for the night",       "kitchen",  "off",
+                      initial_state={"lights": {"kitchen": {"state": "on"}}}),
+
+    # --- colloquial / literal (4) ---
+    _make_lights_task(9,  "Living room lights on (coll/lit)",  "colloquial", "literal",  "Living room lights on please",            "living_room", "on"),
+    _make_lights_task(10, "Bathroom light off (coll/lit)",     "colloquial", "literal",  "Bathroom light off",                      "bathroom",    "off"),
+    _make_lights_task(11, "Office lights on (coll/lit)",       "colloquial", "literal",  "Office lights, turn them on",             "office",      "on"),
+    _make_lights_task(12, "Hallway light off (coll/lit)",      "colloquial", "literal",  "Kill the hallway light",                  "hallway",     "off"),
+
+    # --- colloquial / semantic (2) ---
+    _make_lights_task(13, "Bedroom lights cozy (coll/sem)",    "colloquial", "semantic", "Make the bedroom nice and cozy",          "bedroom",     "on"),
+    _make_lights_task(14, "Kitchen lights waste (coll/sem)",   "colloquial", "semantic", "The kitchen light is wasting electricity", "kitchen",    "off",
+                      initial_state={"lights": {"kitchen": {"state": "on"}}}),
+
+    # --- implicit / literal (4) ---
+    _make_lights_task(15, "Office lights on implicit (impl/lit)",    "implicit", "literal",  "I'm starting work in the office",         "office",      "on"),
+    _make_lights_task(16, "Bedroom lights on implicit (impl/lit)",   "implicit", "literal",  "I'm heading to the bedroom to read",      "bedroom",     "on"),
+    _make_lights_task(17, "Hallway light on implicit (impl/lit)",    "implicit", "literal",  "I can't see in the hallway",              "hallway",     "on"),
+    _make_lights_task(18, "Bathroom light off implicit (impl/lit)",  "implicit", "literal",  "I just left the bathroom",                "bathroom",    "off",
+                      initial_state={"lights": {"bathroom": {"state": "on"}}}),
+
+    # --- implicit / semantic (2) ---
+    _make_lights_task(19, "Living room lights dark (impl/sem)",  "implicit", "semantic", "It's a bit dark in here",              "living_room", "on"),
+    _make_lights_task(20, "Office lights done for day (impl/sem)", "implicit", "semantic", "I'm done for the day in the office",  "office",      "off",
+                      initial_state={"lights": {"office": {"state": "on"}}}),
+
+    # --- question / literal (4) ---
+    _make_lights_task(21, "Kitchen lights on (q/lit)",       "question", "literal",  "Can you turn on the kitchen lights?",         "kitchen",     "on"),
+    _make_lights_task(22, "Bedroom lights off (q/lit)",      "question", "literal",  "Could you switch off the bedroom lights?",    "bedroom",     "off"),
+    _make_lights_task(23, "Hallway light on (q/lit)",        "question", "literal",  "Would you mind turning on the hallway light?", "hallway",    "on"),
+    _make_lights_task(24, "Bathroom light off (q/lit)",      "question", "literal",  "Can you turn off the bathroom light?",        "bathroom",    "off",
+                      initial_state={"lights": {"bathroom": {"state": "on"}}}),
 
 
-def _verify_task_52(tool_calls, duration, state):
-    call = _find_last_call(tool_calls, "toggle_lights")
-    passed = state["lights"]["bathroom"]["state"] == "off"
-    return _result(52, "Bathroom off: implicit departure (adversarial)", "hard", passed, call, duration)
+    # =========================================================================
+    # THERMOSTAT (16 tasks: IDs 25-40)
+    # imperative(5), colloquial(4), implicit(4), question(3)
+    # literal(8), semantic(5), boundary(3)
+    # =========================================================================
+
+    # --- imperative / literal (4) ---
+    _make_thermostat_task(25, "Heat to 72 (imp/lit)",     "imperative", "literal", "Heat the house to 72 degrees",           72, "heat"),
+    _make_thermostat_task(26, "Cool to 76 (imp/lit)",     "imperative", "literal", "Cool the house down to 76 degrees",      76, "cool"),
+    _make_thermostat_task(27, "Set 70 auto (imp/lit)",    "imperative", "literal", "Set the thermostat to 70 in auto mode",  70, "auto"),
+    _make_thermostat_task(28, "Heat to 68 (imp/lit)",     "imperative", "literal", "Set heating to 68 degrees",              68, "heat"),
+
+    # --- imperative / semantic (1) ---
+    _make_thermostat_mode_task(29, "Thermostat warm imp (imp/sem)", "imperative", "semantic",
+                               "Make it a bit warmer in here", "heat"),
+
+    # --- colloquial / literal (2) ---
+    _make_thermostat_task(30, "AC to 74 (coll/lit)",      "colloquial", "literal", "AC to 74",                               74, "cool"),
+    _make_thermostat_task(31, "Heat 65 coll (coll/lit)",  "colloquial", "literal", "65 degrees heat mode",                   65, "heat"),
+
+    # --- colloquial / semantic (2) ---
+    _make_thermostat_mode_task(32, "Way too hot coll (coll/sem)", "colloquial", "semantic",
+                               "It's way too hot in here", "cool"),
+    _make_thermostat_mode_task(33, "Freezing coll (coll/sem)", "colloquial", "semantic",
+                               "It's freezing, warm it up", "heat"),
+
+    # --- implicit / literal (2) ---
+    _make_thermostat_task(34, "Set 73 heat (impl/lit)",   "implicit", "literal", "I need the house at 73 degrees heat",    73, "heat"),
+    _make_thermostat_task(35, "Set 77 cool (impl/lit)",   "implicit", "literal", "The house needs to be cooled to 77",     77, "cool"),
+
+    # --- implicit / semantic (2) ---
+    _make_thermostat_mode_task(36, "Summer implicit (impl/sem)", "implicit", "semantic",
+                               "It feels like a sauna in here", "cool"),
+    _make_thermostat_mode_task(37, "Winter implicit (impl/sem)", "implicit", "semantic",
+                               "I can see my breath it's so cold", "heat"),
+
+    # --- question / literal (3) ---
+    _make_thermostat_task(38, "Set 71 heat q (q/lit)",    "question", "literal", "Can you set the heat to 71 degrees?",    71, "heat"),
+    _make_thermostat_task(39, "Cool to 75 q (q/lit)",     "question", "literal", "Could you cool the house to 75?",        75, "cool"),
+    _make_thermostat_task(40, "Set 69 auto q (q/lit)",    "question", "literal", "Can you put the thermostat on auto at 69?", 69, "auto"),
 
 
-def _verify_task_68(tool_calls, duration, state):
-    lock_calls = _find_all_calls(tool_calls, "lock_door")
-    scene_call = _find_last_call(tool_calls, "set_scene")
-    passed = (len(lock_calls) > 0
-              or (scene_call is not None
-                  and scene_call["args"].get("scene") in {"away", "bedtime"}))
-    call = lock_calls[-1] if lock_calls else scene_call
-    return _result(68, "Lock up: implicit security (adversarial)", "hard", passed, call, duration)
+    # =========================================================================
+    # DOORS (16 tasks: IDs 41-56)
+    # imperative(5), colloquial(4), implicit(4), question(3)
+    # literal(8), semantic(5), boundary(3)
+    # =========================================================================
+
+    # --- imperative / literal (4) ---
+    _make_door_task(41, "Lock front door (imp/lit)",    "imperative", "literal", "Lock the front door",          "front",  "locked"),
+    _make_door_task(42, "Unlock back door (imp/lit)",   "imperative", "literal", "Unlock the back door",         "back",   "unlocked"),
+    _make_door_task(43, "Lock garage door (imp/lit)",   "imperative", "literal", "Lock the garage door",         "garage", "locked"),
+    _make_door_task(44, "Unlock side door (imp/lit)",   "imperative", "literal", "Unlock the side door",         "side",   "unlocked"),
+
+    # --- imperative / semantic (1) ---
+    _make_door_task(45, "Secure garage (imp/sem)",      "imperative", "semantic", "Make sure the garage is secure",  "garage", "locked"),
+
+    # --- colloquial / literal (2) ---
+    _make_door_task(46, "Front door locked coll (coll/lit)", "colloquial", "literal", "Front door, lock it",          "front",  "locked"),
+    _make_door_task(47, "Back door open coll (coll/lit)",    "colloquial", "literal", "Back door open please",        "back",   "unlocked"),
+
+    # --- colloquial / semantic (2) ---
+    _make_door_task(48, "Side door safe coll (coll/sem)",   "colloquial", "semantic", "Side door, keep it safe",     "side",   "locked"),
+    _make_door_task(49, "Garage let in coll (coll/sem)",    "colloquial", "semantic", "Let me into the garage",      "garage", "unlocked"),
+
+    # --- implicit / literal (2) ---
+    _make_door_task(50, "Lock front implicit (impl/lit)",   "implicit", "literal", "I need the front door locked",  "front",  "locked"),
+    _make_door_task(51, "Unlock back implicit (impl/lit)",  "implicit", "literal", "The delivery is at the back",   "back",   "unlocked"),
+
+    # --- implicit / semantic (2) ---
+    _make_door_task(52, "Side door leaving (impl/sem)",     "implicit", "semantic", "I'm leaving through the side", "side",   "unlocked",
+                    initial_state={"doors": {"side": "locked"}}),
+    _make_door_task(53, "Garage secure bedtime (impl/sem)", "implicit", "semantic", "I'm heading to bed, garage needs to be safe", "garage", "locked"),
+
+    # --- question / literal (3) ---
+    _make_door_task(54, "Lock front q (q/lit)",      "question", "literal", "Can you lock the front door?",         "front",  "locked"),
+    _make_door_task(55, "Unlock garage q (q/lit)",   "question", "literal", "Could you unlock the garage door?",    "garage", "unlocked"),
+    _make_door_task(56, "Lock side q (q/lit)",       "question", "literal", "Would you lock the side door please?", "side",   "locked"),
 
 
-# ---------------------------------------------------------------------------
-# Task list
-# ---------------------------------------------------------------------------
+    # =========================================================================
+    # STATUS (10 tasks: IDs 57-66)
+    # imperative(3), question(5), colloquial(2)
+    # literal(6), semantic(4)
+    # =========================================================================
 
-TASKS = [
-    # --- Existing tasks (IDs 1-19, unchanged) ---
-    Task(1,  "Turn on kitchen lights",                      "easy",   "Turn on the kitchen lights",                                        _verify_task_1,  capability="toggle_lights.kitchen.on",    phrasing="direct"),
-    Task(2,  "Lock the front door",                         "easy",   "Lock the front door",                                               _verify_task_2,  capability="lock_door.front.lock",        phrasing="direct"),
-    Task(3,  "Heat house to 72 degrees",                    "easy",   "Heat the house to 72 degrees",                                      _verify_task_3,  capability="set_thermostat.heat",         phrasing="direct"),
-    Task(4,  "Get status of all devices",                   "easy",   "What is the current status of all devices?",                        _verify_task_4,  capability="get_device_status.all",       phrasing="question"),
-    Task(5,  "Activate movie night scene",                  "medium", "Activate movie night mode",                                         _verify_task_5,  capability="set_scene.movie_night",       phrasing="direct"),
-    Task(6,  "Unlock the garage door",                      "medium", "Unlock the garage door",                                            _verify_task_6,  capability="lock_door.garage.unlock",     phrasing="direct"),
-    Task(7,  "Check bedroom light status",                  "medium", "Are the bedroom lights on?",                                        _verify_task_7,  capability="get_device_status.lights",    phrasing="question"),
-    Task(8,  "Cool house to 74 degrees",                    "medium", "Cool the house down to 74 degrees",                                 _verify_task_8,  capability="set_thermostat.cool",         phrasing="direct"),
-    Task(9,  "Away scene via indirect phrasing",            "hard",   "I'm heading out for the day, set the house accordingly",            _verify_task_9,  capability="set_scene.away",              phrasing="indirect"),
-    Task(10, "Lock back door + off office lights",          "hard",   "Lock the back door and turn off the office lights",                 _verify_task_10, capability="multi_tool",                  phrasing="direct"),
-    Task(11, "Turn on all lights (multi-tool)",             "hard",   "switch on all the lights",                                          _verify_task_11, capability="multi_tool",                  phrasing="colloquial"),
-    Task(12, "Turn off bedroom light (pronoun reference)",  "hard",   "switch it off",                                                     _verify_task_12,
-         history=[
-             {"role": "user",      "content": "switch on the bedroom light"},
-             {"role": "assistant", "content": "The bedroom light has been turned on."},
-         ], capability="toggle_lights.bedroom.off", phrasing="indirect"),
-    Task(13, "Correct bulk action (hallway off)",           "hard",   "actually keep the hallway one off",                                 _verify_task_13,
-         history=[
-             {"role": "user",      "content": "turn on all the lights"},
-             {"role": "assistant", "content": "All lights have been turned on."},
-         ], capability="multi_tool", phrasing="indirect"),
-    Task(14, "Relative thermostat increase (+2 degrees)",   "hard",   "bump it up by 2 degrees",                                           _verify_task_14,
-         history=[
-             {"role": "user",      "content": "set the thermostat to 68 degrees"},
-             {"role": "assistant", "content": "The thermostat has been set to 68°F."},
-         ], capability="set_thermostat.heat", phrasing="indirect"),
-    Task(15, "Unlock first door (3-turn back-reference)",   "hard",   "unlock the first one",                                              _verify_task_15,
-         history=[
-             {"role": "user",      "content": "lock the front door"},
-             {"role": "assistant", "content": "The front door has been locked."},
-             {"role": "user",      "content": "and the garage too"},
-             {"role": "assistant", "content": "The garage door has been locked."},
-         ], capability="lock_door.front.unlock", phrasing="indirect"),
-    Task(16, "Reject: unsupported device (dim lights)",    "easy",   "Dim the living room lights to 50%",                                 _verify_task_16, capability="intent_unclear.unsupported_device", phrasing="direct"),
-    Task(17, "Reject: off-topic request",                  "easy",   "Order a pizza for delivery",                                        _verify_task_17, capability="intent_unclear.off_topic",         phrasing="direct"),
-    Task(18, "Reject: incomplete request",                 "easy",   "Turn it on",                                                        _verify_task_18, capability="intent_unclear.incomplete",        phrasing="direct"),
-    Task(19, "Reject: ambiguous request",                  "easy",   "Make it more comfortable in here",                                  _verify_task_19, capability="intent_unclear.ambiguous",         phrasing="indirect"),
+    # --- imperative / literal (3) ---
+    _make_status_task(57, "Check all status (imp/lit)",        "imperative", "literal", "Check the status of all devices",             "all"),
+    _make_status_task(58, "Check thermostat status (imp/lit)", "imperative", "literal", "Check the thermostat status",                 "thermostat"),
+    _make_status_task(59, "Check door status (imp/lit)",       "imperative", "literal", "Check the status of all doors",               "door"),
 
-    # --- toggle_lights: on, new rooms (IDs 20-34) ---
-    Task(20, "Living room lights on (direct)",   "easy",   "Turn on the living room lights",         _make_light_verifier(20, "Living room lights on (direct)",   "easy",   "living_room", "on"), capability="toggle_lights.living_room.on",  phrasing="direct"),
-    Task(21, "Living room lights on (colloq)",   "easy",   "Living room lights on please",           _make_light_verifier(21, "Living room lights on (colloq)",   "easy",   "living_room", "on"), capability="toggle_lights.living_room.on",  phrasing="colloquial"),
-    Task(22, "Living room lights on (question)", "easy",   "Can you get the living room lights on?", _make_light_verifier(22, "Living room lights on (question)", "easy",   "living_room", "on"), capability="toggle_lights.living_room.on",  phrasing="question"),
-    Task(23, "Bedroom lights on (direct)",       "easy",   "Turn on the bedroom lights",             _make_light_verifier(23, "Bedroom lights on (direct)",       "easy",   "bedroom",     "on"), capability="toggle_lights.bedroom.on",      phrasing="direct"),
-    Task(24, "Bedroom lights on (colloquial)",   "easy",   "Bedroom lights on",                      _make_light_verifier(24, "Bedroom lights on (colloquial)",   "easy",   "bedroom",     "on"), capability="toggle_lights.bedroom.on",      phrasing="colloquial"),
-    Task(25, "Bedroom lights on (question)",     "easy",   "Can you switch on the bedroom lights?",  _make_light_verifier(25, "Bedroom lights on (question)",     "easy",   "bedroom",     "on"), capability="toggle_lights.bedroom.on",      phrasing="question"),
-    Task(26, "Bathroom light on (direct)",       "easy",   "Turn on the bathroom light",             _make_light_verifier(26, "Bathroom light on (direct)",       "easy",   "bathroom",    "on"), capability="toggle_lights.bathroom.on",     phrasing="direct"),
-    Task(27, "Bathroom light on (colloquial)",   "easy",   "Bathroom light on please",               _make_light_verifier(27, "Bathroom light on (colloquial)",   "easy",   "bathroom",    "on"), capability="toggle_lights.bathroom.on",     phrasing="colloquial"),
-    Task(28, "Bathroom light on (indirect)",     "medium", "It's too dark in the bathroom",          _make_light_verifier(28, "Bathroom light on (indirect)",     "medium", "bathroom",    "on"), capability="toggle_lights.bathroom.on",     phrasing="indirect"),
-    Task(29, "Hallway light on (direct)",        "easy",   "Turn on the hallway light",              _make_light_verifier(29, "Hallway light on (direct)",        "easy",   "hallway",     "on"), capability="toggle_lights.hallway.on",      phrasing="direct"),
-    Task(30, "Hallway lights on (colloquial)",   "easy",   "Hallway lights on",                      _make_light_verifier(30, "Hallway lights on (colloquial)",   "easy",   "hallway",     "on"), capability="toggle_lights.hallway.on",      phrasing="colloquial"),
-    Task(31, "Hallway light on (question)",      "easy",   "Could you switch the hallway light on?", _make_light_verifier(31, "Hallway light on (question)",      "easy",   "hallway",     "on"), capability="toggle_lights.hallway.on",      phrasing="question"),
-    Task(32, "Office lights on (direct)",        "easy",   "Turn on the office lights",              _make_light_verifier(32, "Office lights on (direct)",        "easy",   "office",      "on"), capability="toggle_lights.office.on",       phrasing="direct"),
-    Task(33, "Office lights on (colloquial)",    "easy",   "Office lights on please",                _make_light_verifier(33, "Office lights on (colloquial)",    "easy",   "office",      "on"), capability="toggle_lights.office.on",       phrasing="colloquial"),
-    Task(34, "Office lights on (indirect)",      "medium", "I need to see in the office",            _make_light_verifier(34, "Office lights on (indirect)",      "medium", "office",      "on"), capability="toggle_lights.office.on",       phrasing="indirect"),
+    # --- question / literal (3) ---
+    _make_status_task(60, "Bedroom lights on? (q/lit)",  "question", "literal", "Are the bedroom lights on?",             "lights",     "bedroom"),
+    _make_status_task(61, "Front door locked? (q/lit)",  "question", "literal", "Is the front door locked?",              "door",       "front"),
+    _make_status_task(62, "Thermostat set to? (q/lit)",  "question", "literal", "What is the thermostat set to?",         "thermostat"),
 
-    # --- toggle_lights: off, all rooms (IDs 35-50) ---
-    Task(35, "Kitchen lights off (direct)",       "easy",   "Turn off the kitchen lights",                    _make_light_verifier(35, "Kitchen lights off (direct)",       "easy",   "kitchen",     "off"), capability="toggle_lights.kitchen.off",     phrasing="direct"),
-    Task(36, "Kitchen lights off (colloquial)",   "easy",   "Kitchen lights off",                             _make_light_verifier(36, "Kitchen lights off (colloquial)",   "easy",   "kitchen",     "off"), capability="toggle_lights.kitchen.off",     phrasing="colloquial"),
-    Task(37, "Kitchen lights off (question)",     "easy",   "Can you switch off the kitchen lights?",         _make_light_verifier(37, "Kitchen lights off (question)",     "easy",   "kitchen",     "off"), capability="toggle_lights.kitchen.off",     phrasing="question"),
-    Task(38, "Living room lights off (direct)",   "easy",   "Turn off the living room lights",                _make_light_verifier(38, "Living room lights off (direct)",   "easy",   "living_room", "off"), capability="toggle_lights.living_room.off", phrasing="direct"),
-    Task(39, "Living room lights off (colloq)",   "easy",   "Living room lights off please",                  _make_light_verifier(39, "Living room lights off (colloq)",   "easy",   "living_room", "off"), capability="toggle_lights.living_room.off", phrasing="colloquial"),
-    Task(40, "Living room lights off (indirect)", "medium", "No one is in the living room anymore",           _make_light_verifier(40, "Living room lights off (indirect)", "medium", "living_room", "off"), capability="toggle_lights.living_room.off", phrasing="indirect"),
-    Task(41, "Bedroom lights off (direct)",       "easy",   "Turn off the bedroom lights",                    _make_light_verifier(41, "Bedroom lights off (direct)",       "easy",   "bedroom",     "off"), capability="toggle_lights.bedroom.off",     phrasing="direct"),
-    Task(42, "Bedroom lights off (colloquial)",   "easy",   "Bedroom lights off",                             _make_light_verifier(42, "Bedroom lights off (colloquial)",   "easy",   "bedroom",     "off"), capability="toggle_lights.bedroom.off",     phrasing="colloquial"),
-    Task(43, "Bedroom lights off (question)",     "easy",   "Are the bedroom lights still on? Turn them off", _make_light_verifier(43, "Bedroom lights off (question)",     "easy",   "bedroom",     "off"), capability="toggle_lights.bedroom.off",     phrasing="question"),
-    Task(44, "Bathroom light off (direct)",       "easy",   "Turn off the bathroom light",                    _make_light_verifier(44, "Bathroom light off (direct)",       "easy",   "bathroom",    "off"), capability="toggle_lights.bathroom.off",    phrasing="direct"),
-    Task(45, "Bathroom light off (colloquial)",   "easy",   "Bathroom light off please",                      _make_light_verifier(45, "Bathroom light off (colloquial)",   "easy",   "bathroom",    "off"), capability="toggle_lights.bathroom.off",    phrasing="colloquial"),
-    Task(46, "Hallway light off (direct)",        "easy",   "Turn off the hallway light",                     _make_light_verifier(46, "Hallway light off (direct)",        "easy",   "hallway",     "off"), capability="toggle_lights.hallway.off",     phrasing="direct"),
-    Task(47, "Hallway light off (indirect)",      "medium", "The hallway light is wasting electricity",       _make_light_verifier(47, "Hallway light off (indirect)",      "medium", "hallway",     "off"), capability="toggle_lights.hallway.off",     phrasing="indirect"),
-    Task(48, "Office lights off (direct)",        "easy",   "Turn off the office lights",                     _make_light_verifier(48, "Office lights off (direct)",        "easy",   "office",      "off"), capability="toggle_lights.office.off",      phrasing="direct"),
-    Task(49, "Office lights off (colloquial)",    "easy",   "Office lights off",                              _make_light_verifier(49, "Office lights off (colloquial)",    "easy",   "office",      "off"), capability="toggle_lights.office.off",      phrasing="colloquial"),
-    Task(50, "Office lights off (question)",      "easy",   "Can you kill the office lights?",                _make_light_verifier(50, "Office lights off (question)",      "easy",   "office",      "off"), capability="toggle_lights.office.off",      phrasing="question"),
+    # --- question / semantic (2) ---
+    _make_status_task(63, "House secure? (q/sem)",       "question", "semantic", "Is the house secure right now?",         "door"),
+    _make_status_task(64, "Lights check q (q/sem)",      "question", "semantic", "Which lights are currently running?",    "lights"),
 
-    # --- toggle_lights: adversarial (IDs 51-52) ---
-    Task(51, "Lights on: implicit dark-room",    "hard", "It's a bit dark in here",   _verify_task_51, capability="toggle_lights.any.on",       phrasing="indirect"),
-    Task(52, "Bathroom off: implicit departure", "hard", "I just left the bathroom",  _verify_task_52, capability="toggle_lights.bathroom.off", phrasing="indirect"),
+    # --- colloquial / literal (2) ---
+    _make_status_task(65, "Thermostat status coll (coll/lit)", "colloquial", "literal", "Thermostat status",             "thermostat"),
+    _make_status_task(66, "Door status coll (coll/lit)",       "colloquial", "literal", "Door status please",            "door"),
 
-    # --- lock_door: new combos (IDs 53-68) ---
-    Task(53, "Unlock front door (direct)",     "easy",   "Unlock the front door",             _make_door_verifier(53, "Unlock front door (direct)",     "easy",   "front",  "unlocked"), capability="lock_door.front.unlock",  phrasing="direct"),
-    Task(54, "Unlock front door (colloquial)", "easy",   "Front door unlock please",          _make_door_verifier(54, "Unlock front door (colloquial)", "easy",   "front",  "unlocked"), capability="lock_door.front.unlock",  phrasing="colloquial"),
-    Task(55, "Unlock front door (question)",   "easy",   "Can you unlock the front door?",    _make_door_verifier(55, "Unlock front door (question)",   "easy",   "front",  "unlocked"), capability="lock_door.front.unlock",  phrasing="question"),
-    Task(56, "Unlock back door (direct)",      "easy",   "Unlock the back door",              _make_door_verifier(56, "Unlock back door (direct)",      "easy",   "back",   "unlocked"), capability="lock_door.back.unlock",   phrasing="direct"),
-    Task(57, "Unlock back door (colloquial)",  "easy",   "Back door open",                    _make_door_verifier(57, "Unlock back door (colloquial)",  "easy",   "back",   "unlocked"), capability="lock_door.back.unlock",   phrasing="colloquial"),
-    Task(58, "Unlock back door (question)",    "easy",   "Could you unlock the back door?",   _make_door_verifier(58, "Unlock back door (question)",    "easy",   "back",   "unlocked"), capability="lock_door.back.unlock",   phrasing="question"),
-    Task(59, "Lock garage door (direct)",      "easy",   "Lock the garage door",              _make_door_verifier(59, "Lock garage door (direct)",      "easy",   "garage", "locked"),   capability="lock_door.garage.lock",  phrasing="direct"),
-    Task(60, "Lock garage door (colloquial)",  "easy",   "Garage locked please",              _make_door_verifier(60, "Lock garage door (colloquial)",  "easy",   "garage", "locked"),   capability="lock_door.garage.lock",  phrasing="colloquial"),
-    Task(61, "Lock garage door (indirect)",    "medium", "Make sure the garage is secure",    _make_door_verifier(61, "Lock garage door (indirect)",    "medium", "garage", "locked"),   capability="lock_door.garage.lock",  phrasing="indirect"),
-    Task(62, "Lock side door (direct)",        "easy",   "Lock the side door",                _make_door_verifier(62, "Lock side door (direct)",        "easy",   "side",   "locked"),   capability="lock_door.side.lock",    phrasing="direct"),
-    Task(63, "Lock side door (colloquial)",    "easy",   "Side door, lock it",                _make_door_verifier(63, "Lock side door (colloquial)",    "easy",   "side",   "locked"),   capability="lock_door.side.lock",    phrasing="colloquial"),
-    Task(64, "Lock side door (question)",      "easy",   "Can you lock the side door?",       _make_door_verifier(64, "Lock side door (question)",      "easy",   "side",   "locked"),   capability="lock_door.side.lock",    phrasing="question"),
-    Task(65, "Unlock side door (direct)",      "easy",   "Unlock the side door",              _make_door_verifier(65, "Unlock side door (direct)",      "easy",   "side",   "unlocked"), capability="lock_door.side.unlock",  phrasing="direct"),
-    Task(66, "Unlock side door (colloquial)",  "easy",   "Side door unlocked please",         _make_door_verifier(66, "Unlock side door (colloquial)",  "easy",   "side",   "unlocked"), capability="lock_door.side.unlock",  phrasing="colloquial"),
-    Task(67, "Unlock side door (question)",    "easy",   "Could you open the side door?",     _make_door_verifier(67, "Unlock side door (question)",    "easy",   "side",   "unlocked"), capability="lock_door.side.unlock",  phrasing="question"),
-    Task(68, "Lock up: implicit security",     "hard",   "Lock up before you go",             _verify_task_68, capability="lock_door.any.lock", phrasing="indirect"),
 
-    # --- set_thermostat: auto mode + new temps (IDs 69-77) ---
-    Task(69, "Thermostat 70 auto (direct)",       "easy", "Set the thermostat to 70 degrees in auto mode", _make_thermostat_verifier(69, "Thermostat 70 auto (direct)",       "easy", 70, "auto"), capability="set_thermostat.auto", phrasing="direct"),
-    Task(70, "Thermostat 70 auto (colloquial)",   "easy", "70 degrees auto please",                        _make_thermostat_verifier(70, "Thermostat 70 auto (colloquial)",   "easy", 70, "auto"), capability="set_thermostat.auto", phrasing="colloquial"),
-    Task(71, "Thermostat 70 auto (question)",     "easy", "Can you set the temperature to 70 on auto?",    _make_thermostat_verifier(71, "Thermostat 70 auto (question)",     "easy", 70, "auto"), capability="set_thermostat.auto", phrasing="question"),
-    Task(72, "Heat to 65 degrees (direct)",       "easy", "Heat the house to 65 degrees",                  _make_thermostat_verifier(72, "Heat to 65 degrees (direct)",       "easy", 65, "heat"), capability="set_thermostat.heat", phrasing="direct"),
-    Task(73, "Heat to 65 degrees (colloquial)",   "easy", "65 heat mode",                                  _make_thermostat_verifier(73, "Heat to 65 degrees (colloquial)",   "easy", 65, "heat"), capability="set_thermostat.heat", phrasing="colloquial"),
-    Task(74, "Cool to 78 degrees (direct)",       "easy", "Cool the house down to 78 degrees",             _make_thermostat_verifier(74, "Cool to 78 degrees (direct)",       "easy", 78, "cool"), capability="set_thermostat.cool", phrasing="direct"),
-    Task(75, "Cool to 78 degrees (colloquial)",   "easy", "Set AC to 78",                                  _make_thermostat_verifier(75, "Cool to 78 degrees (colloquial)",   "easy", 78, "cool"), capability="set_thermostat.cool", phrasing="colloquial"),
-    Task(76, "Cool mode: implicit hot",           "hard", "It's getting really hot in here",               _make_thermostat_mode_verifier(76, "Cool mode: implicit hot",           "hard", "cool"), capability="set_thermostat.cool", phrasing="indirect"),
-    Task(77, "Heat mode: implicit cold",          "hard", "It's freezing, can you warm it up a bit?",      _make_thermostat_mode_verifier(77, "Heat mode: implicit cold",          "hard", "heat"), capability="set_thermostat.heat", phrasing="indirect"),
+    # =========================================================================
+    # SCENE (10 tasks: IDs 67-76)
+    # imperative(5), implicit(5)
+    # literal(5), semantic(5)
+    # =========================================================================
 
-    # --- get_device_status: missing coverage (IDs 78-86) ---
-    Task(78, "Thermostat status (direct)",      "easy",   "What is the thermostat set to?",          _make_status_verifier(78, "Thermostat status (direct)",      "easy",   "thermostat"),            capability="get_device_status.thermostat", phrasing="direct"),
-    Task(79, "Thermostat status (question)",    "easy",   "What's the current temperature setting?", _make_status_verifier(79, "Thermostat status (question)",    "easy",   "thermostat"),            capability="get_device_status.thermostat", phrasing="question"),
-    Task(80, "Thermostat status (colloquial)",  "easy",   "Thermostat status",                       _make_status_verifier(80, "Thermostat status (colloquial)",  "easy",   "thermostat"),            capability="get_device_status.thermostat", phrasing="colloquial"),
-    Task(81, "Door status (direct)",            "easy",   "Are all the doors locked?",               _make_status_verifier(81, "Door status (direct)",            "easy",   "door"),                  capability="get_device_status.door",       phrasing="direct"),
-    Task(82, "Door status (question)",          "easy",   "What's the status of the doors?",         _make_status_verifier(82, "Door status (question)",          "easy",   "door"),                  capability="get_device_status.door",       phrasing="question"),
-    Task(83, "Door status (colloquial)",        "easy",   "Door status please",                      _make_status_verifier(83, "Door status (colloquial)",        "easy",   "door"),                  capability="get_device_status.door",       phrasing="colloquial"),
-    Task(84, "Living room lights status",       "medium", "Are the living room lights on?",          _make_status_verifier(84, "Living room lights status",       "medium", "lights", "living_room"), capability="get_device_status.lights",     phrasing="direct"),
-    Task(85, "Kitchen light status (question)", "medium", "Is the kitchen light on?",                _make_status_verifier(85, "Kitchen light status (question)", "medium", "lights", "kitchen"),     capability="get_device_status.lights",     phrasing="question"),
-    Task(86, "Bathroom light status (direct)",  "medium", "Check the bathroom light status",         _make_status_verifier(86, "Bathroom light status (direct)",  "medium", "lights", "bathroom"),    capability="get_device_status.lights",     phrasing="direct"),
+    # --- imperative / literal (5) ---
+    _make_scene_task(67, "Movie night scene (imp/lit)",  "imperative", "literal", "Activate movie night mode",          "movie_night"),
+    _make_scene_task(68, "Bedtime scene (imp/lit)",      "imperative", "literal", "Activate bedtime mode",              "bedtime"),
+    _make_scene_task(69, "Morning scene (imp/lit)",      "imperative", "literal", "Activate the morning scene",         "morning"),
+    _make_scene_task(70, "Away scene (imp/lit)",         "imperative", "literal", "Activate the away mode",             "away"),
+    _make_scene_task(71, "Party scene (imp/lit)",        "imperative", "literal", "Activate party mode",                "party"),
 
-    # --- set_scene: 3 missing scenes (IDs 87-95) ---
-    Task(87, "Bedtime scene (direct)",     "easy", "Activate bedtime mode",                          _make_scene_verifier(87, "Bedtime scene (direct)",     "easy", "bedtime"), capability="set_scene.bedtime",  phrasing="direct"),
-    Task(88, "Bedtime scene (colloquial)", "easy", "Bedtime scene please",                           _make_scene_verifier(88, "Bedtime scene (colloquial)", "easy", "bedtime"), capability="set_scene.bedtime",  phrasing="colloquial"),
-    Task(89, "Bedtime scene (indirect)",  "hard", "I'm going to sleep now, set things up",           _make_scene_verifier(89, "Bedtime scene (indirect)",  "hard", "bedtime"), capability="set_scene.bedtime",  phrasing="indirect"),
-    Task(90, "Morning scene (direct)",    "easy", "Activate the morning scene",                      _make_scene_verifier(90, "Morning scene (direct)",    "easy", "morning"), capability="set_scene.morning",  phrasing="direct"),
-    Task(91, "Morning scene (colloquial)","easy", "Morning mode please",                             _make_scene_verifier(91, "Morning scene (colloquial)","easy", "morning"), capability="set_scene.morning",  phrasing="colloquial"),
-    Task(92, "Morning scene (indirect)",  "hard", "Good morning, get the house ready for the day",   _make_scene_verifier(92, "Morning scene (indirect)",  "hard", "morning"), capability="set_scene.morning",  phrasing="indirect"),
-    Task(93, "Party scene (direct)",      "easy", "Activate party mode",                             _make_scene_verifier(93, "Party scene (direct)",      "easy", "party"),   capability="set_scene.party",    phrasing="direct"),
-    Task(94, "Party scene (colloquial)",  "easy", "Party scene please",                              _make_scene_verifier(94, "Party scene (colloquial)",  "easy", "party"),   capability="set_scene.party",    phrasing="colloquial"),
-    Task(95, "Party scene (indirect)",   "hard", "We're having people over, set the mood",           _make_scene_verifier(95, "Party scene (indirect)",   "hard", "party"),    capability="set_scene.party",    phrasing="indirect"),
+    # --- implicit / semantic (5) ---
+    _make_scene_task(72, "Movie night implicit (impl/sem)", "implicit", "semantic",
+                     "We're about to watch a film, set the mood",          "movie_night"),
+    _make_scene_task(73, "Bedtime implicit (impl/sem)",     "implicit", "semantic",
+                     "I'm going to sleep now, get the house ready",        "bedtime"),
+    _make_scene_task(74, "Morning implicit (impl/sem)",     "implicit", "semantic",
+                     "Good morning, get the house ready for the day",      "morning"),
+    _make_scene_task(75, "Away implicit (impl/sem)",        "implicit", "semantic",
+                     "I'm heading out for the day, set the house accordingly", "away"),
+    _make_scene_task(76, "Party implicit (impl/sem)",       "implicit", "semantic",
+                     "We're having people over, set the mood",             "party"),
 
-    # --- intent_unclear: additional + boundary (IDs 96-101) ---
-    Task(96,  "Reject: unsupported room (patio)", "easy", "Turn on the patio lights",          _make_reject_verifier(96,  "Reject: unsupported room (patio)", "easy", "unsupported_device"), capability="intent_unclear.unsupported_device", phrasing="direct"),
-    Task(97,  "Reject: out-of-range temperature", "easy", "Set the temperature to 95 degrees", _make_reject_verifier(97,  "Reject: out-of-range temperature", "easy", "unsupported_device"), capability="intent_unclear.unsupported_device", phrasing="direct"),
-    Task(98,  "Reject: off-topic (car)",          "easy", "Lock the car",                      _make_reject_verifier(98,  "Reject: off-topic (car)",          "easy", "off_topic"),          capability="intent_unclear.off_topic",          phrasing="direct"),
-    Task(99,  "Reject: off-topic (weather)",      "easy", "What's the weather today?",         _make_reject_verifier(99,  "Reject: off-topic (weather)",      "easy", "off_topic"),          capability="intent_unclear.off_topic",          phrasing="question"),
-    Task(100, "Reject: ambiguous (make nicer)",   "easy", "Make it nicer in here",             _make_reject_verifier(100, "Reject: ambiguous (make nicer)",   "easy", "ambiguous"),          capability="intent_unclear.ambiguous",          phrasing="indirect"),
-    Task(101, "Reject: incomplete (the thing)",   "easy", "Turn the thing off",                _make_reject_verifier(101, "Reject: incomplete (the thing)",   "easy", "incomplete"),         capability="intent_unclear.incomplete",         phrasing="direct"),
+
+    # =========================================================================
+    # REJECTION (12 tasks: IDs 77-88)
+    # imperative(3), colloquial(4), question(3), implicit(2)
+    # boundary(12)
+    # =========================================================================
+
+    # --- imperative / boundary (3) ---
+    _make_rejection_task(77, "Reject: dim lights unsupported (imp/bnd)",   "imperative", "boundary",
+                         "Dim the living room lights to 30%",               "unsupported_device"),
+    _make_rejection_task(78, "Reject: patio lights unsupported (imp/bnd)", "imperative", "boundary",
+                         "Turn on the patio lights",                        "unsupported_device"),
+    _make_rejection_task(79, "Reject: 95 degree temp (imp/bnd)",           "imperative", "boundary",
+                         "Set the temperature to 95 degrees",               "unsupported_device"),
+
+    # --- colloquial / boundary (4) ---
+    _make_rejection_task(80, "Reject: order pizza (coll/bnd)",    "colloquial", "boundary",
+                         "Order a pizza for me",                            "off_topic"),
+    _make_rejection_task(81, "Reject: car lock (coll/bnd)",       "colloquial", "boundary",
+                         "Lock the car",                                    "off_topic"),
+    _make_rejection_task(82, "Reject: turn it on (coll/bnd)",     "colloquial", "boundary",
+                         "Turn it on",                                      "incomplete"),
+    _make_rejection_task(83, "Reject: make nicer (coll/bnd)",     "colloquial", "boundary",
+                         "Make it nicer in here",                           "ambiguous"),
+
+    # --- question / boundary (3) ---
+    _make_rejection_task(84, "Reject: weather query (q/bnd)",     "question",   "boundary",
+                         "What's the weather like outside?",                "off_topic"),
+    _make_rejection_task(85, "Reject: color change (q/bnd)",      "question",   "boundary",
+                         "Can you change the light color to blue?",         "unsupported_device"),
+    _make_rejection_task(86, "Reject: which thing? (q/bnd)",      "question",   "boundary",
+                         "Can you turn the thing off?",                     "incomplete"),
+
+    # --- implicit / boundary (2) ---
+    _make_rejection_task(87, "Reject: ambiguous comfy (impl/bnd)", "implicit",  "boundary",
+                         "Make it more comfortable in here",                "ambiguous"),
+    _make_rejection_task(88, "Reject: music request (impl/bnd)",   "implicit",  "boundary",
+                         "I want some background music",                    "off_topic"),
+
+
+    # =========================================================================
+    # MULTI_TOOL (12 tasks: IDs 89-100)
+    # imperative(5), colloquial(4), implicit(3)
+    # literal(6), semantic(6)
+    # =========================================================================
+
+    # --- imperative / literal (4) ---
+    _make_multi_task(89, "Lock front + kitchen on (imp/lit)", "imperative", "literal",
+                     "Lock the front door and turn on the kitchen lights",
+                     {"doors.front": "locked", "lights.kitchen.state": "on"}),
+    _make_multi_task(90, "Thermostat heat + office off (imp/lit)", "imperative", "literal",
+                     "Set the heat to 72 and turn off the office lights",
+                     {"thermostat.temperature": 72, "thermostat.mode": "heat", "lights.office.state": "off"}),
+    _make_multi_task(91, "Unlock back + hallway on (imp/lit)", "imperative", "literal",
+                     "Unlock the back door and turn on the hallway light",
+                     {"doors.back": "unlocked", "lights.hallway.state": "on"}),
+    _make_multi_task(92, "Lock garage + bedroom off (imp/lit)", "imperative", "literal",
+                     "Lock the garage door and turn off the bedroom lights",
+                     {"doors.garage": "locked", "lights.bedroom.state": "off"},
+                     initial_state={"lights": {"bedroom": {"state": "on"}}}),
+
+    # --- imperative / semantic (1) ---
+    _make_multi_task(93, "Secure and prep for night (imp/sem)", "imperative", "semantic",
+                     "Lock up and get the bedroom lights ready for sleep",
+                     {"doors.front": "locked", "lights.bedroom.state": "on"}),
+
+    # --- colloquial / literal (2) ---
+    _make_multi_task(94, "Front locked + living on coll (coll/lit)", "colloquial", "literal",
+                     "Front door locked and living room lights on please",
+                     {"doors.front": "locked", "lights.living_room.state": "on"}),
+    _make_multi_task(95, "Kitchen off + back locked coll (coll/lit)", "colloquial", "literal",
+                     "Kitchen lights off and back door locked",
+                     {"lights.kitchen.state": "off", "doors.back": "locked"},
+                     initial_state={"lights": {"kitchen": {"state": "on"}}}),
+
+    # --- colloquial / semantic (2) ---
+    _make_multi_task(96, "Cozy evening setup (coll/sem)", "colloquial", "semantic",
+                     "Let's get cozy, living room lights and lock up",
+                     {"lights.living_room.state": "on", "doors.front": "locked"}),
+    _make_multi_task(97, "Morning routine coll (coll/sem)", "colloquial", "semantic",
+                     "Morning! Lights and unlock the front",
+                     {"lights.living_room.state": "on", "doors.front": "unlocked"}),
+
+    # --- implicit / literal (2) ---
+    _make_multi_task(98, "Back door + hallway bedtime (impl/lit)", "implicit", "literal",
+                     "I'm going to bed, lock the back door and turn off the hallway light",
+                     {"doors.back": "locked", "lights.hallway.state": "off"},
+                     initial_state={"lights": {"hallway": {"state": "on"}}}),
+    _make_multi_task(99, "Office done for the day (impl/lit)", "implicit", "literal",
+                     "I'm done in the office, turn off the lights and lock the side door",
+                     {"lights.office.state": "off", "doors.side": "locked"},
+                     initial_state={"lights": {"office": {"state": "on"}}}),
+
+    # --- implicit / semantic (1) ---
+    _make_multi_task(100, "Leaving the house (impl/sem)", "implicit", "semantic",
+                     "I'm heading out, make sure the house is ready",
+                     {"doors.front": "locked", "doors.back": "locked"}),
 ]
+
+
+assert len(TASKS) == 100, f"Expected 100 tasks, got {len(TASKS)}"
