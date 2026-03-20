@@ -105,51 +105,41 @@ Local Small models give you solid accuracy out of the box. Not perfect, but soli
 
 But production is a different story. You cannot ship to production based on vibes. You ship based on good benchmarks and evals.
 
-### What's a good benchmark in this case? 
+### What's a good benchmark in this case?
 
-Coverage by systematic taxonomy, not intuition
+A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition.
 
-```
-┌─────────────────┬───────────────────────────────────────────────────────────────────────────────┐
-  │    Dimension    │                                    Values                                     │
-  ├─────────────────┼───────────────────────────────────────────────────────────────────────────────┤
-  │ Tool            │ toggle_lights, lock_door, set_thermostat, get_device_status, set_scene,       │
-  │                 │ intent_unclear                                                                │
-  ├─────────────────┼───────────────────────────────────────────────────────────────────────────────┤
-  │ Phrasing style  │ direct, colloquial, indirect, ambiguous                                       │
-  ├─────────────────┼───────────────────────────────────────────────────────────────────────────────┤
-  │ Context         │ fresh turn, pronoun reference, correction, multi-turn back-reference          │
-  ├─────────────────┼───────────────────────────────────────────────────────────────────────────────┤
-  │ Complexity      │ single-tool, parallel multi-tool, sequential multi-tool                       │
-  ├─────────────────┼───────────────────────────────────────────────────────────────────────────────┤
-  │ Expected        │ success, rejection                                                            │
-  │ outcome         │                                                                               │
-  └─────────────────┴───────────────────────────────────────────────────────────────────────────────┘
-```
+For example, for a home assistant, five dimensions determine whether a request is easy or hard for the model. Each dimension isolates a distinct failure mode.
 
-In this example we have a benchmark that includes 19 tasks across four difficulty levels: easy, medium, and hard. Each task sends a natural-language prompt to the agent and checks whether the correct tool was called with the correct arguments.
+| Dimension | Values |
+|-----------|--------|
+| Tool | `toggle_lights`, `lock_door`, `set_thermostat`, `get_device_status`, `set_scene`, `intent_unclear` |
+| Phrasing style | direct, colloquial, indirect, ambiguous |
+| Context | fresh turn, pronoun reference, correction, multi-turn back-reference |
+| Complexity | single-tool, parallel multi-tool, sequential multi-tool |
+
+The benchmark contains 101 tasks, each covering a distinct cell in the taxonomy: a specific
+- tool
+- phrasing style
+- context type, and
+- complexity level.
+
+Each task sends a natural-language prompt to the agent and checks whether the correct tool was called with the correct arguments.
+
+A sample across the three difficulty levels:
 
 | # | Task | Difficulty | Prompt | Expected tool |
 |---|------|------------|--------|---------------|
 | 1 | Turn on kitchen lights | easy | "Turn on the kitchen lights" | `toggle_lights` |
 | 2 | Lock the front door | easy | "Lock the front door" | `lock_door` |
 | 3 | Heat house to 72 degrees | easy | "Heat the house to 72 degrees" | `set_thermostat` |
-| 4 | Get status of all devices | easy | "What is the current status of all devices?" | `get_device_status` |
+| 4 | Check bedroom light status | medium | "Are the bedroom lights on?" | `get_device_status` |
 | 5 | Activate movie night scene | medium | "Activate movie night mode" | `set_scene` |
-| 6 | Unlock the garage door | medium | "Unlock the garage door" | `lock_door` |
-| 7 | Check bedroom light status | medium | "Are the bedroom lights on?" | `get_device_status` |
-| 8 | Cool house to 74 degrees | medium | "Cool the house down to 74 degrees" | `set_thermostat` |
-| 9 | Away scene via indirect phrasing | hard | "I'm heading out for the day, set the house accordingly" | `set_scene` |
-| 10 | Lock back door + turn off office lights | hard | "Lock the back door and turn off the office lights" | `lock_door` + `toggle_lights` |
-| 11 | Turn on all lights | hard | "switch on all the lights" | `toggle_lights` (×6) |
-| 12 | Turn off bedroom light (pronoun reference) | hard | "switch it off" (after turning on bedroom light) | `toggle_lights` |
-| 13 | Correct bulk action (keep hallway off) | hard | "actually keep the hallway one off" (after turning on all lights) | `toggle_lights` |
-| 14 | Relative thermostat increase | hard | "bump it up by 2 degrees" (after setting to 68°F) | `set_thermostat` |
-| 15 | Unlock first door (back-reference) | hard | "unlock the first one" (after locking front then garage) | `lock_door` |
-| 16 | Reject: unsupported device | easy | "Dim the living room lights to 50%" | `intent_unclear` |
-| 17 | Reject: off-topic request | easy | "Order a pizza for delivery" | `intent_unclear` |
-| 18 | Reject: incomplete request | easy | "Turn it on" | `intent_unclear` |
-| 19 | Reject: ambiguous request | easy | "Make it more comfortable in here" | `intent_unclear` |
+| 6 | Away scene via indirect phrasing | hard | "I'm heading out for the day, set the house accordingly" | `set_scene` |
+| 7 | Lock back door + turn off office lights | hard | "Lock the back door and turn off the office lights" | `lock_door` + `toggle_lights` |
+| 8 | Turn off bedroom light (pronoun reference) | hard | "switch it off" (after turning on bedroom light) | `toggle_lights` |
+| 9 | Relative thermostat increase | hard | "bump it up by 2 degrees" (after setting to 68°F) | `set_thermostat` |
+| 10 | Reject: ambiguous request | easy | "Make it more comfortable in here" | `intent_unclear` |
 
 Each task has a verifier: a small function that inspects the tool calls the agent made and the final home state after execution.
 
