@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Home Assistant powered by LFM 2.5</title>
+  <title>Home Assistant powered by a local LFM2.5 model</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css?v=9"/>
-  <script>(function(){var t=localStorage.getItem("theme")||"dark";document.documentElement.setAttribute("data-theme",t);})();</script>
 </head>
 <body>
 <div id="app">
@@ -17,17 +16,9 @@
     <div class="brand">
       <img class="brand-logo" src="/assets/liquid-ai-logo.png" alt="Liquid AI"/>
       <span class="brand-sep">/</span>
-      <span class="brand-app">Home Assistant powered by LFM 2.5</span>
+      <span class="brand-app">Home Assistant powered by a local LFM2.5 model</span>
     </div>
     <div class="meta">
-      <button class="theme-toggle" id="theme-toggle" title="Toggle light/dark mode" aria-label="Toggle theme">
-        <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/>
-        </svg>
-        <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"/>
-        </svg>
-      </button>
       <span id="model-label">Model: …</span>
       <div class="backend-toggle">
         <div class="local-wrapper">
@@ -457,13 +448,17 @@
     if (wrapper && !wrapper.contains(e.target)) toggleDropdown(false);
   });
 
-  // ── Theme toggle ──────────────────────────────────────────
+  // ── Voice ─────────────────────────────────────────────────
 
-  document.getElementById("theme-toggle").addEventListener("click", () => {
-    const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("theme", next);
-  });
+  function speakText(text) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate  = 1.0;
+    utter.pitch = 1.0;
+
+    window.speechSynthesis.speak(utter);
+  }
 
   // ── Send message ──────────────────────────────────────────
 
@@ -489,6 +484,7 @@
       const data = await res.json();
       typing.remove();
       appendMessage("assistant", data.text || "(no response)");
+      speakText(data.text || "");
       appendToolCalls(data.tool_calls);
       await refreshState();
     } catch (e) {

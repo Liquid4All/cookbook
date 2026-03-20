@@ -1,33 +1,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:              #0a0a0a;
-  --surface:         #111111;
-  --surface-2:       #1a1a1a;
-  --border:          #2a2a2a;
-  --text:            #f5f5f5;
-  --text-muted:      #737373;
-  --accent:          #c084fc;
-  --accent-dim:      rgba(192, 132, 252, 0.14);
-  --gradient:        linear-gradient(135deg, #e879f9, #a855f7);
-  --amber:           #f59e0b;
-  --amber-glow:      rgba(245, 158, 11, 0.12);
-  --green:           #22c55e;
-  --green-dim:       rgba(34, 197, 94, 0.10);
-  --red:             #ef4444;
-  --user-bubble:     #1a0f2e;
-  --assistant-bubble:#161616;
-  --radius-sm:       4px;
-  --radius-md:       8px;
-  --radius-lg:       12px;
-}
-
-/* ── Light theme overrides (Liquid brand) ── */
-[data-theme="light"] {
   --bg:              #f5f4f1;
   --surface:         #ffffff;
   --surface-2:       #fafafa;
-  --border:          #e0ddd8;
+  --border:          #000000;
+  --border-light:    #d4d4d4;
   --text:            #0a0a0a;
   --text-muted:      #6b6b6b;
   --accent:          #a855f7;
@@ -39,35 +17,11 @@
   --green-dim:       rgba(22, 163, 74, 0.07);
   --red:             #dc2626;
   --user-bubble:     #faf5ff;
-  --assistant-bubble:#f9f9f9;
+  --assistant-bubble:#ffffff;
+  --radius-sm:       4px;
+  --radius-md:       8px;
+  --radius-lg:       12px;
 }
-
-[data-theme="light"] .status-pill.idle     { background: #f5f4f1; color: #6b6b6b; }
-[data-theme="light"] .status-pill.starting { background: #fef9c3; color: #854d0e; }
-[data-theme="light"] .status-pill.ready    { background: #dcfce7; color: #166534; }
-[data-theme="light"] .status-pill.error    { background: #fee2e2; color: #991b1b; }
-
-[data-theme="light"] .model-dropdown { box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08); }
-[data-theme="light"] .tool-calls pre { color: #581c87; }
-[data-theme="light"] .thermo-temp    { text-shadow: 0 0 40px rgba(168, 85, 247, 0.10); }
-
-/* ── Theme toggle button ── */
-.theme-toggle {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px 6px;
-  cursor: pointer;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.theme-toggle:hover { color: var(--text); border-color: var(--accent); }
-
-[data-theme="dark"]  .icon-moon { display: none; }
-[data-theme="light"] .icon-sun  { display: none; }
 
 html, body {
   height: 100%;
@@ -108,10 +62,6 @@ header {
   flex-shrink: 0;
 }
 
-[data-theme="dark"] .brand-logo {
-  filter: invert(1);
-}
-
 .brand-sep {
   color: var(--border);
   font-weight: 300;
@@ -144,7 +94,7 @@ header .meta {
   background: var(--bg);
   color: var(--text-muted);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 2px 10px;
   font-size: 11px;
   font-weight: 500;
@@ -168,11 +118,12 @@ main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 2fr 1fr 1fr;
-  gap: 1px;
-  background: var(--border);   /* 1px gap shows as divider lines */
+  gap: 8px;
+  background: var(--bg);
   border-right: 1px solid var(--border);
   overflow: hidden;
   height: 100%;
+  padding: 8px;
 }
 
 /* ── Floor plan panel ── */
@@ -195,14 +146,14 @@ main {
   grid-template-columns: 38% 24% 38%;
   grid-template-rows: 40% 12% 48%;
   gap: 1px;
-  background: #2a2a2e;   /* shows as 1px room divider lines */
+  background: #000000;   /* shows as 1px room divider lines */
   overflow: hidden;
-  border: 2px solid #2a2a2e;
+  border: 2px solid #000000;
   border-radius: var(--radius-md);
 }
 
 .fp-room {
-  background: #151518;
+  background: #eeede9;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -214,26 +165,21 @@ main {
 #fp-room-living_room  { grid-column: 2 / 4; }
 
 .fp-room-label {
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #3a3a44;
+  color: #b8b4ae;
   pointer-events: none;
   transition: color 0.4s ease;
 }
 
-/* Lit room: amber radial glow (same technique as car cyan glass) */
+/* Lit room: solid amber matching the light cards */
 .fp-room.lit {
-  background: radial-gradient(
-    ellipse at 50% 40%,
-    rgba(245, 158, 11, 0.22),
-    rgba(245, 158, 11, 0.07) 65%,
-    transparent
-  );
+  background: #fde8c8;
 }
 
-.fp-room.lit .fp-room-label { color: rgba(245, 158, 11, 0.75); }
+.fp-room.lit .fp-room-label { color: var(--amber); }
 
 /* Door markers: absolutely positioned on house walls */
 .fp-door {
@@ -282,26 +228,13 @@ main {
   box-shadow: 0 0 10px rgba(34, 197, 94, 0.80), 0 0 4px rgba(34, 197, 94, 0.95);
 }
 
-/* Light-theme overrides */
-[data-theme="light"] .house-body  { background: #c8c5c0; border-color: #c8c5c0; }
-[data-theme="light"] .fp-room     { background: #eeede9; }
-[data-theme="light"] .fp-room-label { color: #b8b4ae; }
-[data-theme="light"] .fp-room.lit {
-  background: radial-gradient(
-    ellipse at 50% 40%,
-    rgba(217, 119, 6, 0.16),
-    rgba(217, 119, 6, 0.05) 65%,
-    transparent
-  );
-}
-[data-theme="light"] .fp-room.lit .fp-room-label { color: rgba(180, 83, 9, 0.8); }
-
 .panel {
   background: var(--surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 18px 20px 16px;
+  border-radius: var(--radius-md);
 }
 
 .panel-label {
@@ -415,7 +348,7 @@ main {
   letter-spacing: -3px;
   line-height: 1;
   color: var(--text);
-  text-shadow: 0 0 40px rgba(168, 85, 247, 0.18);
+  text-shadow: 0 0 40px rgba(168, 85, 247, 0.10);
   font-variant-numeric: tabular-nums;
 }
 
@@ -581,7 +514,7 @@ main {
   padding: 10px 12px;
   font-size: 11px;
   overflow-x: auto;
-  color: #67e8f9;
+  color: #581c87;
 }
 
 /* Input bar */
@@ -597,7 +530,7 @@ main {
   flex: 1;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   padding: 8px 12px;
   color: var(--text);
   font-size: 13px;
@@ -661,13 +594,13 @@ main {
   z-index: 100;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 0;
   padding: 8px;
   min-width: 300px;
   display: none;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
 }
 
 .model-dropdown.open { display: flex; }
@@ -677,7 +610,7 @@ main {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: var(--radius-md);
+  border-radius: 0;
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -716,14 +649,14 @@ main {
   gap: 5px;
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 20px;
+  border-radius: 0;
   font-family: inherit;
 }
 
-.status-pill.idle     { background: #1a2332; color: var(--text-muted); }
-.status-pill.starting { background: #2d1f0a; color: #fcd34d; }
-.status-pill.ready    { background: #0a2a1a; color: #4ade80; }
-.status-pill.error    { background: #2a0a0a; color: #f87171; }
+.status-pill.idle     { background: #f5f4f1; color: #6b6b6b; }
+.status-pill.starting { background: #fef9c3; color: #854d0e; }
+.status-pill.ready    { background: #dcfce7; color: #166534; }
+.status-pill.error    { background: #fee2e2; color: #991b1b; }
 
 .spinner {
   display: inline-block;
