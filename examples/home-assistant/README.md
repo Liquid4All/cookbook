@@ -24,7 +24,7 @@ In this tutorial you will learn how to:
 uv run uvicorn app.server:app --port 5173 --reload
 ```
 
-**3. Open the app**
+**2. Open the app**
 
 ```bash
 open http://localhost:5173
@@ -119,7 +119,7 @@ That's fine for a proof of concept. But the full power of small language models 
 
 ### What's a good benchmark?
 
-A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition. Here is the methodology we use here to build `benchmark/`, a 100-task suite designed from the ground up around these principles.
+A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition. Here is the methodology we use to build `benchmark/`, a 100-task suite designed from the ground up around these principles.
 
 **1. Start with a taxonomy**
 
@@ -189,7 +189,7 @@ uv run python benchmark/run.py --backend openai
 
 Results are printed to the console and saved as a Markdown file in `benchmark/results/`.
 
-**Evaluatiom results**
+**Evaluation results**
 
 | Model | Parameters | Score | Accuracy |
 |-------|------------|-------|----------|
@@ -210,6 +210,6 @@ WIP
 
 Coming soon.
 
-[Join the Liquid AI Discord Server](https://discord.com/invite/DFU3WQeaYD) and post an angry message: Pau! Please, release this part!!
+[Join the Liquid AI Discord Server](https://discord.com/invite/DFU3WQeaYD) and post an angry message: Pau, please release this part!
 
 I am looking forward to reading it.
