@@ -30,7 +30,7 @@ uv run uvicorn app.server:app --port 5173 --reload
 open http://localhost:5173
 ```
 
-![Demo](media/Demo.gif)
+![Demo](assets/Demo.gif)
 
 The UI includes a model selector. When you pick a model, the app automatically downloads
 and starts `llama-server` in the background. No manual model server setup is needed.
