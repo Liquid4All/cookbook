@@ -157,7 +157,7 @@ uv run python benchmark/run.py \
     --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf
 ```
 
-**Run a single task by number (1-19)**, for example: 
+**Run a single task by number (1-101)**, for example:
 
 ```bash
 uv run python benchmark/run.py \
@@ -185,9 +185,9 @@ Results are printed to the console and saved as a Markdown file in `benchmark/re
 
 | Model | Parameters | Score | Accuracy |
 |-------|------------|-------|----------|
-| gpt-4o-mini | n/a | 19/19 | 100% |
-| LFM2.5-1.2B-Instruct Q4_0 | 1.2B | 13/19 | 68% |
-| LFM2-350M Q8_0 | 350M | 7/19 | 37% |
+| gpt-4o-mini | n/a | 98/101 | 97% |
+| LFM2.5-1.2B-Instruct Q4_0 | 1.2B | 81/101 | 80% |
+| LFM2-350M Q8_0 | 350M | 41/101 | 41% |
 
 The hardest tasks involve multi-tool calls, pronoun references, and requests the model must correctly reject. These are where small models diverge most from GPT-4o-mini, and where fine-tuning will have the most impact.
 
