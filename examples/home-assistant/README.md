@@ -101,13 +101,17 @@ The FastAPI server, the agent loop, and the tools are all implemented in Python.
 
 ## Step 2: Benchmarking tool-calling accuracy <a name="benchmark"></a>
 
-Local Small models give you solid accuracy out of the box. Not perfect, but solid. Good enough to build a proof of concept and see that the thing more or less works.
+Play with the UI using one of the local models and you will quickly notice: sometimes it works, sometimes it doesn't. 
 
-But production is a different story. You cannot ship to production based on vibes or things that more or less work. You ship based on good benchmarks and evals.
+That's fine for a proof of concept. But the full power of small language models only comes out
+  when you fine-tune them.
+
+  Before you fine-tune, though, you need to know where you stand. You need to measure. You cannot ship to production based on vibes or things that more or less work. You ship based on good benchmarks and evals.
+
 
 ### What's a good benchmark?
 
-A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition. Here is the methodology we used to build `benchmark/`, a 100-task suite designed from the ground up around these principles.
+A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition. Here is the methodology we use here to build `benchmark/`, a 100-task suite designed from the ground up around these principles.
 
 **1. Start with a taxonomy**
 
@@ -129,7 +133,12 @@ The Cartesian product of those dimensions defines the universe of task types. Sa
 
 **3. Write programmatic verifiers**
 
-Every task has a pure Python verifier that inspects the final `home_state` dict (or captured `tool_calls` for read-only and rejection tasks). No LLM-as-judge. Deterministic, fast, cheap.
+Every task has a pure Python verifier that inspects
+
+- the final `home_state` dict, or
+- captured `tool_calls` for read-only and rejection tasks.
+
+No LLM-as-judge. Deterministic, fast, cheap.
 
 ```python
 # State check: was the right final state reached?
@@ -140,11 +149,6 @@ call = _find_last_call(tool_calls, "intent_unclear")
 passed = call is not None and call["args"].get("reason") == "off_topic"
 ```
 
-State verifiers are deliberately lenient about the path: a model that uses `set_scene` to turn off all the lights is still correct if the final state matches.
-
-**4. Never share prompts between training and evaluation**
-
-The same taxonomy that drives the benchmark can drive SFT dataset generation. The key constraint: you MUST never share specific prompt phrasings between the training split and the evaluation split. The taxonomy defines the distribution (shared), but each concrete prompt belongs exclusively to one split. If a model sees the exact evaluation prompt during training, the benchmark score becomes meaningless. In practice: generate train and eval prompts in separate sampling passes with distinct paraphrase templates, and treat the eval set as a held-out partition from day one.
 
 
 You can run the benchmark for a given model as follows:
@@ -189,94 +193,12 @@ Results are printed to the console and saved as a Markdown file in `benchmark/re
 
 These are not vibes anymore. These are actual numbers we can use to understand where we stand.
 
-In the following sections, we will see how to improve the performance of our local LFM models to match gpt-4o-mini.
+In the following sections, we will see how to improve the performance of our local LFM models to bridge the gap with gpt-4o-mini.
 
 
 ## Step 3: Generate synthetic data <a name="step-3-generate-synthetic-data"></a>
 
-To improve , you need training data. Real user data is slow to collect and hard to label. So we generate it synthetically: run a strong model (GPT-4o-mini) through the same 19 tasks, capture every trace where it succeeds, and use those to fine-tune the small model.
-
-That is the idea. Let me show you how it works step by step.
-
-```mermaid
-flowchart TD
-    A[Task prompt] --> B[Static paraphrases]
-    A --> C["LLM-generated paraphrases<br/>gpt-4o-mini, temp=1.0"]
-    B --> D["Prompt pool<br/>20+ phrasings per task"]
-    C --> D
-    D --> E["Run agent loop<br/>gpt-4o-mini, temp=0.7"]
-    E --> F{Verifier passes?}
-    F -- No --> G[Discard]
-    F -- Yes --> H[Collect trace]
-    H --> I{Jaccard duplicate?}
-    I -- Yes --> G
-    I -- No --> J["Dataset<br/>JSONL"]
-```
-
-**1. Build a prompt pool for each task**
-
-Every task has a canonical prompt. "Turn on the kitchen lights." That is one phrase. One way a user might say it.
-
-Real users say things differently. "Kitchen lights on please." "Can you switch on the kitchen lights?" "kithcen light on."
-
-So for each task we expand the prompt pool in two ways. First, we include a set of hand-crafted static paraphrases. Then we ask GPT-4o-mini to generate more, passing the existing phrases as a negative seed so it actively avoids echoing them.
-
-The result: 20+ distinct phrasings per task, spread across registers. Casual. Clipped. Formal. Frustrated. Short ones ("kitchen lights on"). Long ones. Some with typos or dropped words, as a real user might type.
-
-**2. Run the agent and collect traces**
-
-For each prompt we run the full agent loop using GPT-4o-mini as the backend. The home state is reset before each run and randomized where applicable, so the model does not always start from the same configuration. Temperature is set to 0.7 so repeated runs on the same prompt produce different traces.
-
-```python
-# Each run captures the full conversation: system prompt, user message,
-# tool calls, tool results, and final text reply.
-collect_example(task, prompt, backend="openai", temperature=0.7)
-```
-
-**3. Verify and keep only correct traces**
-
-Each trace is checked by the same verifier used in the benchmark. Wrong tool, wrong arguments, too many tool calls: the trace is discarded.
-
-Only correct traces make it into the dataset. You are not teaching the model from noisy data. You are teaching it from verified, correct behavior.
-
-**4. Deduplicate**
-
-After collection, a Jaccard deduplication pass removes near-identical examples. Any two examples sharing more than 80% of their word bigrams are considered duplicates and only one is kept.
-
-This keeps the dataset lean. You want diversity, not repetition.
-
-**5. Save the dataset**
-
-The output is a timestamped JSONL file saved to `benchmark/datasets/`. Each line is one training example: a full conversation trace paired with the tool schemas used during that run.
-
-```json
-{
-  "task_id": 1,
-  "difficulty": "easy",
-  "messages": [
-    {"role": "system",    "content": "..."},
-    {"role": "user",      "content": "Kitchen lights on please"},
-    {"role": "assistant", "content": null, "tool_calls": [...]},
-    {"role": "tool",      "content": "{\"status\": \"on\"}"},
-    {"role": "assistant", "content": "The kitchen lights are now on."}
-  ],
-  "tools": [...]
-}
-```
-
-This is exactly the format the fine-tuning script expects in the next step.
-
-**Quick sanity check**
-
-```bash
-uv run python benchmark/generate_dataset.py --runs 1 --n-paraphrases 3
-```
-
-**Full dataset generation** (requires `OPENAI_API_KEY` in `.env`)
-
-```bash
-uv run python benchmark/generate_dataset.py --runs 5 --n-paraphrases 10
-```
+WIP
 
 ## Step 4: Fine-tune the model <a name="step-4-fine-tune-the-model"></a>
 
