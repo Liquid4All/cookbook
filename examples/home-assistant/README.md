@@ -282,4 +282,6 @@ uv run python benchmark/generate_dataset.py --runs 5 --n-paraphrases 10
 
 Coming soon.
 
-Join the Liquid.ai Discord server and post an angry message: Pau! Please, release this part!!
+[Join the Liquid AI Discord Server](https://discord.com/invite/DFU3WQeaYD) and post an angry message: Pau! Please, release this part!!
+
+I am looking forward to reading it.
