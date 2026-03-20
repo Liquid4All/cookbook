@@ -101,7 +101,15 @@ The FastAPI server, the agent loop, and the tools are all implemented in Python.
 
 ## Step 2: Benchmarking tool-calling accuracy <a name="benchmark"></a>
 
-Play with the UI using one of the local models and you will quickly notice: sometimes it works, sometimes it doesn't. 
+Play with the UI using one of the local models and you will quickly notice: 
+
+- sometimes it works
+
+  ![Happy path](assets/happy_path.gif)
+
+- sometimes it doesn't.
+
+  ![Unhappy path](assets/unhappy_path.gif)
 
 That's fine for a proof of concept. But the full power of small language models only comes out
   when you fine-tune them.
@@ -148,8 +156,6 @@ passed = state["lights"]["kitchen"]["state"] == "on"
 call = _find_last_call(tool_calls, "intent_unclear")
 passed = call is not None and call["args"].get("reason") == "off_topic"
 ```
-
-
 
 You can run the benchmark for a given model as follows:
 
