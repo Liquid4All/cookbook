@@ -204,7 +204,42 @@ In the following sections, we will see how to improve the performance of our loc
 
 ## Step 3: Generate synthetic data <a name="step-3-generate-synthetic-data"></a>
 
-WIP
+To fine-tune the model you need labelled training data. We generate it synthetically: `gpt-4o-mini` produces user utterances, each one validated by a second independent inference pass through the real agent.
+
+The target is 500 examples distributed across the same taxonomy as the benchmark, with heavier sampling on the hardest cells (`rejection`, `multi_tool`) where local models lose the most points.
+
+**The contamination problem**
+
+If a benchmark utterance leaks into training, the model can memorise the correct answer instead of learning the underlying skill. Scores would look great on paper but overestimate real-world performance. We prevent this with a four-layer pipeline:
+
+```mermaid
+flowchart TD
+    A["Generate candidates\n(prompt includes benchmark blocklist)"]
+    A --> B{"Exact or substring\nmatch with benchmark?"}
+    B -->|yes| R1((discard))
+    B -->|no| C{"Trigram Jaccard\nsimilarity > 0.5?"}
+    C -->|yes| R2((discard))
+    C -->|no| D{"Agent cross-validation:\ngpt-4o-mini agrees?"}
+    D -->|no| R3((discard))
+    D -->|yes| E[("sft_data.jsonl")]
+```
+
+Layer 1 lives in the generation prompt itself: every benchmark utterance for the relevant taxonomy cell is listed and the model is told not to reproduce them. Layers 2 and 3 are deterministic post-generation checks. Layer 4 sends each candidate to the real agent and keeps only the examples where the agent's tool call matches the generator's expected answer, which also filters out genuinely ambiguous phrasings that produce inconsistent results.
+
+**Generate the dataset**
+
+```bash
+# Dry run: show the generation plan without calling the API
+uv run python benchmark/datasets/generate.py --dry-run
+
+# Generate 500 examples (default)
+uv run python benchmark/datasets/generate.py
+
+# Custom count and output path
+uv run python benchmark/datasets/generate.py --count 500 --output benchmark/datasets/sft_data.jsonl
+```
+
+Output goes to `benchmark/datasets/sft_data.jsonl` (gitignored). After generation the script prints a rejection breakdown and a coverage matrix so you can see exactly how many examples ended up in each taxonomy cell.
 
 ## Step 4: Fine-tune the model <a name="step-4-fine-tune-the-model"></a>
 

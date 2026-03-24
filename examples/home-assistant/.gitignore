@@ -1,4 +1,4 @@
 .env
-benchmark/datasets/
+benchmark/datasets/*.jsonl
 finetune/train_debug.py
 runners/
