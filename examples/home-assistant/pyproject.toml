@@ -15,6 +15,11 @@ finetune = [
     "datasets>=2.0",
     "huggingface_hub>=0.22",
 ]
+export = [
+    "peft>=0.14",
+    "transformers>=4.43",
+    "torch>=2.4",
+]
 
 [tool.uv]
 dev-dependencies = []
