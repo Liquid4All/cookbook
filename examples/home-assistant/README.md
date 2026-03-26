@@ -213,7 +213,7 @@ The target is 500 examples distributed across the same taxonomy as the benchmark
 If a benchmark utterance leaks into training, the model can memorise the correct answer instead of learning the underlying skill. Scores would look great on paper but overestimate real-world performance. We prevent this with a four-layer pipeline:
 
 ```mermaid
-flowchart TD
+flowchart LR
     A["Generate candidates\n(prompt includes benchmark blocklist)"]
     A --> B{"Exact or substring\nmatch with benchmark?"}
     B -->|yes| R1((discard))
@@ -279,8 +279,9 @@ Training runs on [Modal](https://modal.com) (a serverless GPU cloud) via [leap-f
 
 | Config | Model | Epochs | Batch size | Rationale |
 |--------|-------|--------|------------|-----------|
-| `350M.yaml` | LFM2-350M | 5 | 4 | Starts at 28%, needs more passes over the data to absorb the signal. |
-| `1.2B.yaml` | LFM2.5-1.2B-Instruct | 3 | 2 | Already at 71%, 3 epochs is enough to close the gaps without catastrophic forgetting. |
+| `LFM2-350M.yaml` | LFM2-350M | 5 | 4 | Starts at 28%, needs more passes over the data to absorb the signal. |
+| `LFM2.5-1.2B-Instruct.yaml` | LFM2.5-1.2B-Instruct | 3 | 2 | Already at 71%, 3 epochs is enough to close the gaps without catastrophic forgetting. |
+| `LFM2.5-350M.yaml` | LFM2.5-350M | 5 | 4 | Starts at 16%. Note: the training data format uses LFM2-style tool-call tokens which do not match LFM2.5's ChatML template, so fine-tuning produced no improvement. See `FINETUNE-FINDINGS.md` for details. |
 
 Both use `learning_rate: 2e-4`, LoRA adapters via `DEFAULT_LORA`, and stream training curves to a [Trackio](https://huggingface.co/trackio) dashboard in real time.
 
@@ -288,7 +289,7 @@ Expected Modal cost: roughly $1.50 for the 350M model and $3.00 for the 1.2B, we
 
 ### Checkpoint download and export
 
-Once training finishes, the LoRA checkpoint is stored in a Modal Volume. After downloading it locally, `finetune/export.py` merges the adapter weights into the frozen base model, producing a standard HuggingFace model directory. That directory is then converted to GGUF with `llama.cpp`'s conversion script, using the same quantization type as the original benchmark model for a fair before-and-after comparison.
+Once training finishes, the LoRA checkpoint is stored in a Modal Volume. After downloading it locally, `finetune/export.py` merges the adapter weights into the frozen base model, converts the result to GGUF, and pushes it to HuggingFace, all in one step via `--push-to-hub`.
 
 ### Commands
 
@@ -316,10 +317,10 @@ uv run --group finetune python finetune/prepare_data.py
 cd leap-finetune
 
 # 350M model
-uv run leap-finetune ../finetune/configs/350M.yaml
+uv run leap-finetune ../finetune/configs/LFM2-350M.yaml
 
 # 1.2B model
-uv run leap-finetune ../finetune/configs/1.2B.yaml
+uv run leap-finetune ../finetune/configs/LFM2.5-1.2B-Instruct.yaml
 ```
 
 **Download checkpoints** (run from the `leap-finetune/` subdirectory)
@@ -332,36 +333,40 @@ uv run modal volume get leap-finetune /outputs/home-assistant-350M ../finetune/o
 uv run modal volume get leap-finetune /outputs/home-assistant-1.2B ../finetune/output/1.2B-lora
 ```
 
-**Merge LoRA adapters and convert to GGUF** (run from the `home-assistant` directory)
+**Merge, convert to GGUF, and push to HuggingFace** (run from the `home-assistant` directory)
 
 ```bash
-# Merge adapters into the base models
+# 350M model
 uv run --group export python finetune/export.py \
     --lora-path finetune/output/350M-lora \
-    --output-path finetune/output/350M-merged
+    --output-path finetune/output/350M-merged \
+    --push-to-hub \
+    --llama-cpp-path ~/llama.cpp \
+    --quant-type q8_0
 
+# 1.2B model
 uv run --group export python finetune/export.py \
     --lora-path finetune/output/1.2B-lora \
-    --output-path finetune/output/1.2B-merged
-
-# Convert to GGUF (requires llama.cpp)
-python /path/to/llama.cpp/convert_hf_to_gguf.py \
-    finetune/output/350M-merged --outtype q8_0 \
-    --outfile models/LFM2-350M-finetuned-Q8_0.gguf
-
-python /path/to/llama.cpp/convert_hf_to_gguf.py \
-    finetune/output/1.2B-merged --outtype q4_0 \
-    --outfile models/LFM2.5-1.2B-finetuned-Q4_0.gguf
+    --output-path finetune/output/1.2B-merged \
+    --push-to-hub \
+    --llama-cpp-path ~/llama.cpp \
+    --quant-type q4_0
 ```
+
+After each run, the script prints the exact `--hf-repo` and `--hf-file` flags to copy-paste into the benchmark command.
 
 **Re-run the benchmark**
 
-```bash
-uv run python benchmark/run.py \
-    --hf-repo LiquidAI/LFM2-GGUF \
-    --hf-file LFM2-350M-finetuned-Q8_0.gguf
+Use the `--hf-repo` and `--hf-file` values printed by the export step. The pattern is:
 
+```bash
+# 350M model
 uv run python benchmark/run.py \
-    --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
-    --hf-file LFM2.5-1.2B-finetuned-Q4_0.gguf
+    --hf-repo <your-hf-username>/home-assistant-LFM2-350M-GGUF \
+    --hf-file LFM2-350M-q8_0.gguf
+
+# 1.2B model
+uv run python benchmark/run.py \
+    --hf-repo <your-hf-username>/home-assistant-LFM2.5-1.2B-Instruct-GGUF \
+    --hf-file LFM2.5-1.2B-Instruct-q4_0.gguf
 ```
