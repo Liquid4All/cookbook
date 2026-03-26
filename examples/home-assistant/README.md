@@ -243,8 +243,125 @@ Output goes to `benchmark/datasets/sft_data.jsonl` (gitignored). After generatio
 
 ## Step 4: Fine-tune the model <a name="step-4-fine-tune-the-model"></a>
 
-Coming soon.
+Fine-tuning adapts the base model to our specific task. Instead of retraining all weights from scratch, we use LoRA (Low-Rank Adaptation): a technique that injects a small set of trainable weight matrices on top of the frozen base model. This keeps GPU memory usage low and training fast, while still producing meaningful accuracy gains on the target task.
 
-[Join the Liquid AI Discord Server](https://discord.com/invite/DFU3WQeaYD) and post an angry message: Pau, please release this part!
+Training runs on [Modal](https://modal.com) (a serverless GPU cloud) via [leap-finetune](https://github.com/Liquid4All/leap-finetune), Liquid AI's fine-tuning tool. The full loop:
 
-I am looking forward to reading it.
+1. Convert the synthetic dataset to the format the LFM2 tokenizer expects, then push it to HuggingFace Hub.
+2. Run LoRA training on an H100 via leap-finetune.
+3. Download the checkpoint from Modal, merge the adapter into the base model, and convert to GGUF.
+4. Re-run the benchmark and compare against the baseline.
+
+### Data preparation
+
+`sft_data.jsonl` stores assistant tool calls in OpenAI format: a `tool_calls` list with `"content": null`. The LFM2 tokenizer's chat template expects tool calls as plain text content wrapped in special tokens:
+
+```
+<|tool_call_start|>[{"name": "toggle_lights", "arguments": {"room": "living_room", "state": "on"}}]<|tool_call_end|>
+```
+
+`finetune/prepare_data.py` converts every assistant message to this format, then splits the 491 examples 80/20 stratified by capability (so each category is proportionally represented in both train and eval), and pushes the result to HuggingFace Hub.
+
+| Capability | Total | Train | Eval |
+|------------|-------|-------|------|
+| lights | 120 | 96 | 24 |
+| doors | 80 | 64 | 16 |
+| thermostat | 71 | 57 | 14 |
+| rejection | 60 | 48 | 12 |
+| multi_tool | 60 | 48 | 12 |
+| status | 50 | 40 | 10 |
+| scene | 50 | 40 | 10 |
+| **Total** | **491** | **393** | **98** |
+
+### Training configuration
+
+`finetune/configs/` contains one YAML per model. Both extend the leap-finetune defaults and point at the same dataset. The key differences reflect each model's starting point:
+
+| Config | Model | Epochs | Batch size | Rationale |
+|--------|-------|--------|------------|-----------|
+| `350M.yaml` | LFM2-350M | 5 | 4 | Starts at 28%, needs more passes over the data to absorb the signal. |
+| `1.2B.yaml` | LFM2.5-1.2B-Instruct | 3 | 2 | Already at 71%, 3 epochs is enough to close the gaps without catastrophic forgetting. |
+
+Both use `learning_rate: 2e-4`, LoRA adapters via `DEFAULT_LORA`, and stream training curves to a [Trackio](https://huggingface.co/trackio) dashboard in real time.
+
+Expected Modal cost: roughly $1.50 for the 350M model and $3.00 for the 1.2B, well within the $30 monthly free credit.
+
+### Checkpoint download and export
+
+Once training finishes, the LoRA checkpoint is stored in a Modal Volume. After downloading it locally, `finetune/export.py` merges the adapter weights into the frozen base model, producing a standard HuggingFace model directory. That directory is then converted to GGUF with `llama.cpp`'s conversion script, using the same quantization type as the original benchmark model for a fair before-and-after comparison.
+
+### Commands
+
+**One-time setup**
+
+```bash
+# Clone and install leap-finetune (run once, from the home-assistant directory)
+git clone https://github.com/Liquid4All/leap-finetune
+cd leap-finetune && uv sync && cd -
+
+# Authenticate
+huggingface-cli login
+modal setup
+```
+
+**Prepare the data**
+
+```bash
+uv run --group finetune python finetune/prepare_data.py
+```
+
+**Train on Modal** (run from the `leap-finetune/` subdirectory)
+
+```bash
+cd leap-finetune
+
+# 350M model
+uv run leap-finetune ../finetune/configs/350M.yaml
+
+# 1.2B model
+uv run leap-finetune ../finetune/configs/1.2B.yaml
+```
+
+**Download checkpoints** (run from the `leap-finetune/` subdirectory)
+
+```bash
+# Verify actual paths first
+uv run modal volume ls leap-finetune
+
+uv run modal volume get leap-finetune /outputs/home-assistant-350M ../finetune/output/350M-lora
+uv run modal volume get leap-finetune /outputs/home-assistant-1.2B ../finetune/output/1.2B-lora
+```
+
+**Merge LoRA adapters and convert to GGUF** (run from the `home-assistant` directory)
+
+```bash
+# Merge adapters into the base models
+uv run --group export python finetune/export.py \
+    --lora-path finetune/output/350M-lora \
+    --output-path finetune/output/350M-merged
+
+uv run --group export python finetune/export.py \
+    --lora-path finetune/output/1.2B-lora \
+    --output-path finetune/output/1.2B-merged
+
+# Convert to GGUF (requires llama.cpp)
+python /path/to/llama.cpp/convert_hf_to_gguf.py \
+    finetune/output/350M-merged --outtype q8_0 \
+    --outfile models/LFM2-350M-finetuned-Q8_0.gguf
+
+python /path/to/llama.cpp/convert_hf_to_gguf.py \
+    finetune/output/1.2B-merged --outtype q4_0 \
+    --outfile models/LFM2.5-1.2B-finetuned-Q4_0.gguf
+```
+
+**Re-run the benchmark**
+
+```bash
+uv run python benchmark/run.py \
+    --hf-repo LiquidAI/LFM2-GGUF \
+    --hf-file LFM2-350M-finetuned-Q8_0.gguf
+
+uv run python benchmark/run.py \
+    --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
+    --hf-file LFM2.5-1.2B-finetuned-Q4_0.gguf
+```
