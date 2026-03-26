@@ -87,15 +87,11 @@ def _wait_for_server(timeout: int = 120) -> None:
     raise RuntimeError("llama-server did not become ready within timeout")
 
 
-def start_llama_server(hf_repo: str, hf_file: str) -> subprocess.Popen:
-    cmd = [
-        "llama-server",
-        "--hf-repo", hf_repo,
-        "--hf-file", hf_file,
-        "--port", "8080",
-        "--ctx-size", "4096",
-        "--n-gpu-layers", "99",
-    ]
+def start_llama_server(hf_repo: str = None, hf_file: str = None, model_path: str = None) -> subprocess.Popen:
+    if model_path:
+        cmd = ["llama-server", "--model", model_path, "--port", "8080", "--ctx-size", "4096", "--n-gpu-layers", "99"]
+    else:
+        cmd = ["llama-server", "--hf-repo", hf_repo, "--hf-file", hf_file, "--port", "8080", "--ctx-size", "4096", "--n-gpu-layers", "99"]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     _wait_for_server(timeout=120)
     return proc
@@ -230,6 +226,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--hf-repo", default=None, help="HuggingFace repo ID for the GGUF model")
     parser.add_argument("--hf-file", default=None, help="GGUF filename within the repo")
+    parser.add_argument("--local-file", default=None, help="Path to a local GGUF file to serve with llama-server")
     parser.add_argument("--runs", type=int, default=1,
                         help="Runs per task for statistical reliability (default 1)")
     parser.add_argument("--no-reset", action="store_true",
@@ -244,9 +241,21 @@ if __name__ == "__main__":
     if bool(args.hf_repo) != bool(args.hf_file):
         parser.error("--hf-repo and --hf-file must be used together")
 
+    if args.backend == "local" and not args.hf_repo and not args.hf_file and not args.local_file:
+        parser.error("When using the local backend you must specify either --hf-repo/--hf-file or --local-file.")
+
     server_proc = None
+    model_name_override = None
     try:
-        if args.hf_repo and args.hf_file:
+        if args.local_file:
+            if args.backend != "local":
+                print(f"Warning: --local-file ignored for backend '{args.backend}'")
+            else:
+                print(f"Starting llama-server ({Path(args.local_file).name})...")
+                server_proc = start_llama_server(model_path=args.local_file)
+                model_name_override = Path(args.local_file).name
+                print("llama-server ready.")
+        elif args.hf_repo and args.hf_file:
             if args.backend != "local":
                 print(f"Warning: --hf-repo/--hf-file ignored for backend '{args.backend}'")
             else:
@@ -256,7 +265,7 @@ if __name__ == "__main__":
 
         task_map = {t.id: t for t in TASKS}
         tasks = [task_map[args.task]] if args.task else TASKS
-        model_name = get_model_name(args.backend)
+        model_name = model_name_override or get_model_name(args.backend)
         print(f"Backend: {args.backend} ({model_name})")
         all_agg = []
         for task in tasks:
