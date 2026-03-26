@@ -1,4 +1,7 @@
 .env
 benchmark/datasets/*.jsonl
 finetune/train_debug.py
+finetune/data/
+finetune/output/
+leap-finetune/
 runners/
