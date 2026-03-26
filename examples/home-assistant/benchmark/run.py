@@ -101,7 +101,7 @@ def start_llama_server(hf_repo: str, hf_file: str) -> subprocess.Popen:
     return proc
 
 
-def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True) -> list[TaskResult]:
+def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True, raw_tool_call_parsing: bool = False) -> list[TaskResult]:
     results = []
     for _ in range(n):
         if reset_state:
@@ -119,7 +119,7 @@ def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True)
             tool_calls_seen.append({"name": name, "args": args})
 
         start = time.time()
-        run_agent(task.prompt, history=getattr(task, "history", []), backend=backend, on_tool_call=capture)
+        run_agent(task.prompt, history=getattr(task, "history", []), backend=backend, on_tool_call=capture, raw_tool_call_parsing=raw_tool_call_parsing)
         duration = time.time() - start
 
         final_state = copy.deepcopy(home_state)
@@ -234,6 +234,11 @@ if __name__ == "__main__":
                         help="Runs per task for statistical reliability (default 1)")
     parser.add_argument("--no-reset", action="store_true",
                         help="Skip state reset between tasks (useful for debugging multi-turn chains)")
+    parser.add_argument(
+        "--raw-tool-call-parsing",
+        action="store_true",
+        help="Enable post-processing to parse tool calls from raw model output (for LFM2 text-format models).",
+    )
     args = parser.parse_args()
 
     if bool(args.hf_repo) != bool(args.hf_file):
@@ -255,7 +260,7 @@ if __name__ == "__main__":
         print(f"Backend: {args.backend} ({model_name})")
         all_agg = []
         for task in tasks:
-            results = run_task(task, backend=args.backend, n=args.runs, reset_state=not args.no_reset)
+            results = run_task(task, backend=args.backend, n=args.runs, reset_state=not args.no_reset, raw_tool_call_parsing=args.raw_tool_call_parsing)
             all_agg.append(aggregate_results(task, results))
         print_results(all_agg, args.backend, model_name)
         out_path = save_results(all_agg, args.backend, model_name, n_runs=args.runs)
