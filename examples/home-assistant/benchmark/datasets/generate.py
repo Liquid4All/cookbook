@@ -795,43 +795,42 @@ def generate(
         "accepted": 0,
     }
     coverage: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    results: list[dict] = []
-
-    with ProcessPoolExecutor(max_workers=min(workers, len(GENERATION_SPEC))) as executor:
-        future_to_label = {
-            executor.submit(_process_cell, cell, quota): f"{cell['capability']}/{cell['phrasing']}/{cell['depth']}"
-            for cell, quota in cell_jobs
-        }
-
-        total_quota = sum(quota for _, quota in cell_jobs)
-        bar = tqdm(
-            as_completed(future_to_label),
-            total=len(future_to_label),
-            desc="Cells",
-            unit="cell",
-            dynamic_ncols=True,
-        )
-        for future in bar:
-            label = future_to_label[future]
-            exc = future.exception()
-            if exc is not None:
-                tqdm.write(f"  [error] {label}: {exc}", file=sys.stderr)
-                continue
-
-            result = future.result()
-            results.extend(result["records"])
-            for key in stats:
-                stats[key] += result["stats"][key]
-            for cap, depths in result["coverage"].items():
-                for depth, n in depths.items():
-                    coverage[cap][depth] += n
-
-            bar.set_postfix(accepted=f"{stats['accepted']}/{total_quota}")
 
     data_path = output / "data.jsonl"
-    with open(data_path, "w") as f:
-        for record in results:
-            f.write(json.dumps(record) + "\n")
+    with open(data_path, "w") as jsonl_file:
+        with ProcessPoolExecutor(max_workers=min(workers, len(GENERATION_SPEC))) as executor:
+            future_to_label = {
+                executor.submit(_process_cell, cell, quota): f"{cell['capability']}/{cell['phrasing']}/{cell['depth']}"
+                for cell, quota in cell_jobs
+            }
+
+            total_quota = sum(quota for _, quota in cell_jobs)
+            bar = tqdm(
+                as_completed(future_to_label),
+                total=len(future_to_label),
+                desc="Cells",
+                unit="cell",
+                dynamic_ncols=True,
+            )
+            for future in bar:
+                label = future_to_label[future]
+                exc = future.exception()
+                if exc is not None:
+                    tqdm.write(f"  [error] {label}: {exc}", file=sys.stderr)
+                    continue
+
+                result = future.result()
+                for record in result["records"]:
+                    jsonl_file.write(json.dumps(record) + "\n")
+                jsonl_file.flush()
+                for key in stats:
+                    stats[key] += result["stats"][key]
+                for cap, depths in result["coverage"].items():
+                    for depth, n in depths.items():
+                        coverage[cap][depth] += n
+
+                tqdm.write(f"  + {label:<45} accepted={result['accepted']}/{result['quota']}")
+                bar.set_postfix(accepted=f"{stats['accepted']}/{total_quota}")
 
     _write_config(output, {
         "timestamp": start_ts,
