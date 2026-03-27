@@ -1,5 +1,5 @@
-project_name: "home-assistant-1-2B"
-model_name: "LFM2.5-1.2B-Instruct"
+project_name: "home-assistant-LFM2_5-350M"
+model_name: "LFM2.5-350M"
 training_type: "sft"
 
 dataset:
@@ -8,8 +8,8 @@ dataset:
 
 training_config:
   extends: "DEFAULT_SFT"
-  num_train_epochs: 3
-  per_device_train_batch_size: 2
+  num_train_epochs: 5
+  per_device_train_batch_size: 4
   learning_rate: 2e-4
   use_liger_kernel: false
   tracker: "trackio"
