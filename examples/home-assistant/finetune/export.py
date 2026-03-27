@@ -35,12 +35,20 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def push_to_hub(output_path: Path, llama_cpp_path: Path, quant_type: str) -> None:
-    # Step 1: derive model name from config.json
+def push_to_hub(output_path: Path, llama_cpp_path: Path, quant_type: str, lora_path: Path | None = None) -> None:
+    # Step 1: derive model name from config.json or adapter_config.json
     config_path = output_path / "config.json"
     with open(config_path) as f:
         config = json.load(f)
-    name_or_path = config["_name_or_path"]
+    name_or_path = config.get("_name_or_path")
+    if not name_or_path and lora_path is not None:
+        adapter_config_path = lora_path / "adapter_config.json"
+        if adapter_config_path.exists():
+            with open(adapter_config_path) as f:
+                adapter_config = json.load(f)
+            name_or_path = adapter_config.get("base_model_name_or_path")
+    if not name_or_path:
+        raise ValueError("Could not determine model name from config.json or adapter_config.json")
     model_name = name_or_path.split("/")[-1]
 
     # Step 2: convert to GGUF
@@ -96,7 +104,7 @@ def main() -> None:
     tokenizer.save_pretrained(str(args.output_path))
 
     if args.push_to_hub:
-        push_to_hub(args.output_path, args.llama_cpp_path, args.quant_type)
+        push_to_hub(args.output_path, args.llama_cpp_path, args.quant_type, lora_path=args.lora_path)
 
     print("Done.")
 
