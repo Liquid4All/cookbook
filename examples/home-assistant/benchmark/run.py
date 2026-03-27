@@ -75,34 +75,40 @@ def aggregate_results(task, results: list[TaskResult]) -> AggregatedResult:
     )
 
 
-def _wait_for_server(timeout: int = 600) -> None:
-    """Poll http://localhost:8080/v1/models until the server responds or timeout."""
+def _wait_for_server(timeout: int = 600, port: int = 8080) -> None:
+    """Poll http://localhost:<port>/v1/models until the server responds or timeout."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
-            urllib.request.urlopen("http://localhost:8080/v1/models", timeout=2)
+            urllib.request.urlopen(f"http://localhost:{port}/v1/models", timeout=2)
             return
         except Exception:
             time.sleep(2)
-    raise RuntimeError("llama-server did not become ready within timeout")
+    raise RuntimeError(f"llama-server did not become ready on port {port} within timeout")
 
 
-def start_llama_server(hf_repo: str = None, hf_file: str = None, model_path: str = None) -> subprocess.Popen:
+def start_llama_server(
+    hf_repo: str = None,
+    hf_file: str = None,
+    model_path: str = None,
+    llama_server_bin: str = "llama-server",
+    port: int = 8080,
+) -> subprocess.Popen:
     import os
     env = os.environ.copy()
     hf_token_path = Path.home() / ".cache" / "huggingface" / "token"
     if "HF_TOKEN" not in env and hf_token_path.exists():
         env["HF_TOKEN"] = hf_token_path.read_text().strip()
     if model_path:
-        cmd = ["llama-server", "--model", model_path, "--port", "8080", "--ctx-size", "4096", "--n-gpu-layers", "99"]
+        cmd = [llama_server_bin, "--model", model_path, "--port", str(port), "--ctx-size", "4096", "--n-gpu-layers", "99"]
     else:
-        cmd = ["llama-server", "--hf-repo", hf_repo, "--hf-file", hf_file, "--port", "8080", "--ctx-size", "4096", "--n-gpu-layers", "99"]
+        cmd = [llama_server_bin, "--hf-repo", hf_repo, "--hf-file", hf_file, "--port", str(port), "--ctx-size", "4096", "--n-gpu-layers", "99"]
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=None, env=env)
-    _wait_for_server(timeout=600)
+    _wait_for_server(timeout=600, port=port)
     return proc
 
 
-def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True, raw_tool_call_parsing: bool = False) -> list[TaskResult]:
+def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True, raw_tool_call_parsing: bool = False, port: int = 8080) -> list[TaskResult]:
     results = []
     for _ in range(n):
         if reset_state:
@@ -120,7 +126,7 @@ def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True,
             tool_calls_seen.append({"name": name, "args": args})
 
         start = time.time()
-        run_agent(task.prompt, history=getattr(task, "history", []), backend=backend, on_tool_call=capture, raw_tool_call_parsing=raw_tool_call_parsing)
+        run_agent(task.prompt, history=getattr(task, "history", []), backend=backend, on_tool_call=capture, raw_tool_call_parsing=raw_tool_call_parsing, port=port)
         duration = time.time() - start
 
         final_state = copy.deepcopy(home_state)
@@ -232,6 +238,17 @@ if __name__ == "__main__":
     parser.add_argument("--hf-repo", default=None, help="HuggingFace repo ID for the GGUF model")
     parser.add_argument("--hf-file", default=None, help="GGUF filename within the repo")
     parser.add_argument("--local-file", default=None, help="Path to a local GGUF file to serve with llama-server")
+    parser.add_argument(
+        "--llama-build",
+        default=None,
+        help=(
+            "llama.cpp build version to use (e.g. 7930 or b8533). "
+            "When set, uses ~/.local/llama-cpp/<version>/bin/llama-server "
+            "instead of the llama-server resolved from PATH."
+        ),
+    )
+    parser.add_argument("--port", type=int, default=8080,
+                        help="Port for llama-server (default 8080). Use different ports to run benchmarks in parallel.")
     parser.add_argument("--runs", type=int, default=1,
                         help="Runs per task for statistical reliability (default 1)")
     parser.add_argument("--no-reset", action="store_true",
@@ -249,6 +266,15 @@ if __name__ == "__main__":
     if args.backend == "local" and not args.hf_repo and not args.hf_file and not args.local_file:
         parser.error("When using the local backend you must specify either --hf-repo/--hf-file or --local-file.")
 
+    llama_server_bin = "llama-server"
+    if args.llama_build:
+        resolved = Path.home() / ".local" / "llama-cpp" / args.llama_build / "bin" / "llama-server"
+        if not resolved.exists():
+            parser.error(
+                f"--llama-build {args.llama_build!r}: binary not found at {resolved}"
+            )
+        llama_server_bin = str(resolved)
+
     server_proc = None
     model_name_override = None
     try:
@@ -257,24 +283,28 @@ if __name__ == "__main__":
                 print(f"Warning: --local-file ignored for backend '{args.backend}'")
             else:
                 print(f"Starting llama-server ({Path(args.local_file).name})...")
-                server_proc = start_llama_server(model_path=args.local_file)
+                server_proc = start_llama_server(model_path=args.local_file, llama_server_bin=llama_server_bin, port=args.port)
                 model_name_override = Path(args.local_file).name
+                if args.llama_build:
+                    model_name_override += f"_build-{args.llama_build}"
                 print("llama-server ready.")
         elif args.hf_repo and args.hf_file:
             if args.backend != "local":
                 print(f"Warning: --hf-repo/--hf-file ignored for backend '{args.backend}'")
             else:
                 print(f"Starting llama-server ({args.hf_file})...")
-                server_proc = start_llama_server(args.hf_repo, args.hf_file)
+                server_proc = start_llama_server(args.hf_repo, args.hf_file, llama_server_bin=llama_server_bin, port=args.port)
+                if args.llama_build:
+                    model_name_override = f"{args.hf_file}_build-{args.llama_build}"
                 print("llama-server ready.")
 
         task_map = {t.id: t for t in TASKS}
         tasks = [task_map[args.task]] if args.task else TASKS
-        model_name = model_name_override or get_model_name(args.backend)
+        model_name = model_name_override or get_model_name(args.backend, port=args.port)
         print(f"Backend: {args.backend} ({model_name})")
         all_agg = []
         for task in tasks:
-            results = run_task(task, backend=args.backend, n=args.runs, reset_state=not args.no_reset, raw_tool_call_parsing=args.raw_tool_call_parsing)
+            results = run_task(task, backend=args.backend, n=args.runs, reset_state=not args.no_reset, raw_tool_call_parsing=args.raw_tool_call_parsing, port=args.port)
             all_agg.append(aggregate_results(task, results))
         print_results(all_agg, args.backend, model_name)
         out_path = save_results(all_agg, args.backend, model_name, n_runs=args.runs)
