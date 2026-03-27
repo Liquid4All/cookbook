@@ -79,6 +79,45 @@ def _extract_lfm2_tool_calls(content: str) -> list[dict] | None:
     return None
 
 
+def _extract_chatml_tool_calls(content: str) -> list[dict] | None:
+    """Parse tool calls from <tool_call>...</tool_call> blocks (Hermes/NousResearch format)."""
+    matches = re.findall(r"<tool_call>(.*?)</tool_call>", content, re.DOTALL)
+    if not matches:
+        return None
+    result = []
+    for m in matches:
+        try:
+            parsed = json.loads(m.strip())
+            args = parsed.get("arguments", {})
+            if isinstance(args, str):
+                args = json.loads(args)
+            result.append({"name": parsed["name"], "arguments": args})
+        except (json.JSONDecodeError, KeyError):
+            pass
+    return result or None
+
+
+def _extract_generic_tool_calls(content: str) -> list[dict] | None:
+    """Parse tool calls from llama-server's Generic JSON format.
+
+    Expected input:
+        {"tool_call": {"name": "toggle_lights", "arguments": {"room": "kitchen", "state": "on"}}}
+
+    This is the raw text LFM2.5 models output when llama-server uses the Generic chat format.
+    """
+    try:
+        parsed = json.loads(content.strip())
+        tc = parsed.get("tool_call")
+        if not tc or not isinstance(tc, dict):
+            return None
+        args = tc.get("arguments", {})
+        if isinstance(args, str):
+            args = json.loads(args)
+        return [{"name": tc["name"], "arguments": args}]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return None
+
+
 def get_model_name(backend: str) -> str:
     if backend == "local":
         try:
@@ -128,7 +167,12 @@ def run_agent(
         structured_calls = message.tool_calls
         lfm2_calls = None
         if not structured_calls and raw_tool_call_parsing:
-            lfm2_calls = _extract_lfm2_tool_calls(message.content or "")
+            content = message.content or ""
+            lfm2_calls = (
+                _extract_lfm2_tool_calls(content)
+                or _extract_generic_tool_calls(content)
+                or _extract_chatml_tool_calls(content)
+            )
 
         if not structured_calls and not lfm2_calls:
             messages.append({"role": "assistant", "content": message.content})
