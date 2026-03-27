@@ -75,7 +75,7 @@ def aggregate_results(task, results: list[TaskResult]) -> AggregatedResult:
     )
 
 
-def _wait_for_server(timeout: int = 120) -> None:
+def _wait_for_server(timeout: int = 600) -> None:
     """Poll http://localhost:8080/v1/models until the server responds or timeout."""
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -88,12 +88,17 @@ def _wait_for_server(timeout: int = 120) -> None:
 
 
 def start_llama_server(hf_repo: str = None, hf_file: str = None, model_path: str = None) -> subprocess.Popen:
+    import os
+    env = os.environ.copy()
+    hf_token_path = Path.home() / ".cache" / "huggingface" / "token"
+    if "HF_TOKEN" not in env and hf_token_path.exists():
+        env["HF_TOKEN"] = hf_token_path.read_text().strip()
     if model_path:
         cmd = ["llama-server", "--model", model_path, "--port", "8080", "--ctx-size", "4096", "--n-gpu-layers", "99"]
     else:
         cmd = ["llama-server", "--hf-repo", hf_repo, "--hf-file", hf_file, "--port", "8080", "--ctx-size", "4096", "--n-gpu-layers", "99"]
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    _wait_for_server(timeout=120)
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=None, env=env)
+    _wait_for_server(timeout=600)
     return proc
 
 

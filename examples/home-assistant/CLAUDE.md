@@ -22,6 +22,26 @@ All commands are run from the `home-assistant/` directory unless stated otherwis
 | `finetune/configs/LFM2.5-1.2B-Instruct.yaml` | Training config for LFM2.5-1.2B-Instruct |
 | `FINETUNE-FINDINGS.md` | Detailed results from every fine-tuning run |
 
+## llama.cpp builds
+
+Two builds are installed side-by-side under `~/.local/llama-cpp/`. Use `llama-switch` to select which one is active before running a benchmark.
+
+| Version | Build | Location |
+|---|---|---|
+| 7930 | Homebrew snapshot (Feb 2026) | `~/.local/llama-cpp/7930/bin/` |
+| b8533 | Source build (Mar 2026) | `~/.local/llama-cpp/b8533/bin/` |
+
+```bash
+llama-switch b8533   # activate the source build (default)
+llama-switch 7930    # activate the Homebrew snapshot
+
+# Confirm which build is active:
+readlink ~/.local/bin/llama-server
+llama-server --version 2>&1 | grep "^version:"
+```
+
+`llama-switch` is a shell function in `~/.zshrc`. It re-points all symlinks in `~/.local/bin/` to the chosen version's binaries.
+
 ## Benchmark
 
 ```bash
