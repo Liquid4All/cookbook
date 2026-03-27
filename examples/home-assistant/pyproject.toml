@@ -8,6 +8,8 @@ dependencies = [
     "openai>=1.50.0",
     "python-dotenv>=1.0.0",
     "sse-starlette>=2.1.0",
+    "tqdm>=4.66",
+    "pyyaml>=6.0",
 ]
 
 [dependency-groups]
@@ -19,6 +21,8 @@ export = [
     "peft>=0.14",
     "transformers>=4.43",
     "torch>=2.4",
+    "gguf>=0.18",
+    "numpy>=1.26",
 ]
 
 [tool.uv]

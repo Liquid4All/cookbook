@@ -15,7 +15,7 @@ All commands are run from the `home-assistant/` directory unless stated otherwis
 | `app/agent.py` | Agent loop: inference, tool dispatch, LFM2 fallback parser |
 | `benchmark/run.py` | Runs the 100-task benchmark suite |
 | `benchmark/datasets/generate.py` | Generates synthetic SFT data via GPT-4o-mini |
-| `benchmark/datasets/sft_data.jsonl` | Generated SFT data in OpenAI format (gitignored) |
+| `benchmark/datasets/sft_data_<timestamp>/` | Generated SFT data folder: `data.jsonl` + `config.yaml` (gitignored) |
 | `finetune/prepare_data.py` | Converts OpenAI format to LFM2 text format, uploads to HF |
 | `finetune/export.py` | Merges LoRA adapter, converts to GGUF, pushes to HuggingFace |
 | `finetune/configs/LFM2-350M.yaml` | Training config for LFM2-350M |
@@ -79,20 +79,47 @@ Results are saved to `benchmark/results/`. After every benchmark run, update `be
 
 ## Generate synthetic data
 
+Each run produces a timestamped folder `benchmark/datasets/sft_data_<timestamp>/` containing:
+- `data.jsonl`: training examples in OpenAI format
+- `config.yaml`: full record of every parameter used (weights, quotas, etc.)
+
 ```bash
 # Dry run: show generation plan without calling the API
 uv run python benchmark/datasets/generate.py --dry-run
 
-# Generate 500 examples (default)
+# Generate 500 examples (default, uniform distribution)
 uv run python benchmark/datasets/generate.py
 
-# Custom count and output path
-uv run python benchmark/datasets/generate.py \
-    --count 500 \
-    --output benchmark/datasets/sft_data.jsonl
+# Derive weights automatically from a baseline benchmark run
+uv run python benchmark/datasets/generate.py --dry-run \
+    --from-results benchmark/results/2026-03-27_12-01-50_LFM2-350M-Q8_0.gguf.md
+
+uv run python benchmark/datasets/generate.py --count 500 \
+    --from-results benchmark/results/2026-03-27_12-01-50_LFM2-350M-Q8_0.gguf.md
+
+# Auto weights + manual boost on top
+uv run python benchmark/datasets/generate.py --count 500 \
+    --from-results benchmark/results/2026-03-27_12-01-50_LFM2-350M-Q8_0.gguf.md \
+    --capability-weights rejection=2
+
+# Manual weights only, no results file
+uv run python benchmark/datasets/generate.py --count 500 \
+    --capability-weights thermostat=5 rejection=8 lights=0.5 \
+    --depth-weights boundary=6
 ```
 
-Output: `benchmark/datasets/sft_data.jsonl` (OpenAI format, gitignored).
+### How automatic weighting works
+
+With `--from-results`, each taxonomy cell is assigned `weight = 1 / (score + epsilon)` where
+`score` is the pass rate for that cell in the benchmark. Cells with 0% pass rate get the
+highest weight (most examples); cells with high pass rates get low weight. The `--epsilon`
+flag (default 0.1) controls the smoothing floor so that 100% cells are not eliminated entirely.
+
+Cells not covered by the benchmark fall back to the mean of their capability, phrasing, and
+depth marginal rates.
+
+The `--capability-weights`, `--phrasing-weights`, and `--depth-weights` flags apply as
+multipliers on top of the auto-derived weights, for nudging specific dimensions further.
 
 ## Fine-tune
 
@@ -139,7 +166,6 @@ uv run --group export python finetune/export.py \
     --lora-path finetune/output/350M-lora \
     --output-path finetune/output/350M-merged \
     --push-to-hub \
-    --llama-cpp-path ~/llama.cpp \
     --quant-type q8_0
 ```
 
