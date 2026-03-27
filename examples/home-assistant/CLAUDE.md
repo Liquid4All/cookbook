@@ -27,8 +27,10 @@ Two builds are installed side-by-side under `~/.local/llama-cpp/`. Select the bu
 
 | Version | Build | Location |
 |---|---|---|
-| 7930 | Homebrew snapshot (Feb 2026) | `~/.local/llama-cpp/7930/bin/` |
-| b8533 | Source build (Mar 2026) | `~/.local/llama-cpp/b8533/bin/` |
+| 7930 | Homebrew snapshot (4 Feb 2026) | `~/.local/llama-cpp/7930/bin/` |
+| b8533 | Source build (26 Mar 2026) | `~/.local/llama-cpp/b8533/bin/` |
+
+Build column format in results.md: `<hash> (D Mon YYYY)`, date taken from the `llama_build_date` field in the individual result file.
 
 ## Benchmark
 
@@ -64,7 +66,7 @@ uv run python benchmark/run.py \
     --llama-build b8533 --port 8081
 ```
 
-Results are saved to `benchmark/results/`.
+Results are saved to `benchmark/results/`. After every benchmark run, update `benchmark/results/results.md` to include the new result.
 
 ### Current benchmark results
 
