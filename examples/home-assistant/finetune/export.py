@@ -1,5 +1,11 @@
 """Merge a LoRA adapter into the base model and save the result.
 
+--lora-path can point to either:
+- A run directory containing epoch checkpoint subdirectories: the script scans all
+  epoch checkpoints, prints their eval losses, and selects the one with the lowest
+  eval loss automatically.
+- A specific epoch checkpoint directory: used as-is (backward compatible).
+
 Usage:
     # Merge only
     uv run --group export python finetune/export.py \\
@@ -22,6 +28,42 @@ from pathlib import Path
 from huggingface_hub import HfApi, whoami
 from peft import AutoPeftModelForCausalLM
 from transformers import AutoTokenizer
+
+
+def find_best_epoch_checkpoint(lora_path: Path) -> Path:
+    """Return the epoch checkpoint subdirectory with the lowest eval loss.
+
+    If lora_path itself contains adapter_config.json, it is already a specific
+    checkpoint — return it unchanged (backward compatibility).
+    """
+    if (lora_path / "adapter_config.json").exists():
+        return lora_path
+
+    candidates = [
+        d for d in sorted(lora_path.iterdir())
+        if d.is_dir()
+        and (d / "adapter_config.json").exists()
+        and (d / "trainer_state.json").exists()
+    ]
+    if not candidates:
+        raise FileNotFoundError(f"No epoch checkpoints found under {lora_path}")
+
+    best_path, best_loss = None, float("inf")
+    for ckpt in candidates:
+        with open(ckpt / "trainer_state.json") as f:
+            state = json.load(f)
+        eval_entries = [e for e in state["log_history"] if "eval_loss" in e]
+        if not eval_entries:
+            continue
+        loss = eval_entries[-1]["eval_loss"]
+        epoch = eval_entries[-1]["epoch"]
+        print(f"  {ckpt.name}: eval_loss={loss:.4f} (epoch {epoch:.0f})")
+        if loss < best_loss:
+            best_loss = loss
+            best_path = ckpt
+
+    print(f"\nSelected: {best_path.name}  (eval_loss={best_loss:.4f})")
+    return best_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -86,9 +128,11 @@ def push_to_hub(output_path: Path, quant_type: str, lora_path: Path | None = Non
 def main() -> None:
     args = parse_args()
 
-    print(f"Loading LoRA adapter from {args.lora_path}...")
-    model = AutoPeftModelForCausalLM.from_pretrained(str(args.lora_path))
-    tokenizer = AutoTokenizer.from_pretrained(str(args.lora_path))
+    print(f"Finding best checkpoint under {args.lora_path}...")
+    lora_path = find_best_epoch_checkpoint(args.lora_path)
+    print(f"Loading LoRA adapter from {lora_path}...")
+    model = AutoPeftModelForCausalLM.from_pretrained(str(lora_path))
+    tokenizer = AutoTokenizer.from_pretrained(str(lora_path))
 
     print("Merging LoRA weights into base model...")
     model = model.merge_and_unload()
@@ -99,7 +143,7 @@ def main() -> None:
     tokenizer.save_pretrained(str(args.output_path))
 
     if args.push_to_hub:
-        push_to_hub(args.output_path, args.quant_type, lora_path=args.lora_path)
+        push_to_hub(args.output_path, args.quant_type, lora_path=lora_path)
 
     print("Done.")
 
