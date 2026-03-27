@@ -11,7 +11,6 @@ Usage:
         --lora-path finetune/output/350M-lora \\
         --output-path finetune/output/350M-merged \\
         --push-to-hub \\
-        --llama-cpp-path ~/llama.cpp \\
         --quant-type q8_0
 """
 
@@ -30,12 +29,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lora-path", required=True, type=Path, help="Path to the LoRA adapter directory.")
     parser.add_argument("--output-path", required=True, type=Path, help="Path to save the merged model.")
     parser.add_argument("--push-to-hub", action="store_true", help="Convert merged model to GGUF and push to HuggingFace.")
-    parser.add_argument("--llama-cpp-path", type=Path, help="Path to llama.cpp source directory (required when --push-to-hub is set).")
     parser.add_argument("--quant-type", type=str, default="q8_0", help="GGUF quantization type (default: q8_0).")
     return parser.parse_args()
 
 
-def push_to_hub(output_path: Path, llama_cpp_path: Path, quant_type: str, lora_path: Path | None = None) -> None:
+def push_to_hub(output_path: Path, quant_type: str, lora_path: Path | None = None) -> None:
     # Step 1: derive model name from config.json or adapter_config.json
     config_path = output_path / "config.json"
     with open(config_path) as f:
@@ -54,7 +52,7 @@ def push_to_hub(output_path: Path, llama_cpp_path: Path, quant_type: str, lora_p
     # Step 2: convert to GGUF
     gguf_filename = f"{model_name}-{quant_type}.gguf"
     gguf_path = output_path / gguf_filename
-    convert_script = Path(llama_cpp_path).expanduser() / "convert_hf_to_gguf.py"
+    convert_script = Path(__file__).parent / "convert_hf_to_gguf.py"
     print(f"Converting merged model to GGUF ({quant_type})...")
     subprocess.run(
         ["python", str(convert_script), str(output_path), "--outtype", quant_type, "--outfile", str(gguf_path)],
@@ -88,9 +86,6 @@ def push_to_hub(output_path: Path, llama_cpp_path: Path, quant_type: str, lora_p
 def main() -> None:
     args = parse_args()
 
-    if args.push_to_hub and args.llama_cpp_path is None:
-        raise ValueError("--llama-cpp-path is required when --push-to-hub is set.")
-
     print(f"Loading LoRA adapter from {args.lora_path}...")
     model = AutoPeftModelForCausalLM.from_pretrained(str(args.lora_path))
     tokenizer = AutoTokenizer.from_pretrained(str(args.lora_path))
@@ -104,7 +99,7 @@ def main() -> None:
     tokenizer.save_pretrained(str(args.output_path))
 
     if args.push_to_hub:
-        push_to_hub(args.output_path, args.llama_cpp_path, args.quant_type, lora_path=args.lora_path)
+        push_to_hub(args.output_path, args.quant_type, lora_path=args.lora_path)
 
     print("Done.")
 
