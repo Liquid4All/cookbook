@@ -204,17 +204,151 @@ def format_results(agg_results: list[AggregatedResult], backend: str, model_name
     return "\n".join(lines)
 
 
-def save_results(agg_results: list[AggregatedResult], backend: str, model_name: str, n_runs: int) -> Path:
+def get_llama_build_date(llama_server_bin: str) -> str:
+    """Return the commit date (YYYY-MM-DD) for a llama-server binary.
+    Extracts commit hash from --version output, queries GitHub API.
+    Caches result in a .build_date file next to the binary.
+    Returns 'unknown' on any failure.
+    """
+    import re
+    import json
+
+    bin_path = Path(llama_server_bin)
+    cache_file = bin_path.parent / ".build_date"
+
+    if cache_file.exists():
+        return cache_file.read_text().strip()
+
+    # Parse commit hash from --version
+    try:
+        result = subprocess.run(
+            [llama_server_bin, "--version"],
+            capture_output=True, text=True, timeout=10
+        )
+        output = result.stdout + result.stderr
+        m = re.search(r"version:\s+\d+\s+\(([0-9a-f]+)\)", output)
+        if not m:
+            return "unknown"
+        sha = m.group(1)
+    except Exception:
+        return "unknown"
+
+    # Query GitHub Commits API
+    try:
+        url = f"https://api.github.com/repos/ggml-org/llama.cpp/commits/{sha}"
+        req = urllib.request.Request(url, headers={"User-Agent": "benchmark/run.py"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        date = data["commit"]["author"]["date"][:10]  # YYYY-MM-DD
+        cache_file.write_text(date)
+        return date
+    except Exception:
+        return "unknown"
+
+
+def save_results(agg_results: list[AggregatedResult], backend: str, model_name: str, n_runs: int, args) -> Path:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     slug = model_name.replace("/", "_")
     suffix = f"_n{n_runs}" if n_runs > 1 else ""
     out_dir = Path("benchmark/results")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{timestamp}_{slug}{suffix}.md"
+
+    # --- Parameters table ---
+    params = [
+        ("backend", backend),
+        ("model", model_name),
+        ("hf_repo", getattr(args, "hf_repo", None)),
+        ("hf_file", getattr(args, "hf_file", None)),
+        ("local_file", getattr(args, "local_file", None)),
+        ("llama_build", getattr(args, "llama_build", None)),
+        ("llama_build_date", (
+            get_llama_build_date(str(Path.home() / ".local" / "llama-cpp" / args.llama_build / "bin" / "llama-server"))
+            if getattr(args, "llama_build", None) else "N/A"
+        )),
+        ("port", getattr(args, "port", None)),
+        ("runs", n_runs),
+        ("no_reset", getattr(args, "no_reset", False)),
+        ("raw_tool_call_parsing", getattr(args, "raw_tool_call_parsing", False)),
+    ]
+    param_rows = "\n".join(f"| {k:<22} | {str(v):<22} |" for k, v in params)
+    params_section = (
+        "## Run parameters\n\n"
+        "| Parameter              | Value                  |\n"
+        "|------------------------|------------------------|\n"
+        f"{param_rows}"
+    )
+
+    # --- Score ---
+    passed = sum(1 for r in agg_results if r.pass_rate == 1.0)
+    total = len(agg_results)
+    multi = n_runs > 1
+    if multi:
+        avg_pass = sum(r.pass_rate for r in agg_results) / total if total else 0
+        score_section = f"## Score\n\n{avg_pass * 100:.1f}% avg pass rate ({n_runs} runs/task, {total} tasks)"
+    else:
+        score_section = f"## Score\n\n{passed}/{total} ({100 * passed / total:.0f}%)"
+
+    # --- Breakdowns ---
+    breakdown_lines = []
+
+    cap_groups: dict[str, list[AggregatedResult]] = {}
+    for r in agg_results:
+        cap_groups.setdefault(r.capability, []).append(r)
+    breakdown_lines.append("**By capability:**")
+    for cap, group in sorted(cap_groups.items()):
+        avg = sum(r.pass_rate for r in group) / len(group)
+        breakdown_lines.append(f"  {cap:<12} {avg * 100:>5.1f}%  ({len(group)} tasks)")
+
+    phrasing_groups: dict[str, list[AggregatedResult]] = {}
+    for r in agg_results:
+        phrasing_groups.setdefault(r.phrasing or "untagged", []).append(r)
+    breakdown_lines.append("\n**By phrasing:**")
+    for phrasing, group in sorted(phrasing_groups.items()):
+        avg = sum(r.pass_rate for r in group) / len(group)
+        breakdown_lines.append(f"  {phrasing:<12} {avg * 100:>5.1f}%  ({len(group)} tasks)")
+
+    depth_groups: dict[str, list[AggregatedResult]] = {}
+    for r in agg_results:
+        depth_groups.setdefault(r.depth, []).append(r)
+    breakdown_lines.append("\n**By inference depth:**")
+    for depth in ("literal", "semantic", "boundary"):
+        group = depth_groups.get(depth, [])
+        if group:
+            avg = sum(r.pass_rate for r in group) / len(group)
+            breakdown_lines.append(f"  {depth:<10} {avg * 100:>5.1f}%  ({len(group)} tasks)")
+
+    breakdown_section = "## Breakdown\n\n" + "\n".join(breakdown_lines)
+
+    # --- Task table ---
+    table_lines = []
+    if multi:
+        table_lines.append(f"{'#':<4} {'Task':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass%':<8} {'Std':<6} {'Time':>7}")
+        table_lines.append("-" * 112)
+        for r in agg_results:
+            pct = f"{100 * r.pass_rate:.0f}%"
+            std = f"{r.std_dev:.2f}"
+            table_lines.append(
+                f"{r.task_id:<4} {r.name:<46} {r.capability:<12} {r.phrasing:<12} "
+                f"{r.depth:<10} {pct:<8} {std:<6} {r.mean_duration_s:>6.1f}s"
+            )
+    else:
+        table_lines.append(f"{'#':<4} {'Task':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass':<6} {'Time':>7}")
+        table_lines.append("-" * 108)
+        for r in agg_results:
+            status = "PASS" if r.pass_rate == 1.0 else "FAIL"
+            table_lines.append(
+                f"{r.task_id:<4} {r.name:<46} {r.capability:<12} {r.phrasing:<12} "
+                f"{r.depth:<10} {status:<6} {r.mean_duration_s:>6.1f}s"
+            )
+    tasks_section = "## Tasks\n\n```\n" + "\n".join(table_lines) + "\n```"
+
     content = (
-        f"# Benchmark2 run: {timestamp}\n\n"
-        f"Backend: {backend} ({model_name})\n\n"
-        f"```\n{format_results(agg_results, backend, model_name)}\n```\n"
+        f"# Benchmark run: {timestamp}\n\n"
+        f"{params_section}\n\n"
+        f"{score_section}\n\n"
+        f"{breakdown_section}\n\n"
+        f"{tasks_section}\n"
     )
     out_path.write_text(content)
     return out_path
@@ -285,8 +419,6 @@ if __name__ == "__main__":
                 print(f"Starting llama-server ({Path(args.local_file).name})...")
                 server_proc = start_llama_server(model_path=args.local_file, llama_server_bin=llama_server_bin, port=args.port)
                 model_name_override = Path(args.local_file).name
-                if args.llama_build:
-                    model_name_override += f"_build-{args.llama_build}"
                 print("llama-server ready.")
         elif args.hf_repo and args.hf_file:
             if args.backend != "local":
@@ -294,8 +426,7 @@ if __name__ == "__main__":
             else:
                 print(f"Starting llama-server ({args.hf_file})...")
                 server_proc = start_llama_server(args.hf_repo, args.hf_file, llama_server_bin=llama_server_bin, port=args.port)
-                if args.llama_build:
-                    model_name_override = f"{args.hf_file}_build-{args.llama_build}"
+                model_name_override = args.hf_file
                 print("llama-server ready.")
 
         task_map = {t.id: t for t in TASKS}
@@ -307,7 +438,7 @@ if __name__ == "__main__":
             results = run_task(task, backend=args.backend, n=args.runs, reset_state=not args.no_reset, raw_tool_call_parsing=args.raw_tool_call_parsing, port=args.port)
             all_agg.append(aggregate_results(task, results))
         print_results(all_agg, args.backend, model_name)
-        out_path = save_results(all_agg, args.backend, model_name, n_runs=args.runs)
+        out_path = save_results(all_agg, args.backend, model_name, n_runs=args.runs, args=args)
         print(f"Results saved to {out_path}")
 
     finally:
