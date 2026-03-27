@@ -1,11 +1,10 @@
-"""Prepare SFT data for fine-tuning LFM2 or LFM2.5 models.
+"""Prepare SFT data for fine-tuning LFM2 models.
 
-Loads sft_data.jsonl, converts assistant tool_calls to the target model's text format,
+Loads sft_data.jsonl, converts assistant tool_calls to LFM2 text format,
 splits 80/20 stratified by capability, saves local copies, and uploads to HF Hub.
 
 Usage:
-    uv run --group finetune python finetune/prepare_data.py                      # LFM2 format (default)
-    uv run --group finetune python finetune/prepare_data.py --model-family lfm25 # LFM2.5 Hermes format
+    uv run --group finetune python finetune/prepare_data.py
 """
 
 import argparse
@@ -17,8 +16,7 @@ from pathlib import Path
 from datasets import Dataset, DatasetDict
 
 
-REPO_ID_LFM2  = "Paulescu/home-assistant-sft"
-REPO_ID_LFM25 = "Paulescu/home-assistant-sft-lfm25"
+REPO_ID_LFM2 = "Paulescu/home-assistant-sft"
 SEED = 42
 
 SFT_DATA_PATH = Path(__file__).parent.parent / "benchmark" / "datasets" / "sft_data.jsonl"
@@ -51,50 +49,18 @@ def convert_assistant_message(msg: dict) -> dict:
     return {"role": "assistant", "content": content}
 
 
-def convert_assistant_message_lfm25(msg: dict) -> dict:
-    """Convert an assistant message from OpenAI format to Hermes 2 Pro format.
-
-    OpenAI format:
-        {"role": "assistant", "content": null, "tool_calls": [...]}
-
-    Hermes 2 Pro format (natively parsed by llama-server into structured tool_calls):
-        {"role": "assistant", "content": "<tool_call>\\n{\"name\": \"...\", \"arguments\": {...}}\\n</tool_call>"}
-    """
-    if msg.get("role") != "assistant":
-        return msg
-    if not msg.get("tool_calls"):
-        return {"role": "assistant", "content": msg.get("content") or ""}
-
-    blocks = []
-    for tc in msg["tool_calls"]:
-        fn = tc["function"]
-        args = fn["arguments"]
-        if isinstance(args, str):
-            args = json.loads(args)
-        blocks.append(f"<tool_call>\n{json.dumps({'name': fn['name'], 'arguments': args})}\n</tool_call>")
-    return {"role": "assistant", "content": "\n".join(blocks)}
-
-
-def convert_messages(messages: list[dict], model_family: str) -> list[dict]:
+def convert_messages(messages: list[dict]) -> list[dict]:
     result = []
-    if model_family == "lfm25":
-        for msg in messages:
-            converted = convert_assistant_message_lfm25(msg)
-            result.append(converted)
-            # leap-finetune requires a role='tool' response after every tool call
-            if converted.get("role") == "assistant" and "<tool_call>" in (converted.get("content") or ""):
-                result.append({"role": "tool", "content": "OK"})
-    else:
-        for msg in messages:
-            converted = convert_assistant_message(msg)
-            result.append(converted)
-            # leap-finetune requires a role='tool' response after every tool call
-            if converted.get("role") == "assistant" and "<|tool_call_start|>" in (converted.get("content") or ""):
-                result.append({"role": "tool", "content": "OK"})
+    for msg in messages:
+        converted = convert_assistant_message(msg)
+        result.append(converted)
+        # leap-finetune requires a role='tool' response after every tool call
+        if converted.get("role") == "assistant" and "<|tool_call_start|>" in (converted.get("content") or ""):
+            result.append({"role": "tool", "content": "OK"})
     return result
 
 
-def load_examples(model_family: str) -> list[dict]:
+def load_examples() -> list[dict]:
     examples = []
     with open(SFT_DATA_PATH) as f:
         for line in f:
@@ -102,7 +68,7 @@ def load_examples(model_family: str) -> list[dict]:
             capability = raw["_meta"]["capability"]
             examples.append(
                 {
-                    "messages": convert_messages(raw["messages"], model_family),
+                    "messages": convert_messages(raw["messages"]),
                     "tools": raw["tools"],
                     "_capability": capability,
                 }
@@ -142,21 +108,11 @@ def save_jsonl(examples: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--model-family",
-        choices=["lfm2", "lfm25"],
-        default="lfm2",
-        help="Target model family: 'lfm2' (default) or 'lfm25' (Hermes 2 Pro format)",
-    )
-    args = parser.parse_args()
+    argparse.ArgumentParser().parse_args()
 
-    repo_id = REPO_ID_LFM25 if args.model_family == "lfm25" else REPO_ID_LFM2
-
-    print(f"Model family: {args.model_family}")
-    print(f"Target dataset: {repo_id}")
+    print(f"Target dataset: {REPO_ID_LFM2}")
     print("\nLoading and converting examples...")
-    examples = load_examples(args.model_family)
+    examples = load_examples()
     print(f"Loaded {len(examples)} examples")
 
     print("\nSplitting by capability (80/20):")
@@ -170,15 +126,15 @@ def main() -> None:
     save_jsonl(train, OUTPUT_DIR / "train.jsonl")
     save_jsonl(eval_, OUTPUT_DIR / "eval.jsonl")
 
-    print(f"\nUploading to HuggingFace Hub as '{repo_id}'...")
+    print(f"\nUploading to HuggingFace Hub as '{REPO_ID_LFM2}'...")
     ds = DatasetDict(
         {
             "train": Dataset.from_list(train),
             "test": Dataset.from_list(eval_),
         }
     )
-    ds.push_to_hub(repo_id, private=False)
-    print(f"Done. Dataset at: https://huggingface.co/datasets/{repo_id}")
+    ds.push_to_hub(REPO_ID_LFM2, private=False)
+    print(f"Done. Dataset at: https://huggingface.co/datasets/{REPO_ID_LFM2}")
 
 
 if __name__ == "__main__":
