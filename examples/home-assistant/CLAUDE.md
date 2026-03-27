@@ -136,7 +136,12 @@ modal setup
 ### Step 1: Prepare and upload data
 
 ```bash
+# Use the default sft_data.jsonl
 uv run --group finetune python finetune/prepare_data.py
+
+# Use a custom input file (e.g. the aggregated dataset)
+uv run --group finetune python finetune/prepare_data.py \
+    --input benchmark/datasets/sft_data_agg.jsonl
 ```
 
 HF dataset produced: `Paulescu/home-assistant-sft`

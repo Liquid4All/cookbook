@@ -20,6 +20,7 @@ REPO_ID_LFM2 = "Paulescu/home-assistant-sft"
 SEED = 42
 
 SFT_DATA_PATH = Path(__file__).parent.parent / "benchmark" / "datasets" / "sft_data.jsonl"
+
 OUTPUT_DIR = Path(__file__).parent / "data"
 
 
@@ -60,9 +61,9 @@ def convert_messages(messages: list[dict]) -> list[dict]:
     return result
 
 
-def load_examples() -> list[dict]:
+def load_examples(path: Path = SFT_DATA_PATH) -> list[dict]:
     examples = []
-    with open(SFT_DATA_PATH) as f:
+    with open(path) as f:
         for line in f:
             raw = json.loads(line)
             capability = raw["_meta"]["capability"]
@@ -108,11 +109,13 @@ def save_jsonl(examples: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    argparse.ArgumentParser().parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=Path, default=SFT_DATA_PATH)
+    args = parser.parse_args()
 
     print(f"Target dataset: {REPO_ID_LFM2}")
     print("\nLoading and converting examples...")
-    examples = load_examples()
+    examples = load_examples(args.input)
     print(f"Loaded {len(examples)} examples")
 
     print("\nSplitting by capability (80/20):")

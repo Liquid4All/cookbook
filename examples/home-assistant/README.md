@@ -260,18 +260,18 @@ Training runs on [Modal](https://modal.com) (a serverless GPU cloud) via [leap-f
 <|tool_call_start|>[{"name": "toggle_lights", "arguments": {"room": "living_room", "state": "on"}}]<|tool_call_end|>
 ```
 
-`finetune/prepare_data.py` converts every assistant message to this format, then splits the 491 examples 80/20 stratified by capability (so each category is proportionally represented in both train and eval), and pushes the result to HuggingFace Hub.
+`finetune/prepare_data.py` converts every assistant message to this format, then splits the 794 examples 80/20 stratified by capability (so each category is proportionally represented in both train and eval), and pushes the result to HuggingFace Hub.
 
 | Capability | Total | Train | Eval |
 |------------|-------|-------|------|
-| lights | 120 | 96 | 24 |
-| doors | 80 | 64 | 16 |
-| thermostat | 71 | 57 | 14 |
-| rejection | 60 | 48 | 12 |
-| multi_tool | 60 | 48 | 12 |
-| status | 50 | 40 | 10 |
-| scene | 50 | 40 | 10 |
-| **Total** | **491** | **393** | **98** |
+| lights | 229 | 183 | 46 |
+| thermostat | 146 | 117 | 29 |
+| doors | 103 | 82 | 21 |
+| multi_tool | 103 | 82 | 21 |
+| rejection | 88 | 70 | 18 |
+| status | 66 | 53 | 13 |
+| scene | 59 | 47 | 12 |
+| **Total** | **794** | **634** | **160** |
 
 ### Training configuration
 
@@ -308,7 +308,12 @@ modal setup
 **Prepare the data**
 
 ```bash
+# Use the default sft_data.jsonl
 uv run --group finetune python finetune/prepare_data.py
+
+# Use a custom input file (e.g. the aggregated dataset)
+uv run --group finetune python finetune/prepare_data.py \
+    --input benchmark/datasets/sft_data_agg.jsonl
 ```
 
 **Train on Modal** (run from the `leap-finetune/` subdirectory)
