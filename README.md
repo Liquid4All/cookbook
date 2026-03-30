@@ -149,6 +149,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [Code](https://github.com/chintan-projects/meeting-prompter) |
 | grosme | CLI grocery assistant that finds Walmart product matches using an LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
 | Discord Moderator | Use LFM2.5-1.2B to screen messages for suspicious content | [Code](https://github.com/badluma/liquid-mod) |
+| BookMind | Offline RAG study assistant for asking questions and generating exercises from PDF textbooks, powered by LFM2-2.6B | [Code](https://github.com/Ksirailway-base/BookMind) |
 
 ## 🕐 Technical Deep Dives
 
