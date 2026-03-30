@@ -121,6 +121,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
 | barq-web-rag | Browser-based RAG app for document Q&A with LFM2.5-1.2B-Thinking running fully local via WebGPU | [Code](https://github.com/YASSERRMD/barq-web-rag) |
 | LFM-Scholar | Automated literature review agent for finding and citing papers | [Code](https://github.com/gyunggyung/LFM-Scholar) |
+| BookMind - Local AI teacher| Offline RAG study assistant powered by LFM2-2.6B · Ask questions, get exercises from any PDF textbook · No cloud required | [Code](https://github.com/Ksirailway-base/BookMind) |
 
 ### More
 
