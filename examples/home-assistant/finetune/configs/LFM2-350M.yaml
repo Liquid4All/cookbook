@@ -11,6 +11,7 @@ training_config:
   num_train_epochs: 5
   per_device_train_batch_size: 4
   learning_rate: 2e-4
+  seed: 42
   use_liger_kernel: false
   tracker: "trackio"
   trackio_space_id: "Paulescu/home-assistant-finetune"

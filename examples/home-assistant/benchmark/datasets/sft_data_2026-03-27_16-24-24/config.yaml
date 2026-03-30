@@ -1,0 +1,47 @@
+timestamp: 2026-03-27_16-24-24
+count: 500
+workers: 4
+results_file: benchmark/results/2026-03-27_12-01-50_LFM2-350M-Q8_0.gguf.md
+epsilon: 0.1
+capability_weights: null
+phrasing_weights: null
+depth_weights: null
+cell_quotas:
+  lights/imperative/literal: 3
+  lights/imperative/semantic: 17
+  lights/colloquial/literal: 3
+  lights/colloquial/semantic: 17
+  lights/implicit/literal: 17
+  lights/implicit/semantic: 17
+  lights/question/literal: 5
+  lights/question/semantic: 6
+  thermostat/imperative/literal: 17
+  thermostat/imperative/semantic: 17
+  thermostat/colloquial/literal: 17
+  thermostat/colloquial/semantic: 17
+  thermostat/implicit/literal: 17
+  thermostat/implicit/semantic: 17
+  thermostat/question/literal: 17
+  doors/imperative/literal: 3
+  doors/imperative/semantic: 2
+  doors/colloquial/literal: 3
+  doors/colloquial/semantic: 3
+  doors/implicit/literal: 3
+  doors/implicit/semantic: 3
+  doors/question/literal: 2
+  status/imperative/literal: 17
+  status/colloquial/literal: 17
+  status/question/literal: 17
+  status/question/semantic: 17
+  scene/imperative/literal: 17
+  scene/colloquial/literal: 8
+  scene/implicit/semantic: 17
+  rejection/imperative/boundary: 17
+  rejection/colloquial/boundary: 17
+  rejection/question/boundary: 17
+  rejection/implicit/boundary: 17
+  multi_tool/imperative/literal: 17
+  multi_tool/imperative/semantic: 17
+  multi_tool/colloquial/literal: 17
+  multi_tool/colloquial/semantic: 17
+  multi_tool/implicit/literal: 17

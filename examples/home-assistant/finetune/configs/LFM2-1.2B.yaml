@@ -1,5 +1,5 @@
-project_name: "home-assistant-LFM2-1-2B"
-model_name: "LFM2-1.2B"
+project_name: "home-assistant-LFM2-5-1-2B-Instruct"
+model_name: "LFM2.5-1.2B-Instruct"
 training_type: "sft"
 
 dataset:

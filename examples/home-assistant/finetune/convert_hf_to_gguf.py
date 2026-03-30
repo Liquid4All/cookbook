@@ -8599,7 +8599,7 @@ class Mistral3Model(TextModel):
             yield from super().modify_tensors(data_torch, name, bid)
 
     class Mistral4Model(DeepseekV2Model):
-        model_arch = gguf.MODEL_ARCH.MISTRAL4
+        model_arch = getattr(gguf.MODEL_ARCH, "MISTRAL4", None)
         skip_mtp = False # model contains no MTP layers, so no need to skip
         merge_expert = False # experts are already stacked as 3D
 

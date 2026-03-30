@@ -38,6 +38,7 @@ _DEFAULT_STATE = copy.deepcopy(home_state)
 class AggregatedResult:
     task_id: int
     name: str
+    prompt: str
     capability: str
     phrasing: str
     depth: str
@@ -65,6 +66,7 @@ def aggregate_results(task, results: list[TaskResult]) -> AggregatedResult:
     return AggregatedResult(
         task_id=task.id,
         name=results[0].name,
+        prompt=task.prompt,
         capability=results[0].capability,
         phrasing=results[0].phrasing,
         depth=results[0].depth,
@@ -108,8 +110,9 @@ def start_llama_server(
     return proc
 
 
-def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True, raw_tool_call_parsing: bool = False, port: int = 8080) -> list[TaskResult]:
+def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True, raw_tool_call_parsing: bool = False, port: int = 8080, debug: bool = False) -> tuple[list[TaskResult], list[dict] | None]:
     results = []
+    last_assistant_turns = None
     for _ in range(n):
         if reset_state:
             # Apply task-specific initial_state on top of defaults
@@ -125,13 +128,18 @@ def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True,
         def capture(name, args, result):
             tool_calls_seen.append({"name": name, "args": args})
 
+        messages_out = [] if debug else None
         start = time.time()
-        run_agent(task.prompt, history=getattr(task, "history", []), backend=backend, on_tool_call=capture, raw_tool_call_parsing=raw_tool_call_parsing, port=port)
+        run_agent(task.prompt, history=getattr(task, "history", []), backend=backend, on_tool_call=capture, messages_out=messages_out, raw_tool_call_parsing=raw_tool_call_parsing, port=port)
         duration = time.time() - start
 
         final_state = copy.deepcopy(home_state)
         results.append(task.verifier(tool_calls_seen, duration, final_state))
-    return results
+
+        if debug:
+            last_assistant_turns = [m for m in messages_out if m.get("role") == "assistant"]
+
+    return results, last_assistant_turns
 
 
 def format_results(agg_results: list[AggregatedResult], backend: str, model_name: str) -> str:
@@ -140,22 +148,24 @@ def format_results(agg_results: list[AggregatedResult], backend: str, model_name
     multi = n_runs > 1
 
     if multi:
-        lines.append(f"{'#':<4} {'Task':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass%':<8} {'Std':<6} {'Time':>7}")
+        lines.append(f"{'#':<4} {'Query':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass%':<8} {'Std':<6} {'Time':>7}")
         lines.append("-" * 112)
         for r in agg_results:
             pct = f"{100 * r.pass_rate:.0f}%"
             std = f"{r.std_dev:.2f}"
+            query = r.prompt if len(r.prompt) <= 46 else r.prompt[:43] + "..."
             lines.append(
-                f"{r.task_id:<4} {r.name:<46} {r.capability:<12} {r.phrasing:<12} "
+                f"{r.task_id:<4} {query:<46} {r.capability:<12} {r.phrasing:<12} "
                 f"{r.depth:<10} {pct:<8} {std:<6} {r.mean_duration_s:>6.1f}s"
             )
     else:
-        lines.append(f"{'#':<4} {'Task':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass':<6} {'Time':>7}")
+        lines.append(f"{'#':<4} {'Query':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass':<6} {'Time':>7}")
         lines.append("-" * 108)
         for r in agg_results:
             status = "PASS" if r.pass_rate == 1.0 else "FAIL"
+            query = r.prompt if len(r.prompt) <= 46 else r.prompt[:43] + "..."
             lines.append(
-                f"{r.task_id:<4} {r.name:<46} {r.capability:<12} {r.phrasing:<12} "
+                f"{r.task_id:<4} {query:<46} {r.capability:<12} {r.phrasing:<12} "
                 f"{r.depth:<10} {status:<6} {r.mean_duration_s:>6.1f}s"
             )
 
@@ -323,22 +333,24 @@ def save_results(agg_results: list[AggregatedResult], backend: str, model_name: 
     # --- Task table ---
     table_lines = []
     if multi:
-        table_lines.append(f"{'#':<4} {'Task':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass%':<8} {'Std':<6} {'Time':>7}")
+        table_lines.append(f"{'#':<4} {'Query':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass%':<8} {'Std':<6} {'Time':>7}")
         table_lines.append("-" * 112)
         for r in agg_results:
             pct = f"{100 * r.pass_rate:.0f}%"
             std = f"{r.std_dev:.2f}"
+            query = r.prompt if len(r.prompt) <= 46 else r.prompt[:43] + "..."
             table_lines.append(
-                f"{r.task_id:<4} {r.name:<46} {r.capability:<12} {r.phrasing:<12} "
+                f"{r.task_id:<4} {query:<46} {r.capability:<12} {r.phrasing:<12} "
                 f"{r.depth:<10} {pct:<8} {std:<6} {r.mean_duration_s:>6.1f}s"
             )
     else:
-        table_lines.append(f"{'#':<4} {'Task':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass':<6} {'Time':>7}")
+        table_lines.append(f"{'#':<4} {'Query':<46} {'Cap':<12} {'Phrasing':<12} {'Depth':<10} {'Pass':<6} {'Time':>7}")
         table_lines.append("-" * 108)
         for r in agg_results:
             status = "PASS" if r.pass_rate == 1.0 else "FAIL"
+            query = r.prompt if len(r.prompt) <= 46 else r.prompt[:43] + "..."
             table_lines.append(
-                f"{r.task_id:<4} {r.name:<46} {r.capability:<12} {r.phrasing:<12} "
+                f"{r.task_id:<4} {query:<46} {r.capability:<12} {r.phrasing:<12} "
                 f"{r.depth:<10} {status:<6} {r.mean_duration_s:>6.1f}s"
             )
     tasks_section = "## Tasks\n\n```\n" + "\n".join(table_lines) + "\n```"
@@ -392,6 +404,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable post-processing to parse tool calls from raw model output (for LFM2 text-format models).",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="For each failing task, print the assistant turns (tool calls and/or content) to stdout.",
+    )
     args = parser.parse_args()
 
     if bool(args.hf_repo) != bool(args.hf_file):
@@ -435,8 +452,26 @@ if __name__ == "__main__":
         print(f"Backend: {args.backend} ({model_name})")
         all_agg = []
         for task in tasks:
-            results = run_task(task, backend=args.backend, n=args.runs, reset_state=not args.no_reset, raw_tool_call_parsing=args.raw_tool_call_parsing, port=args.port)
-            all_agg.append(aggregate_results(task, results))
+            results, assistant_turns = run_task(task, backend=args.backend, n=args.runs, reset_state=not args.no_reset, raw_tool_call_parsing=args.raw_tool_call_parsing, port=args.port, debug=args.debug)
+            agg = aggregate_results(task, results)
+            all_agg.append(agg)
+            if args.debug and agg.pass_rate < 1.0 and assistant_turns:
+                prompt_preview = task.prompt if len(task.prompt) <= 50 else task.prompt[:47] + "..."
+                print(f"FAIL  {task.id:<4} {prompt_preview}")
+                for turn in assistant_turns:
+                    tool_calls = turn.get("tool_calls") or []
+                    content = turn.get("content") or ""
+                    if tool_calls:
+                        calls_str = ", ".join(
+                            f"{tc['function']['name']}({', '.join(f'{k}={v!r}' for k, v in tc['function'].get('arguments', {}).items())})"
+                            if isinstance(tc.get('function', {}).get('arguments'), dict)
+                            else f"{tc['function']['name']}({tc['function'].get('arguments', '')})"
+                            for tc in tool_calls
+                        )
+                        print(f"      tool_calls: [{calls_str}]")
+                    if content:
+                        preview = content if len(content) <= 120 else content[:117] + "..."
+                        print(f"      content:    {preview!r}")
         print_results(all_agg, args.backend, model_name)
         out_path = save_results(all_agg, args.backend, model_name, n_runs=args.runs, args=args)
         print(f"Results saved to {out_path}")
