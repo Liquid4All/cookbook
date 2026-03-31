@@ -9,7 +9,7 @@ In this tutorial you will learn how to:
 1. Build a [proof of concept](#step-1-build-a-proof-of-concept) for a fully local Home Assistant.
 2. [Benchmark](#benchmark) its tool-calling accuracy so you have a clear baseline to improve on.
 3. Generate [synthetic data](#step-3-generate-synthetic-data) for model fine-tuning.
-4. [Fine-tune](#step-4-fine-tune-the-model) the model on this synthetic data to maximise accuracy.
+4. [Fine-tune](#step-4-fine-tune-the-model) the model on this synthetic data to maximise accuracy using serverless GPUs by Modal.
 
 ## Quick start
 
@@ -204,174 +204,152 @@ In the following sections, we will see how to improve the performance of our loc
 
 ## Step 3: Generate synthetic data <a name="step-3-generate-synthetic-data"></a>
 
-To fine-tune the model you need labelled training data. We generate it synthetically: `gpt-4o-mini` produces user utterances, each one validated by a second independent inference pass through the real agent.
+To fine-tune the model you need labelled training data. We generate it synthetically using a strong model like `gpt-4o-mini`.
 
-The target is 500 examples distributed across the same taxonomy as the benchmark, with heavier sampling on the hardest cells (`rejection`, `multi_tool`) where local models lose the most points.
+However, we need to be careful to avoid contaminating our training dataset using examples from our benchmark. If our training dataset contains tasks which are too close to the ones from the benchmark, the language model will essentially memorise these examples. Our benchmark metrics will look great on paper, but once we deploy to production, the model will struggle and show poor performance.
 
-**The contamination problem**
+The steps we will follow to generate high-quality synthetic data are the following: 
 
-If a benchmark utterance leaks into training, the model can memorise the correct answer instead of learning the underlying skill. Scores would look great on paper but overestimate real-world performance. We prevent this with a four-layer pipeline:
+
+1. **Blocklist in the prompt.** Every benchmark utterance for the relevant taxonomy cell is listed in the generation prompt and the model is told not to reproduce them. This is the first line of defence, but not enough on its own: the model may still generate something very close without copying it word for word.
+
+2. **Filter by exact or substring match.** Catches the obvious case where the generated sentence appears verbatim, or as a sub-phrase, inside a benchmark task. Fast and cheap to check.
+
+3. **Filter by trigram similarity.** Catches the subtle case: a light paraphrase of a benchmark task. For example, if the benchmark has "Turn on the kitchen lights" and the generator produces "Please turn on the kitchen lights", step 2 passes it (no exact match) but the two sentences are functionally identical as training examples. Trigram similarity catches this by breaking both sentences into overlapping three-word chunks ("turn on the", "on the kitchen", "the kitchen lights", ...) and measuring what fraction of chunks they share. If more than half overlap, the candidate is discarded. No linguistic knowledge required, just word overlap.
+
+4. **Agent cross-validation.** Each surviving candidate is run through the real agent. Only examples where the agent produces the expected tool call are kept. This filters out phrasings that are genuinely ambiguous or underspecified, regardless of how they were generated.
 
 ```mermaid
 flowchart LR
-    A["Generate candidates\n(prompt includes benchmark blocklist)"]
-    A --> B{"Exact or substring\nmatch with benchmark?"}
+    A["Generate candidates<br/>(prompt includes benchmark blocklist)"]
+    A --> B{"Exact or substring<br/>match with benchmark?"}
     B -->|yes| R1((discard))
-    B -->|no| C{"Trigram Jaccard\nsimilarity > 0.5?"}
+    B -->|no| C{"Trigram Jaccard<br/>similarity > 0.5?"}
     C -->|yes| R2((discard))
-    C -->|no| D{"Agent cross-validation:\ngpt-4o-mini agrees?"}
+    C -->|no| D{"Agent cross-validation:<br/>gpt-4o-mini agrees?"}
     D -->|no| R3((discard))
     D -->|yes| E[("sft_data.jsonl")]
 ```
 
-Layer 1 lives in the generation prompt itself: every benchmark utterance for the relevant taxonomy cell is listed and the model is told not to reproduce them. Layers 2 and 3 are deterministic post-generation checks. Layer 4 sends each candidate to the real agent and keeps only the examples where the agent's tool call matches the generator's expected answer, which also filters out genuinely ambiguous phrasings that produce inconsistent results.
+**Command to generate the synthetic data set** (requires `OPENAI_API_KEY` in `.env`):
 
-**Generate the dataset**
+The target is 500 examples distributed across the same taxonomy as the benchmark.
 
 ```bash
-# Dry run: show the generation plan without calling the API
-uv run python benchmark/datasets/generate.py --dry-run
-
-# Generate 500 examples (default)
-uv run python benchmark/datasets/generate.py
-
-# Custom count and output path
 uv run python benchmark/datasets/generate.py --count 500 --output benchmark/datasets/sft_data.jsonl
 ```
 
 Output goes to `benchmark/datasets/sft_data.jsonl` (gitignored). After generation the script prints a rejection breakdown and a coverage matrix so you can see exactly how many examples ended up in each taxonomy cell.
 
+Before moving to fine-tuning, convert the dataset to the LFM2 text format the tokenizer expects (the raw file uses OpenAI's `tool_calls` format, which is different) and push it to HuggingFace as a dataset so Modal can pull it during training.
+
+```bash
+uv run --group finetune python finetune/prepare_data.py \
+    --input benchmark/datasets/sft_data.jsonl
+```
+
 ## Step 4: Fine-tune the model <a name="step-4-fine-tune-the-model"></a>
 
 Fine-tuning adapts the base model to our specific task. Instead of retraining all weights from scratch, we use LoRA (Low-Rank Adaptation): a technique that injects a small set of trainable weight matrices on top of the frozen base model. This keeps GPU memory usage low and training fast, while still producing meaningful accuracy gains on the target task.
 
-Training runs on [Modal](https://modal.com) (a serverless GPU cloud) via [leap-finetune](https://github.com/Liquid4All/leap-finetune), Liquid AI's fine-tuning tool. The full loop:
+Training runs on [Modal](https://modal.com) (a serverless GPU cloud) via [leap-finetune](https://github.com/Liquid4All/leap-finetune), Liquid AI's open source fine-tuning tool. LoRA fine-tuning requires a GPU (a CPU would take hours or days), and Modal's serverless model makes it cost-effective: you spin up an H100, pay only for the minutes it runs, download the checkpoint when it's done, and everything else happens on your local machine.
 
-1. Convert the synthetic dataset to the format the LFM2 tokenizer expects, then push it to HuggingFace Hub.
-2. Run LoRA training on an H100 via leap-finetune.
-3. Download the checkpoint from Modal, merge the adapter into the base model, and convert to GGUF.
-4. Re-run the benchmark and compare against the baseline.
+```mermaid
+sequenceDiagram
+    participant Local as Local machine
+    participant Modal as Modal (H100)
+    participant Volume as Modal Volume
+    participant HF as HuggingFace Hub
 
-### Data preparation
-
-`sft_data.jsonl` stores assistant tool calls in OpenAI format: a `tool_calls` list with `"content": null`. The LFM2 tokenizer's chat template expects tool calls as plain text content wrapped in special tokens:
-
+    Local->>Modal: submit training job (leap-finetune config.yaml)
+    Modal->>Modal: SFT + LoRA on H100
+    Modal->>Volume: save checkpoint
+    Local->>Volume: modal volume get
+    Volume-->>Local: LoRA checkpoint
+    Local->>Local: merge adapter + convert to GGUF (export.py)
+    Local->>HF: push GGUF
+    Local->>HF: download model (benchmark/run.py)
 ```
-<|tool_call_start|>[{"name": "toggle_lights", "arguments": {"room": "living_room", "state": "on"}}]<|tool_call_end|>
-```
 
-`finetune/prepare_data.py` converts every assistant message to this format, then splits the 794 examples 80/20 stratified by capability (so each category is proportionally represented in both train and eval), and pushes the result to HuggingFace Hub.
+### Steps
 
-| Capability | Total | Train | Eval |
-|------------|-------|-------|------|
-| lights | 229 | 183 | 46 |
-| thermostat | 146 | 117 | 29 |
-| doors | 103 | 82 | 21 |
-| multi_tool | 103 | 82 | 21 |
-| rejection | 88 | 70 | 18 |
-| status | 66 | 53 | 13 |
-| scene | 59 | 47 | 12 |
-| **Total** | **794** | **634** | **160** |
+1. **One-time setup.** Clone and install `leap-finetune`, then authenticate with HuggingFace and Modal.
 
-### Training configuration
+   ```bash
+   git clone https://github.com/Liquid4All/leap-finetune
+   cd leap-finetune && uv sync && cd -
+   huggingface-cli login
+   modal setup
+   ```
 
-`finetune/configs/` contains one YAML per model. Both extend the leap-finetune defaults and point at the same dataset. The key differences reflect each model's starting point:
+2. **Kick off training on Modal.** Runs 5 epochs of LoRA SFT on an H100. Takes a few minutes and costs roughly $1.50.
 
-| Config | Model | Epochs | Batch size | Rationale |
-|--------|-------|--------|------------|-----------|
-| `LFM2-350M.yaml` | LFM2-350M | 5 | 4 | Starts at 28%, needs more passes over the data to absorb the signal. |
-| `LFM2.5-1.2B-Instruct.yaml` | LFM2.5-1.2B-Instruct | 3 | 2 | Already at 71%, 3 epochs is enough to close the gaps without catastrophic forgetting. |
-| `LFM2.5-350M.yaml` | LFM2.5-350M | 5 | 4 | Starts at 16%. Note: the training data format uses LFM2-style tool-call tokens which do not match LFM2.5's ChatML template, so fine-tuning produced no improvement. See `FINETUNE-FINDINGS.md` for details. |
+   ```bash
+   cd leap-finetune
+   uv run leap-finetune ../finetune/configs/LFM2-350M.yaml
+   ```
 
-Both use `learning_rate: 2e-4`, LoRA adapters via `DEFAULT_LORA`, and stream training curves to a [Trackio](https://huggingface.co/trackio) dashboard in real time.
+3. **Download the checkpoint** from the Modal Volume once training finishes.
 
-Expected Modal cost: roughly $1.50 for the 350M model and $3.00 for the 1.2B, well within the $30 monthly free credit.
+   ```bash
+   cd leap-finetune
+   uv run modal volume get leap-finetune /outputs/home-assistant-350M ../finetune/output/350M-lora
+   ```
 
-### Checkpoint download and export
+4. **Export.** Merges the LoRA adapter into the base model, converts to GGUF, and pushes to HuggingFace. The script prints the exact `--hf-repo` and `--hf-file` flags to use in the next step.
 
-Once training finishes, the LoRA checkpoint is stored in a Modal Volume. After downloading it locally, `finetune/export.py` merges the adapter weights into the frozen base model, converts the result to GGUF, and pushes it to HuggingFace, all in one step via `--push-to-hub`.
+   ```bash
+   uv run --group export python finetune/export.py \
+       --lora-path finetune/output/350M-lora \
+       --output-path finetune/output/350M-merged \
+       --push-to-hub \
+       --quant-type q8_0
+   ```
 
-### Commands
-
-**One-time setup**
+Re-run the benchmark using the `--hf-repo` and `--hf-file` flags printed by the export step:
 
 ```bash
-# Clone and install leap-finetune (run once, from the home-assistant directory)
-git clone https://github.com/Liquid4All/leap-finetune
-cd leap-finetune && uv sync && cd -
-
-# Authenticate
-huggingface-cli login
-modal setup
-```
-
-**Prepare the data**
-
-```bash
-# Use the default sft_data.jsonl
-uv run --group finetune python finetune/prepare_data.py
-
-# Use a custom input file (e.g. the aggregated dataset)
-uv run --group finetune python finetune/prepare_data.py \
-    --input benchmark/datasets/sft_data_agg.jsonl
-```
-
-**Train on Modal** (run from the `leap-finetune/` subdirectory)
-
-```bash
-cd leap-finetune
-
-# 350M model
-uv run leap-finetune ../finetune/configs/LFM2-350M.yaml
-
-# 1.2B model
-uv run leap-finetune ../finetune/configs/LFM2.5-1.2B-Instruct.yaml
-```
-
-**Download checkpoints** (run from the `leap-finetune/` subdirectory)
-
-```bash
-# Verify actual paths first
-uv run modal volume ls leap-finetune
-
-uv run modal volume get leap-finetune /outputs/home-assistant-350M ../finetune/output/350M-lora
-uv run modal volume get leap-finetune /outputs/home-assistant-1.2B ../finetune/output/1.2B-lora
-```
-
-**Merge, convert to GGUF, and push to HuggingFace** (run from the `home-assistant` directory)
-
-```bash
-# 350M model
-uv run --group export python finetune/export.py \
-    --lora-path finetune/output/350M-lora \
-    --output-path finetune/output/350M-merged \
-    --push-to-hub \
-    --llama-cpp-path ~/llama.cpp \
-    --quant-type q8_0
-
-# 1.2B model
-uv run --group export python finetune/export.py \
-    --lora-path finetune/output/1.2B-lora \
-    --output-path finetune/output/1.2B-merged \
-    --push-to-hub \
-    --llama-cpp-path ~/llama.cpp \
-    --quant-type q4_0
-```
-
-After each run, the script prints the exact `--hf-repo` and `--hf-file` flags to copy-paste into the benchmark command.
-
-**Re-run the benchmark**
-
-Use the `--hf-repo` and `--hf-file` values printed by the export step. The pattern is:
-
-```bash
-# 350M model
 uv run python benchmark/run.py \
     --hf-repo <your-hf-username>/home-assistant-LFM2-350M-GGUF \
     --hf-file LFM2-350M-q8_0.gguf
-
-# 1.2B model
-uv run python benchmark/run.py \
-    --hf-repo <your-hf-username>/home-assistant-LFM2.5-1.2B-Instruct-GGUF \
-    --hf-file LFM2.5-1.2B-Instruct-q4_0.gguf
 ```
+
+### Results
+
+Fine-tuning moved the score from **28 to 47 (+19 points)**. The aggregate score understates how well it worked. Here is the breakdown by capability 
+
+| Capability | Baseline | Fine-tuned |
+|------------|----------|------------|
+| lights | 25.0% | **87.5%** |
+| scene | 0.0% | **80.0%** |
+| doors | 56.2% | 56.2% |
+| multi_tool | 8.3% | 33.3% |
+| status | 0.0% | 30.0% |
+| thermostat | 0.0% | 18.8% |
+| rejection | 0.0% | **0.0%** |
+
+Rejection is the only category that did not improve. These tasks require the model to call `intent_unclear` instead of acting, which is harder than it sounds. Consider a few examples:
+
+```
+"Dim the living room lights to 30%"   # looks like a valid lights command, but brightness isn't supported
+"Turn it on"                           # no target device specified
+"Make it nicer in here"               # ambiguous across lights, thermostat, and scene
+"I want some background music"        # unsupported device
+```
+
+The model did well on everything else. Rejection is simply a data problem: the training set had too few examples of when to say no. You can fix this by generating a rejection-heavy dataset and fine-tuning again:
+
+```bash
+uv run python benchmark/datasets/generate.py --count 500 \
+    --capability-weights rejection=5
+```
+
+## Next steps
+
+The model learned across every phrasing style and inference depth. Lights went from 25% to 87.5%, on par with GPT-4o-mini. Scene went from 0% to 80%. The only dimension frozen at 0% is rejection, which maps to boundary-depth tasks where the model must call `intent_unclear` instead of taking an action. This is a data problem: the training set had too few rejection examples. Generate more with `--capability-weights rejection=5` and fine-tune again to close that gap.
+
+---
+
+As Fermat once wrote in the margin of his notebook: *"I have discovered a truly marvellous solution, but this README is too narrow to contain it."*
+
+If you try it or need help, join the [Liquid AI Discord community](https://discord.gg/liquidai) and ask.
