@@ -1,0 +1,29 @@
+project_name: "home-assistant-350M"
+model_name: "LFM2-350M"
+training_type: "sft"
+
+dataset:
+  path: "Paulescu/home-assistant-sft"
+  type: "sft"
+
+training_config:
+  extends: "DEFAULT_SFT"
+  num_train_epochs: 5
+  per_device_train_batch_size: 4
+  learning_rate: 2e-4
+  seed: 42
+  use_liger_kernel: false
+  tracker: "trackio"
+  trackio_space_id: "Paulescu/home-assistant-finetune"
+
+peft_config:
+  extends: "DEFAULT_LORA"
+  use_peft: true
+
+modal:
+  app_name: "leap-finetune"
+  gpu: "H100:1"
+  timeout: 7200
+  output_volume: "leap-finetune"
+  output_dir: "/outputs"
+  detach: false
