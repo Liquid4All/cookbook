@@ -21,7 +21,6 @@ LOCAL_MODELS = [
         "hf_repo": "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
         "hf_file": "LFM2.5-1.2B-Instruct-Q4_0.gguf",
         "size_label": "696 MB",
-        "score_label": "68%",
     },
     {
         "id": "lfm25-1b-q8",
@@ -29,7 +28,6 @@ LOCAL_MODELS = [
         "hf_repo": "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
         "hf_file": "LFM2.5-1.2B-Instruct-Q8_0.gguf",
         "size_label": "1.25 GB",
-        "score_label": "53%",
     },
     {
         "id": "lfm2-350m-q8",
@@ -37,7 +35,13 @@ LOCAL_MODELS = [
         "hf_repo": "LiquidAI/LFM2-350M-Instruct-GGUF",
         "hf_file": "LFM2-350M-Q8_0.gguf",
         "size_label": "370 MB",
-        "score_label": "37%",
+    },
+    {
+        "id": "lfm2-350m-ft-q8",
+        "name": "LFM2-350M fine-tuned Q8_0",
+        "hf_repo": "Paulescu/home-assistant-LFM2-350M-GGUF",
+        "hf_file": "LFM2-350M-q8_0.gguf",
+        "size_label": "~370 MB",
     },
 ]
 

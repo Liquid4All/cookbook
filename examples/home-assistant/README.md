@@ -10,6 +10,7 @@ In this tutorial you will learn how to:
 2. [Benchmark](#benchmark) its tool-calling accuracy so you have a clear baseline to improve on.
 3. Generate [synthetic data](#step-3-generate-synthetic-data) for model fine-tuning.
 4. [Fine-tune](#step-4-fine-tune-the-model) the model on this synthetic data to maximise accuracy using serverless GPUs by Modal.
+5. [Deploy](#step-5-deploy-the-fine-tuned-model) the fine-tuned model in the app.
 
 ## Quick start
 
@@ -314,6 +315,8 @@ uv run python benchmark/run.py \
     --hf-file LFM2-350M-q8_0.gguf
 ```
 
+You can find the checkpoint at [Paulescu/home-assistant-LFM2-350-GGUF](https://huggingface.co/Paulescu/home-assistant-LFM2.5-350M-GGUF)
+
 ### Results
 
 Fine-tuning moved the score from **28 to 47 (+19 points)**. The aggregate score understates how well it worked. Here is the breakdown by capability 
@@ -343,6 +346,38 @@ The model did well on everything else. Rejection is simply a data problem: the t
 uv run python benchmark/datasets/generate.py --count 500 \
     --capability-weights rejection=5
 ```
+
+## Step 5: Deploy the fine-tuned model <a name="step-5-deploy-the-fine-tuned-model"></a>
+
+The fine-tuned GGUF is already registered in `app/server.py` as `LFM2-350M fine-tuned Q8_0`. To run it:
+
+1. Start the server:
+
+   ```bash
+   uv run uvicorn app.server:app --port 5173 --reload
+   ```
+
+2. Open the app:
+
+   ```bash
+   open http://localhost:5173
+   ```
+
+3. Select **LFM2-350M fine-tuned Q8_0** from the model dropdown. The app downloads the model from HuggingFace and starts `llama-server` automatically.
+
+If you pushed your own fine-tuned model in Step 4, register it by adding an entry to `LOCAL_MODELS` in `app/server.py`:
+
+```python
+{
+    "id": "my-ft-model",
+    "name": "My fine-tuned model",
+    "hf_repo": "<your-hf-username>/home-assistant-LFM2-350M-GGUF",
+    "hf_file": "LFM2-350M-q8_0.gguf",
+    "size_label": "~370 MB",
+},
+```
+
+Restart the server and select your model from the dropdown.
 
 ## Next steps
 
