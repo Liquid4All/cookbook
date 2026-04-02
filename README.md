@@ -40,6 +40,8 @@ Python and CLI applications for running LFM models on your laptop or desktop mac
 | Audio Car Cockpit | Voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B with LFM2-1.2B-Tool | [Code](./examples/audio-car-cockpit/README.md) |
 | LocalCowork | On-device AI agent for file ops, security scanning, OCR, and more, powered by LFM2-24B-A2B | [Code](./examples/localcowork/README.md) |
 | Home Assistant | Local home assistant with tool calling, benchmarking, and fine-tuning pipeline using LFM2-350M and LFM2.5-1.2B | [Code](./examples/home-assistant/README.md) |
+| Voice Assistant for Mac | On-device voice assistant for Apple Silicon Macs using LFM2.5-Audio-1.5B and the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/macos/LeapVoiceAssistantDemo) |
+| Vision Assistant for Mac | On-device visual language model chat for Apple Silicon Macs using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/macOS/LeapVLMExample/LeapVLMExample) |
 
 ## 🌐 Browser Apps
 
@@ -52,6 +54,7 @@ Zero-install applications running LFM models directly in the browser via WebGPU 
 | Live Video Captioning | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2-VL-WebGPU) |
 | Chain-of-Thought Reasoning | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Code](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU/tree/main) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
 | Hand & Voice Racer | Browser driving game controlled by hand gestures (MediaPipe) and voice commands (LFM2.5-Audio-1.5B), running fully local | [Code](./examples/hand-voice-racer/README.md) |
+| LEAP Voice Assistant | On-device voice assistant running in the browser via WebAssembly using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/web) |
 
 ## 📱 Mobile Apps
 
@@ -62,7 +65,7 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | Name | Description | Link |
 |------|-------------|------|
 | LeapChat | Chat app with real-time streaming, persistent history, and modern UI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
-| LeapAudioDemo | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapAudioDemo) |
+| Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/android) |
 | LeapKoogAgent | Integration with Koog framework for AI agent functionality | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapKoogAgent) |
 | SloganApp | Single turn marketing slogan generation with Android Views | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/SloganApp) |
 | ShareAI | Website summary generator | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
@@ -76,7 +79,8 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | LeapChat | Chat app with real-time streaming, conversation management, and SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
 | LeapSloganExample | Basic LeapSDK integration for text generation in SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapSloganExample) |
 | Recipe Generator | Structured output generation | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
-| Audio Demo | Audio input/output with LeapSDK for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) |
+| Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/ios/LeapVoiceAssistantDemo) |
+| Vision Assistant | Visual language model chat on iOS using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapVLMExample) |
 
 ## 🎯 Fine-Tuning Notebooks
 
