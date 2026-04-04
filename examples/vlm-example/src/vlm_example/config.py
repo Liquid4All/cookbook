@@ -1,0 +1,110 @@
+from datetime import datetime
+from pathlib import Path
+from typing import Optional, Self
+
+import yaml
+from pydantic import model_validator
+from pydantic_settings import BaseSettings
+
+from .paths import get_path_to_configs
+
+
+class BenchmarkConfig(BaseSettings):
+    seed: int = 42
+
+    # Model: use `model` when loading from HF Hub, `checkpoint_path` when loading
+    # a fine-tuned checkpoint from the Modal volume at /model_checkpoints/{checkpoint_path}.
+    # `model` is always required so we know which processor to load alongside a checkpoint.
+    model: str
+    checkpoint_path: Optional[str] = None
+
+    # Generation
+    use_constrained_generation: bool = False
+
+    # Dataset
+    dataset: str = "Paulescu/defect-detection"
+    split: str = "test"
+    n_samples: Optional[int] = None
+    image_column: str = "query_image"
+    prompt_column: str = "input_prompt"
+    answer_column: str = "answer"
+
+    # Batch processing
+    batch_size: int = 1
+
+    # Weights and Biases
+    wandb_project_name: str = "defect-detection-benchmark"
+
+    @classmethod
+    def from_yaml(cls, file_name: str) -> "BenchmarkConfig":
+        file_path = str(Path(get_path_to_configs()) / file_name)
+        print(f"Loading config from {file_path}")
+        with open(file_path) as f:
+            data = yaml.safe_load(f)
+        return cls(**data)
+
+
+class FineTuningConfig(BaseSettings):
+    seed: int = 42
+    use_wandb: bool = True
+
+    # Model
+    model_name: str = "LiquidAI/LFM2.5-VL-450M-new-chat-template-3"
+    max_seq_length: int = 2048
+    checkpoint_path: Optional[str] = None  # path within /model_checkpoints to resume from
+
+    # Dataset
+    dataset_name: str = "Paulescu/defect-detection"
+    dataset_samples: Optional[int] = None
+    dataset_image_column: str = "query_image"
+    dataset_prompt_column: str = "input_prompt"
+    dataset_answer_column: str = "answer"
+
+    # LoRA
+    use_peft: bool = True
+    lora_r: int = 8
+    lora_alpha: int = 16
+    lora_dropout: float = 0.05
+    lora_target_modules: list[str] = [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+    ]
+
+    # Training
+    learning_rate: float = 5e-4
+    num_train_epochs: int = 3
+    batch_size: int = 1
+    gradient_accumulation_steps: int = 16
+    optim: str = "adamw_8bit"
+    warmup_ratio: float = 0.1
+    weight_decay: float = 0.01
+    logging_steps: int = 10
+    eval_steps: int = 100
+
+    # Weights and Biases
+    wandb_project_name: str = "defect-detection-finetuning"
+    wandb_experiment_name: Optional[str] = None
+
+    modal_app_name: str = "defect-detection-finetune"
+
+    @classmethod
+    def from_yaml(cls, file_name: str) -> Self:
+        file_path = str(Path(get_path_to_configs()) / file_name)
+        print(f"Loading config from {file_path}")
+        with open(file_path) as f:
+            data = yaml.safe_load(f)
+        return cls(**data)
+
+    @model_validator(mode="after")
+    def set_experiment_name(self):
+        if self.wandb_experiment_name is None:
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            model_short = self.model_name.split("/")[-1]
+            dataset_short = self.dataset_name.split("/")[-1]
+            self.wandb_experiment_name = f"{model_short}-{dataset_short}-{timestamp}"
+        return self
