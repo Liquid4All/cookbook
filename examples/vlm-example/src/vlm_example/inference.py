@@ -1,3 +1,5 @@
+import io
+import urllib.request
 from typing import Union
 
 import outlines
@@ -9,11 +11,20 @@ from transformers import AutoModelForImageTextToText, AutoProcessor
 from .output_types import DefectDetectionOutput
 
 
+def _to_pil_image(image: Union[Image.Image, str]) -> Image.Image:
+    if isinstance(image, Image.Image):
+        return image
+    if image.startswith("http"):
+        with urllib.request.urlopen(image) as response:
+            return Image.open(io.BytesIO(response.read())).convert("RGB")
+    return Image.open(image).convert("RGB")
+
+
 def get_structured_model_output(
     model: AutoModelForImageTextToText,
     processor: AutoProcessor,
     user_prompt: str,
-    image: Image.Image,
+    image: Union[Image.Image, str],
     max_new_tokens: int = 10,
 ) -> DefectDetectionOutput | None:
     """
@@ -22,12 +33,13 @@ def get_structured_model_output(
     """
     outlines_model = outlines.from_transformers(model, processor)
 
+    pil_image = _to_pil_image(image)
     prompt = Chat(
         [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": OutlinesImage(image)},
+                    {"type": "image", "image": OutlinesImage(pil_image)},
                     {"type": "text", "text": user_prompt},
                 ],
             }

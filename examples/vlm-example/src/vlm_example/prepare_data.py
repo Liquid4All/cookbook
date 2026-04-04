@@ -9,16 +9,28 @@ Prerequisites:
 """
 
 import argparse
+import functools
+import time
+import zipfile
 from collections import Counter
 
 import datasets
-from datasets import ClassLabel, DatasetDict
+from datasets import ClassLabel, DatasetDict, Image as HFImage
+from huggingface_hub import hf_hub_download
 
 SOURCE_DATASET = "jiang-cc/MMAD"
 DEFECT_QUESTION = "Is there any defect in the object?"
 INPUT_PROMPT = "Is there any defect in the object. Respond Yes or No."
 
 YES_NO = {"Yes", "No"}
+
+SOURCE_TO_ZIP = {
+    "VisA": "VisA.zip",
+    "MVTec-AD": "MVTec-AD.zip",
+    "DS-MVTec": "DS-MVTec.zip",
+    "MVTec-LOCO": "MVTec-LOCO.zip",
+    "GoodsAD": "GoodsAD.zip",
+}
 
 
 def parse_answer(x):
@@ -44,6 +56,43 @@ def get_source(x):
     return x["template_image"].split("/")[0]
 
 
+def download_zip_files(sources: set[str]) -> dict[str, str]:
+    """Download the MMAD zip files for the given sources and return local file paths."""
+    zip_paths = {}
+    for source in sorted(sources):
+        zip_name = SOURCE_TO_ZIP.get(source)
+        if zip_name is None:
+            print(f"Warning: no zip file mapped for source '{source}', skipping")
+            continue
+        print(f"  Downloading {zip_name} from {SOURCE_DATASET}...")
+        local_path = hf_hub_download(
+            repo_id=SOURCE_DATASET,
+            filename=zip_name,
+            repo_type="dataset",
+        )
+        zip_paths[source] = local_path
+        print(f"  Downloaded {zip_name}")
+    return zip_paths
+
+
+def make_row(x, zip_paths: dict[str, str]) -> dict:
+    """Load image bytes from the appropriate zip and return the new columns."""
+    source = get_source(x)
+    # Use the query_image path prefix for zip lookup: some DS-MVTec rows have
+    # mask=None so get_source() falls back to template_image (MVTec-AD), but
+    # their query_image still lives in DS-MVTec.zip.
+    zip_source = x["query_image"].split("/")[0]
+    with zipfile.ZipFile(zip_paths[zip_source]) as zf:
+        with zf.open(x["query_image"]) as f:
+            image_bytes = f.read()
+    return {
+        "query_image": image_bytes,
+        "input_prompt": INPUT_PROMPT,
+        "answer": parse_answer(x),
+        "source": source,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Prepare defect-detection dataset")
     parser.add_argument(
@@ -51,65 +100,103 @@ def main():
         required=True,
         help="HuggingFace dataset name to push to, e.g. Paulescu/defect-detection",
     )
+    parser.add_argument(
+        "--samples",
+        type=int,
+        default=None,
+        help="Limit to this many rows from MMAD before filtering (for smoke tests).",
+    )
     args = parser.parse_args()
 
-    print(f"Loading {SOURCE_DATASET}...")
+    t0 = time.time()
+
+    def elapsed() -> str:
+        return f"[{time.time() - t0:.1f}s]"
+
+    print(f"[1/7] Loading {SOURCE_DATASET}...")
     ds = datasets.load_dataset(SOURCE_DATASET, split="train")
-    print(f"Loaded {len(ds)} rows")
+    print(f"      Loaded {len(ds)} rows {elapsed()}")
 
-    print(f"Filtering to question: '{DEFECT_QUESTION}'...")
+    if args.samples is not None:
+        ds = ds.select(range(args.samples))
+        print(f"      Limiting to {args.samples} samples for smoke test")
+
+    print(f"[2/7] Filtering to question: '{DEFECT_QUESTION}'...")
     ds = ds.filter(lambda x: x["question"] == DEFECT_QUESTION)
-    print(f"Filtered to {len(ds)} rows")
+    print(f"      Filtered to {len(ds)} rows {elapsed()}")
 
-    print("Mapping to output schema...")
+    # Collect zip sources from query_image prefixes (not get_source) so that
+    # DS-MVTec rows with mask=None (which get_source maps to MVTec-AD) still
+    # pull in DS-MVTec.zip.
+    zip_sources = set(ds.map(lambda x: {"s": x["query_image"].split("/")[0]})["s"])
+    print(f"      Sources present: {sorted(zip_sources)}")
+
+    print(f"[3/7] Downloading zip files...")
+    zip_paths = download_zip_files(zip_sources)
+    print(f"      Downloaded {len(zip_paths)} zip files {elapsed()}")
+
+    print(f"[4/7] Loading images from zip files via ds.map()...")
     ds = ds.map(
-        lambda x: {
-            "query_image": x["query_image"],
-            "input_prompt": INPUT_PROMPT,
-            "answer": parse_answer(x),
-            "source": get_source(x),
-        },
-        remove_columns=[c for c in ds.column_names if c not in ("query_image",)],
+        functools.partial(make_row, zip_paths=zip_paths),
+        remove_columns=ds.column_names,
+        desc="Loading images",
     )
+    ds = ds.cast_column("query_image", HFImage())
+    print(f"      Built dataset with {len(ds)} rows {elapsed()}")
 
     # Keep only Yes/No rows (drop Maybe/Unknown)
     before = len(ds)
     ds = ds.filter(lambda x: x["answer"] in YES_NO)
-    print(f"Kept {len(ds)}/{before} rows with Yes/No answers")
+    print(f"      Kept {len(ds)}/{before} rows with Yes/No answers {elapsed()}")
 
     # Print distributions
-    sources = Counter(r["source"] for r in ds)
-    print("Source distribution:")
+    sources = Counter(ds["source"])
+    print("      Source distribution:")
     for src, count in sorted(sources.items(), key=lambda x: -x[1]):
-        print(f"  {src}: {count} ({count / len(ds):.1%})")
-    yes_count = sum(1 for r in ds if r["answer"] == "Yes")
-    no_count = len(ds) - yes_count
-    print(f"Answer distribution: Yes={yes_count} ({yes_count / len(ds):.1%}), No={no_count} ({no_count / len(ds):.1%})")
+        print(f"        {src}: {count} ({count / len(ds):.1%})")
+    answers = Counter(ds["answer"])
+    yes_count = answers["Yes"]
+    no_count = answers["No"]
+    print(f"      Answer distribution: Yes={yes_count} ({yes_count / len(ds):.1%}), No={no_count} ({no_count / len(ds):.1%})")
 
-    # Build composite stratification key: source_answer (e.g. "VisA_Yes")
-    ds = ds.map(lambda x: {"strat_key": f"{x['source']}_{x['answer']}"})
-    strat_names = sorted(set(r["strat_key"] for r in ds))
-    ds = ds.cast_column("strat_key", ClassLabel(names=strat_names))
+    print(f"[5/7] Building stratification key (source x answer)...")
+    # Work on a metadata-only dataset (no images) to avoid PyArrow offset overflow
+    # when batching large binary columns.
+    meta = datasets.Dataset.from_dict({
+        "idx": list(range(len(ds))),
+        "source": ds["source"],
+        "answer": ds["answer"],
+    })
+    meta = meta.map(lambda x: {"strat_key": f"{x['source']}_{x['answer']}"})
+    strat_names = sorted(set(meta["strat_key"]))
+    meta = meta.cast_column("strat_key", ClassLabel(names=strat_names))
+    print(f"      Done {elapsed()}")
 
-    print("Splitting into train (90%) and test (10%) stratified by source x answer...")
-    split = ds.train_test_split(test_size=0.1, seed=42, stratify_by_column="strat_key")
+    print(f"[6/7] Splitting into train (90%) and test (10%) stratified by source x answer...")
+    meta_split = meta.train_test_split(test_size=0.1, seed=42, stratify_by_column="strat_key")
 
-    # Drop temporary stratification column before pushing (keep source)
-    for s in ("train", "test"):
-        split[s] = split[s].remove_columns(["strat_key"])
+    # Use split indices to select from the full image dataset
+    train_ds = ds.select(meta_split["train"]["idx"])
+    test_ds = ds.select(meta_split["test"]["idx"])
 
-    # Cast answer to ClassLabel
-    for s in ("train", "test"):
-        split[s] = split[s].cast_column("answer", ClassLabel(names=["No", "Yes"]))
+    # Cast answer to ClassLabel using writer_batch_size=1 to avoid PyArrow
+    # offset overflow when batching rows that contain large image bytes.
+    answer_features = train_ds.features.copy()
+    answer_features["answer"] = ClassLabel(names=["No", "Yes"])
+    train_ds = train_ds.map(lambda x: x, features=answer_features, writer_batch_size=1)
+    test_ds = test_ds.map(lambda x: x, features=answer_features, writer_batch_size=1)
 
-    dataset_dict = DatasetDict({"train": split["train"], "test": split["test"]})
+    dataset_dict = DatasetDict({"train": train_ds, "test": test_ds})
 
-    print(f"Train: {len(dataset_dict['train'])} samples")
-    print(f"Test:  {len(dataset_dict['test'])} samples")
+    print(f"      Train: {len(dataset_dict['train'])} samples")
+    print(f"      Test:  {len(dataset_dict['test'])} samples")
+    print(f"      Split done {elapsed()}")
 
-    print(f"Pushing to {args.to}...")
+    print(f"[7/7] Pushing to {args.to}...")
     dataset_dict.push_to_hub(args.to)
+    print(f"      Push done {elapsed()}")
     print(f"Dataset available at https://huggingface.co/datasets/{args.to}")
+    print(f"DONE. Total time: {elapsed()}")
 
 
 if __name__ == "__main__":

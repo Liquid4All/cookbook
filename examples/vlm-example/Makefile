@@ -1,5 +1,5 @@
 prepare-data:
-	uv run python -m src.vlm_example.prepare_data --to $(to)
+	uv run python -m src.vlm_example.prepare_data --to $(to) $(if $(samples),--samples $(samples),)
 
 benchmark:
 	uv run modal run -m src.vlm_example.benchmark --config-file-name $(config)
