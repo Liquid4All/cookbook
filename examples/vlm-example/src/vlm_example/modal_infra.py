@@ -15,7 +15,7 @@ def get_docker_image() -> modal.Image:
             "peft>=0.15.2",
             "pydantic-settings>=2.10.1",
             "tqdm>=4.67.1",
-            "transformers==4.57.1",
+            "transformers>=5.1.0",
             "trl==0.24.0",
             "pillow>=11.3.0",
             "matplotlib>=3.10.6",

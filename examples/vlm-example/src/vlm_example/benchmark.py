@@ -98,7 +98,12 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
 
     for sample in tqdm(dataset, desc="Benchmarking"):
         image_data = sample[config.image_column]
-        ground_truth: str = sample[config.answer_column]
+        raw_answer = sample[config.answer_column]
+        # answer column is ClassLabel, which HF returns as an int when iterating
+        if isinstance(raw_answer, int):
+            ground_truth = dataset.features[config.answer_column].int2str(raw_answer)
+        else:
+            ground_truth = raw_answer
         user_prompt: str = sample[config.prompt_column]
 
         if config.use_constrained_generation:
