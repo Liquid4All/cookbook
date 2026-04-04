@@ -68,6 +68,7 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
             config.dataset.split("/")[-1],
             "constrained" if config.use_constrained_generation else "raw",
             *(["checkpoint"] if config.checkpoint_path else []),
+            *([config.source] if isinstance(config.source, str) else (config.source or [])),
         ],
     )
 
@@ -78,6 +79,12 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
         seed=config.seed,
         cache_dir="/datasets",
     )
+
+    if config.source is not None:
+        sources = [config.source] if isinstance(config.source, str) else config.source
+        print(f"Filtering dataset to sources: {sources}")
+        dataset = dataset.filter(lambda x: x["source"] in sources)
+        print(f"Filtered to {len(dataset)} samples")
 
     if config.checkpoint_path is not None:
         full_checkpoint_path = str(Path("/model_checkpoints") / config.checkpoint_path)

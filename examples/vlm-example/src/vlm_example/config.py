@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Self
+from typing import Optional, Self, Union
 
 import yaml
 from pydantic import model_validator
@@ -24,6 +24,7 @@ class BenchmarkConfig(BaseSettings):
     # Dataset
     dataset: str = "Paulescu/defect-detection"
     split: str = "test"
+    source: Optional[Union[str, list[str]]] = None  # filter by source, e.g. "VisA" or ["VisA", "GoodsAD"]
     n_samples: Optional[int] = None
     image_column: str = "query_image"
     prompt_column: str = "input_prompt"

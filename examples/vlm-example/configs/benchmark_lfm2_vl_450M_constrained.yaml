@@ -4,3 +4,4 @@ split: test
 n_samples: 10
 use_constrained_generation: true
 wandb_project_name: defect-detection-benchmark
+source: VisA
