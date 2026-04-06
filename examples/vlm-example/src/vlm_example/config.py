@@ -20,6 +20,8 @@ class BenchmarkConfig(BaseSettings):
 
     # Generation
     use_constrained_generation: bool = False
+    max_image_tokens: int = 256
+    min_image_tokens: int = 64
 
     # Dataset
     dataset: str = "Paulescu/defect-detection"
@@ -35,6 +37,7 @@ class BenchmarkConfig(BaseSettings):
 
     # Weights and Biases
     wandb_project_name: str = "defect-detection-benchmark"
+    config_file: Optional[str] = None
 
     @classmethod
     def from_yaml(cls, file_name: str) -> "BenchmarkConfig":
@@ -42,7 +45,38 @@ class BenchmarkConfig(BaseSettings):
         print(f"Loading config from {file_path}")
         with open(file_path) as f:
             data = yaml.safe_load(f)
-        return cls(**data)
+        return cls(**data, config_file=file_name)
+
+
+class ApiBenchmarkConfig(BaseSettings):
+    seed: int = 42
+
+    # Model: API model name, e.g. "claude-sonnet-4-6"
+    model: str
+
+    # Dataset
+    dataset: str = "Paulescu/defect-detection"
+    split: str = "test"
+    source: Optional[Union[str, list[str]]] = None
+    n_samples: Optional[int] = None
+    image_column: str = "query_image"
+    prompt_column: str = "input_prompt"
+    answer_column: str = "answer"
+
+    # Prompt: if set, overrides the per-sample prompt from the dataset
+    prompt_override: Optional[str] = None
+
+    # Weights and Biases
+    wandb_project_name: str = "defect-detection-benchmark"
+    config_file: Optional[str] = None
+
+    @classmethod
+    def from_yaml(cls, file_name: str) -> "ApiBenchmarkConfig":
+        file_path = str(Path(get_path_to_configs()) / file_name)
+        print(f"Loading config from {file_path}")
+        with open(file_path) as f:
+            data = yaml.safe_load(f)
+        return cls(**data, config_file=file_name)
 
 
 class FineTuningConfig(BaseSettings):
@@ -57,6 +91,7 @@ class FineTuningConfig(BaseSettings):
     # Dataset
     dataset_name: str = "Paulescu/defect-detection"
     dataset_samples: Optional[int] = None
+    dataset_source: Optional[Union[str, list[str]]] = None  # filter by source, e.g. "GoodsAD" or ["GoodsAD", "VisA"]
     dataset_image_column: str = "query_image"
     dataset_prompt_column: str = "input_prompt"
     dataset_answer_column: str = "answer"

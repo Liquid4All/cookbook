@@ -40,10 +40,11 @@ Examples:
 5. For each run, read the majority class baseline from `summaryMetrics.majority_class_accuracy`.
 
 6. Print a markdown table with columns:
-   `Run name | Time (UTC) | Source | Model | Majority Class Baseline | Accuracy`
+   `Run name | Time (UTC) | Config file | Source | Model | Majority Class Baseline | Accuracy`
 
    - **Model**: strip the `LiquidAI/` prefix for brevity
    - **Time (UTC)**: show only `HH:MM`
+   - **Config file**: value of `config.config_file.value`, or `?` if missing
    - **Source**: value of `config.source.value`
    - **Majority Class Baseline**: from `summaryMetrics.majority_class_accuracy`, formatted as a percentage with one decimal (e.g. `58.3%`), or `?` if missing
    - **Accuracy**: formatted as a percentage with one decimal (e.g. `53.1%`)
