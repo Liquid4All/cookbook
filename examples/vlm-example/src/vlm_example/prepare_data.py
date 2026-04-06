@@ -85,8 +85,23 @@ def make_row(x, zip_paths: dict[str, str]) -> dict:
     with zipfile.ZipFile(zip_paths[zip_source]) as zf:
         with zf.open(x["query_image"]) as f:
             image_bytes = f.read()
+        mask_bytes = None
+        if x["mask"]:
+            mask_zip_source = x["mask"].split("/")[0]
+            mask_zip_path = zip_paths.get(mask_zip_source)
+            if mask_zip_path:
+                # GoodsAD mask paths in MMAD include a spurious 'test/' segment
+                # that is absent from the zip: strip it before lookup.
+                mask_path_in_zip = x["mask"].replace("/test/ground_truth/", "/ground_truth/")
+                with zipfile.ZipFile(mask_zip_path) as mzf:
+                    try:
+                        with mzf.open(mask_path_in_zip) as f:
+                            mask_bytes = f.read()
+                    except KeyError:
+                        pass
     return {
         "query_image": image_bytes,
+        "mask_image": mask_bytes,
         "input_prompt": INPUT_PROMPT,
         "answer": parse_answer(x),
         "source": source,
@@ -106,7 +121,14 @@ def main():
         default=None,
         help="Limit to this many rows from MMAD before filtering (for smoke tests).",
     )
+    parser.add_argument(
+        "--source",
+        type=str,
+        default=None,
+        help="Comma-separated list of sources to keep, e.g. 'GoodsAD' or 'GoodsAD,VisA'. Filters before downloading zips.",
+    )
     args = parser.parse_args()
+    sources_filter = set(args.source.split(",")) if args.source else None
 
     t0 = time.time()
 
@@ -125,6 +147,17 @@ def main():
     ds = ds.filter(lambda x: x["question"] == DEFECT_QUESTION)
     print(f"      Filtered to {len(ds)} rows {elapsed()}")
 
+    if sources_filter is not None:
+        print(f"      Filtering to sources: {sorted(sources_filter)}...")
+        ds = ds.filter(lambda x: get_source(x) in sources_filter)
+        print(f"      Filtered to {len(ds)} rows {elapsed()}")
+
+    # Keep only Yes/No rows (drop Maybe/Unknown) — do this before loading images
+    # to avoid OOM when filtering a large image dataset.
+    before = len(ds)
+    ds = ds.filter(lambda x: parse_answer(x) in YES_NO)
+    print(f"[2b/7] Kept {len(ds)}/{before} rows with Yes/No answers {elapsed()}")
+
     # Collect zip sources from query_image prefixes (not get_source) so that
     # DS-MVTec rows with mask=None (which get_source maps to MVTec-AD) still
     # pull in DS-MVTec.zip.
@@ -142,12 +175,8 @@ def main():
         desc="Loading images",
     )
     ds = ds.cast_column("query_image", HFImage())
+    ds = ds.cast_column("mask_image", HFImage())
     print(f"      Built dataset with {len(ds)} rows {elapsed()}")
-
-    # Keep only Yes/No rows (drop Maybe/Unknown)
-    before = len(ds)
-    ds = ds.filter(lambda x: x["answer"] in YES_NO)
-    print(f"      Kept {len(ds)}/{before} rows with Yes/No answers {elapsed()}")
 
     # Print distributions
     sources = Counter(ds["source"])
@@ -167,7 +196,7 @@ def main():
         "source": ds["source"],
         "answer": ds["answer"],
     })
-    meta = meta.map(lambda x: {"strat_key": f"{x['source']}_{x['answer']}"})
+    meta = meta.map(lambda x: {"strat_key": f"{x['source']}_{x['answer']}"}, desc="Building strat keys")
     strat_names = sorted(set(meta["strat_key"]))
     meta = meta.cast_column("strat_key", ClassLabel(names=strat_names))
     print(f"      Done {elapsed()}")
@@ -183,8 +212,8 @@ def main():
     # offset overflow when batching rows that contain large image bytes.
     answer_features = train_ds.features.copy()
     answer_features["answer"] = ClassLabel(names=["No", "Yes"])
-    train_ds = train_ds.map(lambda x: x, features=answer_features, writer_batch_size=1)
-    test_ds = test_ds.map(lambda x: x, features=answer_features, writer_batch_size=1)
+    train_ds = train_ds.map(lambda x: x, features=answer_features, writer_batch_size=1, desc="Casting train labels")
+    test_ds = test_ds.map(lambda x: x, features=answer_features, writer_batch_size=1, desc="Casting test labels")
 
     dataset_dict = DatasetDict({"train": train_ds, "test": test_ds})
 

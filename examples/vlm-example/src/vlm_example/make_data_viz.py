@@ -11,123 +11,87 @@ import argparse
 import base64
 import io
 import random
-import zipfile
 
 import datasets
-from huggingface_hub import hf_hub_download
 
-SOURCES = ["DS-MVTec", "GoodsAD", "MVTec-AD", "MVTec-LOCO", "VisA"]
 SPLITS = ["train", "test"]
-MMAD_DATASET = "jiang-cc/MMAD"
 DEFAULT_DATASET = "Paulescu/defect-detection"
 DEFAULT_N = 50
 DEFAULT_OUT = "data_visualization.html"
 
 
-def get_zip_path(zip_name: str) -> str:
-    """Return local path to zip file, downloading and caching via HF hub if needed."""
-    return hf_hub_download(MMAD_DATASET, f"{zip_name}.zip", repo_type="dataset")
-
-
-def open_zips(zip_names: list[str]) -> dict:
-    """Download (if needed) and open zip files, returning {zip_name: (ZipFile, has_prefix)}."""
-    result = {}
-    for name in zip_names:
-        print(f"  Loading {name}.zip from cache...")
-        path = get_zip_path(name)
-        zf = zipfile.ZipFile(path)
-        first = zf.namelist()[0]
-        has_prefix = first.startswith(name + "/")
-        result[name] = (zf, has_prefix)
-    return result
-
-
-def load_image_from_zip(query_image_path: str, zips: dict) -> bytes:
-    zip_name = query_image_path.split("/")[0]
-    zf, has_prefix = zips[zip_name]
-    file_path = query_image_path if has_prefix else "/".join(query_image_path.split("/")[1:])
-    return zf.read(file_path)
-
-
-def image_bytes_to_base64(data: bytes, max_size: int = 256) -> str:
+def pil_image_to_base64(img, max_size: int = 256) -> str:
     from PIL import Image as PILImage
-    img = PILImage.open(io.BytesIO(data)).convert("RGB")
+    img = img.convert("RGB")
     img.thumbnail((max_size, max_size), PILImage.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=80)
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def build_grids(dataset_name: str, n: int) -> dict:
-    """Returns {(source, split): {"total": int, "samples": [(b64_img, answer)]}}"""
-    # Load both splits
-    all_rows = {}
-    for split in SPLITS:
-        print(f"Loading {split} split...")
-        ds = datasets.load_dataset(dataset_name, split=split)
-        all_rows[split] = list(ds)
+def decode_answer(answer) -> str:
+    """Resolve ClassLabel int or string answer to 'Yes'/'No'."""
+    return answer if isinstance(answer, str) else ["No", "Yes"][answer]
 
-    # Identify which zips are needed across all sampled rows
-    needed_zip_names = set()
-    sampled = {}
-    for split in SPLITS:
-        for source in SOURCES:
-            rows = [r for r in all_rows[split] if r["source"] == source]
-            sample = random.sample(rows, min(n, len(rows)))
-            sampled[(source, split)] = {"total": len(rows), "rows": sample}
-            for r in sample:
-                needed_zip_names.add(r["query_image"].split("/")[0])
 
-    # Open only the needed zip files (all cached locally)
-    print(f"Opening zip files: {sorted(needed_zip_names)}")
-    zips = open_zips(sorted(needed_zip_names))
-
-    # Load images
+def build_grids(dataset_name: str, n: int) -> tuple[dict, list[str]]:
+    """Returns (grids, sources) where grids is {(source, split): {...}}."""
     grids = {}
-    for (source, split), data in sampled.items():
-        print(f"  Encoding images for {source}/{split}...")
-        samples = []
-        for r in data["rows"]:
-            raw = load_image_from_zip(r["query_image"], zips)
-            b64 = image_bytes_to_base64(raw)
-            answer = r["answer"]
-            if isinstance(answer, int):
-                answer = ["No", "Yes"][answer]
-            label = "Has defect" if answer == "Yes" else "No defect"
-            samples.append((b64, label))
-        def decode(r):
-            a = r["answer"]
-            return a if isinstance(a, str) else ["No", "Yes"][a]
+    all_sources: set[str] = set()
 
-        all_source_rows = [r for r in all_rows[split] if r["source"] == source]
-        has_defect = sum(1 for r in all_source_rows if decode(r) == "Yes")
-        no_defect = sum(1 for r in all_source_rows if decode(r) == "No")
-        grids[(source, split)] = {
-            "total": data["total"],
-            "has_defect": has_defect,
-            "no_defect": no_defect,
-            "samples": samples,
-        }
+    for split in SPLITS:
+        print(f"Loading {split} split from {dataset_name}...")
+        ds = datasets.load_dataset(dataset_name, split=split)
+        print(f"  {len(ds)} rows")
 
-    for zf, _ in zips.values():
-        zf.close()
+        # Read metadata columns only (fast, no image decoding)
+        sources_col = ds["source"]
+        answers_col = [decode_answer(a) for a in ds["answer"]]
+        split_sources = sorted(set(sources_col))
+        all_sources.update(split_sources)
 
-    return grids
+        for source in split_sources:
+            indices = [i for i, s in enumerate(sources_col) if s == source]
+            sample_indices = random.sample(indices, min(n, len(indices)))
+
+            has_defect = sum(1 for i in indices if answers_col[i] == "Yes")
+            no_defect = sum(1 for i in indices if answers_col[i] == "No")
+
+            # Load images only for sampled rows
+            print(f"  Encoding {len(sample_indices)} images for {source}/{split}...")
+            sampled_ds = ds.select(sample_indices)
+            samples = []
+            for r in sampled_ds:
+                b64 = pil_image_to_base64(r["query_image"])
+                mask_b64 = pil_image_to_base64(r["mask_image"]) if r.get("mask_image") is not None else None
+                label = "Has defect" if decode_answer(r["answer"]) == "Yes" else "No defect"
+                samples.append((b64, mask_b64, label))
+
+            grids[(source, split)] = {
+                "total": len(indices),
+                "has_defect": has_defect,
+                "no_defect": no_defect,
+                "samples": samples,
+            }
+
+    sources = sorted(all_sources)
+    print(f"Sources found: {sources}")
+    return grids, sources
 
 
-def render_html(grids: dict, n: int, out_path: str) -> None:
+def render_html(grids: dict, sources: list[str], n: int, out_path: str) -> None:
     js_data_parts = []
     for (source, split), data in grids.items():
         cards_js = ", ".join(
-            f'{{img: "{b64}", answer: "{answer}"}}'
-            for b64, answer in data["samples"]
+            '{img: "' + b64 + '", mask: ' + ('"' + mask_b64 + '"' if mask_b64 else "null") + ', answer: "' + answer + '"}'
+            for b64, mask_b64, answer in data["samples"]
         )
         js_data_parts.append(
             f'"{source}||{split}": {{total: {data["total"]}, has_defect: {data["has_defect"]}, no_defect: {data["no_defect"]}, samples: [{cards_js}]}}'
         )
     js_data = "{\n" + ",\n".join(js_data_parts) + "\n}"
 
-    sources_js = "[" + ", ".join(f'"{s}"' for s in SOURCES) + "]"
+    sources_js = "[" + ", ".join(f'"{s}"' for s in sources) + "]"
     splits_js = "[" + ", ".join(f'"{s}"' for s in SPLITS) + "]"
 
     html = f"""<!DOCTYPE html>
@@ -142,12 +106,16 @@ def render_html(grids: dict, n: int, out_path: str) -> None:
     .controls label {{ font-weight: 600; margin-right: 6px; }}
     select {{ padding: 6px 10px; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; background: #fff; cursor: pointer; }}
     .meta {{ margin-bottom: 16px; color: #555; font-size: 0.9rem; }}
-    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }}
+    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }}
     .card {{ background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }}
-    .card img {{ width: 100%; display: block; aspect-ratio: 1; object-fit: cover; }}
+    .card-images {{ display: flex; }}
+    .card-images img {{ width: 50%; display: block; aspect-ratio: 1; object-fit: cover; }}
+    .card-images .placeholder {{ width: 50%; aspect-ratio: 1; background: #e9ecef; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 0.75rem; }}
     .badge {{ padding: 6px 10px; font-weight: 700; font-size: 0.9rem; text-align: center; }}
     .yes {{ background: #f8d7da; color: #721c24; }}
     .no  {{ background: #d4edda; color: #155724; }}
+    .img-labels {{ display: flex; font-size: 0.7rem; color: #888; }}
+    .img-labels span {{ width: 50%; text-align: center; padding: 2px 0; background: #f8f9fa; }}
     .chart {{ margin-bottom: 20px; width: 360px; }}
     .bar-row {{ display: flex; align-items: center; margin-bottom: 8px; gap: 8px; font-size: 0.85rem; }}
     .bar-label {{ width: 90px; text-align: right; font-weight: 600; flex-shrink: 0; }}
@@ -206,7 +174,14 @@ def render_html(grids: dict, n: int, out_path: str) -> None:
         </div>`;
       gridEl.innerHTML = entry.samples.map(s => `
         <div class="card">
-          <img src="data:image/jpeg;base64,${{s.img}}" alt="${{s.answer}}">
+          <div class="card-images">
+            <img src="data:image/jpeg;base64,${{s.img}}" alt="query image">
+            ${{s.mask
+              ? `<img src="data:image/jpeg;base64,${{s.mask}}" alt="defect mask">`
+              : `<div class="placeholder">no mask</div>`
+            }}
+          </div>
+          <div class="img-labels"><span>Image</span><span>Mask</span></div>
           <div class="badge ${{s.answer === "Has defect" ? "yes" : "no"}}">${{s.answer}}</div>
         </div>`).join("");
     }}
@@ -231,8 +206,8 @@ def main():
     args = parser.parse_args()
 
     random.seed(42)
-    grids = build_grids(args.dataset, args.n)
-    render_html(grids, args.n, args.out)
+    grids, sources = build_grids(args.dataset, args.n)
+    render_html(grids, sources, args.n, args.out)
 
 
 if __name__ == "__main__":
