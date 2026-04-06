@@ -23,13 +23,15 @@ class BenchmarkConfig(BaseSettings):
     max_image_tokens: int = 256
     min_image_tokens: int = 64
 
+    # Prompt (required: must be explicit in every benchmark config)
+    prompt_override: str
+
     # Dataset
     dataset: str = "Paulescu/defect-detection"
     split: str = "test"
     source: Optional[Union[str, list[str]]] = None  # filter by source, e.g. "VisA" or ["VisA", "GoodsAD"]
     n_samples: Optional[int] = None
     image_column: str = "query_image"
-    prompt_column: str = "input_prompt"
     answer_column: str = "answer"
 
     # Batch processing
@@ -54,17 +56,16 @@ class ApiBenchmarkConfig(BaseSettings):
     # Model: API model name, e.g. "claude-sonnet-4-6"
     model: str
 
+    # Prompt (required: must be explicit in every benchmark config)
+    prompt_override: str
+
     # Dataset
     dataset: str = "Paulescu/defect-detection"
     split: str = "test"
     source: Optional[Union[str, list[str]]] = None
     n_samples: Optional[int] = None
     image_column: str = "query_image"
-    prompt_column: str = "input_prompt"
     answer_column: str = "answer"
-
-    # Prompt: if set, overrides the per-sample prompt from the dataset
-    prompt_override: Optional[str] = None
 
     # Weights and Biases
     wandb_project_name: str = "defect-detection-benchmark"
@@ -92,8 +93,10 @@ class FineTuningConfig(BaseSettings):
     dataset_name: str = "Paulescu/defect-detection"
     dataset_samples: Optional[int] = None
     dataset_source: Optional[Union[str, list[str]]] = None  # filter by source, e.g. "GoodsAD" or ["GoodsAD", "VisA"]
+    # Prompt (required: must be explicit in every fine-tuning config)
+    prompt_override: str
+
     dataset_image_column: str = "query_image"
-    dataset_prompt_column: str = "input_prompt"
     dataset_answer_column: str = "answer"
 
     # LoRA

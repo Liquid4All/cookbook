@@ -115,7 +115,7 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
             ground_truth = dataset.features[config.answer_column].int2str(raw_answer)
         else:
             ground_truth = raw_answer
-        user_prompt: str = sample[config.prompt_column]
+        user_prompt: str = config.prompt_override
 
         if config.use_constrained_generation:
             output = get_structured_model_output(model, processor, user_prompt, image_data)

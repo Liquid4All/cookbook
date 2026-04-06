@@ -1,6 +1,7 @@
 model: claude-sonnet-4-6
 dataset: Paulescu/defect-detection
 split: test
-n_samples: 100
+n_samples: 50
 source: VisA
 wandb_project_name: defect-detection-benchmark
+prompt_override: Is there any defect in the object. Respond Yes or No.

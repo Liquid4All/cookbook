@@ -90,17 +90,23 @@ def finetune(config: FineTuningConfig):
         cache_dir="/datasets",
     )
 
+    if config.dataset_source is not None:
+        sources = [config.dataset_source] if isinstance(config.dataset_source, str) else config.dataset_source
+        print(f"Filtering datasets to sources: {sources}")
+        train_dataset_raw = train_dataset_raw.filter(lambda x: x["source"] in sources)
+        eval_dataset_raw = eval_dataset_raw.filter(lambda x: x["source"] in sources)
+
     print("Formatting datasets as conversations...")
     train_dataset = format_dataset_as_conversation(
         train_dataset_raw,
         image_column=config.dataset_image_column,
-        prompt_column=config.dataset_prompt_column,
+        prompt=config.prompt_override,
         answer_column=config.dataset_answer_column,
     )
     eval_dataset = format_dataset_as_conversation(
         eval_dataset_raw,
         image_column=config.dataset_image_column,
-        prompt_column=config.dataset_prompt_column,
+        prompt=config.prompt_override,
         answer_column=config.dataset_answer_column,
     )
 

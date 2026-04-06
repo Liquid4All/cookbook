@@ -1,0 +1,12 @@
+model: LiquidAI/LFM2-VL-450M
+dataset: Paulescu/defect-detection
+split: test
+n_samples: 50
+use_constrained_generation: false
+wandb_project_name: defect-detection-benchmark
+source: VisA
+prompt_override: >-
+  You are a quality control inspector. Examine this product image carefully
+  and determine whether it has any visible defects, including scratches,
+  dents, stains, discoloration, cracks, or surface damage. Respond with
+  only Yes or No.

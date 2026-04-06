@@ -1,5 +1,7 @@
 model_name: LiquidAI/LFM2.5-VL-450M-new-chat-template-3
 dataset_name: Paulescu/defect-detection
+dataset_source: GoodsAD
+prompt_override: Is there any defect in the object. Respond Yes or No.
 
 use_peft: true
 lora_r: 8
