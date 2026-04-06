@@ -1,7 +1,7 @@
 model: claude-sonnet-4-6
 dataset: Paulescu/defect-detection
 split: test
-n_samples: 50
+n_samples: 100
 source: VisA
 wandb_project_name: defect-detection-benchmark
 prompt_override: >-
