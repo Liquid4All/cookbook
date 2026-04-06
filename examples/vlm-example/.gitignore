@@ -5,3 +5,4 @@ __pycache__/
 CLAUDE.md
 data_visualization.html
 .devlog/
+.claude/commands/
