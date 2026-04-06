@@ -4,4 +4,8 @@ split: test
 n_samples: 50
 wandb_project_name: defect-detection-benchmark
 source: VisA
-prompt_override: Is there any defect in the object. Respond Yes or No.
+prompt_override: >-
+  You are a quality control inspector. Examine this item image carefully
+  and determine whether it has any visible defects, including scratches,
+  cracks, missing components, discoloration, or surface damage. Respond
+  with only Yes or No.
