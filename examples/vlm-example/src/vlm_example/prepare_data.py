@@ -169,9 +169,19 @@ def main():
     print(f"      Downloaded {len(zip_paths)} zip files {elapsed()}")
 
     print(f"[4/7] Loading images from zip files via ds.map()...")
+    # Explicitly declare output features so PyArrow doesn't infer mask_image
+    # as null-type when an entire batch has no masks (e.g. MVTec-AD).
+    map_features = datasets.Features({
+        "query_image": datasets.Value("binary"),
+        "mask_image": datasets.Value("binary"),
+        "input_prompt": datasets.Value("string"),
+        "answer": datasets.Value("string"),
+        "source": datasets.Value("string"),
+    })
     ds = ds.map(
         functools.partial(make_row, zip_paths=zip_paths),
         remove_columns=ds.column_names,
+        features=map_features,
         desc="Loading images",
     )
     ds = ds.cast_column("query_image", HFImage())
@@ -221,7 +231,10 @@ def main():
     print(f"      Test:  {len(dataset_dict['test'])} samples")
     print(f"      Split done {elapsed()}")
 
-    print(f"[7/7] Pushing to {args.to}...")
+    local_path = "local_dataset"
+    print(f"[7/7] Saving to disk at {local_path}/ and pushing to {args.to}...")
+    dataset_dict.save_to_disk(local_path)
+    print(f"      Saved to disk {elapsed()}")
     dataset_dict.push_to_hub(args.to)
     print(f"      Push done {elapsed()}")
     print(f"Dataset available at https://huggingface.co/datasets/{args.to}")

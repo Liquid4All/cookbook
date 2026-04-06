@@ -10,6 +10,7 @@ Usage:
 import argparse
 import base64
 import io
+import os
 import random
 
 import datasets
@@ -39,10 +40,19 @@ def build_grids(dataset_name: str, n: int) -> tuple[dict, list[str]]:
     grids = {}
     all_sources: set[str] = set()
 
+    local_path = "local_dataset"
+    use_local = os.path.isdir(local_path)
+    if use_local:
+        print(f"Loading from local disk at {local_path}/...")
+        dataset_dict = datasets.load_from_disk(local_path)
     for split in SPLITS:
-        print(f"Loading {split} split from {dataset_name}...")
-        ds = datasets.load_dataset(dataset_name, split=split)
-        print(f"  {len(ds)} rows")
+        if use_local:
+            ds = dataset_dict[split]
+            print(f"  {split}: {len(ds)} rows (local)")
+        else:
+            print(f"Loading {split} split from {dataset_name}...")
+            ds = datasets.load_dataset(dataset_name, split=split)
+            print(f"  {len(ds)} rows")
 
         # Read metadata columns only (fast, no image decoding)
         sources_col = ds["source"]
