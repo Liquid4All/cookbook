@@ -37,10 +37,8 @@ Examples:
    - `summaryMetrics.accuracy` is a number (not null)
    - if `source` argument was provided: `config.source.value` matches it; otherwise include all sources
 
-5. For each run, read the majority class baseline from `summaryMetrics.majority_class_accuracy`.
-
-6. Print a markdown table with columns:
-   `Run name | Time (UTC) | Config file | Source | Model | Majority Class Baseline | Accuracy`
+5. Print a markdown table with columns:
+   `Run name | Time (UTC) | Config file | Source | Model | Majority Class Baseline | Accuracy | Versus Baseline`
 
    - **Model**: strip the `LiquidAI/` prefix for brevity
    - **Time (UTC)**: show only `HH:MM`
@@ -48,8 +46,9 @@ Examples:
    - **Source**: value of `config.source.value`
    - **Majority Class Baseline**: from `summaryMetrics.majority_class_accuracy`, formatted as a percentage with one decimal (e.g. `58.3%`), or `?` if missing
    - **Accuracy**: formatted as a percentage with one decimal (e.g. `53.1%`)
+   - **Versus Baseline**: compute `accuracy - majority_class_accuracy` from `summaryMetrics`, format as a signed value with one decimal and `pp` suffix (e.g. `+6.1pp`, `-3.2pp`), or `?` if baseline is missing
    - Sort by `createdAt` descending (newest first)
 
-7. After the table, print a one-line summary: total runs shown, time window, and sources included.
+6. After the table, print a one-line summary: total runs shown, time window, and sources included.
 
 If no runs match, say so clearly.
