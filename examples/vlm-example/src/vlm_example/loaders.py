@@ -81,6 +81,8 @@ def fix_model_type_in_config_json(model_path: str):
 def load_model_and_processor(
     model_id: str,
     cache_dir: str = "/models",
+    max_image_tokens: int = 256,
+    min_image_tokens: int = 64,
 ) -> tuple[AutoModelForImageTextToText, AutoProcessor]:
     """Loads a model and processor from HuggingFace Hub with Modal volume caching."""
     model_cache_path = Path(cache_dir) / model_id.replace("/", "_")
@@ -106,26 +108,28 @@ def load_model_and_processor(
 
             processor = AutoProcessor.from_pretrained(
                 str(processor_cache_path),
-                max_image_tokens=256,
+                max_image_tokens=max_image_tokens,
+                min_image_tokens=min_image_tokens,
+                do_image_splitting=True,
                 local_files_only=True,
             )
             model = AutoModelForImageTextToText.from_pretrained(
                 str(model_weights_cache_path),
                 torch_dtype="bfloat16",
                 device_map="auto",
-                local_files_only=True,
+local_files_only=True,
             )
             print("Loaded model and processor from cache")
         except Exception as e:
             print(f"Failed to load from cache: {e}")
             print(f"Downloading model {model_id} from HuggingFace...")
             processor, model = _download_and_cache_model(
-                model_id, hf_token, processor_cache_path, model_weights_cache_path
+                model_id, hf_token, processor_cache_path, model_weights_cache_path, max_image_tokens, min_image_tokens
             )
     else:
         print(f"Downloading model {model_id} from HuggingFace...")
         processor, model = _download_and_cache_model(
-            model_id, hf_token, processor_cache_path, model_weights_cache_path
+            model_id, hf_token, processor_cache_path, model_weights_cache_path, max_image_tokens, min_image_tokens
         )
 
     print(f"Model loaded | vocab size: {len(processor.tokenizer)} | params: {model.num_parameters():,}")
@@ -134,6 +138,8 @@ def load_model_and_processor(
 
 def load_model_from_checkpoint(
     checkpoint_path: str,
+    max_image_tokens: int = 256,
+    min_image_tokens: int = 64,
 ) -> tuple[AutoModelForImageTextToText, AutoProcessor]:
     """Loads a fine-tuned model and processor from a local checkpoint directory."""
     checkpoint_dir = Path(checkpoint_path)
@@ -150,13 +156,16 @@ def load_model_from_checkpoint(
 
     processor = AutoProcessor.from_pretrained(
         str(checkpoint_dir),
-        max_image_tokens=256,
+        max_image_tokens=max_image_tokens,
+        min_image_tokens=min_image_tokens,
+        do_image_splitting=True,
         local_files_only=True,
     )
     model = AutoModelForImageTextToText.from_pretrained(
         str(checkpoint_dir),
         torch_dtype="bfloat16",
         device_map="auto",
+        attn_implementation="sdpa",
         local_files_only=True,
     )
 
@@ -169,16 +178,21 @@ def _download_and_cache_model(
     hf_token: str | None,
     processor_cache_path: Path,
     model_weights_cache_path: Path,
+    max_image_tokens: int = 256,
+    min_image_tokens: int = 64,
 ) -> tuple[AutoProcessor, AutoModelForImageTextToText]:
     processor = AutoProcessor.from_pretrained(
         model_id,
-        max_image_tokens=256,
+        max_image_tokens=max_image_tokens,
+        min_image_tokens=min_image_tokens,
+        do_image_splitting=True,
         token=hf_token,
     )
     model = AutoModelForImageTextToText.from_pretrained(
         model_id,
         torch_dtype="bfloat16",
         device_map="auto",
+        attn_implementation="sdpa",
         token=hf_token,
     )
 

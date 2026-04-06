@@ -36,6 +36,13 @@ class BenchmarkReport:
             return 0.0
         return sum(1 for r in self.records if r["correct"]) / len(self.records)
 
+    def get_majority_class_accuracy(self) -> float:
+        if not self.records:
+            return 0.0
+        from collections import Counter
+        counts = Counter(r["ground_truth"] for r in self.records)
+        return counts.most_common(1)[0][1] / len(self.records)
+
     def to_csv(self) -> str:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         csv_file_path = str(Path(get_path_to_evals()) / f"benchmark_{timestamp}.csv")

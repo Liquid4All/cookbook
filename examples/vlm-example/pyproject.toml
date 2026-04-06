@@ -23,6 +23,8 @@ dependencies = [
     "matplotlib>=3.10.7",
     "seaborn>=0.13.2",
     "scikit-learn>=1.7.2",
+    "anthropic>=0.50.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [build-system]
