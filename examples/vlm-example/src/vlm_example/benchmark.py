@@ -13,7 +13,7 @@ import wandb
 from tqdm import tqdm
 
 from .config import BenchmarkConfig
-from .inference import get_model_output, get_structured_model_output, parse_yes_no
+from .inference import get_model_output, parse_yes_no
 from .loaders import load_dataset, load_model_and_processor, load_model_from_checkpoint
 from .modal_infra import (
     get_docker_image,
@@ -66,7 +66,6 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
         tags=[
             config.model.split("/")[-1],
             config.dataset.split("/")[-1],
-            "constrained" if config.use_constrained_generation else "raw",
             *(["checkpoint"] if config.checkpoint_path else []),
             *([config.source] if isinstance(config.source, str) else (config.source or [])),
         ],
@@ -117,21 +116,17 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
             ground_truth = raw_answer
         user_prompt: str = config.prompt_override
 
-        if config.use_constrained_generation:
-            output = get_structured_model_output(model, processor, user_prompt, image_data)
-            predicted = output.answer if output is not None else "Error"
-        else:
-            conversation = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image", "image": image_data},
-                        {"type": "text", "text": user_prompt},
-                    ],
-                }
-            ]
-            raw = get_model_output(model, processor, conversation)
-            predicted = parse_yes_no(raw)
+        conversation = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": image_data},
+                    {"type": "text", "text": user_prompt},
+                ],
+            }
+        ]
+        raw = get_model_output(model, processor, conversation)
+        predicted = parse_yes_no(raw)
 
         report.add_record(image_data, ground_truth, predicted)
 

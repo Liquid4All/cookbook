@@ -11,7 +11,6 @@ def get_docker_image() -> modal.Image:
         .uv_pip_install(
             "datasets>=4.1.1",
             "modal>=1.1.4",
-            "outlines>=1.2.7",
             "peft>=0.15.2",
             "pydantic-settings>=2.10.1",
             "tqdm>=4.67.1",

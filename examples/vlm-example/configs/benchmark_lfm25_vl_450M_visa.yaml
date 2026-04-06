@@ -2,7 +2,6 @@ model: LiquidAI/LFM2.5-VL-450M-new-chat-template-3
 dataset: Paulescu/defect-detection
 split: test
 n_samples: 50
-use_constrained_generation: false
 wandb_project_name: defect-detection-benchmark
 source: VisA
 prompt_override: Is there any defect in the object. Respond Yes or No.

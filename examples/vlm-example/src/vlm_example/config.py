@@ -19,7 +19,6 @@ class BenchmarkConfig(BaseSettings):
     checkpoint_path: Optional[str] = None
 
     # Generation
-    use_constrained_generation: bool = False
     max_image_tokens: int = 256
     min_image_tokens: int = 64
 

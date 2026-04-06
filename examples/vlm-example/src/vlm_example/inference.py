@@ -1,66 +1,16 @@
+import base64
 import io
-import urllib.request
 from typing import Union
 
-import outlines
-from outlines.inputs import Chat
-from outlines.inputs import Image as OutlinesImage
 from PIL import Image
 from transformers import AutoModelForImageTextToText, AutoProcessor
-
-from .output_types import DefectDetectionOutput
-
-
-def _to_pil_image(image: Union[Image.Image, str]) -> Image.Image:
-    if isinstance(image, Image.Image):
-        return image
-    if image.startswith("http"):
-        with urllib.request.urlopen(image) as response:
-            return Image.open(io.BytesIO(response.read())).convert("RGB")
-    return Image.open(image).convert("RGB")
-
-
-def get_structured_model_output(
-    model: AutoModelForImageTextToText,
-    processor: AutoProcessor,
-    user_prompt: str,
-    image: Union[Image.Image, str],
-    max_new_tokens: int = 10,
-) -> DefectDetectionOutput | None:
-    """
-    Runs constrained generation forcing the output to be a valid DefectDetectionOutput JSON.
-    Returns a parsed DefectDetectionOutput, or None on error.
-    """
-    outlines_model = outlines.from_transformers(model, processor)
-
-    pil_image = _to_pil_image(image)
-    prompt = Chat(
-        [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "image": OutlinesImage(pil_image)},
-                    {"type": "text", "text": user_prompt},
-                ],
-            }
-        ]
-    )
-
-    try:
-        response: str = outlines_model(
-            prompt, DefectDetectionOutput, max_new_tokens=max_new_tokens
-        )
-        return DefectDetectionOutput.model_validate_json(response)
-    except Exception as e:
-        print(f"Error in structured generation: {e}")
-        return None
 
 
 def get_model_output(
     model: AutoModelForImageTextToText,
     processor: AutoProcessor,
     conversation: list[dict],
-    max_new_tokens: int = 64,
+    max_new_tokens: int = 5,
 ) -> str:
     """Runs standard (unconstrained) generation and returns the raw output string."""
     inputs = processor.apply_chat_template(
@@ -71,9 +21,45 @@ def get_model_output(
         tokenize=True,
     ).to(model.device)
 
-    outputs = model.generate(**inputs, max_new_tokens=max_new_tokens)
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=0.1,
+        min_p=0.15,
+        repetition_penalty=1.05,
+    )
     outputs_wout_input = outputs[:, inputs["input_ids"].shape[1]:]
     return processor.batch_decode(outputs_wout_input, skip_special_tokens=True)[0]
+
+
+def get_claude_output(client, model: str, user_prompt: str, image: Image.Image) -> str:
+    """Calls the Claude API with a vision prompt and returns the raw text response."""
+    buf = io.BytesIO()
+    image.convert("RGB").save(buf, format="JPEG")
+    image_b64 = base64.standard_b64encode(buf.getvalue()).decode("utf-8")
+
+    message = client.messages.create(
+        model=model,
+        max_tokens=10,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": image_b64,
+                        },
+                    },
+                    {"type": "text", "text": user_prompt},
+                ],
+            }
+        ],
+    )
+    return message.content[0].text
 
 
 def parse_yes_no(raw_output: str) -> str:
