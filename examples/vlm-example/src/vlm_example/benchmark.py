@@ -75,7 +75,7 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
     dataset = load_dataset(
         dataset_name=config.dataset,
         splits=[config.split],
-        n_samples=config.n_samples,
+        n_samples=None,
         seed=config.seed,
         cache_dir="/datasets",
     )
@@ -86,12 +86,24 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
         dataset = dataset.filter(lambda x: x["source"] in sources)
         print(f"Filtered to {len(dataset)} samples")
 
+    if config.n_samples is not None:
+        n = min(config.n_samples, len(dataset))
+        dataset = dataset.select(range(n))
+        print(f"Selected {n} samples")
+
     if config.checkpoint_path is not None:
         full_checkpoint_path = str(Path("/model_checkpoints") / config.checkpoint_path)
-        model, processor = load_model_from_checkpoint(full_checkpoint_path)
+        model, processor = load_model_from_checkpoint(
+            full_checkpoint_path,
+            max_image_tokens=config.max_image_tokens,
+            min_image_tokens=config.min_image_tokens,
+        )
     else:
         model, processor = load_model_and_processor(
-            model_id=config.model, cache_dir="/models"
+            model_id=config.model,
+            cache_dir="/models",
+            max_image_tokens=config.max_image_tokens,
+            min_image_tokens=config.min_image_tokens,
         )
 
     report = BenchmarkReport()
@@ -99,7 +111,6 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
     for sample in tqdm(dataset, desc="Benchmarking"):
         image_data = sample[config.image_column]
         raw_answer = sample[config.answer_column]
-        # answer column is ClassLabel, which HF returns as an int when iterating
         if isinstance(raw_answer, int):
             ground_truth = dataset.features[config.answer_column].int2str(raw_answer)
         else:
@@ -125,9 +136,11 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
         report.add_record(image_data, ground_truth, predicted)
 
     accuracy = report.get_accuracy()
+    majority_class_accuracy = report.get_majority_class_accuracy()
     print(f"Accuracy: {accuracy:.4f} ({accuracy:.1%})")
+    print(f"Majority class baseline: {majority_class_accuracy:.4f} ({majority_class_accuracy:.1%})")
 
-    wandb.log({"accuracy": accuracy})
+    wandb.log({"accuracy": accuracy, "majority_class_accuracy": majority_class_accuracy})
 
     fig = report.get_confusion_matrix_figure()
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
