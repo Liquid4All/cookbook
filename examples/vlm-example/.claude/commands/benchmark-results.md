@@ -37,17 +37,27 @@ Examples:
    - `summaryMetrics.accuracy` is a number (not null)
    - if `source` argument was provided: `config.source.value` matches it; otherwise include all sources
 
-5. Print a markdown table with columns:
-   `Run name | Time (UTC) | Config file | Source | Model | Majority Class Baseline | Accuracy | Versus Baseline`
+5. Print a plain-text ASCII table with `+---+` borders and padded columns. Use this format:
 
+   ```
+   +-------------------------------+------------+----------------------------------------------+--------+----------+---------+-----------------+
+   | Run name                      | Time (UTC) | Config file                                  | Source | Baseline | Acc     | Vs Baseline     |
+   +-------------------------------+------------+----------------------------------------------+--------+----------+---------+-----------------+
+   | crusher-enterprise-72         | 12:54      | benchmark_lfm25_vl_450M_goodsad.yaml         | GoodsAD| 56.0%    | 55.0%   | -1.0pp          |
+   +-------------------------------+------------+----------------------------------------------+--------+----------+---------+-----------------+
+   ```
+
+   Column definitions:
+   - **Run name**: `displayName`
+   - **Time (UTC)**: `createdAt`, show only `HH:MM`
+   - **Config file**: `config.config_file.value`, or `?` if missing
+   - **Source**: `config.source.value`
    - **Model**: strip the `LiquidAI/` prefix for brevity
-   - **Time (UTC)**: show only `HH:MM`
-   - **Config file**: value of `config.config_file.value`, or `?` if missing
-   - **Source**: value of `config.source.value`
-   - **Majority Class Baseline**: from `summaryMetrics.majority_class_accuracy`, formatted as a percentage with one decimal (e.g. `58.3%`), or `?` if missing
-   - **Accuracy**: formatted as a percentage with one decimal (e.g. `53.1%`)
-   - **Versus Baseline**: compute `accuracy - majority_class_accuracy` from `summaryMetrics`, format as a signed value with one decimal and `pp` suffix (e.g. `+6.1pp`, `-3.2pp`), or `?` if baseline is missing
-   - Sort by `createdAt` descending (newest first)
+   - **Baseline**: `summaryMetrics.majority_class_accuracy` as a percentage with one decimal (e.g. `58.3%`), or `?` if missing
+   - **Acc**: `summaryMetrics.accuracy` as a percentage with one decimal (e.g. `53.1%`)
+   - **Vs Baseline**: `accuracy - majority_class_accuracy`, formatted as a signed value with one decimal and `pp` suffix (e.g. `+6.1pp`, `-3.2pp`), or `?` if baseline is missing
+
+   Pad each cell with spaces so all columns are aligned. Separate every row (including header) with a `+---+` divider line. Sort by `createdAt` descending (newest first).
 
 6. After the table, print a one-line summary: total runs shown, time window, and sources included.
 
