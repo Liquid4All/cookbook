@@ -128,3 +128,12 @@ Benchmarks run automatically during training at every `eval_steps`:
 Each eval dataset can be limited (e.g., 500 samples) via the `limit` field in the YAML config for faster iteration.
 
 **Running a full standalone evaluation:** to evaluate on the complete dataset without retraining, use `configs/vrsbench_full_eval.yaml`. Set `eval_on_start: true`, remove the `limit` fields, and point the config at your checkpoint path. The model runs the full evaluation at step 0, logs results to WandB, and terminates.
+
+
+## AI in Space Hackathon
+
+<img src="./assets/hackathon_banner.jpeg" style="width: 70%; max-width: 70%; height: auto; display: inline-block; margin-bottom: 0.5em; margin-top: 0.5em;" alt="AI in Space Hackathon" />
+
+This example is the official starting point for the **AI in Space Hackathon**, a fully online event organised in partnership between [DPhi Space](https://github.com/DPhi-Space/SimSat) and Liquid AI, open to builders from all around the globe. Use this fine-tuning pipeline as your baseline and push it further with real satellite simulation data from SimSat.
+
+<a href="https://luma.com/n9cw58h0"><img src="https://img.shields.io/badge/Register%20for%20the%20Event-C026D3?style=for-the-badge" alt="Register for the Event" /></a>
