@@ -18,7 +18,6 @@ Install dependencies from the leap-finetune root:
 ```bash
 cd /path/to/leap-finetune
 uv sync
-pip install huggingface_hub tqdm   # for prepare_vrsbench.py only
 ```
 
 ## Common Commands
@@ -26,10 +25,10 @@ pip install huggingface_hub tqdm   # for prepare_vrsbench.py only
 **Prepare data** (run from `cookbook/examples/satellite-vlm/`):
 
 ```bash
-python prepare_vrsbench.py --task vqa           # single task (~12 GB download)
-python prepare_vrsbench.py --task all           # all tasks combined (multitask)
-python prepare_vrsbench.py --task vqa --limit 500  # quick test with 500 samples
-python prepare_vrsbench.py --task vqa --skip-download  # skip download if data exists
+uv run python prepare_vrsbench.py --task vqa           # single task (~12 GB download)
+uv run python prepare_vrsbench.py --task all           # all tasks combined (multitask)
+uv run python prepare_vrsbench.py --task vqa --limit 500  # quick test with 500 samples
+uv run python prepare_vrsbench.py --task vqa --skip-download  # skip download if data exists
 ```
 
 Output: `./data/vrsbench_{task}_train.jsonl` and `./data/vrsbench_{task}_eval.jsonl`

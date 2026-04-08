@@ -10,33 +10,43 @@ Supports three tasks:
 
 ## Quickstart
 
-    # 1. Install leap-finetune
-    cd /path/to/leap-finetune
+1. **Install and authenticate:** install Modal and the HuggingFace CLI, then authenticate with both. leap-finetune embeds the HuggingFace token into the Modal runtime so the fine-tuning job can pull models.
+
+    ```bash
     uv sync
+    uv run python -m modal setup
+    uv run huggingface-cli login
+    ```
 
-    # 2. Download VRSBench and prepare data (~12 GB download)
-    cd cookbook/satellite-vlm
-    pip install huggingface_hub tqdm
-    python prepare_vrsbench.py --task vqa
+2. **Download VRSBench and prepare data** (~12 GB, runs entirely in the cloud):
 
-    # 3. Train
-    cd ../..
-    uv run leap-finetune cookbook/satellite-vlm/configs/vrsbench_vqa.yaml
+    ```bash
+    uv run python prepare_vrsbench.py --task all --modal
+    ```
+
+3. **Clone leap-finetune and kick off fine-tuning** on an H100, checkpoints saved to the `satellite-vlm` Modal volume:
+
+    ```bash
+    git clone https://github.com/Liquid4All/leap-finetune/
+    cd leap-finetune
+    uv sync
+    uv run leap-finetune ../configs/vrsbench_multitask_modal.yaml
+    ```
 
 ## Preparing Data
 
 The `prepare_vrsbench.py` script downloads VRSBench from HuggingFace and converts it to JSONL format compatible with leap-finetune.
 
     # Single task
-    python prepare_vrsbench.py --task vqa
-    python prepare_vrsbench.py --task grounding
-    python prepare_vrsbench.py --task captioning
+    uv run python prepare_vrsbench.py --task vqa
+    uv run python prepare_vrsbench.py --task grounding
+    uv run python prepare_vrsbench.py --task captioning
 
     # All tasks combined (multi-task)
-    python prepare_vrsbench.py --task all
+    uv run python prepare_vrsbench.py --task all
 
     # Quick test with limited samples
-    python prepare_vrsbench.py --task vqa --limit 500
+    uv run python prepare_vrsbench.py --task vqa --limit 500
 
 Output files are written to `./data/`:
 - `vrsbench_{task}_train.jsonl` -- Training data
@@ -85,13 +95,12 @@ sequenceDiagram
 
 **One-time setup:**
 
-    pip install modal
-    modal setup            # authenticate with Modal
-    huggingface-cli login  # needed for model downloads during training
+    uv run python -m modal setup  # authenticate with Modal
+    huggingface-cli login          # needed for model downloads during training
 
 **Step 1: prepare data on Modal (~12 GB, runs entirely in the cloud):**
 
-    python prepare_vrsbench.py --task all --modal
+    uv run python prepare_vrsbench.py --task all --modal
 
 This downloads VRSBench and converts it inside a Modal container, writing everything to a Modal Volume named `satellite-vlm`. No large files touch your local machine.
 
