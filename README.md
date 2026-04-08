@@ -21,7 +21,7 @@
 - [Desktop Apps](#-desktop-apps)
 - [Browser Apps](#-browser-apps)
 - [Mobile Apps](#-mobile-apps) (Android / iOS)
-- [Fine-Tuning Notebooks](#-fine-tuning-notebooks)
+- [Fine-Tuning Examples](#-fine-tuning-examples)
 - [Third-Party Apps Powered by LFM](#third-party-apps-powered-by-lfm)
 - [Community Projects](#-community-projects)
 - [Technical Deep Dives](#-technical-deep-dives)
@@ -82,7 +82,7 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/ios/LeapVoiceAssistantDemo) |
 | Vision Assistant | Visual language model chat on iOS using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapVLMExample) |
 
-## 🎯 Fine-Tuning Notebooks
+## 🎯 Fine-Tuning Examples
 
 Colab notebooks and Python scripts for customizing LFM models with your own data.
 
@@ -99,6 +99,7 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
+| Satellite VLM Fine-Tuning | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
 
 ## Third-Party Apps Powered by LFM
 
