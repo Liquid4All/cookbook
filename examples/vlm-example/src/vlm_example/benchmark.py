@@ -71,24 +71,16 @@ def benchmark(config: BenchmarkConfig) -> BenchmarkReport:
         ],
     )
 
+    sources = [config.source] if isinstance(config.source, str) else config.source
+
     dataset = load_dataset(
         dataset_name=config.dataset,
         splits=[config.split],
-        n_samples=None,
+        sources=sources,
+        n_samples=config.n_samples,
         seed=config.seed,
         cache_dir="/datasets",
     )
-
-    if config.source is not None:
-        sources = [config.source] if isinstance(config.source, str) else config.source
-        print(f"Filtering dataset to sources: {sources}")
-        dataset = dataset.filter(lambda x: x["source"] in sources)
-        print(f"Filtered to {len(dataset)} samples")
-
-    if config.n_samples is not None:
-        n = min(config.n_samples, len(dataset))
-        dataset = dataset.select(range(n))
-        print(f"Selected {n} samples")
 
     if config.checkpoint_path is not None:
         full_checkpoint_path = str(Path("/model_checkpoints") / config.checkpoint_path)

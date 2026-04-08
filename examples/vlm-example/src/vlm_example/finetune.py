@@ -46,7 +46,7 @@ def create_collate_fn(processor):
 
 @app.function(
     image=image,
-    gpu="L40S",
+    gpu="H100",
     volumes={
         "/datasets": datasets_volume,
         "/models": models_volume,
@@ -75,9 +75,12 @@ def finetune(config: FineTuningConfig):
         model_id=config.model_name, cache_dir="/models"
     )
 
+    sources = [config.dataset_source] if isinstance(config.dataset_source, str) else config.dataset_source
+
     train_dataset_raw = load_dataset(
         dataset_name=config.dataset_name,
         splits=["train"],
+        sources=sources,
         n_samples=config.dataset_samples,
         seed=config.seed,
         cache_dir="/datasets",
@@ -85,16 +88,11 @@ def finetune(config: FineTuningConfig):
     eval_dataset_raw = load_dataset(
         dataset_name=config.dataset_name,
         splits=["test"],
+        sources=sources,
         n_samples=None,
         seed=config.seed,
         cache_dir="/datasets",
     )
-
-    if config.dataset_source is not None:
-        sources = [config.dataset_source] if isinstance(config.dataset_source, str) else config.dataset_source
-        print(f"Filtering datasets to sources: {sources}")
-        train_dataset_raw = train_dataset_raw.filter(lambda x: x["source"] in sources)
-        eval_dataset_raw = eval_dataset_raw.filter(lambda x: x["source"] in sources)
 
     print("Formatting datasets as conversations...")
     train_dataset = format_dataset_as_conversation(

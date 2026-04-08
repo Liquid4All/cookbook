@@ -1,7 +1,11 @@
 model_name: LiquidAI/LFM2.5-VL-450M-new-chat-template-3
 dataset_name: Paulescu/defect-detection
-dataset_source: GoodsAD
-prompt_override: Is there any defect in the object. Respond Yes or No.
+dataset_source: VisA
+prompt_override: >-
+  You are a quality control inspector. Examine this item image carefully
+  and determine whether it has any visible defects, including scratches,
+  cracks, missing components, discoloration, or surface damage. Respond
+  with only Yes or No.
 
 use_peft: true
 lora_r: 8
@@ -11,10 +15,7 @@ lora_target_modules:
   - q_proj
   - k_proj
   - v_proj
-  - o_proj
-  - gate_proj
-  - up_proj
-  - down_proj
+  - out_proj
 
 learning_rate: 5e-4
 num_train_epochs: 3

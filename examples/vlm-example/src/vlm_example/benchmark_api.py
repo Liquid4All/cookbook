@@ -40,24 +40,16 @@ def benchmark(config: ApiBenchmarkConfig) -> BenchmarkReport:
         ],
     )
 
+    sources = [config.source] if isinstance(config.source, str) else config.source
+
     dataset = load_dataset(
         dataset_name=config.dataset,
         splits=[config.split],
-        n_samples=None,
+        sources=sources,
+        n_samples=config.n_samples,
         seed=config.seed,
         cache_dir="./data",
     )
-
-    if config.source is not None:
-        sources = [config.source] if isinstance(config.source, str) else config.source
-        print(f"Filtering dataset to sources: {sources}")
-        dataset = dataset.filter(lambda x: x["source"] in sources)
-        print(f"Filtered to {len(dataset)} samples")
-
-    if config.n_samples is not None:
-        n = min(config.n_samples, len(dataset))
-        dataset = dataset.select(range(n))
-        print(f"Selected {n} samples")
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 

@@ -10,6 +10,7 @@ from transformers import AutoModelForImageTextToText, AutoProcessor
 def load_dataset(
     dataset_name: str,
     splits: list[str],
+    sources: list[str] | None = None,
     n_samples: int | None = None,
     seed: int | None = 42,
     cache_dir: str = "/datasets",
@@ -53,6 +54,12 @@ def load_dataset(
 
     print(f"Shuffling dataset with seed {seed}...")
     dataset = dataset.shuffle(seed=seed)
+
+    if sources is not None:
+        print(f"Filtering dataset to sources: {sources}")
+        indices = [i for i, s in enumerate(dataset["source"]) if s in sources]
+        dataset = dataset.select(indices)
+        print(f"Filtered to {len(dataset)} samples")
 
     if n_samples is not None:
         n_samples = min(n_samples, dataset.num_rows)
