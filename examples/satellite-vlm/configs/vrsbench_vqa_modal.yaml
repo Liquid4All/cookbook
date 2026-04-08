@@ -1,9 +1,9 @@
-project_name: "vrsbench-multitask"
+project_name: "vrsbench-vqa"
 model_name: "lfm2.5-VL-450M"
 training_type: "vlm_sft"
 
 dataset:
-  path: "/satellite-vlm/data/vrsbench/vrsbench_multitask_train.jsonl"
+  path: "/satellite-vlm/data/vrsbench/vrsbench_vqa_train.jsonl"
   type: "vlm_sft"
   test_size: 0.05
   image_root: "/satellite-vlm/data/vrsbench/images"
@@ -11,7 +11,7 @@ dataset:
 
 training_config:
   extends: "DEFAULT_VLM_SFT"
-  num_train_epochs: 1
+  num_train_epochs: 3
   per_device_train_batch_size: 2
   gradient_accumulation_steps: 8
   learning_rate: 2e-5
@@ -30,33 +30,13 @@ peft_config:
   use_peft: false
 
 benchmarks:
-  max_new_tokens: 256
+  max_new_tokens: 50
   image_root: "/satellite-vlm/data/vrsbench/images"
   benchmarks:
     - name: "vrsbench_vqa_eval"
       path: "/satellite-vlm/data/vrsbench/vrsbench_vqa_eval.jsonl"
       metric: "short_answer"
       max_new_tokens: 50
-      limit: 500
-
-    - name: "vrsbench_grounding_iou50"
-      path: "/satellite-vlm/data/vrsbench/vrsbench_grounding_eval.jsonl"
-      metric: "grounding_iou"
-      iou_threshold: 0.5
-      max_new_tokens: 256
-      limit: 500
-
-    - name: "vrsbench_grounding_iou25"
-      path: "/satellite-vlm/data/vrsbench/vrsbench_grounding_eval.jsonl"
-      metric: "grounding_iou"
-      iou_threshold: 0.25
-      max_new_tokens: 256
-      limit: 500
-
-    - name: "vrsbench_captioning_eval"
-      path: "/satellite-vlm/data/vrsbench/vrsbench_captioning_eval.jsonl"
-      metric: "bleu"
-      max_new_tokens: 200
       limit: 500
 
 modal:

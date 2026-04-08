@@ -1,16 +1,19 @@
-# Satellite Image VLM Fine-Tuning with VRSBench
+# Fine-Tune a Vision-Language Model on Satellite Imagery
 
-Fine-tune [LiquidAI/lfm2.5-VL-450M](https://huggingface.co/LiquidAI/lfm2.5-VL-450M) on satellite imagery tasks using [leap-finetune](../../README.md) and the [VRSBench](https://huggingface.co/datasets/xiang709/VRSBench) dataset (NeurIPS 2024).
+Fine-tune [LiquidAI/LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-450M) on satellite imagery tasks using
 
-Supports three tasks:
-- **VQA** -- Answer questions about satellite images (123K QA pairs)
-- **Visual Grounding** -- Detect and localize objects with bounding boxes (52K references)
-- **Captioning** -- Generate detailed descriptions of satellite scenes (29K captions)
+- [leap-finetune](https://github.com/Liquid4All/leap-finetune/): Liquid AI's fine-tuning framework for LFM models.
+- [Modal](https://modal.com): serverless GPU cloud for running data prep and training without managing infrastructure.
+- [VRSBench](https://huggingface.co/datasets/xiang709/VRSBench) dataset (NeurIPS 2024) which supports three tasks:
+    - **VQA**: answer questions about satellite images (123K QA pairs)
+    - **Visual Grounding**: detect and localize objects with bounding boxes (52K references)
+    - **Captioning**: generate detailed descriptions of satellite scenes (29K captions)
 
+<img src="./assets/demo.png" width="800" alt="Satellite imagery tasks: grounding, VQA, and captioning on an airport scene" />
 
 ## Quickstart
 
-1. **Install and authenticate:** install Modal and the HuggingFace CLI, then authenticate with both. leap-finetune embeds the HuggingFace token into the Modal runtime so the fine-tuning job can pull models.
+1. **Install and authenticate** (run from `cookbook/examples/satellite-vlm/`): [Modal](https://modal.com) provides serverless GPUs you pay for per second. New accounts include $30 of free credit, enough to run this example end to end. No local GPU required.
 
     ```bash
     uv sync
@@ -18,7 +21,7 @@ Supports three tasks:
     uv run huggingface-cli login
     ```
 
-2. **Download VRSBench and prepare data** (~12 GB): the download and conversion run inside a Modal container, and the resulting data is pushed to a Modal volume where the fine-tuning job will pick it up.
+2. **Prepare data** (~12 GB): the download and conversion run inside a Modal container, and the resulting data is pushed to a Modal volume where the fine-tuning job will pick it up.
 
     ```bash
     uv run python prepare_vrsbench.py --task all --modal
@@ -33,43 +36,14 @@ Supports three tasks:
     uv run leap-finetune ../configs/vrsbench_multitask_modal.yaml
     ```
 
-## Preparing Data
 
-The `prepare_vrsbench.py` script downloads VRSBench from HuggingFace and converts it to JSONL format compatible with leap-finetune.
+## How It Works
 
-    # Single task
-    uv run python prepare_vrsbench.py --task vqa
-    uv run python prepare_vrsbench.py --task grounding
-    uv run python prepare_vrsbench.py --task captioning
+All heavy computation runs in the cloud. The only things that run locally are the `prepare_vrsbench.py` launcher and the `leap-finetune` CLI, both of which just submit jobs and stream logs.
 
-    # All tasks combined (multi-task)
-    uv run python prepare_vrsbench.py --task all
-
-    # Quick test with limited samples
-    uv run python prepare_vrsbench.py --task vqa --limit 500
-
-Output files are written to `./data/`:
-- `vrsbench_{task}_train.jsonl` -- Training data
-- `vrsbench_{task}_eval.jsonl` -- Evaluation data
-
-## Training
-
-Each task has a pre-configured YAML:
-
-| Task | Config | Description |
-|------|--------|-------------|
-| VQA | `configs/vrsbench_vqa.yaml` | Visual question answering |
-| Grounding | `configs/vrsbench_grounding.yaml` | Object detection with bounding boxes |
-| Captioning | `configs/vrsbench_captioning.yaml` | Image description generation |
-| Multi-task | `configs/vrsbench_multitask.yaml` | All three tasks combined |
-
-    uv run leap-finetune cookbook/satellite-vlm/configs/vrsbench_vqa.yaml
-
-To enable experiment tracking, uncomment the `tracker` lines in the YAML config.
-
-## Running on Modal (no local GPU required)
-
-[Modal](https://modal.com) provides serverless GPUs you pay for per second. New accounts include $30 of free credit, which is enough to run this fine-tuning end to end.
+1. **Data prep (Modal CPU container):** `prepare_vrsbench.py --modal` spins up a Modal container, downloads VRSBench (~12 GB) from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `satellite-vlm`.
+2. **Training (Modal H100):** `leap-finetune` submits a training job that reads data from the same volume, fine-tunes the model, and saves checkpoints back to the volume.
+3. **Retrieval (local):** you pull the checkpoints from the volume to your local machine with `modal volume get`.
 
 ```mermaid
 sequenceDiagram
@@ -93,27 +67,41 @@ sequenceDiagram
     Vol-->>Local: model checkpoints
 ```
 
-**One-time setup:**
+## Data Preparation
 
-    uv run python -m modal setup  # authenticate with Modal
-    huggingface-cli login          # needed for model downloads during training
+`prepare_vrsbench.py` downloads VRSBench from HuggingFace and converts it to the JSONL format required by leap-finetune.
 
-**Step 1: prepare data on Modal (~12 GB, runs entirely in the cloud):**
+**Modal (recommended):** runs entirely in the cloud, writes directly to the `satellite-vlm` Modal volume:
 
     uv run python prepare_vrsbench.py --task all --modal
 
-This downloads VRSBench and converts it inside a Modal container, writing everything to a Modal Volume named `satellite-vlm`. No large files touch your local machine.
+**Local (for development):** single task or limited sample count for quick iteration:
 
-**Step 2: fine-tune on Modal:**
+    uv run python prepare_vrsbench.py --task vqa --limit 500
 
-    uv run leap-finetune cookbook/examples/satellite-vlm/configs/vrsbench_multitask_modal.yaml
+Output files (written to `./data/` locally, or to the Modal volume with `--modal`):
+- `vrsbench_{task}_train.jsonl`: training data
+- `vrsbench_{task}_eval.jsonl`: evaluation data
 
-The training job runs on an H100, streams logs to your terminal, and saves checkpoints to the same `satellite-vlm` volume under `/satellite-vlm/outputs/`.
 
-**Step 3: retrieve checkpoints:**
+## Training
+
+Run from the `leap-finetune` root (cloned in the Quickstart):
+
+    uv run leap-finetune ../configs/vrsbench_multitask_modal.yaml
+
+The job runs on an H100, streams logs to your terminal, and saves checkpoints to the `satellite-vlm` Modal volume under `/satellite-vlm/outputs/`.
+
+To enable experiment tracking, uncomment `tracker: "wandb"` in the config.
+
+
+## Retrieving Checkpoints
+
+List and download checkpoints from the Modal volume:
 
     modal volume ls satellite-vlm outputs/
     modal volume get satellite-vlm /satellite-vlm/outputs/<run-name> ./outputs
+
 
 ## Data Format
 
@@ -128,6 +116,7 @@ The grounding task uses JSON bounding box format with 0-1 normalized coordinates
 
 VQA and captioning use standard question-answer format with no special structure.
 
+
 ## Evaluation
 
 Benchmarks run automatically during training at every `eval_steps`:
@@ -138,4 +127,4 @@ Benchmarks run automatically during training at every `eval_steps`:
 
 Each eval dataset can be limited (e.g., 500 samples) via the `limit` field in the YAML config for faster iteration.
 
-**Running a full standalone evaluation:** To evaluate on the complete dataset without retraining, remove the `limit` fields, set `eval_on_start: true`, and use a very small training subset (e.g., `limit: 20` under `dataset`). The model will run the full evaluation at step 0, log results to WandB, and terminate.
+**Running a full standalone evaluation:** to evaluate on the complete dataset without retraining, use `configs/vrsbench_full_eval.yaml`. Set `eval_on_start: true`, remove the `limit` fields, and point the config at your checkpoint path. The model runs the full evaluation at step 0, logs results to WandB, and terminates.
