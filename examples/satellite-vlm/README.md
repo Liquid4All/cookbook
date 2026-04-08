@@ -18,7 +18,7 @@ Supports three tasks:
     uv run huggingface-cli login
     ```
 
-2. **Download VRSBench and prepare data** (~12 GB, runs entirely in the cloud):
+2. **Download VRSBench and prepare data** (~12 GB): the download and conversion run inside a Modal container, and the resulting data is pushed to a Modal volume where the fine-tuning job will pick it up.
 
     ```bash
     uv run python prepare_vrsbench.py --task all --modal

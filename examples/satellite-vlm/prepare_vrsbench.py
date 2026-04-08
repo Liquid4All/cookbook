@@ -403,6 +403,7 @@ def _run_on_modal(args: argparse.Namespace) -> None:
         image=image,
         volumes={MODAL_MOUNT_POINT: volume},
         timeout=3600,
+        serialized=True,
     )
     def prepare(task: str, limit: int | None, skip_download: bool) -> None:
         import subprocess
