@@ -4,6 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.50.0",
+    "openai>=1.0",
     "pillow>=10.0",
     "requests>=2.32",
     "python-dotenv>=1.0",
