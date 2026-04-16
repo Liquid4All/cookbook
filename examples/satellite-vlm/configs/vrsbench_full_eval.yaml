@@ -1,0 +1,54 @@
+project_name: "vrsbench-full-eval"
+model_name: "path/to/your/checkpoint"  # update to your fine-tuned checkpoint
+training_type: "vlm_sft"
+
+dataset:
+  path: "./data/vrsbench_multitask_train.jsonl"
+  type: "vlm_sft"
+  test_size: 0.1
+  image_root: "./data/vrsbench/images"
+  limit: 200
+
+training_config:
+  extends: "DEFAULT_VLM_SFT"
+  num_train_epochs: 1
+  per_device_train_batch_size: 1
+  eval_on_start: true
+  eval_strategy: "steps"
+  eval_steps: 999999
+  save_strategy: "no"
+  logging_steps: 10
+
+peft_config:
+  use_peft: false
+
+benchmarks:
+  max_new_tokens: 256
+  image_root: "./data/vrsbench/images"
+  benchmarks:
+    - name: "vrsbench_vqa_full"
+      path: "./data/vrsbench_vqa_eval.jsonl"
+      metric: "short_answer"
+      max_new_tokens: 50
+
+    - name: "vrsbench_grounding_iou50_full"
+      path: "./data/vrsbench_grounding_eval.jsonl"
+      metric: "grounding_iou"
+      iou_threshold: 0.5
+      max_new_tokens: 256
+
+    - name: "vrsbench_grounding_iou25_full"
+      path: "./data/vrsbench_grounding_eval.jsonl"
+      metric: "grounding_iou"
+      iou_threshold: 0.25
+      max_new_tokens: 256
+
+    - name: "vrsbench_captioning_bleu_full"
+      path: "./data/vrsbench_captioning_eval.jsonl"
+      metric: "bleu"
+      max_new_tokens: 200
+
+    - name: "vrsbench_captioning_rouge_full"
+      path: "./data/vrsbench_captioning_eval.jsonl"
+      metric: "rouge_l"
+      max_new_tokens: 200

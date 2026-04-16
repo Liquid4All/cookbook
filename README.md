@@ -21,7 +21,7 @@
 - [Desktop Apps](#-desktop-apps)
 - [Browser Apps](#-browser-apps)
 - [Mobile Apps](#-mobile-apps) (Android / iOS)
-- [Fine-Tuning Notebooks](#-fine-tuning-notebooks)
+- [Fine-Tuning Examples](#-fine-tuning-examples)
 - [Third-Party Apps Powered by LFM](#third-party-apps-powered-by-lfm)
 - [Community Projects](#-community-projects)
 - [Technical Deep Dives](#-technical-deep-dives)
@@ -39,7 +39,9 @@ Python and CLI applications for running LFM models on your laptop or desktop mac
 | Flight Search Assistant | Find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling | [Code](./examples/flight-search-assistant/README.md) |
 | Audio Car Cockpit | Voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B with LFM2-1.2B-Tool | [Code](./examples/audio-car-cockpit/README.md) |
 | LocalCowork | On-device AI agent for file ops, security scanning, OCR, and more, powered by LFM2-24B-A2B | [Code](./examples/localcowork/README.md) |
-| Discord Moderator | Use LFM2.5-1.2b to check messages that exceed a predetermined character limit for suspicious content. | [Code](https://github.com/badluma/liquid-mod) |
+| Home Assistant | Local home assistant with tool calling, benchmarking, and fine-tuning pipeline using LFM2-350M and LFM2.5-1.2B | [Code](./examples/home-assistant/README.md) |
+| Voice Assistant for Mac | On-device voice assistant for Apple Silicon Macs using LFM2.5-Audio-1.5B and the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/macos/LeapVoiceAssistantDemo) |
+| Vision Assistant for Mac | On-device visual language model chat for Apple Silicon Macs using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/macOS/LeapVLMExample/LeapVLMExample) |
 
 ## 🌐 Browser Apps
 
@@ -52,6 +54,7 @@ Zero-install applications running LFM models directly in the browser via WebGPU 
 | Live Video Captioning | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2-VL-WebGPU) |
 | Chain-of-Thought Reasoning | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Code](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU/tree/main) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
 | Hand & Voice Racer | Browser driving game controlled by hand gestures (MediaPipe) and voice commands (LFM2.5-Audio-1.5B), running fully local | [Code](./examples/hand-voice-racer/README.md) |
+| LEAP Voice Assistant | On-device voice assistant running in the browser via WebAssembly using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/web) |
 
 ## 📱 Mobile Apps
 
@@ -62,7 +65,7 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | Name | Description | Link |
 |------|-------------|------|
 | LeapChat | Chat app with real-time streaming, persistent history, and modern UI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
-| LeapAudioDemo | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapAudioDemo) |
+| Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/android) |
 | LeapKoogAgent | Integration with Koog framework for AI agent functionality | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapKoogAgent) |
 | SloganApp | Single turn marketing slogan generation with Android Views | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/SloganApp) |
 | ShareAI | Website summary generator | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
@@ -76,9 +79,10 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | LeapChat | Chat app with real-time streaming, conversation management, and SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
 | LeapSloganExample | Basic LeapSDK integration for text generation in SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapSloganExample) |
 | Recipe Generator | Structured output generation | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
-| Audio Demo | Audio input/output with LeapSDK for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) |
+| Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/ios/LeapVoiceAssistantDemo) |
+| Vision Assistant | Visual language model chat on iOS using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapVLMExample) |
 
-## 🎯 Fine-Tuning Notebooks
+## 🎯 Fine-Tuning Examples
 
 Colab notebooks and Python scripts for customizing LFM models with your own data.
 
@@ -95,6 +99,7 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
+| Satellite VLM Fine-Tuning | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
 
 ## Third-Party Apps Powered by LFM
 
@@ -138,6 +143,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
 | grosme | CLI grocery assistant that reads Apple Notes lists and finds Walmart product matches using LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
 | Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
+| Discord Moderator | Use LFM2.5-1.2B to check messages that exceed a predetermined character limit for suspicious content | [Code](https://github.com/badluma/liquid-mod) |
 
 ## 🕐 Technical Deep Dives
 

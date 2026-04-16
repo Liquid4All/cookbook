@@ -1,0 +1,31 @@
+model_name: LiquidAI/LFM2.5-VL-450M-new-chat-template-3
+dataset_name: Paulescu/defect-detection
+dataset_source: VisA
+prompt_override: >-
+  You are a quality control inspector. Examine this item image carefully
+  and determine whether it has any visible defects, including scratches,
+  cracks, missing components, discoloration, or surface damage. Respond
+  with only Yes or No.
+
+use_peft: true
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - out_proj
+
+learning_rate: 5e-4
+num_train_epochs: 3
+batch_size: 1
+gradient_accumulation_steps: 16
+optim: adamw_8bit
+warmup_ratio: 0.1
+weight_decay: 0.01
+logging_steps: 10
+eval_steps: 100
+
+wandb_project_name: defect-detection-finetuning
+modal_app_name: defect-detection-finetune

@@ -1,0 +1,62 @@
+project_name: "vrsbench-multitask"
+model_name: "lfm2.5-VL-450M"
+training_type: "vlm_sft"
+
+dataset:
+  path: "./data/vrsbench_multitask_train.jsonl"
+  type: "vlm_sft"
+  test_size: 0.05
+  image_root: "./data/vrsbench/images"
+  # limit: 3000  # uncomment for quick testing
+
+training_config:
+  extends: "DEFAULT_VLM_SFT"
+  num_train_epochs: 3
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 8
+  learning_rate: 2e-5
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  eval_on_start: true
+  eval_strategy: "steps"
+  eval_steps: 1000
+  save_strategy: "steps"
+  save_steps: 1000
+  logging_steps: 20
+  # tracker: "wandb"  # uncomment to enable experiment tracking
+
+peft_config:
+  extends: "DEFAULT_VLM_LORA"
+  use_peft: false
+  # r: 16
+  # lora_alpha: 32
+
+benchmarks:
+  max_new_tokens: 256
+  image_root: "./data/vrsbench/images"
+  benchmarks:
+    - name: "vrsbench_vqa_eval"
+      path: "./data/vrsbench_vqa_eval.jsonl"
+      metric: "short_answer"
+      max_new_tokens: 50
+      limit: 500
+
+    - name: "vrsbench_grounding_iou50"
+      path: "./data/vrsbench_grounding_eval.jsonl"
+      metric: "grounding_iou"
+      iou_threshold: 0.5
+      max_new_tokens: 256
+      limit: 500
+
+    - name: "vrsbench_grounding_iou25"
+      path: "./data/vrsbench_grounding_eval.jsonl"
+      metric: "grounding_iou"
+      iou_threshold: 0.25
+      max_new_tokens: 256
+      limit: 500
+
+    - name: "vrsbench_captioning_eval"
+      path: "./data/vrsbench_captioning_eval.jsonl"
+      metric: "bleu"
+      max_new_tokens: 200
+      limit: 500

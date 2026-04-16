@@ -1,0 +1,9 @@
+[project]
+name = "satellite-vlm"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "huggingface_hub",
+    "modal",
+    "tqdm",
+]

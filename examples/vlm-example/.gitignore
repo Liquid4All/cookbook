@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+CLAUDE.md
+data_visualization.html
+.devlog/
+.claude/commands/

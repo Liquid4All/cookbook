@@ -1,0 +1,12 @@
+model: LiquidAI/LFM2.5-VL-450M-new-chat-template-3
+checkpoint_path: LFM2.5-VL-450M-new-chat-template-3-defect-detection-20260406-163506/checkpoint-200
+dataset: Paulescu/defect-detection
+split: test
+n_samples: 100
+wandb_project_name: defect-detection-benchmark
+source: VisA
+prompt_override: >-
+  You are a quality control inspector. Examine this item image carefully
+  and determine whether it has any visible defects, including scratches,
+  cracks, missing components, discoloration, or surface damage. Respond
+  with only Yes or No.
