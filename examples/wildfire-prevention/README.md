@@ -1,5 +1,14 @@
 # Let's build a wildfire prevention system
 
+## Table of contents
+
+- [Goal](#goal)
+- [Problem framing](#problem-framing)
+- [Generate sample data](#generate-sample-data)
+- [Evaluate](#evaluate)
+
+---
+
 In this example you will learn how to
 
 - frame the problem
