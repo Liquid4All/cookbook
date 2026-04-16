@@ -5,29 +5,40 @@ Each run creates a timestamped folder under data/, e.g.:
     data/20260416_143052/angeles_nf_ca/swir.png
     data/20260416_143052/angeles_nf_ca/annotation.json
 
+When --hf-dataset is passed the run directory is also pushed to Hugging Face Hub
+as a dataset in leap-finetune VLM SFT format:
+    images/{loc_id}_rgb.png
+    images/{loc_id}_swir.png
+    train.jsonl
+
 Usage:
     uv run scripts/generate_samples.py
     uv run scripts/generate_samples.py --size-km 5.0
     uv run scripts/generate_samples.py --concurrency 5
     uv run scripts/generate_samples.py --dry-run
     uv run scripts/generate_samples.py --location angeles_nf_ca
+    uv run scripts/generate_samples.py --hf-dataset username/wildfire-risk
 """
 
 import argparse
 import json
+import shutil
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
+from typing import TypeAlias
 
 import requests
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from wildfire_prevention.annotator import annotate
+from wildfire_prevention.annotator import SYSTEM_PROMPT, USER_TEXT, annotate
 from wildfire_prevention.locations import LOCATIONS, Location
 from wildfire_prevention.simsat import fetch_rgb, fetch_swir
+
+AnnotationResult: TypeAlias = dict[str, object]
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -49,7 +60,9 @@ def _annotate_with_retry(rgb_bytes: bytes, swir_bytes: bytes) -> dict[str, objec
     return annotate(rgb_bytes, swir_bytes)
 
 
-def process_location(loc: Location, run_dir: Path, size_km: float, dry_run: bool) -> None:
+def process_location(
+    loc: Location, run_dir: Path, size_km: float, dry_run: bool
+) -> AnnotationResult | None:
     sample_dir = run_dir / loc.id
     sample_dir.mkdir(parents=True, exist_ok=True)
 
@@ -63,21 +76,21 @@ def process_location(loc: Location, run_dir: Path, size_km: float, dry_run: bool
             swir_bytes = swir_future.result()
     except requests.HTTPError as exc:
         print(f"[{loc.id}] SKIP: SimSat returned {exc.response.status_code}")
-        return
+        return None
 
     (sample_dir / "rgb.png").write_bytes(rgb_bytes)
     (sample_dir / "swir.png").write_bytes(swir_bytes)
 
     if dry_run:
         print(f"[{loc.id}] dry-run: images saved, skipping annotation")
-        return
+        return None
 
     print(f"[{loc.id}] annotating ...", flush=True)
     try:
         result = _annotate_with_retry(rgb_bytes, swir_bytes)
     except ValueError as exc:
         print(f"[{loc.id}] ERROR: {exc}")
-        return
+        return None
 
     annotation = {
         "id": loc.id,
@@ -91,6 +104,77 @@ def process_location(loc: Location, run_dir: Path, size_km: float, dry_run: bool
         json.dumps(annotation, indent=2), encoding="utf-8"
     )
     print(f"[{loc.id}] done — risk_level: {result.get('risk_level', '?')}", flush=True)
+    return annotation
+
+
+def push_to_hf(
+    run_dir: Path,
+    results: list[AnnotationResult],
+    dataset_name: str,
+) -> None:
+    """Build a leap-finetune VLM SFT dataset and push it to Hugging Face Hub.
+
+    Creates two artifacts inside run_dir:
+      images/{loc_id}_rgb.png, images/{loc_id}_swir.png
+      train.jsonl  (one JSON object per line in leap-finetune messages format)
+
+    Then uploads the run_dir folder to the given HF dataset repo.
+    Auth is handled via the HF_TOKEN environment variable.
+    """
+    from huggingface_hub import HfApi
+
+    images_dir = run_dir / "images"
+    images_dir.mkdir(exist_ok=True)
+
+    rows: list[str] = []
+    for ann in results:
+        loc_id = str(ann["id"])
+        loc_dir = run_dir / loc_id
+
+        rgb_name = f"{loc_id}_rgb.png"
+        swir_name = f"{loc_id}_swir.png"
+        shutil.copy2(loc_dir / "rgb.png", images_dir / rgb_name)
+        shutil.copy2(loc_dir / "swir.png", images_dir / swir_name)
+
+        model_output = {
+            k: ann[k]
+            for k in (
+                "risk_level",
+                "dry_vegetation_present",
+                "urban_interface",
+                "steep_terrain",
+                "water_body_present",
+                "image_quality_limited",
+            )
+        }
+        row = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "image": rgb_name},
+                        {"type": "image", "image": swir_name},
+                        {"type": "text", "text": f"{SYSTEM_PROMPT.strip()}\n\n{USER_TEXT}"},
+                    ],
+                },
+                {
+                    "role": "assistant",
+                    "content": [{"type": "text", "text": json.dumps(model_output)}],
+                },
+            ]
+        }
+        rows.append(json.dumps(row))
+
+    (run_dir / "train.jsonl").write_text("\n".join(rows), encoding="utf-8")
+
+    api = HfApi()
+    api.create_repo(repo_id=dataset_name, repo_type="dataset", exist_ok=True)
+    api.upload_folder(
+        folder_path=str(run_dir),
+        repo_id=dataset_name,
+        repo_type="dataset",
+    )
+    print(f"Dataset pushed to https://huggingface.co/datasets/{dataset_name}")
 
 
 def main() -> None:
@@ -119,6 +203,15 @@ def main() -> None:
         metavar="ID",
         help="Process a single location by its id (e.g. angeles_nf_ca).",
     )
+    parser.add_argument(
+        "--hf-dataset",
+        metavar="REPO",
+        default=None,
+        help=(
+            "Hugging Face dataset repo to push results to, e.g. username/wildfire-risk. "
+            "Requires HF_TOKEN env var. Skipped if not provided."
+        ),
+    )
     args = parser.parse_args()
 
     locations = LOCATIONS
@@ -137,6 +230,7 @@ def main() -> None:
         f"  |  locations: {len(locations)}  |  concurrency: {args.concurrency}"
     )
 
+    annotations: list[AnnotationResult] = []
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
         futures = {
             pool.submit(process_location, loc, run_dir, args.size_km, args.dry_run): loc
@@ -147,6 +241,17 @@ def main() -> None:
             if exc:
                 loc = futures[future]
                 print(f"[{loc.id}] UNEXPECTED ERROR: {exc}")
+            else:
+                result = future.result()
+                if result is not None:
+                    annotations.append(result)
+
+    if args.hf_dataset:
+        if not annotations:
+            print("No annotations produced; skipping Hugging Face push.")
+        else:
+            print(f"Pushing {len(annotations)} samples to {args.hf_dataset} ...")
+            push_to_hf(run_dir, annotations, args.hf_dataset)
 
 
 if __name__ == "__main__":
