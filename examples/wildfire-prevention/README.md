@@ -1,4 +1,4 @@
-# Let's build an wildfire prevention system
+# Let's build a wildfire prevention system
 
 In this example you will learn how to
 
@@ -56,15 +56,7 @@ The boolean schema is intentionally simple: each flag is a direct, observable bi
 
 Images are fetched via [SimSat](https://github.com/DPhi-Space/SimSat), a local Docker service that wraps the Sentinel-2 STAC catalog on AWS Element84.
 
-The `SimSat` service exposes 2 endpoints;
-
-1. live data (`GET /data/current/image/sentinel`). This data is not actually "live", but simulated as if it were live. `SimSat` simulates the actual orbital position of the satellite at the current time, then queries the Sentinel-2 L2A STAC catalog for the most recent acquisition within a 10-day lookback window over that ground position. So "live" means: the newest real Sentinel-2 image captured in the last 10 days at the satellite's simulated current location.
-
-2. historical data (`GET /data/image/sentinel`). This data is the actual historical data fetched from the Sentinel-2 STAC database.
-
 Images are fetched at 5 km tiles (`--size-km 5.0`), which keeps images at or below 512x512 px — the native resolution of LFM2.5-VL-450M — avoiding tiling overhead at inference time.
-
-To generate sample data, first start the `SimSat` service:
 
 ```bash
 # 1. Start SimSat (from the SimSat repo root, keep it running in a separate terminal)
@@ -76,8 +68,8 @@ uv sync
 # 3. Set your Anthropic API key
 export ANTHROPIC_API_KEY=sk-...
 
-# 4. Generate sample images and Opus 4.6 annotations
-uv run scripts/generate_samples.py --size-km 5.0
+# 4. Generate sample images and Opus 4.6 annotations (22 locations, 3 parallel workers)
+uv run scripts/generate_samples.py --size-km 5.0 --concurrency 3
 ```
 
 Each run creates a timestamped folder under `data/`, e.g.:
@@ -100,8 +92,45 @@ uv run scripts/check_samples.py                  # most recent run
 uv run scripts/check_samples.py 20260416_143052  # specific run
 ```
 
+## Evaluate
+
+The evaluation pipeline runs a model against a generated dataset and measures how closely its predictions match the Opus-generated ground truth annotations.
+
+```bash
+# Anthropic backend (checks Opus self-consistency)
+uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic
+
+# Local backend via llama-server (requires llama.cpp on PATH)
+uv run scripts/evaluate.py \
+  --dataset data/20260416_141946 \
+  --backend local \
+  --model LiquidAI/LFM2.5-VL-450M-GGUF \
+  --quant Q8_0
+```
+
+Each run saves a report to `evals/{timestamp}/report.md`.
+
+### Results
+
+Evaluated on 22 locations (`data/20260416_141946`), ground truth from `claude-opus-4-6`.
+
+| field | claude-opus-4-6 | LFM2.5-VL-1.6B Q8_0 | LFM2.5-VL-450M Q8_0 |
+|---|---|---|---|
+| valid_json | 1.00 | 1.00 | 1.00 |
+| fields_present | 1.00 | 1.00 | 1.00 |
+| risk_level | 0.95 | 0.18 | 0.18 |
+| dry_vegetation_present | 0.95 | 0.73 | 0.73 |
+| urban_interface | 1.00 | 0.73 | 0.45 |
+| steep_terrain | 1.00 | 0.73 | 0.59 |
+| water_body_present | 1.00 | 0.73 | 0.77 |
+| image_quality_limited | 1.00 | 0.68 | 0.18 |
+| **overall** | **0.97** | **0.63** | **0.48** |
+| **avg latency (s)** | **2.89** | **2.07** | **0.71** |
+
+Opus at 0.97 confirms the ground truth labels are highly reproducible. Both LFM models produce valid, well-structured JSON (1.00) but struggle with `risk_level` and `image_quality_limited`, which are the primary targets for fine-tuning. The 1.6B model improves meaningfully over 450M (0.63 vs 0.48) at ~3x higher latency.
+
 ## Tasks
 
 - [x] Clearly define the problem we are solving
-- [ ] Generate a sample of images using some location/time that makes sense and check output produced by Opus 4.6. I want to check a frontier model produces sensible outputs, so I can use it to generate distillation data for my VLM.
-
+- [x] Generate a sample of images and check output produced by Opus 4.6
+- [ ] Fine-tune LFM2.5-VL-450M to boost performance
