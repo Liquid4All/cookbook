@@ -4,6 +4,7 @@
 
 - [Goal](#goal)
 - [Problem framing](#problem-framing)
+- [Proof of concept](#proof-of-concept)
 - [Generate sample data](#generate-sample-data)
 - [Evaluate](#evaluate)
 
@@ -60,6 +61,52 @@ A compact JSON object with one categorical field and five boolean flags:
 ```
 
 The boolean schema is intentionally simple: each flag is a direct, observable binary signal from the images, making model evaluation straightforward.
+
+## Proof of concept
+
+`predict.py` is a continuous watch loop. It polls the current satellite position from SimSat, fetches RGB and SWIR images, runs inference, and saves each prediction to a local SQLite database. As the simulated satellite moves, predictions accumulate and cover progressively more of the Earth's surface.
+
+**Before running `predict.py`, start the SimSat orbit simulation:**
+
+1. Open the SimSat dashboard at [http://localhost:8000](http://localhost:8000)
+2. Click **Start** to begin the satellite orbit simulation
+3. Verify the satellite position is moving (the `/data/current/position` endpoint should return coordinates other than `(0.0, 0.0)`)
+
+Without this step, SimSat returns a static position at `(0.0, 0.0)` (ocean, no Sentinel coverage) and `predict.py` will loop without producing any predictions.
+
+```bash
+# Watch loop with the Anthropic backend (runs until Ctrl+C)
+uv run scripts/predict.py --backend anthropic
+
+# Watch loop with a local model
+uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0
+
+# Tune the poll interval and minimum distance between tiles
+uv run scripts/predict.py --backend anthropic --interval 10 --min-distance-km 3
+```
+
+The satellite position is re-checked every `--interval` seconds (default: 30). A new prediction is only triggered when the satellite has moved at least `--min-distance-km` from the last processed tile (default: same as `--size-km`), avoiding redundant inference over the same ground.
+
+To seed the database with historical predictions before starting the watch loop:
+
+```bash
+# All 22 locations, last 7 days
+uv run scripts/backfill.py --backend anthropic --days 7
+
+# Specific locations only
+uv run scripts/backfill.py --backend anthropic --days 14 --locations angeles_nf_ca,napa_valley_ca
+
+# Local model with parallel workers
+uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 7 --concurrency 3
+```
+
+Once the database has predictions, launch the Streamlit app to explore them on a map:
+
+```bash
+uv run streamlit run app/app.py
+```
+
+The app renders each tile's RGB image at its geographic bounding box with a colored dot for the predicted risk level (green/orange/red). Enable "Auto-refresh" in the sidebar to have the map update automatically as `predict.py` writes new rows to the database.
 
 ## Generate sample data
 
