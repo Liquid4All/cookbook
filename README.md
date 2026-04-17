@@ -143,6 +143,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | grosme | CLI grocery assistant that reads Apple Notes lists and finds Walmart product matches using LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
 | Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
 | Discord Moderator | Use LFM2.5-1.2B to check messages that exceed a predetermined character limit for suspicious content | [Code](https://github.com/badluma/liquid-mod) |
+| LFM2-2.6B Mr. Tic Tac Toe | Use Reinforcement Learning to transform LFM2-2.6B into a Tic Tac Toe master and learn more about RL Environments | [Code](https://github.com/anakin87/llm-rl-environments-lil-course) |
 
 ## 🕐 Technical Deep Dives
 
