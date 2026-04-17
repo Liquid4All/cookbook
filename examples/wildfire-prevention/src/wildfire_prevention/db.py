@@ -26,9 +26,14 @@ def init_db(path: Path) -> sqlite3.Connection:
             water_body_present      INTEGER,
             image_quality_limited   INTEGER,
             model       TEXT    NOT NULL,
-            created_at  TEXT    NOT NULL
+            created_at  TEXT    NOT NULL,
+            region_id   TEXT
         )
     """)
+    # Safe migration for databases created before region_id was added.
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(predictions)")}
+    if "region_id" not in existing_cols:
+        conn.execute("ALTER TABLE predictions ADD COLUMN region_id TEXT")
     conn.commit()
     return conn
 
@@ -44,6 +49,7 @@ def insert_prediction(
     swir_path: str | None,
     prediction: dict[str, object],
     model: str,
+    region_id: str | None = None,
 ) -> int:
     """Insert a prediction row and return the new row id."""
     created_at = datetime.now(timezone.utc).isoformat()
@@ -54,8 +60,8 @@ def insert_prediction(
             rgb_path, swir_path,
             risk_level, dry_vegetation_present, urban_interface,
             steep_terrain, water_body_present, image_quality_limited,
-            model, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            model, created_at, region_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             lon, lat, timestamp, size_km, source,
@@ -68,6 +74,7 @@ def insert_prediction(
             int(bool(prediction.get("image_quality_limited"))),
             model,
             created_at,
+            region_id,
         ),
     )
     conn.commit()

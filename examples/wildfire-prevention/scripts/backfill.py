@@ -1,13 +1,16 @@
-"""One-shot backfill: run predictions for all locations over the last N days.
+"""One-shot backfill: run predictions for every tile in a region over the last N days.
 
-Fetches historical Sentinel-2 images from SimSat for each location in LOCATIONS
-and each day in the requested range, runs inference, and saves everything to the DB.
-Use this to seed the database before starting the continuous watch loop.
+Fetches historical Sentinel-2 images from SimSat for each tile in the region's
+grid and each day in the requested range, runs inference, and saves everything
+to the DB. Use this to seed the database before starting the live watch loop,
+or to build a seasonal time-series for a region.
 
 Usage:
-    uv run scripts/backfill.py --backend anthropic --days 7
-    uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 14
-    uv run scripts/backfill.py --backend anthropic --days 7 --locations angeles_nf_ca,napa_valley_ca
+    uv run scripts/backfill.py --backend anthropic --days 7 --region collserola
+    uv run scripts/backfill.py --backend anthropic --days 90 --region garraf
+    uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 7 --region montseny
+
+Available regions: collserola, garraf, montseny, donana, sierra_nevada
 """
 
 import argparse
@@ -20,7 +23,6 @@ from pathlib import Path
 
 import requests
 
-
 from wildfire_prevention.db import init_db, insert_prediction
 from wildfire_prevention.evaluator import (
     PredictFn,
@@ -31,7 +33,7 @@ from wildfire_prevention.evaluator import (
     stop_server,
     wait_for_server,
 )
-from wildfire_prevention.locations import LOCATIONS
+from wildfire_prevention.regions import REGIONS, generate_tile_grid
 from wildfire_prevention.simsat import fetch_rgb, fetch_swir
 
 DB_PATH = Path(__file__).parent.parent / "wildfire.db"
@@ -74,30 +76,23 @@ def _start_server_if_needed(
 def run_backfill(args: argparse.Namespace, predict: PredictFn, mname: str) -> None:
     conn = init_db(DB_PATH)
 
+    region = REGIONS[args.region]
+    tiles = generate_tile_grid(region, args.size_km)
+
     today = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
     dates = [today - timedelta(days=d) for d in range(args.days)]
 
-    locations = LOCATIONS
-    if args.locations:
-        ids = set(args.locations.split(","))
-        locations = [loc for loc in LOCATIONS if loc.id in ids]
-        unknown = ids - {loc.id for loc in locations}
-        if unknown:
-            print(f"Unknown location ids: {', '.join(sorted(unknown))}")
-            sys.exit(1)
-
     tasks: list[tuple[float, float, str, str]] = [
-        (loc.lon, loc.lat, ts.isoformat(), loc.id)
-        for loc in locations
+        (lon, lat, ts.isoformat(), f"{region.id}_{lon:.3f}_{lat:.3f}")
+        for lon, lat in tiles
         for ts in dates
     ]
     print(
-        f"Backfill: {len(locations)} locations x {args.days} days"
-        f" = {len(tasks)} tasks  |  backend: {args.backend}"
-        f"  |  concurrency: {args.concurrency}"
+        f"Backfill: region={region.id}  tiles={len(tiles)}  days={args.days}"
+        f"  tasks={len(tasks)}  backend={args.backend}  concurrency={args.concurrency}"
     )
 
-    def _process(lon: float, lat: float, timestamp: str, loc_id: str) -> str:
+    def _process(lon: float, lat: float, timestamp: str, tile_id: str) -> str:
         try:
             with ThreadPoolExecutor(max_workers=2) as pool:
                 rgb_f = pool.submit(fetch_rgb, lon, lat, timestamp, args.size_km)
@@ -110,9 +105,10 @@ def run_backfill(args: argparse.Namespace, predict: PredictFn, mname: str) -> No
         prediction = predict(rgb_bytes, swir_bytes)
         row_id = insert_prediction(
             conn, lon, lat, timestamp, args.size_km,
-            source="historical",
+            source="backfill",
             rgb_path=None, swir_path=None,
             prediction=prediction, model=mname,
+            region_id=region.id,
         )
         rgb_path, swir_path = _save_images(row_id, rgb_bytes, swir_bytes)
         conn.execute(
@@ -124,29 +120,36 @@ def run_backfill(args: argparse.Namespace, predict: PredictFn, mname: str) -> No
 
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
         futures = {
-            pool.submit(_process, lon, lat, ts, loc_id): (loc_id, ts[:10])
-            for lon, lat, ts, loc_id in tasks
+            pool.submit(_process, lon, lat, ts, tile_id): (tile_id, ts[:10])
+            for lon, lat, ts, tile_id in tasks
         }
         for future in as_completed(futures):
-            loc_id, date = futures[future]
+            tile_id, date = futures[future]
             try:
                 status = future.result()
             except Exception as exc:
                 status = f"ERROR: {exc}"
-            print(f"[{loc_id} {date}] {status}", flush=True)
+            print(f"[{tile_id} {date}] {status}", flush=True)
 
     print("Backfill complete.")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Seed the DB with historical predictions for all locations."
+        description="Seed the DB with historical predictions for all tiles in a region."
     )
     parser.add_argument(
         "--backend",
         required=True,
         choices=["anthropic", "local"],
         help="Inference backend.",
+    )
+    parser.add_argument(
+        "--region",
+        required=True,
+        choices=list(REGIONS),
+        metavar="REGION",
+        help=f"Region to backfill. Available: {', '.join(REGIONS)}.",
     )
     parser.add_argument(
         "--model",
@@ -177,7 +180,7 @@ def main() -> None:
         "--days",
         type=int,
         default=7,
-        help="Number of past days to cover per location (default: 7).",
+        help="Number of past days to cover per tile (default: 7).",
     )
     parser.add_argument(
         "--concurrency",
@@ -185,12 +188,6 @@ def main() -> None:
         default=3,
         metavar="N",
         help="Parallel workers (default: 3).",
-    )
-    parser.add_argument(
-        "--locations",
-        metavar="ID,...",
-        default=None,
-        help="Comma-separated location ids to backfill (default: all 22 locations).",
     )
     args = parser.parse_args()
 

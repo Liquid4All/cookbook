@@ -4,7 +4,7 @@
 
 - [Goal](#goal)
 - [Problem framing](#problem-framing)
-- [Proof of concept](#proof-of-concept)
+- [System design](#system-design)
 - [Generate sample data](#generate-sample-data)
 - [Evaluate](#evaluate)
 
@@ -29,13 +29,13 @@ The output this VLM produces does not need to be very complex. This is a demo, n
 
 ## Problem framing
 
-**What do we want our VLM to detect?**
-
 We want the VLM to assess the **wildfire risk level** of a land tile based on scene-level understanding. Specifically, it should identify:
 - Whether dry, burnable vegetation is present
 - Whether human infrastructure sits at the wildland-urban interface
 - Whether terrain features (slopes, ridges) would accelerate fire spread
 - Whether natural firebreaks (rivers, reservoirs) are present
+
+[HERE]
 
 This task requires holistic scene understanding, not pixel-level statistics. A pixel-level index like NDVI can tell you that vegetation is stressed, but it cannot tell you that it is dense dry chaparral sitting uphill from a residential neighborhood in an open wind corridor. That contextual judgment is exactly what a VLM is for.
 
@@ -62,9 +62,43 @@ A compact JSON object with one categorical field and five boolean flags:
 
 The boolean schema is intentionally simple: each flag is a direct, observable binary signal from the images, making model evaluation straightforward.
 
-## Proof of concept
+## System design
 
-`predict.py` is a continuous watch loop. It polls the current satellite position from SimSat, fetches RGB and SWIR images, runs inference, and saves each prediction to a local SQLite database. As the simulated satellite moves, predictions accumulate and cover progressively more of the Earth's surface.
+```mermaid
+flowchart LR
+    subgraph satellite["Satellite"]
+        SimSat["SimSat<br/>(Docker service)"]
+        predict["predict.py<br/>(watch loop)"]
+        LFM["LFM2.5-VL-450M<br/>(llama-server)"]
+
+        SimSat -->|"satellite position<br/>(lon, lat)"| predict
+        SimSat -->|"RGB + SWIR images"| predict
+        predict -->|"RGB + SWIR bytes"| LFM
+        LFM -->|"risk JSON"| predict
+    end
+
+    subgraph earth["Earth"]
+        DB[("wildfire.db<br/>(SQLite)")]
+    end
+
+    predict -->|"INSERT prediction row"| DB
+```
+
+The system monitors a named geographic region using a grid of 5 km tiles. Both the live watch loop and the historical backfill operate on the same tile grid, so their predictions are colocated in the database and directly comparable in the app.
+
+Available regions:
+
+| id | Name |
+|----|------|
+| `collserola` | Parc de Collserola, Barcelona |
+| `garraf` | Parc del Garraf, Barcelona |
+| `montseny` | Parc Natural del Montseny |
+| `donana` | Parque Nacional de Doñana, Huelva |
+| `sierra_nevada` | Parque Nacional Sierra Nevada, Granada |
+
+### Live watch loop
+
+`predict.py` polls the current satellite position from SimSat every `--interval` seconds. With `--region` the loop only scores tiles that belong to that region; when the satellite is outside it logs a skip line so you can confirm the loop is alive. Without `--region` every position is scored.
 
 **Before running `predict.py`, start the SimSat orbit simulation:**
 
@@ -75,38 +109,45 @@ The boolean schema is intentionally simple: each flag is a direct, observable bi
 Without this step, SimSat returns a static position at `(0.0, 0.0)` (ocean, no Sentinel coverage) and `predict.py` will loop without producing any predictions.
 
 ```bash
-# Watch loop with the Anthropic backend (runs until Ctrl+C)
+# Score every satellite position worldwide (runs until Ctrl+C)
 uv run scripts/predict.py --backend anthropic
 
-# Watch loop with a local model
-uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0
+# Only score tiles within the Garraf park
+uv run scripts/predict.py --backend anthropic --region garraf
 
-# Tune the poll interval and minimum distance between tiles
-uv run scripts/predict.py --backend anthropic --interval 10 --min-distance-km 3
+# Local model, region-constrained
+uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --region collserola
+
+# Tune the poll interval
+uv run scripts/predict.py --backend anthropic --region garraf --interval 10
 ```
 
-The satellite position is re-checked every `--interval` seconds (default: 30). A new prediction is only triggered when the satellite has moved at least `--min-distance-km` from the last processed tile (default: same as `--size-km`), avoiding redundant inference over the same ground.
+When `--region` is set, tile center coordinates are used for DB storage (not the raw satellite position), so live and backfill predictions land on the same grid points.
 
-To seed the database with historical predictions before starting the watch loop:
+### Historical backfill
+
+`backfill.py` fetches historical Sentinel-2 images from SimSat for every tile in a region's grid across the last N days. Use this to seed the database before starting the live loop, or to build a seasonal time-series.
 
 ```bash
-# All 22 locations, last 7 days
-uv run scripts/backfill.py --backend anthropic --days 7
+# Garraf, last 7 days
+uv run scripts/backfill.py --backend anthropic --days 7 --region garraf
 
-# Specific locations only
-uv run scripts/backfill.py --backend anthropic --days 14 --locations angeles_nf_ca,napa_valley_ca
+# Collserola, last 90 days (builds a seasonal dataset)
+uv run scripts/backfill.py --backend anthropic --days 90 --region collserola
 
-# Local model with parallel workers
-uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 7 --concurrency 3
+# Local model
+uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 7 --region montseny
 ```
 
-Once the database has predictions, launch the Streamlit app to explore them on a map:
+### App
+
+Once the database has predictions, launch the Streamlit app:
 
 ```bash
 uv run streamlit run app/app.py
 ```
 
-The app renders each tile's RGB image at its geographic bounding box with a colored dot for the predicted risk level (green/orange/red). Enable "Auto-refresh" in the sidebar to have the map update automatically as `predict.py` writes new rows to the database.
+The app renders each tile's RGB image at its geographic bounding box with a colored dot for the predicted risk level (green/orange/red). Select a region in the sidebar to zoom the map to that area and reveal two time-series charts: per-tile risk lines and a region-level average with a min/max shaded band. Enable "Auto-refresh" to have the map update automatically as `predict.py` writes new rows to the database.
 
 ## Generate sample data
 
