@@ -32,7 +32,6 @@ from typing import TypeAlias
 
 import requests
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from wildfire_prevention.annotator import SYSTEM_PROMPT, USER_TEXT, annotate
 from wildfire_prevention.locations import LOCATIONS, Location

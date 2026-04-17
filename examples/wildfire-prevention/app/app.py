@@ -6,13 +6,10 @@ Run from the project root:
 
 import base64
 import time
-import sys
 from pathlib import Path
 
 import pydeck as pdk
 import streamlit as st
-
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from wildfire_prevention.db import fetch_all, init_db
 
