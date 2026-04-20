@@ -169,6 +169,8 @@ Join the next session! Head to the `#live-events` channel on [Discord](https://d
 
 We welcome contributions! Open a PR with a link to your project GitHub repo in the Community Projects section.
 
+[![Contributors](https://contrib.rocks/image?repo=Liquid4All/cookbook)](https://github.com/Liquid4All/cookbook/graphs/contributors)
+
 ## Support
 
 - 📖 [Liquid AI Documentation](https://docs.liquid.ai/)
