@@ -389,26 +389,22 @@ Each run saves a report to `evals/{timestamp}/report.md`.
 
 Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention)), ground truth from `claude-opus-4-6`.
 
-| field | claude-opus-4-6 | LFM2.5-VL-450M Q8_0 | LFM2.5-VL-450M fine-tuned |
-|---|---|---|---|
-| valid_json | 1.00 | 1.00 | 1.00 |
-| fields_present | 1.00 | 1.00 | 1.00 |
-| risk_level | 1.00 | 0.14 | 0.14 |
-| dry_vegetation_present | 1.00 | 0.68 | 0.68 |
-| urban_interface | 1.00 | 0.18 | 0.82 |
-| steep_terrain | 1.00 | 0.45 | 0.50 |
-| water_body_present | 1.00 | 0.91 | 0.55 |
-| image_quality_limited | 1.00 | 0.41 | 0.45 |
-| **overall** | **1.00** | **0.46** | **0.52** |
-| **avg latency (s)** | **3.20** | **0.71** | **22.98** |
+| field | claude-opus-4-6 | LFM2.5-VL-450M Q8_0 |
+|---|---|---|
+| valid_json | 1.00 | 1.00 |
+| fields_present | 1.00 | 1.00 |
+| risk_level | 0.99 | 0.08 |
+| dry_vegetation_present | 0.99 | 0.48 |
+| urban_interface | 0.98 | 0.25 |
+| steep_terrain | 0.99 | 0.45 |
+| water_body_present | 0.99 | 0.74 |
+| image_quality_limited | 1.00 | 0.28 |
+| **overall** | **0.99** | **0.38** |
+| **avg latency (s)** | **2.91** | **0.72** |
 
 ## 5. Fine-tuning
 
 We use [leap-finetune](https://github.com/LiquidAI/leap-finetune) to fine-tune `LFM2.5-VL-450M` on the Opus-labeled dataset via Modal's serverless H100 infrastructure.
-
-[HERE]
-
-### Steps
 
 ```mermaid
 sequenceDiagram
@@ -434,6 +430,8 @@ sequenceDiagram
 
     Note over User: evaluate.py --backend hf --model checkpoint
 ```
+
+### Steps
 
 1. Clone leap-finetune and install:
 
@@ -462,7 +460,7 @@ sequenceDiagram
 
     The `--modal` flag spins up a Modal container, downloads the dataset from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job. Requires `pip install modal && modal setup`.
 
-4. Run the fine-tuning. From the `leap-finetune` root, pass the absolute path to the config:
+4. Run the fine-tuning. From the `leap-finetune` root, pass the path to the config:
 
     ```bash
     uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
@@ -477,13 +475,25 @@ sequenceDiagram
     uv run modal volume get wildfire-prevention /outputs/<run-name> ./outputs
     ```
 
-6. Evaluate the fine-tuned model. The fine-tuned checkpoint is in safetensors format. Use `--backend hf` to load it directly via the `transformers` library:
+6. Quantize the model
+
+    [TODO]
+
+7. Evaluate the fine-tuned model. Use `--backend hf` to load the safetensors checkpoint directly, or `--backend local` to use the quantized GGUF from step 6:
 
     ```bash
+    # Evaluate via HuggingFace transformers (safetensors checkpoint)
     uv run scripts/evaluate.py \
-    --hf-dataset Paulescu/wildfire-prevention \
-    --backend hf \
-    --model <path-to-checkpoint> \
-    --split test
+        --hf-dataset Paulescu/wildfire-prevention \
+        --backend hf \
+        --model <path-to-checkpoint> \
+        --split test
+
+    # Evaluate via llama-server (quantized GGUF from step 6)
+    uv run scripts/evaluate.py \
+        --hf-dataset Paulescu/wildfire-prevention \
+        --backend local \
+        --model ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
+        --split test
     ```
 
