@@ -150,6 +150,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | grosme | CLI grocery assistant that finds Walmart product matches using an LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
 | Discord Moderator | Use LFM2.5-1.2B to screen messages for suspicious content | [Code](https://github.com/badluma/liquid-mod) |
 | BookMind | Offline RAG study assistant for asking questions and generating exercises from PDF textbooks, powered by LFM2-2.6B | [Code](https://github.com/Ksirailway-base/BookMind) |
+| LFM Podcast Studio | Turn any PDF into a two-host podcast episode locally — endpoint-neutral script generation, Deep Dive RAG retrieval, and LFM2.5-Audio voice synthesis via llama.cpp | [Code](https://github.com/nikhilprasanth/LFM-Podcast-Studio) |
 
 ## 🕐 Technical Deep Dives
 
