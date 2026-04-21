@@ -1,68 +1,142 @@
-# Let's build a wildfire prevention system
+# Let's build a wildfire prevention system using a compact Vision-Language Modell and Sentinel-2 satellite images
 
-## Table of contents
+In this example you will learn how to build a basic wildfire prevention system using:
 
-- [Goal](#goal)
+- Sentinel-2 satellite images
+- A compact Vision-Language Model (LFM2.5-VL, 450M parameters) running directly on the satellite, so inference happens in orbit and only a lightweight JSON payload is downlinked to Earth.
+
+We will cover all the stages of the journey:
+
 - [Problem framing](#problem-framing)
 - [System design](#system-design)
-- [Generate sample data](#generate-sample-data)
-- [Evaluate](#evaluate)
+  - [Design rationale](#design-rationale)
+  - [Proof of Concept (PoC)](#proof-of-concept-poc)
+  - [Live watch loop](#live-watch-loop)
+  - [Historical backfill](#historical-backfill)
+  - [App](#app)
+- [Data collection and labeling](#generate-sample-data)
+- [Evaluation](#evaluate)
+- [Fine-tuning](#fine-tuning)
 
----
-
-In this example you will learn how to
-
-- frame the problem
-- get high quality labeled data
-- evaluate LFM2.5-VL-450M on this task.
-- fine-tune it to boost performance.
-
-## Goal
-
-In the hackathon we have access to Sentinel-2 images. Images for the same tile of land are typically available at a 5-10 day frequency.
-Wildfires spread way faster than that, so we cannot use Sentinel-2 images to build a system that early detects smoke and alerts.
-We need to build something that works at a lower frequency and focus on prevention.
-
-Moreover, the focus of this tutorial is on VLMs, so we want to pick a task and dataset for which pixel-by-pixel measures are not enough, and a more holistic scene understanding is necessary to assess risk. In other words, we want to justify the added complexity of using a VLM by framing a task that really requires a VLM.
-
-The output this VLM produces does not need to be very complex. This is a demo, not a full project. The goal is to guide hackathon participants through a working example, and let them focus on details, or alternative paths we encounter along the way.
 
 ## Problem framing
 
-We want the VLM to assess the **wildfire risk level** of a land tile based on scene-level understanding. Specifically, it should identify:
-- Whether dry, burnable vegetation is present
-- Whether human infrastructure sits at the wildland-urban interface
-- Whether terrain features (slopes, ridges) would accelerate fire spread
-- Whether natural firebreaks (rivers, reservoirs) are present
+We want to reduce the number of wildfires by identifying areas with high-risk from Sentinel-2 images, and providing actionable feedback to local authorities like firefighters so they can act before the fire has even started.
 
-[HERE]
+> **What is Sentinel-2?**
+>
+> Sentinel-2 is a European Space Agency (ESA) satellite mission that captures high-resolution optical imagery of Earth's surface. It's part of the EU's Copernicus programme.
+>
+> It consists of 3 satellites (Sentinel-2A, 2B and 2C) which orbit in tandem:
+>
+> - Revisiting the same location **every 5 days** at the equator (more frequently at higher latitudes).
+> - Capturing **multispectral** images. Instead of capturing a single photograph, they measure reflected light across **13 discrete wavelength ranges** simultaneously. Each range is called a band, and each band carries some information about vegetation health, water content, soil moisture or atmospheric conditions that is not visible to the naked eye.
 
-This task requires holistic scene understanding, not pixel-level statistics. A pixel-level index like NDVI can tell you that vegetation is stressed, but it cannot tell you that it is dense dry chaparral sitting uphill from a residential neighborhood in an open wind corridor. That contextual judgment is exactly what a VLM is for.
+In this repository we will use two different images for a given location:
 
-**What images should we provide the VLM?**
+- **RGB (B4-B3-B2):** natural color. Useful for reading urban texture, terrain shape from shadows, and water bodies.
+- **SWIR (B12-B8-B4):** shortwave infrared. Highlights vegetation moisture stress and dryness, the primary fuel indicator.
 
-Two Sentinel-2 composites per land tile, passed together in a single model call:
-- RGB (bands B4-B3-B2): natural color, useful for terrain and infrastructure
-- SWIR (bands B12-B8-B4): highlights vegetation moisture stress and dryness
+Using this input, we can extract early signs of vegeatation distress, or urban risk, and alert local authorities
 
-**What is the output format?**
+Let's go through an example:
 
-A compact JSON object with one categorical field and five boolean flags:
+### Example
 
-```json
-{
-  "risk_level": "low | medium | high",
-  "dry_vegetation_present": true,
-  "urban_interface": false,
-  "steep_terrain": true,
-  "water_body_present": false,
-  "image_quality_limited": false
-}
-```
+1. A Sentinel-2 satellite flies over *Attica (Greece)* on  2024-08-01, and takes these 2 pictures.
 
-The boolean schema is intentionally simple: each flag is a direct, observable binary signal from the images, making model evaluation straightforward.
+    | RGB | SWIR |
+    |-----|------|
+    | ![RGB](data/20260416_141946/attica_greece/rgb.png) | ![SWIR](data/20260416_141946/attica_greece/swir.png) |
+    | *Attica, Greece. 2024-08-01* | *Attica, Greece. 2024-08-01* |
+
+2. This image pair is passed to the Vision-Language Model, which has holistic scene understanding, not just pixel-level statistics, and the model extracts the following risk profile.
+
+    ```json
+    {
+      # Primary signal for prioritization
+      # Either "low", "medium" or "high"
+      "risk_level": "high",
+
+      # The most direct fuel indicator
+      "dry_vegetation_present": true,
+      
+      # Fire next to urban areas elevates the stakes
+      "urban_interface": true,
+      
+      # Fire spreads faster uphill
+      "steep_terrain": true,
+
+      # Natural firebreaks than can limit spread and inform
+      # suppression strategy
+      "water_body_present": false,
+
+      # When true take the risk scores with lower confidence 
+      "image_quality_limited": false
+    }
+    ```
+
+3. This payload is downlinked to ground control on Earth. As the image tile has high risk, the system sends an alert to local fire services. These can then take precautionary measures like
+    - ground patrol deployment or
+    - controlled burns to reduce available fuel.
+
 
 ## System design
+
+### Design rationale
+
+You could point a frontier model (GPT-5, Gemini 2.0 Flash, or Claude 3.6 Sonnet) at satellite images and it would do a good job. So why bother using a smaller one that needs fine-tuning?
+
+The bottleneck is not capability. It is data transmission.
+
+A frontier model runs on a server on Earth. To use it:
+
+- The satellite downlinks raw images to a ground station.
+- The ground station feeds the model.
+- The model produces the output on Earth.
+
+Images are high-dimensional: large matrices of pixel values per band, per frame. Multiply that by the number of captures per orbit, and you have a serious bandwidth problem.
+
+```mermaid
+flowchart LR
+    subgraph satellite["Satellite"]
+        A["📷 Camera"]
+    end
+
+    subgraph earth["Earth"]
+        B["🖥️ Ground Station"]
+        C["🌍 Frontier Model<br/>on Earth"]
+        D["📦 Payload Output"]
+        B --> C --> D
+    end
+
+    A =="|⚠️ raw image downlink<br/>hundreds of MB per frame|"==> B
+    linkStyle 2 stroke:#ff0000,stroke-width:3px
+```
+
+A small model removes that bottleneck entirely. At 450M parameters, LFM2.5-VL-450M is compact enough to run directly on the satellite:
+
+- The satellite captures the image and runs inference on-board.
+- The local model produces the payload output in orbit.
+- Only the lightweight output is downlinked to the ground station.
+
+```mermaid
+flowchart LR
+    subgraph satellite["🛰️ Satellite"]
+        A["📷 Capture Image"] --> B["Local Model<br/>LFM2.5-VL-450M"] --> C["📦 Payload Output"]
+    end
+
+    C -->|"lightweight output only"| D["🖥️ Ground Station"]
+    linkStyle 2 stroke:#008000,stroke-width:2px
+```
+
+### Proof of Concept (PoC)
+
+Rather than building a full satellite stack, we simulate the on-board pipeline locally using three components:
+
+- **[SimSat](https://github.com/DPhi-Space/SimSat):** a local Docker service that simulates a satellite orbit and serves real Sentinel-2 imagery from the AWS Element84 STAC catalog. It provides the satellite's current position and the corresponding RGB and SWIR images.
+- **`predict.py`:** a lightweight Python watch loop that polls SimSat for the current position, fetches the images, and drives the inference pipeline.
+- **LFM2.5-VL-450M:** the local model running via `llama-server`, playing the role of the on-board VLM.
 
 ```mermaid
 flowchart LR
@@ -84,74 +158,87 @@ flowchart LR
     predict -->|"INSERT prediction row"| DB
 ```
 
-The system monitors a named geographic region using a grid of 5 km tiles. Both the live watch loop and the historical backfill operate on the same tile grid, so their predictions are colocated in the database and directly comparable in the app.
+The system monitors 22 fixed locations. Each location is a single 5 km tile centered on a known fire-prone coordinate. One prediction is produced per location per satellite pass. These are the locations we monitor:
 
-Available regions:
+| id | Location |
+|----|----------|
+| `angeles_nf_ca` | Angeles National Forest, California |
+| `santa_barbara_ca` | Santa Barbara, California |
+| `napa_valley_ca` | Napa Valley, California |
+| `sierra_nevada_ca` | Sierra Nevada, California |
+| `alentejo_portugal` | Alentejo, Portugal |
+| `attica_greece` | Attica, Greece |
+| `cerrado_brazil` | Cerrado, Brazil |
+| `patagonia_argentina` | Patagonia, Argentina |
+| `black_forest_germany` | Black Forest, Germany |
+| `scottish_highlands` | Scottish Highlands |
+| `borneo_rainforest` | Borneo Rainforest |
+| `tanzania_savanna` | Tanzania Savanna |
+| `outback_nsw_australia` | Outback NSW, Australia |
+| `victorian_alpine_au` | Victorian Alps, Australia |
+| `kalahari_botswana` | Kalahari, Botswana |
+| `zagros_iran` | Zagros Mountains, Iran |
+| `negev_israel` | Negev Desert, Israel |
+| `alpine_switzerland` | Swiss Alps |
+| `amazon_brazil` | Amazon, Brazil |
+| `congo_basin_drc` | Congo Basin, DRC |
+| `lahaina_maui_hi` | Lahaina, Maui, Hawaii |
+| `mati_attica_gr` | Mati, Attica, Greece |
 
-| id | Name |
-|----|------|
-| `collserola` | Parc de Collserola, Barcelona |
-| `garraf` | Parc del Garraf, Barcelona |
-| `montseny` | Parc Natural del Montseny |
-| `donana` | Parque Nacional de Doñana, Huelva |
-| `sierra_nevada` | Parque Nacional Sierra Nevada, Granada |
+### Quickstart
 
-### Live watch loop
+1. Clone the SimSat repository:
 
-`predict.py` polls the current satellite position from SimSat every `--interval` seconds. With `--region` the loop only scores tiles that belong to that region; when the satellite is outside it logs a skip line so you can confirm the loop is alive. Without `--region` every position is scored.
+    ```bash
+    git clone https://github.com/DPhi-Space/SimSat.git
+    cd SimSat
+    ```
 
-**Before running `predict.py`, start the SimSat orbit simulation:**
+2. Start SimSat (keep it running in a separate terminal):
 
-1. Open the SimSat dashboard at [http://localhost:8000](http://localhost:8000)
-2. Click **Start** to begin the satellite orbit simulation
-3. Verify the satellite position is moving (the `/data/current/position` endpoint should return coordinates other than `(0.0, 0.0)`)
+    ```bash
+    docker compose up
+    ```
 
-Without this step, SimSat returns a static position at `(0.0, 0.0)` (ocean, no Sentinel coverage) and `predict.py` will loop without producing any predictions.
+3. Open the SimSat dashboard at [http://localhost:8000](http://localhost:8000), click **Start**, and verify the satellite position is moving.
 
-```bash
-# Score every satellite position worldwide (runs until Ctrl+C)
-uv run scripts/predict.py --backend anthropic
+4. Install Python dependencies:
 
-# Only score tiles within the Garraf park
-uv run scripts/predict.py --backend anthropic --region garraf
+    ```bash
+    uv sync
+    ```
 
-# Local model, region-constrained
-uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --region collserola
+5. Start the watch loop:
 
-# Tune the poll interval
-uv run scripts/predict.py --backend anthropic --region garraf --interval 10
-```
+    ```bash
+    # Watch all 22 locations
+    uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0
 
-When `--region` is set, tile center coordinates are used for DB storage (not the raw satellite position), so live and backfill predictions land on the same grid points.
+    # Watch a single location
+    uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --location attica_greece
+    ```
 
-### Historical backfill
+6. Optionally, backfill historical predictions to seed the database before the live loop:
 
-`backfill.py` fetches historical Sentinel-2 images from SimSat for every tile in a region's grid across the last N days. Use this to seed the database before starting the live loop, or to build a seasonal time-series.
+    ```bash
+    # All locations, last 7 days
+    uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 7
 
-```bash
-# Garraf, last 7 days
-uv run scripts/backfill.py --backend anthropic --days 7 --region garraf
+    # Single location, last 90 days (builds a seasonal dataset)
+    uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 90 --location attica_greece
+    ```
 
-# Collserola, last 90 days (builds a seasonal dataset)
-uv run scripts/backfill.py --backend anthropic --days 90 --region collserola
+7. Once the database has predictions, launch the app:
 
-# Local model
-uv run scripts/backfill.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --days 7 --region montseny
-```
+    ```bash
+    uv run streamlit run app/app.py
+    ```
 
-### App
-
-Once the database has predictions, launch the Streamlit app:
-
-```bash
-uv run streamlit run app/app.py
-```
-
-The app renders each tile's RGB image at its geographic bounding box with a colored dot for the predicted risk level (green/orange/red). Select a region in the sidebar to zoom the map to that area and reveal two time-series charts: per-tile risk lines and a region-level average with a min/max shaded band. Enable "Auto-refresh" to have the map update automatically as `predict.py` writes new rows to the database.
-
-## Generate sample data
+## Data collection and labeling
 
 Images are fetched via [SimSat](https://github.com/DPhi-Space/SimSat), a local Docker service that wraps the Sentinel-2 STAC catalog on AWS Element84.
+
+[ADD DIAGRAM SIMSAT COMPONENTS]
 
 Images are fetched at 5 km tiles (`--size-km 5.0`), which keeps images at or below 512x512 px — the native resolution of LFM2.5-VL-450M — avoiding tiling overhead at inference time.
 

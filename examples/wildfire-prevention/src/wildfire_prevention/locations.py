@@ -35,3 +35,5 @@ LOCATIONS: list[Location] = [
     Location("lahaina_maui_hi",      -156.68,  20.88, "2023-08-09T12:00:00", "high"),  # 2023 Maui fire
     Location("mati_attica_gr",         23.97,  38.05, "2018-07-23T12:00:00", "high"),  # 2018 Attica fire
 ]
+
+LOCATIONS_BY_ID: dict[str, Location] = {loc.id: loc for loc in LOCATIONS}

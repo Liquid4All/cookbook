@@ -1,19 +1,15 @@
 """Continuous watch loop: poll the current satellite position, run inference, save to DB.
 
-Runs until interrupted with Ctrl+C. Without --region, every satellite position
-is scored as it moves across the Earth's surface.
-
-With --region, the loop only scores tiles that belong to the named region. When
-the satellite is outside the region it logs a skip line so the operator can
-confirm the loop is alive.
+Runs until interrupted with Ctrl+C. The loop checks whether the satellite is
+over one of the named evaluation locations and scores it when it is. Without
+--location every one of the 22 evaluation locations is watched simultaneously.
+With --location only that specific location is scored.
 
 Usage:
     uv run scripts/predict.py --backend anthropic
+    uv run scripts/predict.py --backend anthropic --location attica_greece
     uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0
-    uv run scripts/predict.py --backend anthropic --region collserola
-    uv run scripts/predict.py --backend anthropic --region garraf --interval 10
-
-Available regions: collserola, garraf, montseny, donana, sierra_nevada
+    uv run scripts/predict.py --backend anthropic --location lahaina_maui_hi --interval 10
 """
 
 import argparse
@@ -38,7 +34,8 @@ from wildfire_prevention.evaluator import (
     wait_for_server,
 )
 from wildfire_prevention.live import _fetch_current_image, get_current_position
-from wildfire_prevention.regions import REGIONS, find_tile, generate_tile_grid
+from wildfire_prevention.locations import LOCATIONS, LOCATIONS_BY_ID, Location
+from wildfire_prevention.regions import find_tile
 
 DB_PATH = Path(__file__).parent.parent / "wildfire.db"
 DB_IMAGES_DIR = Path(__file__).parent.parent / "db_images"
@@ -90,6 +87,12 @@ def _start_server_if_needed(
     return proc
 
 
+def _build_location_list(location_arg: str | None) -> list[Location]:
+    if location_arg:
+        return [LOCATIONS_BY_ID[location_arg]]
+    return list(LOCATIONS)
+
+
 def watch_loop(
     args: argparse.Namespace,
     predict: PredictFn,
@@ -100,17 +103,12 @@ def watch_loop(
     last_lat: float | None = None
     processed = 0
 
-    # Pre-build tile grid when a region is specified.
-    region_id: str | None = None
-    tiles: list[tuple[float, float]] = []
-    if args.region:
-        region = REGIONS[args.region]
-        region_id = region.id
-        tiles = generate_tile_grid(region, args.size_km)
-        print(
-            f"Region mode: {region.name}  |  {len(tiles)} tiles at {args.size_km} km"
-        )
+    locations = _build_location_list(args.location)
+    tiles = [(loc.lon, loc.lat) for loc in locations]
+    loc_by_coords = {(loc.lon, loc.lat): loc for loc in locations}
 
+    label = args.location if args.location else f"all ({len(tiles)} locations)"
+    print(f"Location mode: {label}  |  tile size: {args.size_km} km")
     print(
         f"Watching  |  backend: {args.backend}  |  interval: {args.interval}s"
         f"  |  min-distance: {args.min_distance_km}km  |  Ctrl+C to stop"
@@ -130,22 +128,21 @@ def watch_loop(
 
         timestamp = datetime.now(timezone.utc).isoformat()
 
-        # Region gate: when --region is set, only process if the satellite is
-        # over one of the region's tiles. Use the tile center as canonical
-        # coordinates so live and backfill predictions are colocated in the DB.
-        if tiles:
-            hit = find_tile(sat_lon, sat_lat, tiles, args.size_km)
-            if hit is None:
-                print(
-                    f"[{timestamp[:19]}] lon={sat_lon:.4f}  lat={sat_lat:.4f}"
-                    f"  outside region {region_id}, skipping",
-                    flush=True,
-                )
-                time.sleep(args.interval)
-                continue
-            lon, lat = hit
-        else:
-            lon, lat = sat_lon, sat_lat
+        # Check whether the satellite is over one of the watched locations.
+        # Use the location's fixed coordinates as canonical coords so live and
+        # backfill predictions are colocated in the DB.
+        hit = find_tile(sat_lon, sat_lat, tiles, args.size_km)
+        if hit is None:
+            print(
+                f"[{timestamp[:19]}] lon={sat_lon:.4f}  lat={sat_lat:.4f}"
+                f"  outside all watched locations, skipping",
+                flush=True,
+            )
+            time.sleep(args.interval)
+            continue
+
+        lon, lat = hit
+        loc = loc_by_coords[(lon, lat)]
 
         if last_lon is not None and last_lat is not None:
             dist = _haversine_km(last_lon, last_lat, lon, lat)
@@ -153,7 +150,7 @@ def watch_loop(
                 time.sleep(args.interval)
                 continue
 
-        print(f"[{timestamp[:19]}] lon={lon:.4f}  lat={lat:.4f}  fetching ...", flush=True)
+        print(f"[{timestamp[:19]}] {loc.id}  lon={lon:.4f}  lat={lat:.4f}  fetching ...", flush=True)
 
         try:
             rgb_bytes = _fetch_current_image(["red", "green", "blue"], args.size_km)
@@ -178,7 +175,7 @@ def watch_loop(
             source="live",
             rgb_path=None, swir_path=None,
             prediction=prediction, model=mname,
-            region_id=region_id,
+            region_id=loc.id,
         )
         rgb_path, swir_path = _save_images(row_id, rgb_bytes, swir_bytes)
         conn.execute(
@@ -207,13 +204,13 @@ def main() -> None:
         help="Inference backend.",
     )
     parser.add_argument(
-        "--region",
+        "--location",
         default=None,
-        choices=list(REGIONS),
-        metavar="REGION",
+        choices=list(LOCATIONS_BY_ID),
+        metavar="LOCATION",
         help=(
-            f"Only score tiles within this region. Available: {', '.join(REGIONS)}."
-            " When omitted every satellite position is scored."
+            f"Only score this location. Available: {', '.join(LOCATIONS_BY_ID)}."
+            " When omitted all evaluation locations are watched simultaneously."
         ),
     )
     parser.add_argument(
