@@ -5,7 +5,6 @@ Run from the project root:
 """
 
 import base64
-import math
 import time
 from pathlib import Path
 
@@ -14,7 +13,7 @@ import pydeck as pdk
 import streamlit as st
 
 from wildfire_prevention.db import fetch_all, init_db
-from wildfire_prevention.regions import REGIONS
+from wildfire_prevention.locations import LOCATIONS, LOCATIONS_BY_ID
 
 DB_PATH = Path(__file__).parent.parent / "wildfire.db"
 DB_IMAGES_DIR = Path(__file__).parent.parent / "db_images"
@@ -43,13 +42,9 @@ def _tile_bounds(lon: float, lat: float, size_km: float) -> list[list[float]]:
     return [[lon - d, lat - d], [lon + d, lat + d]]
 
 
-def _region_view_state(region_id: str) -> pdk.ViewState:
-    region = REGIONS[region_id]
-    center_lon = (region.lon_min + region.lon_max) / 2.0
-    center_lat = (region.lat_min + region.lat_max) / 2.0
-    span = max(region.lon_max - region.lon_min, region.lat_max - region.lat_min)
-    zoom = max(6, min(12, round(8 - math.log2(max(span, 0.01) / 0.1))))
-    return pdk.ViewState(longitude=center_lon, latitude=center_lat, zoom=zoom, pitch=0)
+def _location_view_state(location_id: str) -> pdk.ViewState:
+    loc = LOCATIONS_BY_ID[location_id]
+    return pdk.ViewState(longitude=loc.lon, latitude=loc.lat, zoom=10, pitch=0)
 
 
 def _filter_rows(
@@ -197,12 +192,12 @@ def main() -> None:
     with st.sidebar:
         st.header("Filters")
 
-        region_options = ["All"] + list(REGIONS.keys())
+        region_options = ["All"] + [loc.id for loc in LOCATIONS]
         selected_region = st.selectbox("Region", region_options, index=0)
         region_filter = None if selected_region == "All" else selected_region
 
         if region_filter:
-            st.caption(REGIONS[region_filter].description)
+            st.caption(f"Expected risk: {LOCATIONS_BY_ID[region_filter].expected_risk}")
 
         risk_opts = ["low", "medium", "high"]
         risk_filter = st.multiselect("Risk level", risk_opts, default=risk_opts)
@@ -288,7 +283,7 @@ def main() -> None:
     )
 
     if region_filter:
-        view_state = _region_view_state(region_filter)
+        view_state = _location_view_state(region_filter)
     else:
         view_state = pdk.ViewState(
             longitude=float(scatter_data[0]["lon"]),
