@@ -6,8 +6,9 @@ import subprocess
 import time
 import urllib.error
 import urllib.request
-from time import perf_counter
 from dataclasses import dataclass
+from pathlib import Path
+from time import perf_counter
 from typing import Protocol
 
 from openai import OpenAI
@@ -56,6 +57,69 @@ def anthropic_backend() -> PredictFn:
     return annotate
 
 
+def transformers_backend(model_path: str) -> PredictFn:
+    """Return a predict function that loads a HuggingFace safetensors checkpoint.
+
+    Used to evaluate fine-tuned checkpoints that have not been converted to GGUF.
+    Requires: transformers, torch, Pillow (already in the project dependencies).
+    """
+    import io
+
+    import torch
+    from PIL import Image
+    from transformers import AutoProcessor, AutoModelForImageTextToText  # type: ignore[import-untyped]
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
+    model = AutoModelForImageTextToText.from_pretrained(
+        model_path,
+        torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+        trust_remote_code=True,
+    ).to(device)
+    model.eval()
+
+    prompt = f"{SYSTEM_PROMPT.strip()}\n\n{USER_TEXT}"
+
+    def predict(rgb_bytes: bytes, swir_bytes: bytes) -> dict[str, object]:
+        rgb_image  = Image.open(io.BytesIO(rgb_bytes)).convert("RGB")
+        swir_image = Image.open(io.BytesIO(swir_bytes)).convert("RGB")
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image"},
+                    {"type": "image"},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+        text = processor.apply_chat_template(messages, add_generation_prompt=True)
+        inputs = processor(
+            text=text,
+            images=[rgb_image, swir_image],
+            return_tensors="pt",
+        ).to(device)
+
+        with torch.no_grad():
+            output_ids = model.generate(
+                **inputs,
+                max_new_tokens=256,
+                do_sample=False,
+            )
+
+        input_len = inputs["input_ids"].shape[1]
+        generated = output_ids[0][input_len:]
+        raw = processor.decode(generated, skip_special_tokens=True).strip()
+
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[-1]
+            raw = raw.rsplit("```", 1)[0].strip()
+        return json.loads(raw)  # type: ignore[no-any-return]
+
+    return predict
+
+
 def llama_backend(model: str, port: int = 8080) -> PredictFn:
     """Return a predict function that calls a local llama-server via the OpenAI API."""
     client = OpenAI(base_url=f"http://127.0.0.1:{port}/v1", api_key="not-needed")
@@ -99,8 +163,12 @@ def start_llama_server(
     port: int = 8080,
     verbose: bool = False,
 ) -> subprocess.Popen[bytes]:
-    hf_repo = f"{model}:{quant}" if quant else model
-    cmd = ["llama-server", "-hf", hf_repo, "--jinja", "--port", str(port)]
+    local_path = Path(model)
+    if local_path.is_file():
+        cmd = ["llama-server", "-m", str(local_path), "--jinja", "--port", str(port)]
+    else:
+        hf_repo = f"{model}:{quant}" if quant else model
+        cmd = ["llama-server", "-hf", hf_repo, "--jinja", "--port", str(port)]
     kwargs: dict[str, object] = {}
     if not verbose:
         kwargs["stdout"] = subprocess.DEVNULL
@@ -284,4 +352,6 @@ def render_report(
 def model_name(backend: str, llama_model: str, quant: str = "") -> str:
     if backend == "anthropic":
         return ANTHROPIC_MODEL
+    if backend == "hf":
+        return llama_model
     return f"{llama_model}:{quant}" if quant else llama_model

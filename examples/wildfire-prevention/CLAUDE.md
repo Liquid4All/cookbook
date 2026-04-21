@@ -25,6 +25,14 @@ uv run scripts/backfill.py --backend anthropic --days 7
 # Evaluate a model against a generated dataset
 uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic
 
+# Convert HF dataset to leap-finetune JSONL format (run before fine-tuning)
+uv run scripts/prepare_wildfire.py
+uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --output ./data/wildfire
+
+# Fine-tune LFM2.5-VL-450M locally or on Modal
+uv run leap-finetune configs/wildfire_finetune.yaml
+uv run leap-finetune configs/wildfire_finetune_modal.yaml
+
 # Launch the Streamlit map app
 uv run streamlit run app/app.py
 

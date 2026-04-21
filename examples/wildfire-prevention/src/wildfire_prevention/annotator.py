@@ -57,12 +57,13 @@ def _encode(image_bytes: bytes) -> str:
     return base64.standard_b64encode(image_bytes).decode()
 
 
-def annotate(rgb_bytes: bytes, swir_bytes: bytes) -> dict[str, object]:
-    """Call Opus with both images and return the parsed annotation dict.
+def annotate(rgb_bytes: bytes, swir_bytes: bytes, model: str = MODEL) -> dict[str, object]:
+    """Call an Anthropic model with both images and return the parsed annotation dict.
 
     Args:
         rgb_bytes: Raw PNG bytes of the RGB composite.
         swir_bytes: Raw PNG bytes of the SWIR composite.
+        model: Anthropic model ID to use for annotation.
 
     Returns:
         Parsed JSON dict matching the wildfire risk schema.
@@ -73,7 +74,7 @@ def annotate(rgb_bytes: bytes, swir_bytes: bytes) -> dict[str, object]:
     client = anthropic.Anthropic()
 
     message = client.messages.create(
-        model=MODEL,
+        model=model,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
         messages=[

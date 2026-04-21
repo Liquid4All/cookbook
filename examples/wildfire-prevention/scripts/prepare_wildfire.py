@@ -21,6 +21,7 @@ Usage:
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -126,7 +127,15 @@ def main() -> None:
 
         write_jsonl(rows, output_dir / f"wildfire_{split_name}.jsonl")
 
-    print(f"\nDone. Set image_root to: {images_dir}")
+    dest_images_dir = output_dir / "images"
+    if not dest_images_dir.exists():
+        print(f"Copying images to {dest_images_dir} ...")
+        shutil.copytree(images_dir, dest_images_dir)
+        print(f"  Copied {sum(1 for _ in dest_images_dir.iterdir())} images.")
+    else:
+        print(f"  images/ already present at {dest_images_dir}, skipping copy.")
+
+    print(f"\nDone. Set image_root to: {dest_images_dir}")
     print(f"Training config: uv run leap-finetune configs/wildfire_finetune.yaml")
 
 
@@ -140,7 +149,7 @@ def _run_on_modal(args: argparse.Namespace) -> None:
     src_dir = Path(__file__).parent.parent / "src" / "wildfire_prevention"
     image = (
         modal.Image.debian_slim(python_version="3.12")
-        .pip_install("datasets", "huggingface_hub")
+        .pip_install("datasets", "huggingface_hub", "anthropic")
         .add_local_file(__file__, "/app/prepare_wildfire.py", copy=True)
         .add_local_dir(str(src_dir), "/app/wildfire_prevention", copy=True)
     )

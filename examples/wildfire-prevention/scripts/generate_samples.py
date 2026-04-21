@@ -82,18 +82,18 @@ class TileTask:
         return f"s{self.spatial_idx:02d}_t{self.temporal_idx:02d}"
 
 
-def _annotate_with_retry(rgb_bytes: bytes, swir_bytes: bytes) -> dict[str, object]:
+def _annotate_with_retry(rgb_bytes: bytes, swir_bytes: bytes, model: str) -> dict[str, object]:
     """Call annotate with exponential backoff on Anthropic 429 rate-limit errors."""
     for attempt, delay in enumerate(_RETRY_DELAYS, start=1):
         try:
-            return annotate(rgb_bytes, swir_bytes)
+            return annotate(rgb_bytes, swir_bytes, model=model)
         except Exception as exc:
             if "429" in str(exc) and attempt <= len(_RETRY_DELAYS):
                 tqdm.write(f"  rate-limited, retrying in {delay}s ...")
                 time.sleep(delay)
             else:
                 raise
-    return annotate(rgb_bytes, swir_bytes)
+    return annotate(rgb_bytes, swir_bytes, model=model)
 
 
 def process_tile(
@@ -101,6 +101,7 @@ def process_tile(
     sample_dir: Path,
     size_km: float,
     dry_run: bool,
+    model: str,
 ) -> AnnotationResult | None:
     sample_dir.mkdir(parents=True, exist_ok=True)
 
@@ -126,9 +127,9 @@ def process_tile(
         tqdm.write(f"[{task.label}] dry-run: images saved, skipping annotation")
         return None
 
-    tqdm.write(f"[{task.label}] annotating ...")
+    tqdm.write(f"[{task.label}] annotating with {model} ...")
     try:
-        result = _annotate_with_retry(rgb_bytes, swir_bytes)
+        result = _annotate_with_retry(rgb_bytes, swir_bytes, model=model)
     except ValueError as exc:
         tqdm.write(f"[{task.label}] ERROR: {exc}")
         return None
@@ -142,6 +143,7 @@ def process_tile(
         "lat": task.spatial.lat,
         "timestamp": task.timestamp,
         "size_km": size_km,
+        "annotator_model": model,
         **result,
     }
     (sample_dir / "annotation.json").write_text(
@@ -185,89 +187,81 @@ def push_to_hf(
     results: list[AnnotationResult],
     dataset_name: str,
 ) -> None:
-    """Build leap-finetune VLM SFT datasets and push them to Hugging Face Hub.
+    """Push annotations to Hugging Face Hub as a flat tabular dataset.
 
-    Creates train.jsonl and test.jsonl inside run_dir alongside a flat images/
-    directory. Image paths in the JSONL are relative to the repo root so that
-    leap-finetune can resolve them after snapshot_download.
+    Creates a parquet dataset with string-only columns so HF never embeds
+    images as binary blobs. Image files are uploaded separately to the images/
+    subdirectory of the same repo.
 
-    A README.md dataset card with `configs: []` is written to prevent HuggingFace
-    from auto-converting the JSONL files to parquet (which embeds images as bytes
-    and breaks the file-path references leap-finetune expects).
+    Columns: region, timestamp, split, rgb_path, swir_path, output.
+    rgb_path and swir_path are relative to the repo root (e.g. images/foo_rgb.png).
+    output is the JSON-serialised model annotation.
+
+    To convert this dataset to leap-finetune JSONL format, run prepare_wildfire.py.
 
     Auth is handled via the HF_TOKEN environment variable.
     """
-    from collections import defaultdict
-
+    from datasets import Dataset, DatasetDict, Features, Value
     from huggingface_hub import HfApi
 
     images_dir = run_dir / "images"
     images_dir.mkdir(exist_ok=True)
 
-    by_split: dict[str, list[AnnotationResult]] = defaultdict(list)
-    for ann in results:
-        by_split[str(ann["split"])].append(ann)
-
-    for split, split_results in by_split.items():
-        rows: list[str] = []
-        for ann in split_results:
-            loc_id = str(ann["id"])
-            si = int(ann["spatial_index"])  # type: ignore[arg-type]
-            ti = int(ann["temporal_index"])  # type: ignore[arg-type]
-            tile_key = f"{loc_id}_s{si:02d}_t{ti:02d}"
-
-            rgb_name = f"{tile_key}_rgb.png"
-            swir_name = f"{tile_key}_swir.png"
-            tile_dir = run_dir / split / loc_id / f"s{si:02d}_t{ti:02d}"
-            shutil.copy2(tile_dir / "rgb.png", images_dir / rgb_name)
-            shutil.copy2(tile_dir / "swir.png", images_dir / swir_name)
-
-            model_output = {
-                k: ann[k]
-                for k in (
-                    "risk_level",
-                    "dry_vegetation_present",
-                    "urban_interface",
-                    "steep_terrain",
-                    "water_body_present",
-                    "image_quality_limited",
-                )
-            }
-            row = {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            # Paths are relative to the repo root so they resolve
-                            # correctly after huggingface_hub.snapshot_download().
-                            {"type": "image", "image": f"images/{rgb_name}"},
-                            {"type": "image", "image": f"images/{swir_name}"},
-                            {"type": "text", "text": f"{SYSTEM_PROMPT.strip()}\n\n{USER_TEXT}"},
-                        ],
-                    },
-                    {
-                        "role": "assistant",
-                        "content": [{"type": "text", "text": json.dumps(model_output)}],
-                    },
-                ]
-            }
-            rows.append(json.dumps(row))
-
-        (run_dir / f"{split}.jsonl").write_text("\n".join(rows), encoding="utf-8")
-        print(f"  {split}.jsonl: {len(rows)} rows")
-
-    # Prevent HuggingFace from auto-converting the JSONL files to parquet.
-    # configs: [] tells the Hub there are no dataset configurations to detect,
-    # so the raw files (JSONL + images/) are preserved as-is.
-    (run_dir / "README.md").write_text(
-        "---\nconfigs: []\n---\n",
-        encoding="utf-8",
+    output_fields = (
+        "risk_level",
+        "dry_vegetation_present",
+        "urban_interface",
+        "steep_terrain",
+        "water_body_present",
+        "image_quality_limited",
     )
+
+    rows: list[dict[str, str]] = []
+    for ann in results:
+        loc_id = str(ann["id"])
+        si = int(ann["spatial_index"])  # type: ignore[arg-type]
+        ti = int(ann["temporal_index"])  # type: ignore[arg-type]
+        tile_key = f"{loc_id}_s{si:02d}_t{ti:02d}"
+
+        rgb_name = f"{tile_key}_rgb.png"
+        swir_name = f"{tile_key}_swir.png"
+        split = str(ann["split"])
+        tile_dir = run_dir / split / loc_id / f"s{si:02d}_t{ti:02d}"
+        shutil.copy2(tile_dir / "rgb.png", images_dir / rgb_name)
+        shutil.copy2(tile_dir / "swir.png", images_dir / swir_name)
+
+        rows.append({
+            "region":    loc_id,
+            "timestamp": str(ann["timestamp"]),
+            "split":     split,
+            "rgb_path":  f"images/{rgb_name}",
+            "swir_path": f"images/{swir_name}",
+            "output":    json.dumps({k: ann[k] for k in output_fields}),
+        })
+
+    features = Features({
+        "region":    Value("string"),
+        "timestamp": Value("string"),
+        "split":     Value("string"),
+        "rgb_path":  Value("string"),
+        "swir_path": Value("string"),
+        "output":    Value("string"),
+    })
+
+    train_rows = [r for r in rows if r["split"] == "train"]
+    test_rows  = [r for r in rows if r["split"] == "test"]
+    ds_dict: dict[str, Dataset] = {"train": Dataset.from_list(train_rows, features=features)}
+    if test_rows:
+        ds_dict["test"] = Dataset.from_list(test_rows, features=features)
 
     api = HfApi()
     api.create_repo(repo_id=dataset_name, repo_type="dataset", exist_ok=True)
+    DatasetDict(ds_dict).push_to_hub(dataset_name)
+    print(f"  train: {len(train_rows)} rows  test: {len(test_rows)} rows")
+
     api.upload_folder(
-        folder_path=str(run_dir),
+        folder_path=str(images_dir),
+        path_in_repo="images",
         repo_id=dataset_name,
         repo_type="dataset",
     )
@@ -340,6 +334,12 @@ def main() -> None:
         help="Process a single location by its id (e.g. attica_greece).",
     )
     parser.add_argument(
+        "--model",
+        default="claude-opus-4-6",
+        metavar="MODEL",
+        help="Anthropic model ID to use for annotation (default: claude-opus-4-6).",
+    )
+    parser.add_argument(
         "--hf-dataset",
         metavar="REPO",
         default=None,
@@ -390,6 +390,7 @@ def main() -> None:
     cutoff_str = cutoff.isoformat() if cutoff else "none"
     print(
         f"Run: {run_id}"
+        f"  |  model: {args.model}"
         f"  |  locations: {len(locations)}"
         f"  |  temporal_tiles: {args.n_temporal_tiles}"
         f"  |  spatial_tiles: {args.n_spatial_tiles}"
@@ -422,7 +423,7 @@ def main() -> None:
     annotations: list[AnnotationResult] = []
     with ThreadPoolExecutor(max_workers=args.concurrency) as pool:
         futures = {
-            pool.submit(process_tile, task, sample_dir, args.size_km, args.dry_run): task
+            pool.submit(process_tile, task, sample_dir, args.size_km, args.dry_run, args.model): task
             for task, sample_dir in task_pairs
         }
         with tqdm(total=len(task_pairs), desc="tiles", unit="tile") as pbar:

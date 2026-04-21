@@ -10,8 +10,15 @@ dependencies = [
     "tqdm>=4.66",
     "python-dotenv>=1.0",
     "huggingface_hub>=0.23",
+    "datasets>=2.19",
+    "transformers>=4.47",
+    "torch>=2.3",
+    "peft>=0.14",
+    "gguf>=0.10",
     "streamlit>=1.35",
     "pydeck>=0.9",
+    "torchvision>=0.26.0",
+    "modal>=1.4.2",
 ]
 
 [build-system]
