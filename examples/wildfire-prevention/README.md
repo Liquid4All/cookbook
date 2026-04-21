@@ -5,19 +5,41 @@ In this example you will learn how to build a basic wildfire prevention system u
 - Sentinel-2 satellite images
 - A compact Vision-Language Model (LFM2.5-VL, 450M parameters) running directly on the satellite, so inference happens in orbit and only a lightweight JSON payload is downlinked to Earth.
 
+```mermaid
+flowchart LR
+    subgraph satellite["Satellite"]
+        SimSat["SimSat<br/>(Docker service)"]
+        predict["predict.py<br/>(watch loop)"]
+        LFM["LFM2.5-VL-450M<br/>(llama-server)"]
+
+        SimSat -->|"satellite position<br/>(lon, lat)"| predict
+        SimSat -->|"RGB + SWIR images"| predict
+        predict -->|"RGB + SWIR bytes"| LFM
+        LFM -->|"risk JSON"| predict
+    end
+
+    subgraph earth["Earth"]
+        DB[("wildfire.db<br/>(SQLite)")]
+    end
+
+    predict -->|"INSERT prediction row"| DB
+```
+
 We will cover all the stages of the journey:
 
 ## Steps
-- [Problem framing](#problem-framing)
-- [System design](#system-design)
-- [Data collection and labeling](#data-collection-and-labeling)
-- [Evaluation](#evaluation)
-- [Fine-tuning](#fine-tuning)
+- [Problem framing](#1-problem-framing)
+- [System design](#2-system-design)
+- [Data collection and labeling](#3-data-collection-and-labeling-pipeline)
+- [Evaluation](#4-evaluation)
+- [Fine-tuning](#5-fine-tuning)
 
 
 ## 1. Problem framing
 
 We want to reduce the number of wildfires by identifying areas with high-risk from Sentinel-2 images, and providing actionable feedback to local authorities like firefighters so they can act before the fire has even started.
+
+![](./assets/wildfire_stages.gif)
 
 > **What is Sentinel-2?**
 >
@@ -230,7 +252,7 @@ The system monitors 22 fixed locations. Each location is a single 5 km tile cent
     uv run streamlit run app/app.py
     ```
 
-## Data collection and labeling pipeline
+## 3. Data collection and labeling pipeline
 
 We use `claude-opus-4-6` to label a dataset of satellite image pairs.
 
@@ -329,58 +351,114 @@ uv run scripts/check_samples.py                  # most recent run
 uv run scripts/check_samples.py 20260416_143052  # specific run
 ```
 
-The dataset used in the rest of this guide is [Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention). To reproduce it exactly:
+The dataset used in the rest of this guide is [Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention). To reproduce it exactly you just need to run, and replace `Paulescu/wildfire-detection` with `YOUR_HF_USER_NAME/DATASET_NAME`
 
 ```bash
 uv run scripts/generate_samples.py \
   --start-date 2024-01-01 --end-date 2025-12-31 \
-  --n-temporal-tiles 12 --n-spatial-tiles 4 \
-  --test-ratio 0.2 --concurrency 3 \
+  --n-temporal-tiles 12 \
+  --n-spatial-tiles 4 \
+  --test-ratio 0.2 \
+  --concurrency 4 \
   --hf-dataset Paulescu/wildfire-prevention
 ```
 
-## Evaluate
+## 4. Evaluation
 
 The evaluation pipeline runs a model against a generated dataset and measures how closely its predictions match the Opus-generated ground truth annotations.
 
 ```bash
-# Anthropic backend against the test split (default)
-uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic
-
-# Anthropic backend against the train split (checks Opus self-consistency)
-uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic --split train
-
-# Local backend via llama-server (requires llama.cpp on PATH)
+# Evaluate Claude Opus 4.6 (sanity check)
 uv run scripts/evaluate.py \
-  --dataset data/20260416_141946 \
+    --hf-dataset Paulescu/wildfire-prevention \
+    --backend anthropic 
+    --split test
+
+# Evaluate LFM2.5-VL-450M-GGUF at q8_0 quantization
+uv run scripts/evaluate.py \
+  --hf-dataset Paulescu/wildfire-prevention \
   --backend local \
   --model LiquidAI/LFM2.5-VL-450M-GGUF \
-  --quant Q8_0
+  --quant Q8_0 \
+  --split test
 ```
 
 Each run saves a report to `evals/{timestamp}/report.md`.
 
 ### Results
 
-Evaluated on 22 locations (`data/20260416_141946`), ground truth from `claude-opus-4-6`.
+Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention)), ground truth from `claude-opus-4-6`.
 
-| field | claude-opus-4-6 | LFM2.5-VL-1.6B Q8_0 | LFM2.5-VL-450M Q8_0 |
+| field | claude-opus-4-6 | LFM2.5-VL-450M Q8_0 | LFM2.5-VL-450M fine-tuned |
 |---|---|---|---|
 | valid_json | 1.00 | 1.00 | 1.00 |
 | fields_present | 1.00 | 1.00 | 1.00 |
-| risk_level | 0.95 | 0.18 | 0.18 |
-| dry_vegetation_present | 0.95 | 0.73 | 0.73 |
-| urban_interface | 1.00 | 0.73 | 0.45 |
-| steep_terrain | 1.00 | 0.73 | 0.59 |
-| water_body_present | 1.00 | 0.73 | 0.77 |
-| image_quality_limited | 1.00 | 0.68 | 0.18 |
-| **overall** | **0.97** | **0.63** | **0.48** |
-| **avg latency (s)** | **2.89** | **2.07** | **0.71** |
+| risk_level | 1.00 | 0.14 | 0.14 |
+| dry_vegetation_present | 1.00 | 0.68 | 0.68 |
+| urban_interface | 1.00 | 0.18 | 0.82 |
+| steep_terrain | 1.00 | 0.45 | 0.50 |
+| water_body_present | 1.00 | 0.91 | 0.55 |
+| image_quality_limited | 1.00 | 0.41 | 0.45 |
+| **overall** | **1.00** | **0.46** | **0.52** |
+| **avg latency (s)** | **3.20** | **0.71** | **22.98** |
 
-Opus at 0.97 confirms the ground truth labels are highly reproducible. Both LFM models produce valid, well-structured JSON (1.00) but struggle with `risk_level` and `image_quality_limited`, which are the primary targets for fine-tuning. The 1.6B model improves meaningfully over 450M (0.63 vs 0.48) at ~3x higher latency.
+## 5. Fine-tuning
 
-## Tasks
+We use [leap-finetune](https://github.com/LiquidAI/leap-finetune) to fine-tune `LFM2.5-VL-450M` on the Opus-labeled dataset via Modal's serverless H100 infrastructure.
 
-- [x] Clearly define the problem we are solving
-- [x] Generate a sample of images and check output produced by Opus 4.6
-- [ ] Fine-tune LFM2.5-VL-450M to boost performance
+[HERE]
+
+### Steps
+
+1. Clone leap-finetune and install:
+
+    ```bash
+    git clone https://github.com/LiquidAI/leap-finetune.git
+    cd leap-finetune
+    uv sync
+    ```
+
+2. Authenticate:
+
+    ```bash
+    uv run huggingface-cli login   # needed to pull the model and dataset
+    uv run python -m modal setup   # needed to launch the training job
+    ```
+
+3. Prepare the dataset:
+
+    ```bash
+    # Run locally
+    uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --output ./data/wildfire
+
+    # Run on Modal (no local disk or bandwidth required)
+    uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --modal
+    ```
+
+    The `--modal` flag spins up a Modal container, downloads the dataset from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job. Requires `pip install modal && modal setup`.
+
+4. Run the fine-tuning. From the `leap-finetune` root, pass the absolute path to the config:
+
+    ```bash
+    uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
+    ```
+
+    Training progress is visible at [https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune](https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune).
+
+5. Retrieve the checkpoint
+
+    ```bash
+    uv run modal volume ls wildfire-prevention /outputs/
+    uv run modal volume get wildfire-prevention /outputs/<run-name> ./outputs
+    ```
+
+6. Evaluate the fine-tuned model. The fine-tuned checkpoint is in safetensors format. Use `--backend hf` to load it directly via the `transformers` library:
+
+    ```bash
+    uv run scripts/evaluate.py \
+    --hf-dataset Paulescu/wildfire-prevention \
+    --backend hf \
+    --model <path-to-checkpoint> \
+    --split test
+    ```
+
