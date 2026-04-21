@@ -410,6 +410,31 @@ We use [leap-finetune](https://github.com/LiquidAI/leap-finetune) to fine-tune `
 
 ### Steps
 
+```mermaid
+sequenceDiagram
+    participant User as Local machine
+    participant Modal
+    participant HF as HuggingFace Hub
+    participant Vol as Modal volume<br/>wildfire-prevention
+
+    User->>Modal: prepare_wildfire.py --modal
+    Modal->>HF: snapshot_download(Paulescu/wildfire-prevention)
+    HF-->>Modal: images + dataset splits
+    Modal->>Vol: wildfire_train.jsonl, wildfire_test.jsonl
+    Modal-->>User: Done. Data ready in volume.
+
+    User->>Modal: leap-finetune wildfire_finetune_modal.yaml
+    Modal->>Vol: read train/test JSONL + images
+    Note over Modal: Fine-tune LFM2.5-VL-450M on H100
+    Modal->>Vol: write checkpoint (safetensors)
+    Modal-->>User: Training complete.
+
+    User->>Modal: modal volume get wildfire-prevention /outputs/<run>
+    Modal-->>User: checkpoint files
+
+    Note over User: evaluate.py --backend hf --model checkpoint
+```
+
 1. Clone leap-finetune and install:
 
     ```bash
