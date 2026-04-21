@@ -7,6 +7,7 @@ dependencies = [
     "openai>=1.0",
     "pillow>=10.0",
     "requests>=2.32",
+    "tqdm>=4.66",
     "python-dotenv>=1.0",
     "huggingface_hub>=0.23",
     "streamlit>=1.35",

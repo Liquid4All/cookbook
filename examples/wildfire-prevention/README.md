@@ -7,19 +7,15 @@ In this example you will learn how to build a basic wildfire prevention system u
 
 We will cover all the stages of the journey:
 
+## Steps
 - [Problem framing](#problem-framing)
 - [System design](#system-design)
-  - [Design rationale](#design-rationale)
-  - [Proof of Concept (PoC)](#proof-of-concept-poc)
-  - [Live watch loop](#live-watch-loop)
-  - [Historical backfill](#historical-backfill)
-  - [App](#app)
-- [Data collection and labeling](#generate-sample-data)
-- [Evaluation](#evaluate)
+- [Data collection and labeling](#data-collection-and-labeling)
+- [Evaluation](#evaluation)
 - [Fine-tuning](#fine-tuning)
 
 
-## Problem framing
+## 1. Problem framing
 
 We want to reduce the number of wildfires by identifying areas with high-risk from Sentinel-2 images, and providing actionable feedback to local authorities like firefighters so they can act before the fire has even started.
 
@@ -43,7 +39,7 @@ Let's go through an example:
 
 ### Example
 
-1. A Sentinel-2 satellite flies over *Attica (Greece)* on  2024-08-01, and takes these 2 pictures.
+1. A Sentinel-2 satellite flies over *Attica (Greece)* on 2024-08-01, and takes these 2 pictures.
 
     | RGB | SWIR |
     |-----|------|
@@ -81,13 +77,13 @@ Let's go through an example:
     - controlled burns to reduce available fuel.
 
 
-## System design
+## 2. System design
 
 ### Design rationale
 
 You could point a frontier model (GPT-5, Gemini 2.0 Flash, or Claude 3.6 Sonnet) at satellite images and it would do a good job. So why bother using a smaller one that needs fine-tuning?
 
-The bottleneck is not capability. It is data transmission.
+The bottleneck is not capability. It is **data transmission**.
 
 A frontier model runs on a server on Earth. To use it:
 
@@ -218,7 +214,7 @@ The system monitors 22 fixed locations. Each location is a single 5 km tile cent
     uv run scripts/predict.py --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --location attica_greece
     ```
 
-6. Optionally, backfill historical predictions to seed the database before the live loop:
+6. Optionally, backfill historical predictions to seed the database before the live loop. For each location and day, backfill writes the RGB and SWIR images to `db_images/{row_id}/` on disk and inserts the prediction into `wildfire.db`, linked by row ID.
 
     ```bash
     # All locations, last 7 days
@@ -234,40 +230,97 @@ The system monitors 22 fixed locations. Each location is a single 5 km tile cent
     uv run streamlit run app/app.py
     ```
 
-## Data collection and labeling
+## Data collection and labeling pipeline
 
-Images are fetched via [SimSat](https://github.com/DPhi-Space/SimSat), a local Docker service that wraps the Sentinel-2 STAC catalog on AWS Element84.
+We use `claude-opus-4-6` to label a dataset of satellite image pairs.
 
-[ADD DIAGRAM SIMSAT COMPONENTS]
+![](./assets/input_output.jpg)
 
-Images are fetched at 5 km tiles (`--size-km 5.0`), which keeps images at or below 512x512 px — the native resolution of LFM2.5-VL-450M — avoiding tiling overhead at inference time.
+The dataset is built from a cross-product of locations, spatial tiles, and temporal tiles, then split into train and test by a temporal cutoff.
+
+![](./assets/spatial_temporal_tiles.gif)
+
+To run the data collection and labeling pipeline you will need an Anthropic API key.
 
 ```bash
-# 1. Start SimSat (from the SimSat repo root, keep it running in a separate terminal)
-docker compose up
-
-# 2. Install Python dependencies
-uv sync
-
-# 3. Set your Anthropic API key
 export ANTHROPIC_API_KEY=sk-...
 
-# 4. Generate sample images and Opus 4.6 annotations (22 locations, 3 parallel workers)
-uv run scripts/generate_samples.py --size-km 5.0 --concurrency 3
+# All 22 locations, push final dataset to Hugging Face
+uv run scripts/generate_samples.py \
+  --start-date 2024-01-01 --end-date 2025-12-31 \
+  --n-temporal-tiles 12 --n-spatial-tiles 4 \
+  --test-ratio 0.2 --concurrency 3 \
+  --hf-dataset your-username/wildfire-risk
+
+# Only 1 region, Attica, Greece
+uv run scripts/generate_samples.py \
+    --start-date 2024-01-01 --end-date 2024-12-31 \
+    --n-temporal-tiles 12 --n-spatial-tiles 4 \
+    --test-ratio 0.2 --concurrency 3 \
+    --location attica_greece
 ```
 
-Each run creates a timestamped folder under `data/`, e.g.:
+For each `(location, spatial tile, timestamp)` triple, `generate_samples.py` does the following:
 
-```
-data/
-  20260416_143052/
-    angeles_nf_ca/
-      rgb.png
-      swir.png
-      annotation.json
-    alentejo_portugal/
-    ...
-```
+1. Creates a timestamped run directory under `data/` (e.g., `data/20260416_143052/`).
+
+2. Samples `--n-temporal-tiles` timestamps evenly spaced within `[--start-date, --end-date]` using bin-center placement, so timestamps are always in the interior of the window.
+
+    ```
+    Jan 2024                                       Dec 2024
+    │                                                    │
+    │   t00    t01    t02    t03    t04    t05           │
+    │    ●      ●      ●      ●      ●      ●            │
+    ├────┴──────┴──────┴──────┴──────┼──────┴────────────┤
+    │                                │                   │
+    │           train                │       test        │
+    │         (80% of window)        │   (20% of window) │
+    └────────────────────────────────┴───────────────────┘
+                                    ↑
+                                    cutoff
+    ```
+
+3. Builds a centered square grid of `--n-spatial-tiles` tiles around each location center, spaced `--size-km` apart.
+
+    ```
+    ┌─────────┬─────────┬─────────┐
+    │   s00   │   s01   │   s02   │
+    ├─────────┼─────────┼─────────┤
+    │   s03   │   s04   │   s05   │   ← s04 = location center
+    ├─────────┼─────────┼─────────┤
+    │   s06   │   s07   │   s08   │
+    └─────────┴─────────┴─────────┘
+            ←  5 km  →
+    ```
+
+4. Fetches the RGB and SWIR images in parallel from SimSat for each `(spatial tile, timestamp)` pair.
+
+5. Saves `rgb.png` and `swir.png` to the tile subfolder.
+
+6. Sends both images to `claude-opus-4-6` for risk annotation, with automatic retry on rate-limit errors.
+
+7. Saves the structured JSON output as `annotation.json`.
+
+8. Assigns the tile to `train/` or `test/` based on a temporal cutoff: `cutoff = start + (1 - test_ratio) × duration`. All tiles with `timestamp < cutoff` go to `train/`, the rest go to `test/`. This prevents near-duplicate images (Sentinel-2 revisits every 5 days) from appearing on both sides of the split. Tiles are indexed row-major from the top-left of the grid. For a 3×3 grid (`n_spatial_tiles=9`), `s04` is the location center. `t00` is always the earliest timestamp. Indices are zero-padded.
+
+    ```
+    data/20260416_143052/
+      train/
+        attica_greece/
+          s00_t00/        <- spatial tile 0, temporal tile 0 (earliest timestamp)
+            rgb.png
+            swir.png
+            annotation.json
+          s00_t01/
+          s01_t00/
+          ...
+      test/
+        attica_greece/
+          s00_t09/        <- same spatial tiles, later timestamps
+          ...
+    ```
+
+9. Optionally packages the run in [leap-finetune](https://github.com/LiquidAI/leap-finetune) VLM SFT format and pushes `train.jsonl` and `test.jsonl` to Hugging Face Hub (`--hf-dataset`).
 
 To validate a run:
 
@@ -276,13 +329,26 @@ uv run scripts/check_samples.py                  # most recent run
 uv run scripts/check_samples.py 20260416_143052  # specific run
 ```
 
+The dataset used in the rest of this guide is [Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention). To reproduce it exactly:
+
+```bash
+uv run scripts/generate_samples.py \
+  --start-date 2024-01-01 --end-date 2025-12-31 \
+  --n-temporal-tiles 12 --n-spatial-tiles 4 \
+  --test-ratio 0.2 --concurrency 3 \
+  --hf-dataset Paulescu/wildfire-prevention
+```
+
 ## Evaluate
 
 The evaluation pipeline runs a model against a generated dataset and measures how closely its predictions match the Opus-generated ground truth annotations.
 
 ```bash
-# Anthropic backend (checks Opus self-consistency)
+# Anthropic backend against the test split (default)
 uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic
+
+# Anthropic backend against the train split (checks Opus self-consistency)
+uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic --split train
 
 # Local backend via llama-server (requires llama.cpp on PATH)
 uv run scripts/evaluate.py \

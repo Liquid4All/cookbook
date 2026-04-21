@@ -1,7 +1,11 @@
 """Run an evaluation against a generated dataset.
 
+By default evaluates the test split. Pass --split train to evaluate training data
+(e.g. to check for underfitting).
+
 Usage:
     uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic
+    uv run scripts/evaluate.py --dataset data/20260416_141946 --backend anthropic --split train
     uv run scripts/evaluate.py --dataset data/20260416_141946 --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0
     uv run scripts/evaluate.py --dataset data/20260416_141946 --backend local --model LiquidAI/LFM2.5-VL-450M-GGUF --quant Q8_0 --port 8081
 """
@@ -83,6 +87,12 @@ def main() -> None:
         help="Parallel workers (default: 3 for anthropic, 1 for local).",
     )
     parser.add_argument(
+        "--split",
+        choices=["train", "test"],
+        default="test",
+        help="Which data split to evaluate (default: test).",
+    )
+    parser.add_argument(
         "--verbose-server",
         action="store_true",
         help="Show llama-server output (local backend only).",
@@ -102,16 +112,27 @@ def main() -> None:
         print(f"Dataset not found: {dataset_dir}")
         sys.exit(1)
 
-    sample_dirs = sorted(p for p in dataset_dir.iterdir() if p.is_dir())
-    if not sample_dirs:
-        print(f"No samples found in {dataset_dir}")
+    split_dir = dataset_dir / args.split
+    if not split_dir.is_dir():
+        print(f"Split '{args.split}' not found in {dataset_dir}")
+        sys.exit(1)
+
+    # Walk split/{loc_id}/{tile_id}/ to collect all sample directories.
+    sample_entries: list[tuple[str, Path]] = [
+        (f"{loc_dir.name}/{tile_dir.name}", tile_dir)
+        for loc_dir in sorted(split_dir.iterdir()) if loc_dir.is_dir()
+        for tile_dir in sorted(loc_dir.iterdir()) if tile_dir.is_dir()
+    ]
+    if not sample_entries:
+        print(f"No samples found in {split_dir}")
         sys.exit(1)
 
     concurrency = args.concurrency or (1 if args.backend == "local" else 3)
     eval_run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     print(
-        f"Eval: {eval_run_id}  |  dataset: {args.dataset}"
-        f"  |  backend: {args.backend}  |  concurrency: {concurrency}"
+        f"Eval: {eval_run_id}  |  dataset: {args.dataset}  |  split: {args.split}"
+        f"  |  samples: {len(sample_entries)}  |  backend: {args.backend}"
+        f"  |  concurrency: {concurrency}"
     )
 
     # Start llama-server if needed.
@@ -138,21 +159,21 @@ def main() -> None:
     try:
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
             futures = {}
-            for sample_dir in sample_dirs:
+            for sample_id, sample_dir in sample_entries:
                 loaded = load_sample(sample_dir)
                 if loaded is None:
-                    print(f"[{sample_dir.name}] SKIP: missing files")
+                    print(f"[{sample_id}] SKIP: missing files")
                     continue
                 rgb_bytes, swir_bytes, ground_truth = loaded
                 future = pool.submit(
                     evaluate_sample,
-                    sample_dir.name,
+                    sample_id,
                     rgb_bytes,
                     swir_bytes,
                     ground_truth,
                     predict,
                 )
-                futures[future] = sample_dir.name
+                futures[future] = sample_id
 
             for future in as_completed(futures):
                 result = future.result()
@@ -166,14 +187,14 @@ def main() -> None:
         if server_process is not None:
             stop_server(server_process)
 
-
     # Sort results to match dataset order.
-    order = {p.name: i for i, p in enumerate(sample_dirs)}
+    order = {sample_id: i for i, (sample_id, _) in enumerate(sample_entries)}
     results.sort(key=lambda r: order.get(r.id, 999))
 
     summary = EvalSummary(results=results)
     mname = model_name(args.backend, args.model, args.quant)
-    report = render_report(summary, args.dataset, args.backend, mname, eval_run_id)
+    dataset_label = f"{args.dataset}/{args.split}"
+    report = render_report(summary, dataset_label, args.backend, mname, eval_run_id)
 
     # Save report.
     eval_dir = EVALS_DIR / eval_run_id

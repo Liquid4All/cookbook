@@ -1494,6 +1494,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "streamlit" },
+    { name = "tqdm" },
 ]
 
 [package.metadata]
@@ -1506,4 +1507,5 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "requests", specifier = ">=2.32" },
     { name = "streamlit", specifier = ">=1.35" },
+    { name = "tqdm", specifier = ">=4.66" },
 ]
