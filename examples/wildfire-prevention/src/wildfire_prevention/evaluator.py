@@ -70,11 +70,16 @@ def transformers_backend(model_path: str) -> PredictFn:
     from transformers import AutoProcessor, AutoModelForImageTextToText  # type: ignore[import-untyped]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
+    local_path = Path(model_path)
+    # Fine-tuning never modifies the processor. Load it from HF if the path is
+    # local — newer transformers (5.x) rejects absolute paths in AutoProcessor.
+    processor_source = "LiquidAI/LFM2.5-VL-450M" if local_path.is_dir() else model_path
+    processor = AutoProcessor.from_pretrained(processor_source, trust_remote_code=True)
     model = AutoModelForImageTextToText.from_pretrained(
-        model_path,
+        str(local_path) if local_path.is_dir() else model_path,
         torch_dtype=torch.float16 if device == "cuda" else torch.float32,
         trust_remote_code=True,
+        local_files_only=local_path.is_dir(),
     ).to(device)
     model.eval()
 
@@ -162,6 +167,7 @@ def start_llama_server(
     quant: str | None = None,
     port: int = 8080,
     verbose: bool = False,
+    mmproj: str | None = None,
 ) -> subprocess.Popen[bytes]:
     local_path = Path(model)
     if local_path.is_file():
@@ -169,6 +175,8 @@ def start_llama_server(
     else:
         hf_repo = f"{model}:{quant}" if quant else model
         cmd = ["llama-server", "-hf", hf_repo, "--jinja", "--port", str(port)]
+    if mmproj:
+        cmd += ["--mmproj", mmproj]
     kwargs: dict[str, object] = {}
     if not verbose:
         kwargs["stdout"] = subprocess.DEVNULL

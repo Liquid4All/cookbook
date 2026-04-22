@@ -147,6 +147,12 @@ def main() -> None:
         help="Which data split to evaluate: 'train' checks Opus self-consistency, 'test' evaluates model quality.",
     )
     parser.add_argument(
+        "--mmproj",
+        metavar="PATH",
+        default=None,
+        help="Path to the mmproj GGUF (vision tower + projector). Required for VLM inference with a local fine-tuned GGUF.",
+    )
+    parser.add_argument(
         "--verbose-server",
         action="store_true",
         help="Show llama-server output (local backend only).",
@@ -203,6 +209,7 @@ def main() -> None:
             quant=args.quant or None,
             port=args.port,
             verbose=args.verbose_server,
+            mmproj=args.mmproj,
         )
         try:
             wait_for_server(port=args.port)

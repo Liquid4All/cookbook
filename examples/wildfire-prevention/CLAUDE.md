@@ -33,6 +33,16 @@ uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --outp
 uv run leap-finetune configs/wildfire_finetune.yaml
 uv run leap-finetune configs/wildfire_finetune_modal.yaml
 
+# Quantize a fine-tuned checkpoint to GGUF (clones llama.cpp automatically on first run)
+# Produces two artifacts: backbone GGUF and mmproj GGUF (vision tower + projector)
+uv run scripts/quantize.py \
+    --checkpoint ./leap-finetune/outputs/<run>/<checkpoint> \
+    --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf
+uv run scripts/quantize.py \
+    --checkpoint ./leap-finetune/outputs/<run>/<checkpoint> \
+    --output ./outputs/lfm2.5-vl-wildfire-Q4_K_M.gguf \
+    --quant Q4_K_M
+
 # Launch the Streamlit map app
 uv run streamlit run app/app.py
 

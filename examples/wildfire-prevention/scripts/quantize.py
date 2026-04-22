@@ -1,142 +1,134 @@
-"""Merge a LoRA checkpoint into the base model and export to quantized GGUF.
+"""Convert a fine-tuned LFM2.5-VL-450M checkpoint to quantized GGUF.
 
-Step 6 in the fine-tuning pipeline. Run after retrieving the checkpoint from
-Modal (step 5) and before evaluating with --backend local (step 7).
+Produces two artifacts required by llama-server for VLM inference:
+  1. Quantized backbone GGUF  (language model)
+  2. mmproj GGUF              (vision tower + multimodal projector)
 
-No external tools required. Conversion uses the vendored
-finetune/convert_hf_to_gguf.py (a copy of llama.cpp's converter). The gguf
-Python package handles all quantization inline, so no llama-quantize binary
-is needed.
+Handles the full setup automatically: clones llama.cpp if not present and
+builds the llama-quantize binary.
 
-Note: the vendored converter was validated against text-only LFM models
-(home-assistant example). LFM2.5-VL-450M is a VLM, so verify the output
-GGUF works with llama-server before deploying.
+Prerequisites (cannot be automated):
+  - git
+  - cmake
+  - A C++ compiler (macOS: run `xcode-select --install` if missing)
 
 Usage:
-    # Merge LoRA adapter, convert to GGUF, and quantize to Q8_0
     uv run scripts/quantize.py \\
-        --checkpoint ./outputs/<run-name> \\
+        --checkpoint ./leap-finetune/outputs/<run>/<checkpoint> \\
         --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf
 
     # Different quantization level
     uv run scripts/quantize.py \\
-        --checkpoint ./outputs/<run-name> \\
+        --checkpoint ./leap-finetune/outputs/<run>/<checkpoint> \\
         --output ./outputs/lfm2.5-vl-wildfire-Q4_K_M.gguf \\
         --quant Q4_K_M
-
-    # Skip LoRA merge if --checkpoint is already a full merged model
-    uv run scripts/quantize.py \\
-        --checkpoint ./outputs/<run-name> \\
-        --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \\
-        --skip-merge
 """
 
 import argparse
-import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 
-BASE_MODEL = "LiquidAI/LFM2.5-VL-450M"
+LLAMA_CPP_DIR = Path(__file__).parent.parent / "llama.cpp"
+LLAMA_CPP_REPO = "https://github.com/ggerganov/llama.cpp"
 VALID_QUANTS = ["Q4_0", "Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0", "F16"]
 
-CONVERT_SCRIPT = Path(__file__).parent.parent / "finetune" / "convert_hf_to_gguf.py"
 
-
-def merge_lora(checkpoint: Path, base_model: str, output_dir: Path) -> None:
-    """Merge a LoRA adapter into the base model and save the merged weights."""
-    try:
-        import torch
-        from peft import PeftModel  # type: ignore[import-untyped]
-        from transformers import AutoModelForImageTextToText, AutoProcessor  # type: ignore[import-untyped]
-    except ImportError as exc:
-        print(f"Missing dependency: {exc}")
-        print("Install with: uv sync")
-        sys.exit(1)
-
-    print(f"Loading base model: {base_model} ...")
-    model = AutoModelForImageTextToText.from_pretrained(
-        base_model,
-        torch_dtype=torch.float16,
-        device_map="cpu",
-        trust_remote_code=True,
-    )
-    processor = AutoProcessor.from_pretrained(base_model, trust_remote_code=True)
-
-    print(f"Loading LoRA adapter from: {checkpoint} ...")
-    model = PeftModel.from_pretrained(model, str(checkpoint))
-
-    print("Merging LoRA weights into base model ...")
-    model = model.merge_and_unload()
-
-    print(f"Saving merged model to: {output_dir} ...")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(str(output_dir))
-    processor.save_pretrained(str(output_dir))
-    print("Merge complete.")
-
-
-def convert_to_gguf(model_dir: Path, output: Path, quant: str) -> None:
-    """Convert a HuggingFace model directory to quantized GGUF in one pass."""
-    if not CONVERT_SCRIPT.exists():
-        print(f"Converter not found at: {CONVERT_SCRIPT}")
-        sys.exit(1)
-
-    # NO_LOCAL_GGUF forces the converter to use the installed gguf package
-    # instead of looking for a local gguf-py directory.
-    env = {**os.environ, "NO_LOCAL_GGUF": "1"}
-
-    print(f"Converting to GGUF ({quant}): {output} ...")
-    result = subprocess.run(
-        [
-            sys.executable,
-            str(CONVERT_SCRIPT),
-            str(model_dir),
-            "--outtype", quant.lower(),
-            "--outfile", str(output),
-        ],
-        env=env,
-    )
+def run(cmd: list[str], cwd: Path | None = None) -> None:
+    result = subprocess.run(cmd, cwd=cwd)
     if result.returncode != 0:
-        print("GGUF conversion failed.")
+        print(f"Command failed: {' '.join(cmd)}")
         sys.exit(result.returncode)
-    print(f"Conversion complete: {output}")
+
+
+def check_build_tools() -> None:
+    for tool in ("git", "cmake", "c++"):
+        result = subprocess.run(["which", tool], capture_output=True)
+        if result.returncode != 0:
+            print(f"Missing required tool: {tool}")
+            if tool in ("cmake", "c++"):
+                print("  On macOS: run `xcode-select --install` and `brew install cmake`")
+            sys.exit(1)
+
+
+def setup_llama_cpp() -> None:
+    if not LLAMA_CPP_DIR.exists():
+        print(f"Cloning llama.cpp into {LLAMA_CPP_DIR} ...")
+        run(["git", "clone", "--depth=1", LLAMA_CPP_REPO, str(LLAMA_CPP_DIR)])
+
+    quantize_bin = LLAMA_CPP_DIR / "build" / "bin" / "llama-quantize"
+    if not quantize_bin.exists():
+        print("Building llama-quantize ...")
+        run(["cmake", "-B", "build"], cwd=LLAMA_CPP_DIR)
+        run(["cmake", "--build", "build", "--config", "Release", "-t", "llama-quantize"], cwd=LLAMA_CPP_DIR)
+
+    # The project venv already provides all packages needed by convert_hf_to_gguf.py
+    # (gguf, transformers, torch, numpy, sentencepiece, protobuf), so no separate
+    # install step is required.
+
+
+def convert_to_f16(checkpoint: Path, f16_output: Path) -> None:
+    convert_script = LLAMA_CPP_DIR / "convert_hf_to_gguf.py"
+    print(f"Converting backbone to F16 GGUF: {f16_output} ...")
+    run([
+        sys.executable,
+        str(convert_script),
+        str(checkpoint),
+        "--outtype", "f16",
+        "--outfile", str(f16_output),
+    ])
+
+
+def convert_to_mmproj(checkpoint: Path, mmproj_output: Path) -> None:
+    """Extract vision tower + projector into a mmproj GGUF using --mmproj mode."""
+    convert_script = LLAMA_CPP_DIR / "convert_hf_to_gguf.py"
+    print(f"Converting vision components to mmproj GGUF: {mmproj_output} ...")
+    run([
+        sys.executable,
+        str(convert_script),
+        str(checkpoint),
+        "--mmproj",
+        "--outfile", str(mmproj_output),
+    ])
+
+
+def quantize(f16_path: Path, output: Path, quant: str) -> None:
+    if quant == "F16":
+        f16_path.rename(output)
+        return
+    quantize_bin = LLAMA_CPP_DIR / "build" / "bin" / "llama-quantize"
+    print(f"Quantizing to {quant}: {output} ...")
+    run([str(quantize_bin), str(f16_path), str(output), quant])
+
+
+def mmproj_path(output: Path) -> Path:
+    """Derive mmproj output path from the backbone output path."""
+    return output.parent / f"mmproj-{output.stem.replace('-' + output.stem.split('-')[-1], '')}.gguf"
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Merge LoRA adapter into base model and export to quantized GGUF."
+        description="Convert a fine-tuned LFM2.5-VL-450M checkpoint to quantized GGUF."
     )
     parser.add_argument(
         "--checkpoint",
         required=True,
         metavar="PATH",
-        help="Path to the LoRA checkpoint directory (from: modal volume get wildfire-prevention /outputs/<run>).",
+        help="Path to the HuggingFace checkpoint directory.",
     )
     parser.add_argument(
         "--output",
         required=True,
         metavar="PATH",
-        help="Output path for the GGUF file (e.g. ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf).",
-    )
-    parser.add_argument(
-        "--base-model",
-        default=BASE_MODEL,
-        metavar="REPO",
-        help=f"Base model HuggingFace repo ID (default: {BASE_MODEL}).",
+        help="Output path for the backbone GGUF (e.g. ./outputs/model-Q8_0.gguf). "
+             "The mmproj is written alongside it as mmproj-<stem>.gguf.",
     )
     parser.add_argument(
         "--quant",
         default="Q8_0",
         choices=VALID_QUANTS,
-        help="Quantization type (default: Q8_0). Q8_0 preserves accuracy; Q4_K_M halves the size.",
-    )
-    parser.add_argument(
-        "--skip-merge",
-        action="store_true",
-        help="Skip the LoRA merge step if --checkpoint already contains a full merged model.",
+        help="Quantization type for the backbone (default: Q8_0). The mmproj is always F16.",
     )
     args = parser.parse_args()
 
@@ -149,24 +141,33 @@ def main() -> None:
 
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(prefix="wildfire-quantize-") as tmp:
-        if args.skip_merge:
-            model_dir = checkpoint
-        else:
-            merged_dir = Path(tmp) / "merged"
-            merge_lora(checkpoint, args.base_model, merged_dir)
-            model_dir = merged_dir
+    f16_path = output.parent / (output.stem + "-F16.gguf")
+    mmproj = output.parent / f"mmproj-{output.stem}.gguf"
 
-        convert_to_gguf(model_dir, output, args.quant)
+    check_build_tools()
+    setup_llama_cpp()
+
+    # Backbone: HF checkpoint → F16 GGUF → quantized GGUF
+    convert_to_f16(checkpoint, f16_path)
+    try:
+        quantize(f16_path, output, args.quant)
+    finally:
+        if args.quant != "F16" and f16_path.exists():
+            f16_path.unlink()
+
+    # mmproj: vision tower + projector → F16 GGUF (no further quantization needed)
+    convert_to_mmproj(checkpoint, mmproj)
 
     print()
-    print(f"Done. Quantized model: {output}")
+    print(f"Done.")
+    print(f"  Backbone : {output}")
+    print(f"  mmproj   : {mmproj}")
     print()
     print("To evaluate with the local backend:")
-    print(f"  uv run scripts/evaluate.py --backend local --model {output} --split test")
+    print(f"  uv run scripts/evaluate.py --backend local --model {output} --mmproj {mmproj} --split test")
     print()
     print("To run the prediction loop:")
-    print(f"  uv run scripts/predict.py --backend local --model {output}")
+    print(f"  uv run scripts/predict.py --backend local --model {output} --mmproj {mmproj}")
 
 
 if __name__ == "__main__":

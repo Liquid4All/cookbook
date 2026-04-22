@@ -394,8 +394,6 @@ Once you have two or more eval runs, launch the comparison app to explore result
 uv run streamlit run app/eval_compare.py
 ```
 
-[DIAGRAM]
-
 ### Results
 
 Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention)), ground truth from `claude-opus-4-6`.
@@ -419,31 +417,6 @@ Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co
 
 We use [leap-finetune](https://github.com/LiquidAI/leap-finetune) to fine-tune `LFM2.5-VL-450M` on the Opus-labeled dataset via Modal's serverless H100 infrastructure.
 
-```mermaid
-sequenceDiagram
-    participant User as Local machine
-    participant Modal
-    participant HF as HuggingFace Hub
-    participant Vol as Modal volume<br/>wildfire-prevention
-
-    User->>Modal: prepare_wildfire.py --modal
-    Modal->>HF: snapshot_download(Paulescu/wildfire-prevention)
-    HF-->>Modal: images + dataset splits
-    Modal->>Vol: wildfire_train.jsonl, wildfire_test.jsonl
-    Modal-->>User: Done. Data ready in volume.
-
-    User->>Modal: leap-finetune wildfire_finetune_modal.yaml
-    Modal->>Vol: read train/test JSONL + images
-    Note over Modal: Fine-tune LFM2.5-VL-450M on H100
-    Modal->>Vol: write checkpoint (safetensors)
-    Modal-->>User: Training complete.
-
-    User->>Modal: modal volume get wildfire-prevention /outputs/<run>
-    Modal-->>User: checkpoint files
-
-    Note over User: evaluate.py --backend hf --model checkpoint
-```
-
 ### Steps
 
 1. Clone [leap-finetune](https://github.com/Liquid4All/leap-finetune) inside this project directory and install its dependencies:
@@ -463,6 +436,20 @@ sequenceDiagram
     ```
 
 3. Prepare the dataset and push it to a Modal volume:
+
+    ```mermaid
+    sequenceDiagram
+        participant User as Local machine
+        participant Modal
+        participant HF as HuggingFace Hub
+        participant Vol as Modal volume<br/>wildfire-prevention
+
+        User->>Modal: prepare_wildfire.py --modal
+        Modal->>HF: snapshot_download(Paulescu/wildfire-prevention)
+        HF-->>Modal: images + dataset splits
+        Modal->>Vol: wildfire_train.jsonl, wildfire_test.jsonl
+        Modal-->>User: Done. Data ready in volume.
+    ```
 
     ```bash
     uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --modal
@@ -485,25 +472,77 @@ sequenceDiagram
     uv run modal volume get wildfire-prevention /outputs/<run-name> ./outputs
     ```
 
-6. Quantize the model
-
-    [TODO]
-
-7. Evaluate the fine-tuned model. Use `--backend hf` to load the safetensors checkpoint directly, or `--backend local` to use the quantized GGUF from step 6:
+6. Quantize the model to GGUF (clones and builds llama.cpp automatically on first run):
 
     ```bash
-    # Evaluate via HuggingFace transformers (safetensors checkpoint)
-    uv run scripts/evaluate.py \
-        --hf-dataset Paulescu/wildfire-prevention \
-        --backend hf \
-        --model <path-to-checkpoint> \
-        --split test
+    uv run scripts/quantize.py \
+        --checkpoint ./outputs/<run-name>/<checkpoint> \
+        --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf
+    ```
 
-    # Evaluate via llama-server (quantized GGUF from step 6)
+    The script converts the checkpoint to F16 GGUF first, then quantizes to Q8_0 (default). To use a different quantization level, pass `--quant Q4_K_M` (or `Q4_0`, `Q5_K_M`, `Q6_K`, `F16`). The F16 intermediate is deleted automatically after quantization.
+
+7. Evaluate the fine-tuned model against the quantized GGUF from step 6:
+
+    ```bash
     uv run scripts/evaluate.py \
         --hf-dataset Paulescu/wildfire-prevention \
         --backend local \
         --model ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
+        --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
         --split test
     ```
 
+
+### Results
+
+Evaluated on 172 test samples ([Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention)), ground truth from `claude-opus-4-6`.
+
+| field | claude-opus-4-6 | LFM2.5-VL-450M Q8_0 (base) | LFM2.5-VL-450M Q8_0 (fine-tuned) |
+|---|---|---|---|
+| valid_json | 1.00 | 1.00 | 1.00 |
+| fields_present | 1.00 | 1.00 | 1.00 |
+| risk_level | 0.99 | 0.08 | 0.76 |
+| dry_vegetation_present | 0.99 | 0.48 | 0.83 |
+| urban_interface | 0.98 | 0.25 | 0.93 |
+| steep_terrain | 0.99 | 0.45 | 0.81 |
+| water_body_present | 0.99 | 0.74 | 0.87 |
+| image_quality_limited | 1.00 | 0.28 | 0.86 |
+| **overall** | **0.99** | **0.38** | **0.84** |
+| **avg latency (s)** | **2.91** | **0.72** | **0.59** |
+
+Fine-tuning takes the model from 0.38 to 0.84 overall accuracy, more than doubling performance, while also reducing latency from 0.72s to 0.59s. The largest gains are on `risk_level` (0.08 → 0.76), `urban_interface` (0.25 → 0.93), and `image_quality_limited` (0.28 → 0.86).
+
+### What we fine-tune and why
+
+A VLM has three components. Here is how inputs flow through them to produce a prediction:
+
+```mermaid
+flowchart LR
+    RGB["RGB image"]
+    SWIR["SWIR image"]
+    PROMPT["System prompt"]
+
+    RGB --> VT
+    SWIR --> VT
+
+    subgraph vlm["LFM2.5-VL-450M"]
+        VT["Vision Tower\nimage patches → feature vectors"]
+        MMP["Multi-Modal Projector\nfeature vectors → visual tokens"]
+        LM["Language Model\nvisual tokens + text tokens → output"]
+
+        VT -->|"feature vectors"| MMP
+        MMP -->|"visual tokens"| LM
+        PROMPT -->|"text tokens"| LM
+    end
+
+    LM --> OUT["risk JSON"]
+```
+
+We fine-tune all three, each for a different reason:
+
+- **Vision Tower.** Satellite imagery (especially SWIR) looks nothing like the natural photos the model was pre-trained on. Fine-tuning it teaches the encoder to read domain-specific cues: moisture stress in SWIR color, dry vegetation texture, urban structure at 10 m/pixel.
+- **Multi-Modal Projector.** It bridges the other two components. As the vision tower learns new representations, the projector must adapt its mapping so those features land in the right region of the language model's embedding space.
+- **Language Model.** The base model is a general assistant. We need it to emit our specific JSON schema and replicate the risk judgments distilled from `claude-opus-4-6`.
+
+This is a full fine-tune (`use_peft: false`). At 450M parameters, full fine-tuning on a single H100 is feasible, and it gives deeper adaptation than LoRA for a vision tower that needs to learn genuinely new low-level features.
