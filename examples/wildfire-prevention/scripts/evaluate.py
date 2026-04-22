@@ -29,6 +29,7 @@ from wildfire_prevention.evaluator import (
     llama_backend,
     model_name,
     render_report,
+    save_results,
     start_llama_server,
     stop_server,
     transformers_backend,
@@ -249,10 +250,20 @@ def main() -> None:
     eval_dir = EVALS_DIR / eval_run_id
     eval_dir.mkdir(parents=True, exist_ok=True)
     (eval_dir / "report.md").write_text(report, encoding="utf-8")
+    save_results(
+        eval_dir,
+        summary,
+        dataset=f"{dataset_label}/{args.split}",
+        backend=args.backend,
+        model=mname,
+        split=args.split,
+        eval_run_id=eval_run_id,
+    )
 
     print()
     print(report)
     print(f"Report saved to evals/{eval_run_id}/report.md")
+    print(f"Results saved to evals/{eval_run_id}/results.json")
 
 
 if __name__ == "__main__":

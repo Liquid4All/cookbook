@@ -210,6 +210,8 @@ class SampleResult:
     fields_present: bool
     field_matches: dict[str, bool]  # field -> match against ground truth
     latency_s: float = 0.0
+    prediction: dict[str, object] | None = None
+    ground_truth: dict[str, object] | None = None
 
     @property
     def all_fields_match(self) -> bool:
@@ -234,6 +236,8 @@ def evaluate_sample(
             fields_present=False,
             field_matches={f: False for f in EVAL_FIELDS},
             latency_s=perf_counter() - t0,
+            prediction=None,
+            ground_truth=ground_truth,
         )
 
     latency_s = perf_counter() - t0
@@ -248,6 +252,8 @@ def evaluate_sample(
         fields_present=fields_present,
         field_matches=field_matches,
         latency_s=latency_s,
+        prediction=prediction,
+        ground_truth=ground_truth,
     )
 
 
@@ -355,3 +361,45 @@ def model_name(backend: str, llama_model: str, quant: str = "") -> str:
     if backend == "hf":
         return llama_model
     return f"{llama_model}:{quant}" if quant else llama_model
+
+
+# ---------------------------------------------------------------------------
+# Structured result persistence
+# ---------------------------------------------------------------------------
+
+def save_results(
+    eval_dir: Path,
+    summary: EvalSummary,
+    dataset: str,
+    backend: str,
+    model: str,
+    split: str,
+    eval_run_id: str,
+) -> None:
+    """Write results.json and meta.json into eval_dir."""
+    meta = {
+        "eval_run_id": eval_run_id,
+        "dataset": dataset,
+        "backend": backend,
+        "model": model,
+        "split": split,
+    }
+    (eval_dir / "meta.json").write_text(
+        json.dumps(meta, indent=2), encoding="utf-8"
+    )
+
+    records = [
+        {
+            "id": r.id,
+            "valid_json": r.valid_json,
+            "fields_present": r.fields_present,
+            "field_matches": r.field_matches,
+            "latency_s": r.latency_s,
+            "prediction": r.prediction,
+            "ground_truth": r.ground_truth,
+        }
+        for r in summary.results
+    ]
+    (eval_dir / "results.json").write_text(
+        json.dumps(records, indent=2), encoding="utf-8"
+    )

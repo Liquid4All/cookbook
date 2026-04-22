@@ -383,7 +383,18 @@ uv run scripts/evaluate.py \
   --split test
 ```
 
-Each run saves a report to `evals/{timestamp}/report.md`.
+Each run saves three files to `evals/{timestamp}/`:
+- `report.md`: human-readable accuracy table
+- `results.json`: per-sample records with the model's actual predictions, ground truth, and per-field match results
+- `meta.json`: run metadata (model, dataset, backend, split)
+
+Once you have two or more eval runs, launch the comparison app to explore results visually:
+
+```bash
+uv run streamlit run app/eval_compare.py
+```
+
+[DIAGRAM]
 
 ### Results
 
@@ -401,6 +412,8 @@ Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co
 | image_quality_limited | 1.00 | 0.28 |
 | **overall** | **0.99** | **0.38** |
 | **avg latency (s)** | **2.91** | **0.72** |
+
+
 
 ## 5. Fine-tuning
 
@@ -433,37 +446,34 @@ sequenceDiagram
 
 ### Steps
 
-1. Clone leap-finetune and install:
+1. Clone [leap-finetune](https://github.com/Liquid4All/leap-finetune) inside this project directory and install its dependencies:
 
     ```bash
     git clone https://github.com/LiquidAI/leap-finetune.git
-    cd leap-finetune
-    uv sync
+    cd leap-finetune && uv sync && cd ..
     ```
 
 2. Authenticate:
 
     ```bash
+    cd leap-finetune
     uv run huggingface-cli login   # needed to pull the model and dataset
     uv run python -m modal setup   # needed to launch the training job
+    cd ..
     ```
 
-3. Prepare the dataset:
+3. Prepare the dataset and push it to a Modal volume:
 
     ```bash
-    # Run locally
-    uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --output ./data/wildfire
-
-    # Run on Modal (no local disk or bandwidth required)
     uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --modal
     ```
 
-    The `--modal` flag spins up a Modal container, downloads the dataset from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job. Requires `pip install modal && modal setup`.
+    The `--modal` flag spins up a Modal container, downloads the dataset from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job in the next step.
 
-4. Run the fine-tuning. From the `leap-finetune` root, pass the path to the config:
+4. Run the fine-tuning:
 
     ```bash
-    uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
+    cd leap-finetune && uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
     ```
 
     Training progress is visible at [https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune](https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune).

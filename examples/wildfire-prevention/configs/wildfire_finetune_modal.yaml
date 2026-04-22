@@ -25,7 +25,7 @@ training_config:
 
 peft_config:
   extends: "DEFAULT_VLM_LORA"
-  use_peft: true
+  use_peft: false
 
 benchmarks:
   image_root: "/outputs/data/wildfire/images"
@@ -38,7 +38,7 @@ benchmarks:
 modal:
   app_name: "wildfire-prevention"
   gpu: "H100:1"
-  timeout: 3600
+  timeout: 7200
   output_volume: "wildfire-prevention"
   output_dir: "/outputs"
   detach: false
