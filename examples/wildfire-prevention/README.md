@@ -394,6 +394,8 @@ Once you have two or more eval runs, launch the comparison app to explore result
 uv run streamlit run app/eval_compare.py
 ```
 
+![](./assets/eval_app_demo.gif)
+
 ### Results
 
 Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention)), ground truth from `claude-opus-4-6`.
@@ -536,37 +538,3 @@ Evaluated on 172 test samples ([Paulescu/wildfire-prevention](https://huggingfac
 | **avg latency (s)** | **2.91** | **0.72** | **0.59** |
 
 Fine-tuning takes the model from 0.38 to 0.84 overall accuracy, more than doubling performance, while also reducing latency from 0.72s to 0.59s. The largest gains are on `risk_level` (0.08 → 0.76), `urban_interface` (0.25 → 0.93), and `image_quality_limited` (0.28 → 0.86).
-
-### What we fine-tune and why
-
-A VLM has three components. Here is how inputs flow through them to produce a prediction:
-
-```mermaid
-flowchart LR
-    RGB["RGB image"]
-    SWIR["SWIR image"]
-    PROMPT["System prompt"]
-
-    RGB --> VT
-    SWIR --> VT
-
-    subgraph vlm["LFM2.5-VL-450M"]
-        VT["Vision Tower\nimage patches → feature vectors"]
-        MMP["Multi-Modal Projector\nfeature vectors → visual tokens"]
-        LM["Language Model\nvisual tokens + text tokens → output"]
-
-        VT -->|"feature vectors"| MMP
-        MMP -->|"visual tokens"| LM
-        PROMPT -->|"text tokens"| LM
-    end
-
-    LM --> OUT["risk JSON"]
-```
-
-We fine-tune all three, each for a different reason:
-
-- **Vision Tower.** Satellite imagery (especially SWIR) looks nothing like the natural photos the model was pre-trained on. Fine-tuning it teaches the encoder to read domain-specific cues: moisture stress in SWIR color, dry vegetation texture, urban structure at 10 m/pixel.
-- **Multi-Modal Projector.** It bridges the other two components. As the vision tower learns new representations, the projector must adapt its mapping so those features land in the right region of the language model's embedding space.
-- **Language Model.** The base model is a general assistant. We need it to emit our specific JSON schema and replicate the risk judgments distilled from `claude-opus-4-6`.
-
-This is a full fine-tune (`use_peft: false`). At 450M parameters, full fine-tuning on a single H100 is feasible, and it gives deeper adaptation than LoRA for a vision tower that needs to learn genuinely new low-level features.

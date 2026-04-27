@@ -342,7 +342,7 @@ def render_sample_explorer_tab(
                 gt_val = gt.get(field, "?")
                 pred_val = pred.get(field, "?")
                 match = "✓" if gt_val == pred_val else "✗"
-                comparison_rows.append({"field": field, "ground truth": gt_val, "predicted": pred_val, "match": match})
+                comparison_rows.append({"field": field, "ground truth": str(gt_val), "predicted": str(pred_val), "match": match})
             st.dataframe(pd.DataFrame(comparison_rows).set_index("field"), use_container_width=True)
             st.caption(f"latency: {float(r['latency_s']):.2f}s")  # type: ignore[arg-type]
             st.divider()
