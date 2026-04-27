@@ -3,7 +3,7 @@
 In this example you will learn how to build a basic wildfire prevention system using:
 
 - Sentinel-2 satellite images
-- A compact Vision-Language Model (LFM2.5-VL, 450M parameters) running directly on the satellite, so inference happens in orbit and only a lightweight JSON payload is downlinked to Earth.
+- [LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-450M), a compact Vision-Language Model running directly on the satellite, so inference happens in orbit and only a lightweight JSON payload is downlinked to Earth.
 
 ```mermaid
 flowchart LR
@@ -65,7 +65,7 @@ Let's go through an example:
 
     | RGB | SWIR |
     |-----|------|
-    | ![RGB](data/20260416_141946/attica_greece/rgb.png) | ![SWIR](data/20260416_141946/attica_greece/swir.png) |
+    | ![RGB](assets/attica_greece_rgb.png) | ![SWIR](assets/attica_greece_swir.png) |
     | *Attica, Greece. 2024-08-01* | *Attica, Greece. 2024-08-01* |
 
 2. This image pair is passed to the Vision-Language Model, which has holistic scene understanding, not just pixel-level statistics, and the model extracts the following risk profile.
