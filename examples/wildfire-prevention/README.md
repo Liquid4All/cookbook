@@ -463,7 +463,7 @@ sequenceDiagram
     Modal-->>User: Done. Data ready in volume.
 ```
 
-### Step 3. Prepare the configuratio file
+### Step 3. Prepare the configuration file
 
 This YAML file is the only file you need to pass to leap-finetune. You can find plenty of examples for different tasks in the [leap-finetune repository](https://github.com/Liquid4All/leap-finetune/tree/main/job_configs).
 
@@ -605,7 +605,7 @@ Evaluated on 172 test samples ([Paulescu/wildfire-prevention](https://huggingfac
 | **overall** | **0.99** | **0.38** | **0.84** |
 | **avg latency (s)** | **2.91** | **0.72** | **0.59** |
 
-Fine-tuning takes the model from 0.38 to 0.84 overall accuracy, more than doubling performance, while also reducing latency from 0.72s to 0.59s. The largest gains are on `risk_level` (0.08 → 0.76), `urban_interface` (0.25 → 0.93), and `image_quality_limited` (0.28 → 0.86).
+Fine-tuning takes the model from 0.38 to 0.84 overall accuracy, more than doubling performance. The largest gains are on `risk_level` (0.08 → 0.76), `urban_interface` (0.25 → 0.93), and `image_quality_limited` (0.28 → 0.86).
 
 ## Tired of talking to bots?
 
