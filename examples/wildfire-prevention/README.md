@@ -607,14 +607,14 @@ Evaluated on 172 test samples ([Paulescu/wildfire-prevention](https://huggingfac
 
 Fine-tuning takes the model from 0.38 to 0.84 overall accuracy, more than doubling performance. The largest gains are on `risk_level` (0.08 → 0.76), `urban_interface` (0.25 → 0.93), and `image_quality_limited` (0.28 → 0.86).
 
-## Tired of talking to bots?
+## Need help?
 
-I am.
+Got questions about this example, about fine-tuning compact VLMs, or about AI in general?
 
-This is why I spend a few hours every week talking, helping, and discussing all things AI in the Liquid AI Community. Got questions about this example, about fine-tuning compact VLMs, or about satellite ML in general? Come say hi.
+Come say hi and ask in the [Liquid AI Community on Discord](https://discord.com/invite/DFU3WQeaYD).
 
-99% humans. 1% bots.
+99% passionate human builders. 1% bots.
 
-See you on the other side :-)
+See you there!
 
 [![Join the Liquid AI Community](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20the%20Liquid%20AI%20Community&logo=discord&logoColor=white)](https://discord.com/invite/DFU3WQeaYD)
