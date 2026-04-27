@@ -43,6 +43,12 @@ uv run scripts/quantize.py \
     --output ./outputs/lfm2.5-vl-wildfire-Q4_K_M.gguf \
     --quant Q4_K_M
 
+# Push fine-tuned GGUF model pair to HuggingFace
+uv run scripts/push_gguf_to_hf.py \
+    --backbone ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
+    --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
+    --repo Paulescu/LFM2.5-VL-450M-wildfire-GGUF
+
 # Launch the Streamlit map app
 uv run streamlit run app/app.py
 

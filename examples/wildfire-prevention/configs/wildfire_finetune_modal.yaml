@@ -16,7 +16,7 @@ training_config:
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.03
   seed: 42
-  eval_on_start: true
+  eval_on_start: false
   eval_strategy: "epoch"
   save_strategy: "epoch"
   logging_steps: 5

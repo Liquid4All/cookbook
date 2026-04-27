@@ -474,22 +474,46 @@ We use [leap-finetune](https://github.com/LiquidAI/leap-finetune) to fine-tune `
 
 6. Quantize the model to GGUF (clones and builds llama.cpp automatically on first run):
 
+    Running inference with a VLM requires two GGUF files. The script produces both from a single command:
+
     ```bash
     uv run scripts/quantize.py \
         --checkpoint ./outputs/<run-name>/<checkpoint> \
         --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf
     ```
 
-    The script converts the checkpoint to F16 GGUF first, then quantizes to Q8_0 (default). To use a different quantization level, pass `--quant Q4_K_M` (or `Q4_0`, `Q5_K_M`, `Q6_K`, `F16`). The F16 intermediate is deleted automatically after quantization.
+    - **`--output`** sets the backbone path (`lfm2.5-vl-wildfire-Q8_0.gguf`): the language model weights, quantized to Q8_0 by default.
 
-7. Evaluate the fine-tuned model against the quantized GGUF from step 6:
+    - The mmproj (`mmproj-lfm2.5-vl-wildfire-Q8_0.gguf`) is written automatically to the same directory, with `mmproj-` prepended to the backbone filename. It contains the vision tower and multimodal projector weights (always F16), the component that encodes satellite images into visual tokens.
+
+    To use a different quantization level for the backbone, pass `--quant Q4_K_M` (or `Q4_0`, `Q5_K_M`, `Q6_K`, `F16`). The mmproj is always F16 regardless of `--quant`.
+
+7. (Optional) Push the GGUF pair to HuggingFace so others can reproduce results without fine-tuning:
 
     ```bash
+    uv run scripts/push_gguf_to_hf.py \
+        --backbone ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
+        --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
+        --repo <your-hf-username>/wildfire-risk-detector
+    ```
+
+8. Evaluate the fine-tuned model against the quantized GGUFs from step 6:
+
+    ```bash
+    # From local artifacts
     uv run scripts/evaluate.py \
         --hf-dataset Paulescu/wildfire-prevention \
         --backend local \
         --model ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
         --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
+        --split test
+
+    # From HF
+    uv run scripts/evaluate.py \
+        --hf-dataset Paulescu/wildfire-prevention \
+        --backend local \
+        --model Paulescu/wildfire-risk-detector \
+        --quant Q8_0 \
         --split test
     ```
 

@@ -21,7 +21,6 @@ Usage:
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -87,7 +86,6 @@ def main() -> None:
         help=(
             f"Run data preparation on Modal (serverless cloud). "
             f"Writes output to the Modal volume '{MODAL_VOLUME_NAME}' at {MODAL_MOUNT_POINT}/. "
-            f"Requires: pip install modal && modal setup"
         ),
     )
     args = parser.parse_args()
@@ -99,19 +97,27 @@ def main() -> None:
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Downloading snapshot of {args.dataset} ...")
-    snapshot_dir = Path(snapshot_download(repo_id=args.dataset, repo_type="dataset"))
-    print(f"  Snapshot at: {snapshot_dir}")
+    # Download the snapshot directly into output_dir so images land at
+    # output_dir/images/ with no intermediate copy (avoids a slow per-file
+    # network copy when output_dir lives on a Modal volume).
+    print(f"Downloading snapshot of {args.dataset} into {output_dir} ...")
+    snapshot_download(
+        repo_id=args.dataset,
+        repo_type="dataset",
+        local_dir=str(output_dir),
+    )
+    print(f"  Download complete.")
 
-    images_dir = snapshot_dir / "images"
+    images_dir = output_dir / "images"
     if not images_dir.is_dir():
         raise FileNotFoundError(
-            f"images/ directory not found in snapshot at {snapshot_dir}. "
+            f"images/ directory not found at {images_dir}. "
             "Re-run generate_samples.py --hf-dataset to regenerate the dataset."
         )
+    print(f"  {sum(1 for _ in images_dir.iterdir())} images available.")
 
-    print(f"Loading dataset from {args.dataset} ...")
-    ds = load_dataset(args.dataset)
+    print(f"Loading dataset from {output_dir} ...")
+    ds = load_dataset(str(output_dir))
 
     for split_name in ("train", "test"):
         if split_name not in ds:
@@ -127,15 +133,7 @@ def main() -> None:
 
         write_jsonl(rows, output_dir / f"wildfire_{split_name}.jsonl")
 
-    dest_images_dir = output_dir / "images"
-    if not dest_images_dir.exists():
-        print(f"Copying images to {dest_images_dir} ...")
-        shutil.copytree(images_dir, dest_images_dir)
-        print(f"  Copied {sum(1 for _ in dest_images_dir.iterdir())} images.")
-    else:
-        print(f"  images/ already present at {dest_images_dir}, skipping copy.")
-
-    print(f"\nDone. Set image_root to: {dest_images_dir}")
+    print(f"\nDone. Set image_root to: {images_dir}")
     print(f"Training config: uv run leap-finetune configs/wildfire_finetune.yaml")
 
 
@@ -159,6 +157,7 @@ def _run_on_modal(args: argparse.Namespace) -> None:
         volumes={MODAL_MOUNT_POINT: volume},
         timeout=3600,
         serialized=True,
+        secrets=[modal.Secret.from_local_environ(env_keys=["HF_TOKEN"])],
     )
     def prepare(dataset: str, output: str) -> None:
         cmd = [
