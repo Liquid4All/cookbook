@@ -398,7 +398,11 @@ uv run streamlit run app/eval_compare.py
 
 ### Results
 
-Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention)), ground truth from `claude-opus-4-6`.
+Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co/datasets/Paulescu/wildfire-prevention)), ground truth from `claude-opus-4-6`, these are the results:
+
+- `claude-opus-4-6` scores 0.99 overall, near-perfect across all fields. This is no surprise, as this is the model we used to label the data in the first place. The result are not perfect though (99% rather than 100%) due to non-determinism in the token sampling during generation.
+
+- The base LFM2.5-VL-450M scores 0.38 overall: it produces valid JSON reliably but struggles with field accuracy, especially `risk_level` (0.08) and `urban_interface` (0.25). This is expected for a zero-shot compact model on a specialized task. Fine-tuning addresses this gap.
 
 | field | claude-opus-4-6 | LFM2.5-VL-450M Q8_0 |
 |---|---|---|
@@ -413,112 +417,176 @@ Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co
 | **overall** | **0.99** | **0.38** |
 | **avg latency (s)** | **2.91** | **0.72** |
 
-
-
 ## 5. Fine-tuning
 
-We use [leap-finetune](https://github.com/LiquidAI/leap-finetune) to fine-tune `LFM2.5-VL-450M` on the Opus-labeled dataset via Modal's serverless H100 infrastructure.
+We use [leap-finetune](https://github.com/Liquid4All/leap-finetune) to fine-tune `LFM2.5-VL-450M` on the Opus-labeled dataset via Modal's serverless H100 infrastructure.
 
-### Steps
+### Step 1. Install leap-finetune
 
-1. Clone [leap-finetune](https://github.com/Liquid4All/leap-finetune) inside this project directory and install its dependencies:
+Let's clone [leap-finetune](https://github.com/Liquid4All/leap-finetune) inside this project directory and install its dependencies:
 
-    ```bash
-    git clone https://github.com/LiquidAI/leap-finetune.git
-    cd leap-finetune && uv sync && cd ..
-    ```
+```bash
+git clone https://github.com/LiquidAI/leap-finetune.git
+cd leap-finetune && uv sync && cd ..
+```
 
-2. Authenticate:
+Authenticate with Hugging Face (necessary if you plan to pull or push private datasets or models) and Modal, so leap-fine tune can run the workload on Modal's serverless GPU platform.
 
-    ```bash
-    cd leap-finetune
-    uv run huggingface-cli login   # needed to pull the model and dataset
-    uv run python -m modal setup   # needed to launch the training job
-    cd ..
-    ```
+```bash
+cd leap-finetune
+uv run huggingface-cli login   # needed to pull the model and dataset
+uv run python -m modal setup   # needed to launch the training job
+cd ..
+```
 
-3. Prepare the dataset and push it to a Modal volume:
+### Step 2. Prepare the dataset
 
-    ```mermaid
-    sequenceDiagram
-        participant User as Local machine
-        participant Modal
-        participant HF as HuggingFace Hub
-        participant Vol as Modal volume<br/>wildfire-prevention
+Prepare the dataset and push it to a Modal volume:
 
-        User->>Modal: prepare_wildfire.py --modal
-        Modal->>HF: snapshot_download(Paulescu/wildfire-prevention)
-        HF-->>Modal: images + dataset splits
-        Modal->>Vol: wildfire_train.jsonl, wildfire_test.jsonl
-        Modal-->>User: Done. Data ready in volume.
-    ```
+```bash
+uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --modal
+```
 
-    ```bash
-    uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --modal
-    ```
+The `--modal` flag spins up a Modal container, downloads the dataset from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job in the next step.
 
-    The `--modal` flag spins up a Modal container, downloads the dataset from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job in the next step.
+```mermaid
+sequenceDiagram
+    participant User as Local machine
+    participant Modal
+    participant HF as HuggingFace Hub
+    participant Vol as Modal volume<br/>wildfire-prevention
 
-4. Run the fine-tuning:
+    User->>Modal: prepare_wildfire.py --modal
+    Modal->>HF: snapshot_download(Paulescu/wildfire-prevention)
+    HF-->>Modal: images + dataset splits
+    Modal->>Vol: wildfire_train.jsonl, wildfire_test.jsonl
+    Modal-->>User: Done. Data ready in volume.
+```
 
-    ```bash
-    cd leap-finetune && uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
-    ```
+### Step 3. Prepare the configuratio file
 
-    Training progress is visible at [https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune](https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune).
+This YAML file is the only file you need to pass to leap-finetune. You can find plenty of examples for different tasks in the [leap-finetune repository](https://github.com/Liquid4All/leap-finetune/tree/main/job_configs).
 
-5. Retrieve the checkpoint
+This is what ours looks like:
 
-    ```bash
-    uv run modal volume ls wildfire-prevention /outputs/
-    uv run modal volume get wildfire-prevention /outputs/<run-name> ./outputs
-    ```
+```yaml
+project_name: "wildfire-prevention"
+model_name: "lfm2.5-VL-450M"
+training_type: "vlm_sft"
 
-6. Quantize the model to GGUF (clones and builds llama.cpp automatically on first run):
+dataset:
+  ...
 
-    Running inference with a VLM requires two GGUF files. The script produces both from a single command:
+training_config:
+  ...
 
-    ```bash
-    uv run scripts/quantize.py \
-        --checkpoint ./outputs/<run-name>/<checkpoint> \
-        --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf
-    ```
+peft_config:
+  extends: "DEFAULT_VLM_LORA"
+  use_peft: false
 
-    - **`--output`** sets the backbone path (`lfm2.5-vl-wildfire-Q8_0.gguf`): the language model weights, quantized to Q8_0 by default.
+benchmarks:
+  ...
 
-    - The mmproj (`mmproj-lfm2.5-vl-wildfire-Q8_0.gguf`) is written automatically to the same directory, with `mmproj-` prepended to the backbone filename. It contains the vision tower and multimodal projector weights (always F16), the component that encodes satellite images into visual tokens.
+modal:
+  app_name: "wildfire-prevention"
+  gpu: "H100:1"
+  timeout: 7200
+  output_volume: "wildfire-prevention"
+  output_dir: "/outputs"
+  detach: false
 
-    To use a different quantization level for the backbone, pass `--quant Q4_K_M` (or `Q4_0`, `Q5_K_M`, `Q6_K`, `F16`). The mmproj is always F16 regardless of `--quant`.
+```
 
-7. (Optional) Push the GGUF pair to HuggingFace so others can reproduce results without fine-tuning:
+Two important observations:
 
-    ```bash
-    uv run scripts/push_gguf_to_hf.py \
-        --backbone ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
-        --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
-        --repo <your-hf-username>/wildfire-risk-detector
-    ```
+- **Full fine-tuning, not LoRA (`use_peft: false`):** we update both the multimodal projector and the full language model backbone. Satellite imagery is severely underrepresented in standard VLM pretraining data, so the projector needs to genuinely re-learn how to map multispectral patches into meaningful tokens. At 450M parameters, full fine-tuning fits on a single H100 without the memory pressure that motivates LoRA on larger models.
 
-8. Evaluate the fine-tuned model against the quantized GGUFs from step 6:
+- **Modal section:** the `modal` block tells leap-finetune to run the training job on Modal's serverless GPU platform rather than locally. It specifies the GPU type (`H100:1`), a timeout, and the Modal volume where the prepared dataset lives and where checkpoints are written.
 
-    ```bash
-    # From local artifacts
-    uv run scripts/evaluate.py \
-        --hf-dataset Paulescu/wildfire-prevention \
-        --backend local \
-        --model ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
-        --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
-        --split test
 
-    # From HF
-    uv run scripts/evaluate.py \
-        --hf-dataset Paulescu/wildfire-prevention \
-        --backend local \
-        --model Paulescu/wildfire-risk-detector \
-        --quant Q8_0 \
-        --split test
-    ```
+### Step 4. Kick off the fine-tuning
 
+Once the configuration YAML file is ready, fine-tuning is as easy as running:
+
+```bash
+cd leap-finetune && uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
+```
+
+```mermaid
+sequenceDiagram
+    participant User as Local machine
+    participant Modal
+    participant HF as HuggingFace Hub
+    participant Vol as Modal volume<br/>wildfire-prevention
+    participant Space as HF Space<br/>(training dashboard)
+
+    User->>Modal: leap-finetune wildfire_finetune_modal.yaml
+    Modal->>HF: download base model (LFM2.5-VL-450M)
+    HF-->>Modal: model weights
+    Modal->>Vol: read wildfire_train.jsonl + images
+    Vol-->>Modal: training data
+    loop H100 training (3 epochs)
+        Modal->>Space: stream loss / metrics (trackio)
+    end
+    Modal->>Vol: save checkpoint per epoch
+    Modal-->>User: Done. Checkpoint saved to /outputs/.
+```
+
+Training progress is visible at [https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune](https://huggingface.co/spaces/Paulescu/wildfire-prevention-finetune).
+
+
+### Step 5. Retrieve the checkpoint
+
+```bash
+uv run modal volume ls wildfire-prevention /outputs/
+uv run modal volume get wildfire-prevention /outputs/<run-name> ./outputs
+```
+
+### Step 6. Quantize the model to GGUF
+
+Running inference with a VLM requires two GGUF files. The following script produces both from a single command:
+
+```bash
+uv run scripts/quantize.py \
+    --checkpoint ./outputs/<run-name>/<checkpoint> \
+    --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf
+```
+
+- **`--output`** sets the backbone path (`lfm2.5-vl-wildfire-Q8_0.gguf`): the language model weights, quantized to Q8_0 by default.
+
+- The mmproj (`mmproj-lfm2.5-vl-wildfire-Q8_0.gguf`) is written automatically to the same directory, with `mmproj-` prepended to the backbone filename. It contains the vision tower and multimodal projector weights (always F16), the component that encodes satellite images into visual tokens.
+
+To use a different quantization level for the backbone, pass `--quant Q4_K_M` (or `Q4_0`, `Q5_K_M`, `Q6_K`, `F16`). The mmproj is always F16 regardless of `--quant`.
+
+### Step 7. (Optional) Push the GGUF pair to HuggingFace
+
+
+```bash
+uv run scripts/push_gguf_to_hf.py \
+    --backbone ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
+    --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
+    --repo <your-hf-username>/wildfire-risk-detector
+```
+
+### Step 8. Evaluate the fine-tuned model
+
+```bash
+# From local artifacts
+uv run scripts/evaluate.py \
+    --hf-dataset Paulescu/wildfire-prevention \
+    --backend local \
+    --model ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf \
+    --mmproj ./outputs/mmproj-lfm2.5-vl-wildfire-Q8_0.gguf \
+    --split test
+
+# From HF
+uv run scripts/evaluate.py \
+    --hf-dataset Paulescu/wildfire-prevention \
+    --backend local \
+    --model Paulescu/wildfire-risk-detector \
+    --quant Q8_0 \
+    --split test
+```
 
 ### Results
 
@@ -538,3 +606,15 @@ Evaluated on 172 test samples ([Paulescu/wildfire-prevention](https://huggingfac
 | **avg latency (s)** | **2.91** | **0.72** | **0.59** |
 
 Fine-tuning takes the model from 0.38 to 0.84 overall accuracy, more than doubling performance, while also reducing latency from 0.72s to 0.59s. The largest gains are on `risk_level` (0.08 → 0.76), `urban_interface` (0.25 → 0.93), and `image_quality_limited` (0.28 → 0.86).
+
+## Tired of talking to bots?
+
+I am.
+
+This is why I spend a few hours every week talking, helping, and discussing all things AI in the Liquid AI Community. Got questions about this example, about fine-tuning compact VLMs, or about satellite ML in general? Come say hi.
+
+99% humans. 1% bots.
+
+See you on the other side :-)
+
+[![Join the Liquid AI Community](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20the%20Liquid%20AI%20Community&logo=discord&logoColor=white)](https://discord.com/invite/DFU3WQeaYD)
