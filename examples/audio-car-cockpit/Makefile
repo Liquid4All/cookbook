@@ -123,6 +123,19 @@ ifdef HAS_ROCM
   AUDIO_PCM_FORMAT := int16
   LLAMA_CPP_DIR := llama.cpp-rocm
 
+  # Krackan iGPU (gfx1153, Ryzen AI 7): ROCm <= 7.2 doesn't ship gfx1153
+  # rocBLAS Tensile kernels, so the audio server's multimodal warmup
+  # segfaults dispatching GEMMs that have no matching kernel. Reroute via
+  # gfx1150 (binary-compatible RDNA 3.5) only when needed; the wildcard
+  # check self-disables this once a future ROCm release adds gfx1153
+  # kernels. Must NOT be applied to the tool model — it crashes its warmup
+  # instead — so it is set as a recipe-line prefix on `audioserver` only.
+  ifeq ($(HIP_ARCH),gfx1153)
+    ifeq (,$(wildcard /opt/rocm*/lib/rocblas/library/*gfx1153*))
+      AUDIO_SERVER_ENV := HSA_OVERRIDE_GFX_VERSION=11.5.0
+    endif
+  endif
+
   llama.cpp-rocm:
 	git clone $(LLAMA_CPP_REPO) $@ && \
 		cd $@ && \
@@ -144,6 +157,7 @@ else
   GPU_FLAGS  :=
   AUDIO_PCM_FORMAT := float32
   LLAMA_CPP_DIR := llama.cpp-cpu
+  AUDIO_SERVER_ENV :=
 
   llama.cpp-cpu:
 	git clone $(LLAMA_CPP_REPO) $@ && \
@@ -231,7 +245,7 @@ serve: $(LLAMA_SERVER)  ## Start FastAPI server
 	AUDIO_PCM_FORMAT=$(AUDIO_PCM_FORMAT) $(UV) run --frozen server.py
 
 audioserver: $(AUDIO_SERVER_TARGET) LFM2.5-Audio-1.5B-GGUF  ## Start audio server
-	$(AUDIO_SERVER) \
+	$(AUDIO_SERVER_ENV) $(AUDIO_SERVER) \
 		-m LFM2.5-Audio-1.5B-GGUF/LFM2.5-Audio-1.5B-Q8_0.gguf \
 		-mm LFM2.5-Audio-1.5B-GGUF/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
 		-mv LFM2.5-Audio-1.5B-GGUF/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
