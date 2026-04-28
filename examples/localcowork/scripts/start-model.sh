@@ -15,7 +15,7 @@ set -euo pipefail
 MODELS_DIR="${LOCALCOWORK_MODELS_DIR:-$HOME/Projects/_models}"
 
 # Main model (LFM2-24B-A2B)
-MAIN_MODEL="LFM2-24B-A2B-Preview-Q4_K_M.gguf"
+MAIN_MODEL="LFM2-24B-A2B-Q4_K_M.gguf"
 MAIN_PORT=8080
 MAIN_CTX=32768
 
@@ -51,22 +51,25 @@ for arg in "$@"; do
     esac
 done
 
-# ── Check llama-server ───────────────────────────────────────────────────────
+# ── Find llama-server ────────────────────────────────────────────────────────
 
-if ! command -v llama-server &> /dev/null; then
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+LLAMA_SERVER=""
+
+if [ -x "$SCRIPT_DIR/llama-server" ]; then
+    LLAMA_SERVER="$SCRIPT_DIR/llama-server"
+elif command -v llama-server &> /dev/null; then
+    LLAMA_SERVER="$(command -v llama-server)"
+else
     echo "❌ llama-server not found."
     echo ""
-    echo "Install via Homebrew (macOS):"
-    echo "  brew install llama.cpp"
+    echo "Build with:  make llama-server  (auto-detects ROCm GPU)"
     echo ""
-    echo "Or build from source:"
-    echo "  git clone https://github.com/ggml-org/llama.cpp"
-    echo "  cd llama.cpp && cmake -B build && cmake --build build --config Release"
-    echo "  # Binary at: build/bin/llama-server"
+    echo "Or install via Homebrew (macOS):  brew install llama.cpp"
     exit 1
 fi
 
-echo "✅ llama-server found: $(command -v llama-server)"
+echo "✅ llama-server found: $LLAMA_SERVER"
 
 # ── Check model files ────────────────────────────────────────────────────────
 
@@ -85,13 +88,13 @@ else
     echo "❌ Main model not found: $MAIN_PATH"
     echo ""
     echo "   Download LFM2-24B-A2B from HuggingFace (gated — request access first):"
-    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview"
+    echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
     echo ""
     echo "   pip install huggingface-hub"
     echo "   python3 -c \""
     echo "     from huggingface_hub import hf_hub_download"
-    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-Preview',"
-    echo "                     'LFM2-24B-A2B-Preview-Q4_K_M.gguf',"
+    echo "     hf_hub_download('LiquidAI/LFM2-24B-A2B-GGUF',"
+    echo "                     'LFM2-24B-A2B-Q4_K_M.gguf',"
     echo "                     local_dir='$MODELS_DIR')"
     echo "   \""
     if [ "$CHECK_ONLY" = true ]; then
@@ -140,12 +143,12 @@ echo "  API:     http://localhost:$MAIN_PORT/v1"
 echo ""
 
 # Start main model in background
-llama-server \
+"$LLAMA_SERVER" \
     --model "$MAIN_PATH" \
     --port "$MAIN_PORT" \
     --ctx-size "$MAIN_CTX" \
     --n-gpu-layers 99 \
-    --flash-attn &
+    --flash-attn on &
 
 MAIN_PID=$!
 echo "  PID: $MAIN_PID"
@@ -173,7 +176,7 @@ if [ "$START_VISION" = true ] && [ -f "$VISION_PATH" ] && [ -f "$MMPROJ_PATH" ];
     echo "  Starting LFM2.5-VL-1.6B on port $VISION_PORT"
     echo "═══════════════════════════════════════════════════"
 
-    llama-server \
+    "$LLAMA_SERVER" \
         --model "$VISION_PATH" \
         --mmproj "$MMPROJ_PATH" \
         --port "$VISION_PORT" \
