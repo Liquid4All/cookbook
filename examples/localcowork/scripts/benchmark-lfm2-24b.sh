@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # benchmark-lfm2-24b.sh — Benchmark LFM2-24B-A2B on both architectures
 #
-# Runs the full benchmark suite against LFM2-24B-A2B-Preview:
+# Runs the full benchmark suite against LFM2-24B-A2B-GGUF:
 #   Phase 1: Single-model agent loop (main branch architecture)
 #   Phase 2: Dual-model orchestrator (feat/dual-model-orchestrator architecture)
 #   Phase 3: Comparison report generation
@@ -13,7 +13,7 @@
 #   - npm install completed in project root
 #
 # Usage:
-#   ./scripts/benchmark-lfm2-24b.sh --path ~/Projects/_models/LFM2-24B-A2B-Preview-Q4_K_M.gguf
+#   ./scripts/benchmark-lfm2-24b.sh --path ~/Projects/_models/LFM2-24B-A2B-Q4_K_M.gguf
 #   ./scripts/benchmark-lfm2-24b.sh --path <gguf> --phase single    # Phase 1 only
 #   ./scripts/benchmark-lfm2-24b.sh --path <gguf> --phase orchestrator  # Phase 2 only
 #   ./scripts/benchmark-lfm2-24b.sh --phase report                  # Phase 3 only (uses existing results)

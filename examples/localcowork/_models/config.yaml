@@ -100,15 +100,15 @@ models:
       - text
       - tool_calling
 
-  # LFM2-24B-A2B — Liquid AI's MoE hybrid model (private preview)
+  # LFM2-24B-A2B — Liquid AI's MoE hybrid model
   # Architecture: 24B total, 2.3B active per token, 64 experts top-4, 40 layers (1:3 attn:conv ratio)
-  # Download GGUF from: https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview (gated — request access)
+  # Download GGUF from: https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF
   # Benchmark plan: docs/model-analysis/lfm2-24b-a2b-benchmark.md
   # Run: llama-server --model <path> --port 8080 --ctx-size 32768 --n-gpu-layers 99 --flash-attn
   lfm2-24b-a2b:
-    display_name: "LFM2-24B-A2B-Preview"
+    display_name: "LFM2-24B-A2B-GGUF"
     runtime: llama_cpp
-    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/LFM2-24B-A2B-Preview-Q4_K_M.gguf"
+    model_path: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}/LFM2-24B-A2B-Q4_K_M.gguf"
     base_url: "http://localhost:8080/v1"
     context_window: 32768
     tool_call_format: bracket  # LFM2 bracket format: [server.tool(args)] parsed by tool_call_parser.rs

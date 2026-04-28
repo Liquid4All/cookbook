@@ -33,7 +33,7 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 
 | Model | HuggingFace ID | Ollama Tag | Runtime | Quantization |
 |-------|---------------|-----------|---------|-------------|
-| LFM2-24B-A2B | `LiquidAI/LFM2-24B-A2B-Preview` | N/A | llama-server | Q4_K_M (GGUF) |
+| LFM2-24B-A2B | `LiquidAI/LFM2-24B-A2B-GGUF` | N/A | llama-server | Q4_K_M (GGUF) |
 | Mistral-Small-24B | `mistralai/Mistral-Small-24B-Instruct-2501` | `mistral-small:24b` | Ollama | Q4_K_M |
 | Gemma 3 27B | `google/gemma-3-27b-it` | `gemma3:27b` | Ollama | Q4_K_M |
 | GPT-OSS-20B | `openai/gpt-oss-20b` | `gpt-oss:20b` | Ollama | MXFP4 (native, ~4.25 bits/param) |

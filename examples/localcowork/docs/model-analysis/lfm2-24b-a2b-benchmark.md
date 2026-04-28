@@ -1,4 +1,4 @@
-# LFM2-24B-A2B-Preview — Benchmark & Execution Results
+# LFM2-24B-A2B-GGUF — Benchmark & Execution Results
 
 **Status:** Production model (planner + synthesizer in dual-model orchestrator)
 **Date:** 2026-02-18 (updated with real-world execution traces, orchestrator A/B results)
@@ -17,7 +17,7 @@
 
 | Property         | Value                                                              |
 | ---------------- | ------------------------------------------------------------------ |
-| Model            | LFM2-24B-A2B-Preview                                               |
+| Model            | LFM2-24B-A2B-GGUF                                               |
 | Architecture     | Sparse MoE: gated short convolution + grouped query attention (GQA) |
 | Total params     | 24B                                                                |
 | Active per token | 2.3B                                                               |
@@ -37,7 +37,7 @@
 | Decode speed     | ~121 tokens/sec (Apple Silicon, Metal)                             |
 | GPU throughput   | ~26.8K tok/s @ 1024 concurrent (H100 SXM5, vLLM)                  |
 | Tool call format | LFM bracket syntax (`<\|tool_call_start\|>...<\|tool_call_end\|>`) |
-| Source           | https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview (gated)       |
+| Source           | https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF               |
 | Blog             | https://www.liquid.ai/blog/lfm2-24b-a2b                            |
 
 ### Why this model
