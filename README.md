@@ -152,7 +152,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | Discord Moderator | Use LFM2.5-1.2B to screen messages for suspicious content | [Code](https://github.com/badluma/liquid-mod) |
 | BookMind | Offline RAG study assistant for asking questions and generating exercises from PDF textbooks, powered by LFM2-2.6B | [Code](https://github.com/Ksirailway-base/BookMind) |
 | Liquid-CLI | Fine-tune and run Liquid AI's LFM2-8B-A1B as a local terminal agent | [Code](https://github.com/gyunggyung/Liquid-CLI) |
-
+| LFM Podcast Studio | Turn any PDF into a two-host podcast episode locally using LFM2.5-Audio TTS via llama.cpp | [Code](https://github.com/nikhilprasanth/LFM-Podcast-Studio) |
 
 ## 🕐 Technical Deep Dives
 
