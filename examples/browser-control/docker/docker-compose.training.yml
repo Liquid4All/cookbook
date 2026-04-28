@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # BrowserGym环境容器
+  browsergym:
+    build:
+      context: ./browsergym
+      dockerfile: Dockerfile
+      network: host
+      args:
+        http_proxy: http://127.0.0.1:7890
+        https_proxy: http://127.0.0.1:7890
+        HTTP_PROXY: http://127.0.0.1:7890
+        HTTPS_PROXY: http://127.0.0.1:7890
+    container_name: browsergym-local
+    ports:
+      - "8000:8000"
+    environment:
+      - DISPLAY=:99
+      - BROWSERGYM_TASK_NAME=click-test
+      - BROWSERGYM_BENCHMARK=miniwob
+      - BROWSERGYM_HEADLESS=true
+      - BROWSERGYM_PORT=8000
+      - MINIWOB_URL=http://miniwob-server:8080/miniwob/
+    networks:
+      - training-net
+      - miniwob-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # GPU训练容器
+  training:
+    build:
+      context: ./training
+      dockerfile: Dockerfile
+    container_name: lfm2-grpo-training
+    depends_on:
+      browsergym:
+        condition: service_healthy
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1  # 单GPU（DGX可调整为all或指定序号）
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0  # 指定GPU ID（根据DGX配置调整）
+      - CUDA_VISIBLE_DEVICES=0
+      - HF_HOME=/hf_model_cache
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_OFFLINE=1
+      - BROWSERGYM_URL=http://localhost:8000
+      - TENSORBOARD_ENABLED=true
+      - PYTHONPATH=/workspace/src:/workspace
+      - http_proxy=http://127.0.0.1:7890
+      - https_proxy=http://127.0.0.1:7890
+      - HTTP_PROXY=http://127.0.0.1:7890
+      - HTTPS_PROXY=http://127.0.0.1:7890
+      - no_proxy=localhost,127.0.0.1
+      - TORCHDYNAMO_DISABLE=1
+      - TORCH_COMPILE_DISABLE=1
+      - VLLM_WORKER_MULTIPROC_METHOD=spawn
+      - TRITON_PTXAS_PATH=/usr/local/cuda/bin/ptxas
+    network_mode: host
+    volumes:
+      - ../src:/workspace/src:ro
+      - ../configs:/workspace/configs:ro
+      - ./training/OpenEnv/envs:/workspace/envs:ro
+      - hf_cache:/hf_model_cache
+      - checkpoints:/model_checkpoints
+      - ./logs:/workspace/logs
+      - /usr/local/cuda/bin/ptxas:/usr/local/lib/python3.12/dist-packages/triton/backends/nvidia/bin/ptxas:ro
+    shm_size: '16gb'  # vLLM需要大共享内存
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+      sleep 5 &&
+      cd /workspace &&
+      python3 -m browser_control.fine_tune_local --config-file-name ${CONFIG_FILE:-lfm2_350m_local.yaml}
+      "
+
+  # TensorBoard可视化容器（可选）
+  # 注意：tensorflow/tensorflow:latest 为 x86_64 镜像，在 ARM64(aarch64) 上会 SIGSEGV 崩溃。
+  # 请改用主机原生 TensorBoard：
+  #   /home/tony/.local/bin/tensorboard --logdir ./logs --host 0.0.0.0 --port 6006
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: tensorboard-viewer
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./logs:/logs:ro
+    networks:
+      - training-net
+    command: tensorboard --logdir /logs --host 0.0.0.0
+    profiles:
+      - monitoring  # 使用 --profile monitoring 启动（仅 x86_64，ARM64 请用主机 tensorboard）
+
+# 持久化卷
+volumes:
+  hf_cache:
+    name: browser-control-hf-cache
+  checkpoints:
+    name: browser-control-checkpoints
+
+# 网络
+networks:
+  training-net:
+    driver: bridge
+  miniwob-net:
+    external: true
+    name: miniwob_default  # 由 docker/miniwob/docker-compose.yml 创建的网络

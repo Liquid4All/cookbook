@@ -1,0 +1,12 @@
+services:
+  miniwob:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: miniwob-server
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    # 可选: 不重新克隆 git，挂载本地 miniwob-plusplus/miniwob/html/
+    # volumes:
+    #   - ../../../../../../miniwob-plusplus/miniwob/html:/app/html:ro

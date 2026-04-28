@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Browser Control Demo"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Goal:"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/etGoal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="e.g., Book the shortest one-way flight from LAF to AKU"
+        android:inputType="text"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DOM Content:"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/etDom"
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:hint="[1] button 'Submit'\n[2] input '' (placeholder: 'From')\n[3] input '' (placeholder: 'To')"
+        android:inputType="textMultiLine"
+        android:gravity="top"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btnRun"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Run Inference"
+        android:enabled="false"
+        android:layout_marginBottom="12dp" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Result:"
+        android:textStyle="bold"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/tvAction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Initializing model..."
+        android:textSize="16sp"
+        android:fontFamily="monospace"
+        android:background="#F5F5F5"
+        android:padding="8dp"
+        android:layout_marginTop="4dp" />
+
+</LinearLayout>
