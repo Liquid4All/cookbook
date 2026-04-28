@@ -100,6 +100,7 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
 | Satellite VLM Fine-Tuning | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
+| Wildfire Prevention | Build a wildfire risk detection system using LFM2.5-VL-450M and Sentinel-2 satellite imagery, with fine-tuning and on-device inference | [Code](./examples/wildfire-prevention/README.md) |
 
 ## Third-Party Apps Powered by LFM
 
@@ -150,6 +151,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | grosme | CLI grocery assistant that finds Walmart product matches using an LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
 | Discord Moderator | Use LFM2.5-1.2B to screen messages for suspicious content | [Code](https://github.com/badluma/liquid-mod) |
 | BookMind | Offline RAG study assistant for asking questions and generating exercises from PDF textbooks, powered by LFM2-2.6B | [Code](https://github.com/Ksirailway-base/BookMind) |
+| Liquid-CLI | Fine-tune and run Liquid AI's LFM2-8B-A1B as a local terminal agent | [Code](https://github.com/gyunggyung/Liquid-CLI) |
 | LFM Podcast Studio | Turn any PDF into a two-host podcast episode locally using LFM2.5-Audio TTS via llama.cpp | [Code](https://github.com/nikhilprasanth/LFM-Podcast-Studio) |
 
 ## 🕐 Technical Deep Dives
@@ -163,7 +165,7 @@ Recorded sessions (~60 minutes) covering advanced topics and hands-on implementa
 | 2025-12-26 | Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv | [Video](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
 | 2026-01-22 | Local video-captioning with LFM2.5-VL-1.6B and WebGPU | [Video](https://www.youtube.com/watch?v=xsWARHFoA3E) |
 | 2026-03-05 | Build your own local AI coding assistant | [Video](https://www.youtube.com/watch?v=6JEm1IxcxEw) |
-| 2026-04-22 | Let's build a wildfire detection system with a Vision Language Model and satellite images | [Register](https://liquid-ai.zoom.us/webinar/register/WN_vZRqznkrSBeHgAVU4nosxQ) |
+| 2026-04-22 | Let's build a wildfire detection system with a Vision Language Model and satellite images | [Video](https://www.youtube.com/watch?v=LOIDYl5fdb8) |
 
 Join the next session! Head to the `#live-events` channel on [Discord](https://discord.com/invite/liquid-ai).
 

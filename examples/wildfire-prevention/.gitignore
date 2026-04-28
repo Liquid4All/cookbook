@@ -1,0 +1,9 @@
+.venv/
+data/
+evals/
+db_images/
+wildfire.db
+__pycache__/
+*.pyc
+llama.cpp/
+outputs/
