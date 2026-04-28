@@ -371,7 +371,7 @@ For the broader community building local AI agents: the era of "throw all tools 
 
 ```bash
 # LFM2-24B-A2B via llama-server (default port 8080)
-llama-server -m _models/LFM2-24B-A2B-Preview-Q4_K_M.gguf --port 8080
+llama-server -m _models/LFM2-24B-A2B-Q4_K_M.gguf --port 8080
 
 # Any Ollama model (default port 11434)
 ollama run llama3.2

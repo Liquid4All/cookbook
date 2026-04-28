@@ -2,7 +2,7 @@
 
 Curated prompts from our benchmark suite (100 single-step + 50 multi-step). Only prompts with **85%+ accuracy** on greedy sampling are included.
 
-Model: `LiquidAI/LFM2-24B-A2B-Preview` (Q4_K_M GGUF)
+Model: `LiquidAI/LFM2-24B-A2B-GGUF` (Q4_K_M GGUF)
 
 ---
 

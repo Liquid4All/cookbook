@@ -441,7 +441,7 @@ The single-model agent loop exhibits five pathological behaviors, all eliminated
 ```bash
 # Only the 24B model is needed
 llama-server \
-  --model _models/LFM2-24B-A2B-Preview-Q4_K_M.gguf \
+  --model _models/LFM2-24B-A2B-Q4_K_M.gguf \
   --port 8080 \
   --ctx-size 32768 \
   --n-gpu-layers 99 \
@@ -452,7 +452,7 @@ llama-server \
 ```bash
 # Terminal 1: 24B planner/synthesizer
 llama-server \
-  --model _models/LFM2-24B-A2B-Preview-Q4_K_M.gguf \
+  --model _models/LFM2-24B-A2B-Q4_K_M.gguf \
   --port 8080 \
   --ctx-size 32768 \
   --n-gpu-layers 99 \
@@ -470,7 +470,7 @@ llama-server \
 ### Readiness Checklists
 
 **For Single-Model Mode (Flow A):**
-- [ ] `_models/LFM2-24B-A2B-Preview-Q4_K_M.gguf` exists
+- [ ] `_models/LFM2-24B-A2B-Q4_K_M.gguf` exists
 - [ ] llama-server running on port 8080
 - [ ] `active_model: lfm2-24b-a2b` in config.yaml
 - [ ] `orchestrator.enabled: false` in config.yaml

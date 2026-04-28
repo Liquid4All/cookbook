@@ -4,7 +4,7 @@
 > for tool-calling accuracy in LocalCowork.
 
 **Status:** Validated in production (March 2026)
-**Model:** LFM2-24B-A2B-Preview, Q4_K_M quantization, llama.cpp runtime
+**Model:** LFM2-24B-A2B-GGUF, Q4_K_M quantization, llama.cpp runtime
 **Implementation:** `src-tauri/src/commands/chat.rs` (`build_system_prompt`, `send_message`)
 
 **Key model trait:** LFM2-24B-A2B uses lightweight instruct post-training with
