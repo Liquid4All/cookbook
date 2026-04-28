@@ -1,0 +1,13 @@
+model: claude-sonnet-4-6
+dataset: Paulescu/defect-detection
+split: test
+n_samples: 100
+wandb_project_name: defect-detection-benchmark
+source:
+  - DS-MVTec
+  - MVTec-AD
+prompt_override: >-
+  You are a quality control inspector in a manufacturing facility. Examine
+  this industrial product image carefully and determine whether it has any
+  visible defects, including scratches, cracks, dents, holes, contamination,
+  missing parts, or surface irregularities. Respond with only Yes or No.

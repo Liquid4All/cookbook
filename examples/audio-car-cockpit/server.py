@@ -1,5 +1,6 @@
 import base64
 import os
+import time
 import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -127,6 +128,7 @@ async def websocket_audio_endpoint(websocket: WebSocket):
             # Build messages based on mode
             if mode == "asr":
                 print("\n[AUDIO] Starting ASR (Speech-to-Text)...")
+                t_start = time.perf_counter()
                 if wav_data is None:
                     continue
                 messages = [
@@ -250,16 +252,23 @@ async def websocket_audio_endpoint(websocket: WebSocket):
                     max_tokens=512,
                 )
 
+                tts_first_audio = True
                 async for chunk in tts_stream:
                     delta = chunk.choices[0].delta
 
                     audio_data = getattr(delta, "audio", None) or getattr(delta, "audio_chunk", None)
                     if audio_data:
+                        if tts_first_audio:
+                            print(f"[AUDIO] Time to first audio byte: {(time.perf_counter() - t_start)*1000:.0f} ms")
+                            tts_first_audio = False
                         await websocket.send_json({
                             "type": "audio",
                             "data": audio_data["data"],
                             "sample_rate": audio_data.get("sample_rate", 24000),
                         })
+
+            if mode == "asr" and transcribed_text:
+                print(f"[AUDIO] End-to-end latency: {(time.perf_counter() - t_start)*1000:.0f} ms")
 
             await websocket.send_json({"type": "done"})
 

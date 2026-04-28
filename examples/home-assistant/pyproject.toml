@@ -1,0 +1,29 @@
+[project]
+name = "lfm-home-assistant"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "openai>=1.50.0",
+    "python-dotenv>=1.0.0",
+    "sse-starlette>=2.1.0",
+    "tqdm>=4.66",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+finetune = [
+    "datasets>=2.0",
+    "huggingface_hub>=0.22",
+]
+export = [
+    "peft>=0.14",
+    "transformers>=4.43",
+    "torch>=2.4",
+    "gguf>=0.18",
+    "numpy>=1.26",
+]
+
+[tool.uv]
+dev-dependencies = []

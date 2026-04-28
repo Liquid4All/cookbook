@@ -1,0 +1,37 @@
+[project]
+name = "vlm-example"
+version = "0.1.0"
+description = "Fine-tune LFM2.5-VL-450M on MMAD for defect detection"
+readme = "README.md"
+authors = [
+    { name = "Paulescu", email = "plabartabajo@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.1.1",
+    "modal>=1.1.4",
+    "outlines>=1.2.7",
+    "peft>=0.15.2",
+    "pillow>=11.3.0",
+    "pydantic-settings>=2.10.1",
+    "tqdm>=4.67.1",
+    "torchao>=0.4.0",
+    "transformers==4.57.1",
+    "trl>=0.18.2",
+    "wandb>=0.22.2",
+    "torchvision>=0.24.0",
+    "matplotlib>=3.10.7",
+    "seaborn>=0.13.2",
+    "scikit-learn>=1.7.2",
+    "anthropic>=0.50.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "jupyter>=1.1.1",
+]

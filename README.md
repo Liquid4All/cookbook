@@ -18,20 +18,19 @@
 
 ## Contents
 
-- [🤖 Local AI Apps](#-local-ai-apps)
-- [📱 Mobile App Deployment](#-mobile-app-deployment)
-  - [Android](#android)
-  - [iOS](#ios)
-- [🎯 Fine-Tuning Notebooks](#-fine-tuning-notebooks)
-- [🏭 Built with LFM](#-built-with-lfm)
-- [🌟 Community Projects](#-community-projects)
-- [🕐 Technical Deep Dives](#-technical-deep-dives)
+- [Desktop Apps](#-desktop-apps)
+- [Browser Apps](#-browser-apps)
+- [Mobile Apps](#-mobile-apps) (Android / iOS)
+- [Fine-Tuning Examples](#-fine-tuning-examples)
+- [Third-Party Apps Powered by LFM](#third-party-apps-powered-by-lfm)
+- [Community Projects](#-community-projects)
+- [Technical Deep Dives](#-technical-deep-dives)
 - [Contributing](#contributing)
 - [Support](#support)
 
-## 🤖 Local AI Apps
+## 🖥️ Desktop Apps
 
-Ready-to-run applications showcasing agentic workflows and real-time inference on a local device.
+Python and CLI applications for running LFM models on your laptop or desktop machine.
 
 | Name | Description | Link |
 |------|-------------|------|
@@ -39,13 +38,25 @@ Ready-to-run applications showcasing agentic workflows and real-time inference o
 | Audio Transcription CLI | Real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [Code](./examples/audio-transcription-cli/) |
 | Flight Search Assistant | Find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling | [Code](./examples/flight-search-assistant/README.md) |
 | Audio Car Cockpit | Voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B with LFM2-1.2B-Tool | [Code](./examples/audio-car-cockpit/README.md) |
-| Audio WebGPU Demo | Run LFM2.5-Audio-1.5B entirely in your browser for speech recognition, TTS, and conversation | [Code](./examples/audio-webgpu-demo/README.md) |
-| Vision WebGPU Demo | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) |
-| Thinking WebGPU Demo | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
 | LocalCowork | On-device AI agent for file ops, security scanning, OCR, and more, powered by LFM2-24B-A2B | [Code](./examples/localcowork/README.md) |
-| Hand & Voice Racer | Browser driving game controlled by hand gestures (MediaPipe) and voice commands (LFM2.5-Audio-1.5B), running fully local | [Code](./examples/hand-voice-racer/README.md) |
+| Home Assistant | Local home assistant with tool calling, benchmarking, and fine-tuning pipeline using LFM2-350M and LFM2.5-1.2B | [Code](./examples/home-assistant/README.md) |
+| Voice Assistant for Mac | On-device voice assistant for Apple Silicon Macs using LFM2.5-Audio-1.5B and the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/macos/LeapVoiceAssistantDemo) |
+| Vision Assistant for Mac | On-device visual language model chat for Apple Silicon Macs using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/macOS/LeapVLMExample/LeapVLMExample) |
 
-## 📱 Mobile App Deployment
+## 🌐 Browser Apps
+
+Zero-install applications running LFM models directly in the browser via WebGPU and ONNX Runtime Web.
+
+| Name | Description | Link |
+|------|-------------|------|
+| Tool Calling | Run LFM2 entirely in your browser with WebGPU for in-browser tool calling | [Code](https://huggingface.co/spaces/LiquidAI/LFM2-WebGPU/tree/main) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2-WebGPU) |
+| Voice Assistant | Run LFM2.5-Audio-1.5B entirely in your browser for speech recognition, TTS, and conversation | [Code](./examples/audio-webgpu-demo/README.md) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-Audio-1.5B-transformers-js) |
+| Live Video Captioning | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2-VL-WebGPU) |
+| Chain-of-Thought Reasoning | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Code](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU/tree/main) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
+| Hand & Voice Racer | Browser driving game controlled by hand gestures (MediaPipe) and voice commands (LFM2.5-Audio-1.5B), running fully local | [Code](./examples/hand-voice-racer/README.md) |
+| LEAP Voice Assistant | On-device voice assistant running in the browser via WebAssembly using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/web) |
+
+## 📱 Mobile Apps
 
 Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edge SDK](https://leap.liquid.ai/docs/edge-sdk/overview). Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to make Small Language Model deployment as easy as calling a cloud LLM API endpoint.
 
@@ -54,7 +65,7 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | Name | Description | Link |
 |------|-------------|------|
 | LeapChat | Chat app with real-time streaming, persistent history, and modern UI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
-| LeapAudioDemo | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapAudioDemo) |
+| Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/android) |
 | LeapKoogAgent | Integration with Koog framework for AI agent functionality | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapKoogAgent) |
 | SloganApp | Single turn marketing slogan generation with Android Views | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/SloganApp) |
 | ShareAI | Website summary generator | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
@@ -68,9 +79,10 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | LeapChat | Chat app with real-time streaming, conversation management, and SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
 | LeapSloganExample | Basic LeapSDK integration for text generation in SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapSloganExample) |
 | Recipe Generator | Structured output generation | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
-| Audio Demo | Audio input/output with LeapSDK for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) |
+| Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/ios/LeapVoiceAssistantDemo) |
+| Vision Assistant | Visual language model chat on iOS using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapVLMExample) |
 
-## 🎯 Fine-Tuning Notebooks
+## 🎯 Fine-Tuning Examples
 
 Colab notebooks and Python scripts for customizing LFM models with your own data.
 
@@ -87,40 +99,60 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
+| Satellite VLM Fine-Tuning | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
+| Wildfire Prevention | Build a wildfire risk detection system using LFM2.5-VL-450M and Sentinel-2 satellite imagery, with fine-tuning and on-device inference | [Code](./examples/wildfire-prevention/README.md) |
 
-## 🏭 Built with LFM
+## Third-Party Apps Powered by LFM
 
 Production and open-source applications that support LFM models as an inference backend, among other providers.
 
 | Name | Description | Link |
 |------|-------------|------|
 | DeepCamera | Open-source AI camera system for local vision intelligence with facial recognition, person re-ID, and edge deployment on Jetson and Raspberry Pi | [Code](https://github.com/SharpAI/DeepCamera) |
+| Osaurus | Native macOS AI harness for managing agents, memory, tools, and identity locally, with support for LFM models via MLX on Apple Silicon | [Code](https://github.com/osaurus-ai/osaurus) |
 
 ## 🌟 Community Projects
 
 Open-source projects built by the community showcasing LFMs with real use cases.
 
+### Fine-tuning
+
 | Name | Description | Link |
 |------|-------------|------|
-| Image Classification on Edge | End-to-end tutorial covering fine-tuning and deployment for super fast and accurate image classification using local VLMs | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
-| Chess Game with Small LMs | End-to-end tutorial covering fine-tuning and deployment to build a Chess game using Small Language Models | [Code](https://github.com/Paulescu/chess-game) |
-| TranslatorLens | Offline translation camera for real-time text translation | [Code](https://github.com/linmx0130/TranslatorLens) |
+| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
 | Food Images Fine-tuning | Fine-tune LFM models on food image datasets | [Code](https://github.com/benitomartin/food-images-finetuning) |
-| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [Code](https://github.com/chintan-projects/meeting-prompter) |
+| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
+| SFT + DPO Fine-tuning | Teaching a 1.2B model to be a grumpy Italian chef: SFT + DPO fine-tuning with Unsloth | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
+| LFM2-2.6B Mr. Tic Tac Toe | Fine-tune LFM2-2.6B with reinforcement learning to play tic-tac-toe | [Code](https://github.com/anakin87/llm-rl-environments-lil-course) |
+
+### Deployment
+
+| Name | Description | Link |
+|------|-------------|------|
+| LFM-2.5 Thinking on Web | Run LFM2.5-1.2B reasoning model locally in the browser via WebGPU and Transformers.js | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
+| LFM-2.5 JP on Web | Run LFM2.5-1.2B Japanese model locally in the browser via WebGPU and Transformers.js | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
+| barq-web-rag | Browser-based RAG app for document Q&A with LFM2.5-1.2B-Thinking running fully local via WebGPU | [Code](https://github.com/YASSERRMD/barq-web-rag) |
+| Tauri Plugin LEAP AI | Tauri plugin to integrate LEAP and Liquid LFMs into desktop and mobile apps | [Crate](https://crates.io/crates/tauri-plugin-leap-ai) |
+| Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
+
+### End-to-End Projects
+
+| Name | Description | Link |
+|------|-------------|------|
+| Image Classification on Edge | Fine-tune and deploy a local VLM for fast, accurate image classification on edge devices | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
+| Chess Game with Small LMs | Fine-tune and deploy a small language model to play chess | [Code](https://github.com/Paulescu/chess-game) |
 | Private Doc Q&A | On-device document Q&A with RAG and voice input | [Code](https://github.com/chintan-projects/private-doc-qa) |
 | Photo Triage Agent | Private photo library cleanup using LFM vision model | [Code](https://github.com/chintan-projects/photo-triage-agent) |
+| Tiny-MoA | Mixture of agents on CPU with LFM2.5 Brain (1.2B) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
 | LFM-Scholar | Automated literature review agent for finding and citing papers | [Code](https://github.com/gyunggyung/LFM-Scholar) |
-| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
-| Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
 | Private Summarizer | 100% local text summarization with multi-language support | [Code](https://github.com/Private-Intelligence/private_summarizer) |
-| Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
-| LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
-| LFM-2.5 Thinking on Web | LFM2.5 1.2B parameter reasoning language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime Web | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
-| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
-| SFT + DPO Fine-tuning | Teaching a 1.2B Model to be a Grumpy Italian Chef: SFT + DPO Fine-Tuning with Unsloth | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
-| Tauri Plugin LEAP AI | Tauri plugin to integrate LEAP and Liquid LFMs into desktop and mobile apps built with Tauri | [Crate](https://crates.io/crates/tauri-plugin-leap-ai) |
-| grosme | CLI grocery assistant that reads Apple Notes lists and finds Walmart product matches using LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
-| barq-web-rag | Browser-based RAG app for document Q&A with LFM2.5-1.2B-Thinking running fully local via WebGPU | [Code](https://github.com/YASSERRMD/barq-web-rag) |
+| TranslatorLens | Offline translation camera for real-time text translation | [Code](https://github.com/linmx0130/TranslatorLens) |
+| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [Code](https://github.com/chintan-projects/meeting-prompter) |
+| grosme | CLI grocery assistant that finds Walmart product matches using an LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
+| Discord Moderator | Use LFM2.5-1.2B to screen messages for suspicious content | [Code](https://github.com/badluma/liquid-mod) |
+| BookMind | Offline RAG study assistant for asking questions and generating exercises from PDF textbooks, powered by LFM2-2.6B | [Code](https://github.com/Ksirailway-base/BookMind) |
+| Liquid-CLI | Fine-tune and run Liquid AI's LFM2-8B-A1B as a local terminal agent | [Code](https://github.com/gyunggyung/Liquid-CLI) |
+
 
 ## 🕐 Technical Deep Dives
 
@@ -133,12 +165,15 @@ Recorded sessions (~60 minutes) covering advanced topics and hands-on implementa
 | 2025-12-26 | Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv | [Video](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
 | 2026-01-22 | Local video-captioning with LFM2.5-VL-1.6B and WebGPU | [Video](https://www.youtube.com/watch?v=xsWARHFoA3E) |
 | 2026-03-05 | Build your own local AI coding assistant | [Video](https://www.youtube.com/watch?v=6JEm1IxcxEw) |
+| 2026-04-22 | Let's build a wildfire detection system with a Vision Language Model and satellite images | [Video](https://www.youtube.com/watch?v=LOIDYl5fdb8) |
 
 Join the next session! Head to the `#live-events` channel on [Discord](https://discord.com/invite/liquid-ai).
 
 ## Contributing
 
 We welcome contributions! Open a PR with a link to your project GitHub repo in the Community Projects section.
+
+[![Contributors](https://contrib.rocks/image?repo=Liquid4All/cookbook)](https://github.com/Liquid4All/cookbook/graphs/contributors)
 
 ## Support
 

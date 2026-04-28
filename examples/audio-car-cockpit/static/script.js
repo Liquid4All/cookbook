@@ -693,6 +693,7 @@
       if (!this.audio.isRecording || !this.audio.mediaRecorder) return false;
 
       if (this.audio.mediaRecorder.state === 'recording') {
+        this.audio.ttfaStart = performance.now();
         this.audio.mediaRecorder.stop();
         this.audio.isRecording = false;
         this.renderAudio();
@@ -705,6 +706,7 @@
 
       this.audio.isProcessing = true;
       this.audio.transcribedText = '';
+      this.audio.ttfaLogged = false;
       this.audio.audioQueue = [];
       this.audio.totalBufferedMs = 0;
       this.audio.isBuffering = false;
@@ -852,6 +854,10 @@
     }
 
     queueAudioChunk(base64Data, sampleRate) {
+      if (this.audio.ttfaStart && !this.audio.ttfaLogged) {
+        console.log('TTFA:', (performance.now() - this.audio.ttfaStart).toFixed(0), 'ms');
+        this.audio.ttfaLogged = true;
+      }
       const pcmBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
       // PCM format (int16 or float32) is set by the server via a config message
@@ -869,6 +875,8 @@
       } else {
         floatArray = new Float32Array(pcmBytes.buffer);
       }
+
+      if (floatArray.length === 0) return;
 
       const durationSec = floatArray.length / sampleRate;
 

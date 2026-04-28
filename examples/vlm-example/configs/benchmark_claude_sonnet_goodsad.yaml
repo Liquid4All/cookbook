@@ -1,0 +1,11 @@
+model: claude-sonnet-4-6
+dataset: Paulescu/defect-detection
+split: test
+n_samples: 100
+source: GoodsAD
+wandb_project_name: defect-detection-benchmark
+prompt_override: >-
+  You are a quality control inspector at a retail warehouse. Examine this
+  packaged product image and determine whether the item has any visible
+  defects, including packaging tears, dents, stains, discoloration, or
+  physical damage. Respond with only Yes or No.
