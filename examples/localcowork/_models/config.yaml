@@ -14,6 +14,10 @@ active_model: lfm2-24b-a2b  # Sparse MoE: 24B total, 2.3B active, 64 experts top
 
 # Default model directory for non-Ollama model files (GGUF, MLX, etc.)
 models_dir: "${LOCALCOWORK_MODELS_DIR:-~/Projects/_models}"
+# HuggingFace model downloads default to the user cache directory
+# (typically ~/.cache/huggingface on Linux/macOS) and can be overridden
+# via HF_HOME, HF_HUB_CACHE, or XDG_CACHE_HOME. Pointing these to the
+# project directory will cause large cache files to be included here.
 
 # ─── Tool Surface Curation ──────────────────────────────────────────────────
 # By default, only the curated high-accuracy servers and tools are active.
