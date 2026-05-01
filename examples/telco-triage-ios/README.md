@@ -33,30 +33,50 @@ values.
 
 ## Architecture
 
-```text
-User text, voice transcript, or image
-        |
-        v
-TelcoTopicGate
-        |
-        v
-LFM2.5-350M base + telco-shared-clf-v1 LoRA
-        |
-        v
-TelcoDecisionVector
-        |
-        v
-TelcoDecisionRouter
-        |
-        +--> Local KB answer
-        +--> Local tool proposal and confirmation
-        +--> Cloud assist with redacted payload
-        +--> Human escalation
-        +--> Local refusal / blocked path
+```mermaid
+flowchart TD
+    Q["User: My Wi-Fi is slow in the bedroom"] --> TG["TelcoTopicGate<br/>deterministic in-scope check"]
+    TG --> Scope{"Telco support?"}
+    Scope -- "No" --> Refuse["Local refusal<br/>no LFM call"]
+    Scope -- "Yes" --> Heads["LFM2.5-350M + telco-shared-clf-v1<br/>one forward pass, 9 ADR-015 heads"]
+
+    Heads --> Vector["TelcoDecisionVector<br/>intent, lane, tool, cloud needs, PII, slots"]
+    Vector --> Overrides["Deterministic overrides<br/>PersonalSummaryDetector + ImperativeToolDetector"]
+    Overrides --> Router["TelcoDecisionRouter<br/>pure policy over model signals"]
+    Router --> Lane{"Routing lane"}
+
+    Lane -- "local_answer" --> KB["KeywordKBExtractor<br/>alias / BM25-style local KB retrieval"]
+    KB --> Entry["Top KBEntry + confidence<br/>source article + deep links"]
+    Entry --> Grounded["Local LFM grounded QA<br/>answer only from retrieved context"]
+    Grounded --> UI["Chat response<br/>source + pipeline trace"]
+
+    Lane -- "local_tool" --> Proposal["Tool proposal<br/>customer confirmation"]
+    Proposal --> Tool["ToolExecutor<br/>speed test, diagnostics, restart, schedule"]
+    Tool --> Summary["Local LFM summarizes result"]
+    Summary --> UI
+
+    Lane -- "cloud_assist" --> Payload["PII check + cloud requirements<br/>redacted payload prepared"]
+    Payload --> Approval["Customer-visible approval surface<br/>no silent background egress"]
+    Approval --> Cloud["Carrier cloud systems<br/>outage, account, billing, appointment"]
+    Cloud --> UI
+
+    Lane -- "human_escalation" --> Agent["Agent handoff surface"]
+    Agent --> UI
+    Lane -- "blocked" --> Block["Local safety / auth refusal"]
+    Block --> UI
 ```
 
 The model emits typed signals. The router owns the policy decision. This keeps
 the agentic behavior auditable and testable.
+
+For the slow-Wi-Fi prompt, the expected model signals are
+`support_intent=troubleshooting` and either `routing_lane=local_answer`
+or `routing_lane=local_tool`. The local RAG path uses `KeywordKBExtractor`
+as the primary retriever because this KB has curated aliases; the LFM
+then writes the final answer from the retrieved article. Cloud assist is
+reserved for live outage/account/billing/appointment systems and is
+represented in the demo as a redacted, customer-visible payload prepared
+for integration.
 
 ## Model Artifacts
 
