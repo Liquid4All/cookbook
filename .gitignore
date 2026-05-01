@@ -25,3 +25,7 @@ LFM2.5-Audio-1.5B-transformers-js/
 # Node
 node_modules/
 package-lock.json
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
