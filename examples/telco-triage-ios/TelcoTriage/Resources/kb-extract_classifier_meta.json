@@ -3,8 +3,8 @@
   "hidden_dim": 1024,
   "weight_bytes": 139264,
   "bias_bytes": 136,
-  "weight_file": "classifier_weights.bin",
-  "bias_file": "classifier_bias.bin",
+  "weight_file": "kb-extract_classifier_weights.bin",
+  "bias_file": "kb-extract_classifier_bias.bin",
   "id2label": {
     "0": "none",
     "1": "account-settings",

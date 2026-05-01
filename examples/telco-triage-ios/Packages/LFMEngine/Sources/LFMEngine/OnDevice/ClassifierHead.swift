@@ -69,10 +69,16 @@ public struct ClassifierHead: Sendable {
         self.task = (metaJSON["task"] as? String) ?? "unknown"
 
         // Parse label maps. Keys in JSON are strings even for integer keys.
+        // Newer multi-label exports may provide `labels` instead of `id2label`;
+        // normalize both shapes so active labels are always emitted.
         var id2label: [Int: String] = [:]
         if let raw = metaJSON["id2label"] as? [String: String] {
             for (k, v) in raw {
                 if let idx = Int(k) { id2label[idx] = v }
+            }
+        } else if let labels = metaJSON["labels"] as? [String] {
+            for (idx, label) in labels.enumerated() {
+                id2label[idx] = label
             }
         }
         self.id2label = id2label
@@ -85,6 +91,10 @@ public struct ClassifierHead: Sendable {
                 } else if let idx = v as? NSNumber {
                     label2id[k] = idx.intValue
                 }
+            }
+        } else if let labels = metaJSON["labels"] as? [String] {
+            for (idx, label) in labels.enumerated() {
+                label2id[label] = idx
             }
         }
         self.label2id = label2id

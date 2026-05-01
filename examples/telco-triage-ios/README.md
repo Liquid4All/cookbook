@@ -64,6 +64,16 @@ Large GGUF files are intentionally not committed to the cookbook repository.
 The small classifier head files and metadata are committed under
 `TelcoTriage/Resources/`.
 
+Recommended distribution pattern:
+
+1. Keep source, manifests, sample KB, and small classifier heads in Git.
+2. Host full GGUF model/adaptor artifacts in a versioned model registry such
+   as Hugging Face Hub, gated if the license or customer terms require it.
+3. Pin the exact model revision and checksums in release notes or an internal
+   manifest before sharing a customer build.
+4. Use `bootstrap-models.sh` to copy the downloaded artifacts into the app
+   bundle before `xcodegen generate`.
+
 Required local GGUFs:
 
 | File | Purpose |

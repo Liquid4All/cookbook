@@ -21,6 +21,25 @@ Optional transitional classifier adapters:
 - `kb-extract-clf-v1.gguf`
 - `tool-selector-clf-v1.gguf`
 
+## Recommended Distribution
+
+Do not commit the full GGUF model artifacts to the public cookbook example.
+Keep the repository small and reviewable:
+
+- Commit app source, model manifests, checksums, sample data, and the small
+  classifier head binaries/metadata.
+- Host large GGUFs in a versioned model registry such as Hugging Face Hub.
+- Use gated model access for non-public demos, restricted licenses, early
+  research weights, or customer-specific adapters.
+- Pin a model revision or commit hash, and publish SHA-256 checksums for every
+  GGUF used in a shared customer build.
+- For a zero-friction hands-on demo, distribute a signed TestFlight, IPA, or
+  release artifact with the models already bundled. Keep source clones light.
+
+Git LFS can work for private engineering repos, but it is a poor default for a
+public cookbook sample because every clone becomes a model-distribution event
+and LFS bandwidth/account limits become part of the customer setup path.
+
 ## Nine Telco Classifier Heads
 
 The shared classifier adapter feeds these small committed head artifacts:

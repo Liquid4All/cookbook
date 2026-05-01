@@ -3,8 +3,8 @@
   "hidden_dim": 1024,
   "weight_bytes": 36864,
   "bias_bytes": 36,
-  "weight_file": "classifier_weights.bin",
-  "bias_file": "classifier_bias.bin",
+  "weight_file": "tool-selector_classifier_weights.bin",
+  "bias_file": "tool-selector_classifier_bias.bin",
   "id2label": {
     "0": "none",
     "1": "check-connection",
