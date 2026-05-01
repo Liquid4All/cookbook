@@ -233,7 +233,10 @@ mod tests {
             response_format: None,
         };
         let json = serde_json::to_string(&req).unwrap();
-        assert!(json.contains("\"top_p\":0.2"), "top_p should appear in JSON when Some");
+        assert!(
+            json.contains("\"top_p\":0.2"),
+            "top_p should appear in JSON when Some"
+        );
     }
 
     #[test]
@@ -288,4 +291,16 @@ mod tests {
         assert!(overrides.temperature.is_none());
         assert!(overrides.top_p.is_none());
     }
+}
+
+/// Model status information for health monitoring.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelStatus {
+    pub key: String,
+    pub display_name: String,
+    pub base_url: String,
+    pub healthy: bool,
+    pub model_name: Option<String>,
+    pub error: Option<String>,
 }
