@@ -17,20 +17,20 @@ git commit -m "initial Telco Triage import"
 Do not copy generated `.build`, `.swiftpm`, `DerivedData`, or GGUF model files
 unless you intentionally use Git LFS.
 
-## Optional Rename
+## Optional Product Rename
 
-The target and source module are named `VerizonSupportPOC` for historical
-compatibility. The app display name and bundle identifier are already generic.
+The default project, target, module, bundle ID, and display name are already
+generic Telco Triage values. For a carrier-specific fork, rename only the
+customer-facing pieces first: display name, bundle ID, theme, knowledge base,
+and tool catalog.
 
-For a same-day demo, keep the module name as-is. For a longer-lived product
-fork, rename it deliberately:
+If you also need a customer-specific Swift module, rename it deliberately:
 
-1. Rename `VerizonSupportPOC/` to `TelcoTriage/`.
-2. Rename `VerizonSupportPOCTests/` to `TelcoTriageTests/`.
-3. Replace target, scheme, source paths, test host, and imports in
-   `project.yml` and tests.
-4. Run `xcodegen generate`.
-5. Run the fast test pass from `TESTING.md`.
+1. Rename `TelcoTriage/` and `TelcoTriageTests/`.
+2. Replace target, scheme, source paths, test host, and `@testable import`
+   values in `project.yml` and tests.
+3. Run `xcodegen generate`.
+4. Run the fast test pass from `TESTING.md`.
 
 ## Models
 
@@ -44,8 +44,8 @@ Required runtime artifacts are listed in `README.md`.
 
 ## Customization Checklist
 
-1. Replace `VerizonSupportPOC/Resources/knowledge-base.json`.
-2. Add carrier branding in `VerizonSupportPOC/Core/Branding/`.
+1. Replace `TelcoTriage/Resources/knowledge-base.json`.
+2. Add carrier branding in `TelcoTriage/Core/Branding/`.
 3. Register carrier-specific tools in `ToolRegistry`.
 4. Update support taxonomy labels and retrain the shared classifier adapter if
    the carrier workflow differs materially.

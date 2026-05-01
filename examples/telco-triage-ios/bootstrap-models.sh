@@ -18,7 +18,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SRC="${TELCO_MODELS_DIR:-$SCRIPT_DIR/models/telco}"
-DST="$SCRIPT_DIR/VerizonSupportPOC/Resources/Models"
+DST="$SCRIPT_DIR/TelcoTriage/Resources/Models"
 
 REQUIRED=(
   # CRITICAL: use the LFM2.5-350M Base GGUF. The LoRA adapters below were
@@ -26,7 +26,7 @@ REQUIRED=(
   "lfm25-350m-base-Q4_K_M.gguf"
 
   # ADR-015 shared classifier adapter. The nine classifier head triplets are
-  # small and committed under VerizonSupportPOC/Resources/.
+  # small and committed under TelcoTriage/Resources/.
   "telco-shared-clf-v1.gguf"
 
   # Generative adapters used for grounded answer and tool-argument paths.

@@ -13,9 +13,9 @@ The app demonstrates an edge-first support architecture:
 4. Cloud assist receives only a redacted support bundle, and only when the
    workflow needs live account, billing, outage, or appointment systems.
 
-This is a carrier-agnostic example. The visible app name is **Telco Triage**;
-the Xcode target is still named `VerizonSupportPOC` for compatibility with the
-original demo and its tests.
+This is a carrier-agnostic example. The Xcode project, scheme, app target,
+source module, bundle ID, and visible app name are all generic Telco Triage
+values.
 
 ## What This Shows
 
@@ -62,7 +62,7 @@ the agentic behavior auditable and testable.
 
 Large GGUF files are intentionally not committed to the cookbook repository.
 The small classifier head files and metadata are committed under
-`VerizonSupportPOC/Resources/`.
+`TelcoTriage/Resources/`.
 
 Required local GGUFs:
 
@@ -109,10 +109,10 @@ cd examples/telco-triage-ios
 TELCO_MODELS_DIR=/path/to/telco-models ./bootstrap-models.sh
 
 xcodegen generate
-open VerizonSupportPOC.xcodeproj
+open TelcoTriage.xcodeproj
 ```
 
-Then run the `VerizonSupportPOC` scheme. The display name on device is
+Then run the `TelcoTriage` scheme. The display name on device is
 `Telco Triage`.
 
 ## Test
@@ -123,11 +123,11 @@ Fast non-LFM unit tests:
 cd examples/telco-triage-ios
 xcodegen generate
 xcodebuild test \
-  -project VerizonSupportPOC.xcodeproj \
-  -scheme VerizonSupportPOC \
+  -project TelcoTriage.xcodeproj \
+  -scheme TelcoTriage \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -skip-testing:VerizonSupportPOCTests/LFMValidationTests \
-  -skip-testing:VerizonSupportPOCTests/LlamaBackendSmokeTests
+  -skip-testing:TelcoTriageTests/LFMValidationTests \
+  -skip-testing:TelcoTriageTests/LlamaBackendSmokeTests
 ```
 
 Full tests require the GGUFs to be copied with `./bootstrap-models.sh`.
@@ -153,10 +153,10 @@ or moved to cloud assist.
 
 ## Customize
 
-- Replace `VerizonSupportPOC/Resources/knowledge-base.json` with your carrier
+- Replace `TelcoTriage/Resources/knowledge-base.json` with your carrier
   support corpus.
-- Add or edit themes in `VerizonSupportPOC/Core/Branding/`.
-- Add tools under `VerizonSupportPOC/Core/Tools/` and register them in
+- Add or edit themes in `TelcoTriage/Core/Branding/`.
+- Add tools under `TelcoTriage/Core/Tools/` and register them in
   `ToolRegistry`.
 - Retrain the shared classifier adapter if you change the support taxonomy,
   tool catalog, or cloud-assist policy labels.
@@ -167,5 +167,5 @@ or moved to cloud assist.
   against Base weights.
 - The iOS Simulator runs without GPU offload, so physical devices are more
   representative for latency.
-- The target name remains `VerizonSupportPOC` only to avoid a noisy Swift module
-  rename. The user-facing app name and bundle ID are generic Telco Triage values.
+- The project and module are named `TelcoTriage`; carrier-specific forks can
+  keep that stable or rename it deliberately with XcodeGen.

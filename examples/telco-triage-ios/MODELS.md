@@ -90,4 +90,4 @@ xcodegen generate
 ```
 
 XcodeGen includes whatever GGUFs are present under
-`VerizonSupportPOC/Resources/Models/` at generation time.
+`TelcoTriage/Resources/Models/` at generation time.

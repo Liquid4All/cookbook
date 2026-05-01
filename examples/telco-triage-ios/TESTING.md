@@ -1,7 +1,7 @@
 # Testing Telco Triage
 
-The visible app is **Telco Triage**. The Xcode target and test bundle are still
-named `VerizonSupportPOC` for source compatibility.
+The visible app, Xcode project, app target, source module, and test bundle are
+all named **Telco Triage** / `TelcoTriage`.
 
 ## Fast Test Pass
 
@@ -11,11 +11,11 @@ This pass avoids model loading and is the best first check for cookbook users.
 cd examples/telco-triage-ios
 xcodegen generate
 xcodebuild test \
-  -project VerizonSupportPOC.xcodeproj \
-  -scheme VerizonSupportPOC \
+  -project TelcoTriage.xcodeproj \
+  -scheme TelcoTriage \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  -skip-testing:VerizonSupportPOCTests/LFMValidationTests \
-  -skip-testing:VerizonSupportPOCTests/LlamaBackendSmokeTests
+  -skip-testing:TelcoTriageTests/LFMValidationTests \
+  -skip-testing:TelcoTriageTests/LlamaBackendSmokeTests
 ```
 
 It covers the deterministic router, topic gate, tool registry, PII masker,
@@ -30,8 +30,8 @@ cd examples/telco-triage-ios
 TELCO_MODELS_DIR=/path/to/telco-models ./bootstrap-models.sh
 xcodegen generate
 xcodebuild test \
-  -project VerizonSupportPOC.xcodeproj \
-  -scheme VerizonSupportPOC \
+  -project TelcoTriage.xcodeproj \
+  -scheme TelcoTriage \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 

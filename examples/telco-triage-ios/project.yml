@@ -1,4 +1,4 @@
-name: VerizonSupportPOC
+name: TelcoTriage
 options:
   bundleIdPrefix: ai.liquid.demos
   deploymentTarget:
@@ -34,14 +34,14 @@ settings:
     CODE_SIGN_STYLE: Automatic
 
 targets:
-  VerizonSupportPOC:
+  TelcoTriage:
     type: application
     platform: iOS
     sources:
       # Ship local GGUFs in the app bundle at `Resources/Models/` after
       # running bootstrap-models.sh. The cookbook keeps those large files
       # out of git.
-      - path: VerizonSupportPOC
+      - path: TelcoTriage
       - path: Packages/LFMEngine/Sources/LFMEngine
         name: LFMEngine
         group: SharedPackages
@@ -56,7 +56,7 @@ targets:
       - package: LeapSDK
         product: LeapSDK
     info:
-      path: VerizonSupportPOC/Info.plist
+      path: TelcoTriage/Info.plist
       properties:
         CFBundleIconName: AppIcon
         CFBundleDisplayName: Telco Triage
@@ -82,28 +82,28 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) LLAMA_CPP_AVAILABLE"
 
-  VerizonSupportPOCTests:
+  TelcoTriageTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - VerizonSupportPOCTests
+      - TelcoTriageTests
     dependencies:
-      - target: VerizonSupportPOC
+      - target: TelcoTriage
     settings:
       base:
         BUNDLE_LOADER: "$(TEST_HOST)"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/VerizonSupportPOC.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VerizonSupportPOC"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TelcoTriage.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TelcoTriage"
         GENERATE_INFOPLIST_FILE: "YES"
 
 schemes:
-  VerizonSupportPOC:
+  TelcoTriage:
     build:
       targets:
-        VerizonSupportPOC: all
-        VerizonSupportPOCTests: [test]
+        TelcoTriage: all
+        TelcoTriageTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       targets:
-        - VerizonSupportPOCTests
+        - TelcoTriageTests
