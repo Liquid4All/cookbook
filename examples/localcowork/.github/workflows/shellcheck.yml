@@ -1,0 +1,20 @@
+name: Shellcheck
+
+on:
+  push:
+    paths:
+      - "**.sh"
+  pull_request:
+    paths:
+      - "**.sh"
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run shellcheck
+        uses: ludeeus/action-shellcheck@master
+        env:
+          SHELLCHECK_OPTS: "-s bash -S error"
