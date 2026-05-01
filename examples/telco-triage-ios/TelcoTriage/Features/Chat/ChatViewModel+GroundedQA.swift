@@ -4,11 +4,11 @@ extension ChatViewModel {
     /// The iOS Simulator cannot safely use Metal offload for this GGUF
     /// stack, so it runs llama.cpp on CPU. A base-model grounded-QA decode
     /// that runs to the 256-token cap takes ~5s there; real iPhones keep
-    /// the generative path. Set VERIZON_DISABLE_SIMULATOR_FAST_RAG=1 when
+    /// the generative path. Set TELCO_TRIAGE_DISABLE_SIMULATOR_FAST_RAG=1 when
     /// validating simulator generative behavior directly.
     nonisolated static var shouldUseSimulatorFastGroundedQA: Bool {
         #if targetEnvironment(simulator)
-        return ProcessInfo.processInfo.environment["VERIZON_DISABLE_SIMULATOR_FAST_RAG"] != "1"
+        return ProcessInfo.processInfo.environment["TELCO_TRIAGE_DISABLE_SIMULATOR_FAST_RAG"] != "1"
         #else
         return false
         #endif
