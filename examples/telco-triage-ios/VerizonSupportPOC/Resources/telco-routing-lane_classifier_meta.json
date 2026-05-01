@@ -1,0 +1,23 @@
+{
+  "num_classes": 5,
+  "hidden_dim": 1024,
+  "weight_file": "telco-routing-lane_classifier_weights.bin",
+  "bias_file": "telco-routing-lane_classifier_bias.bin",
+  "task": "telco_routing_lane",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "local_answer",
+    "1": "local_tool",
+    "2": "cloud_assist",
+    "3": "human_escalation",
+    "4": "blocked"
+  },
+  "label2id": {
+    "local_answer": 0,
+    "local_tool": 1,
+    "cloud_assist": 2,
+    "human_escalation": 3,
+    "blocked": 4
+  }
+}

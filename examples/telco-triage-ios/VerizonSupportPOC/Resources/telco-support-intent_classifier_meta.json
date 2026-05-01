@@ -1,0 +1,29 @@
+{
+  "num_classes": 8,
+  "hidden_dim": 1024,
+  "weight_file": "telco-support-intent_classifier_weights.bin",
+  "bias_file": "telco-support-intent_classifier_bias.bin",
+  "task": "telco_support_intent",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "troubleshooting",
+    "1": "outage",
+    "2": "billing",
+    "3": "appointment",
+    "4": "device_setup",
+    "5": "plan_account",
+    "6": "equipment_return",
+    "7": "agent_handoff"
+  },
+  "label2id": {
+    "troubleshooting": 0,
+    "outage": 1,
+    "billing": 2,
+    "appointment": 3,
+    "device_setup": 4,
+    "plan_account": 5,
+    "equipment_return": 6,
+    "agent_handoff": 7
+  }
+}

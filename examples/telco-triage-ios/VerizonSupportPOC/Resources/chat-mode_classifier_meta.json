@@ -1,0 +1,22 @@
+{
+  "num_classes": 4,
+  "hidden_dim": 1024,
+  "weight_bytes": 16384,
+  "bias_bytes": 16,
+  "weight_file": "classifier_weights.bin",
+  "bias_file": "classifier_bias.bin",
+  "id2label": {
+    "0": "kb_question",
+    "1": "tool_action",
+    "2": "personal_summary",
+    "3": "out_of_scope"
+  },
+  "label2id": {
+    "kb_question": 0,
+    "tool_action": 1,
+    "personal_summary": 2,
+    "out_of_scope": 3
+  },
+  "task": "chat_mode_routing",
+  "format": "float32_row_major"
+}

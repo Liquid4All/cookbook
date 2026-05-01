@@ -1,0 +1,27 @@
+{
+  "num_classes": 7,
+  "hidden_dim": 1024,
+  "weight_file": "telco-cloud-requirements_classifier_weights.bin",
+  "bias_file": "telco-cloud-requirements_classifier_bias.bin",
+  "task": "telco_cloud_requirements",
+  "format": "float32_row_major",
+  "type": "multi_label",
+  "labels": [
+    "live_network_status",
+    "account_state",
+    "billing_record",
+    "appointment_system",
+    "device_inventory",
+    "plan_catalog",
+    "auth"
+  ],
+  "label2id": {
+    "live_network_status": 0,
+    "account_state": 1,
+    "billing_record": 2,
+    "appointment_system": 3,
+    "device_inventory": 4,
+    "plan_catalog": 5,
+    "auth": 6
+  }
+}

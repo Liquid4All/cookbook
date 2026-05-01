@@ -1,0 +1,25 @@
+{
+  "num_classes": 6,
+  "hidden_dim": 1024,
+  "weight_file": "telco-required-tool_classifier_weights.bin",
+  "bias_file": "telco-required-tool_classifier_bias.bin",
+  "task": "telco_required_tool",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "restart_gateway",
+    "1": "run_diagnostics",
+    "2": "speed_test",
+    "3": "schedule_technician",
+    "4": "no_tool",
+    "5": "cloud_only"
+  },
+  "label2id": {
+    "restart_gateway": 0,
+    "run_diagnostics": 1,
+    "speed_test": 2,
+    "schedule_technician": 3,
+    "no_tool": 4,
+    "cloud_only": 5
+  }
+}

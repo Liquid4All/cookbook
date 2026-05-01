@@ -1,0 +1,23 @@
+{
+  "num_classes": 5,
+  "hidden_dim": 1024,
+  "weight_file": "telco-customer-escalation-risk_classifier_weights.bin",
+  "bias_file": "telco-customer-escalation-risk_classifier_bias.bin",
+  "task": "telco_customer_escalation_risk",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "low",
+    "1": "frustrated",
+    "2": "churn_risk",
+    "3": "complaint",
+    "4": "urgent"
+  },
+  "label2id": {
+    "low": 0,
+    "frustrated": 1,
+    "churn_risk": 2,
+    "complaint": 3,
+    "urgent": 4
+  }
+}

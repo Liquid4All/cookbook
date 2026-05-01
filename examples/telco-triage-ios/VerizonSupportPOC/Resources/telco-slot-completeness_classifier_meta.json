@@ -1,0 +1,25 @@
+{
+  "num_classes": 6,
+  "hidden_dim": 1024,
+  "weight_file": "telco-slot-completeness_classifier_weights.bin",
+  "bias_file": "telco-slot-completeness_classifier_bias.bin",
+  "task": "telco_slot_completeness",
+  "format": "float32_row_major",
+  "type": "multi_label",
+  "labels": [
+    "missing_device",
+    "missing_symptom",
+    "missing_duration",
+    "missing_location",
+    "missing_account_auth",
+    "missing_contact_preference"
+  ],
+  "label2id": {
+    "missing_device": 0,
+    "missing_symptom": 1,
+    "missing_duration": 2,
+    "missing_location": 3,
+    "missing_account_auth": 4,
+    "missing_contact_preference": 5
+  }
+}

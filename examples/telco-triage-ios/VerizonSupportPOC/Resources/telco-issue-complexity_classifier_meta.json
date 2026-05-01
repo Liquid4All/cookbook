@@ -1,0 +1,23 @@
+{
+  "num_classes": 5,
+  "hidden_dim": 1024,
+  "weight_file": "telco-issue-complexity_classifier_weights.bin",
+  "bias_file": "telco-issue-complexity_classifier_bias.bin",
+  "task": "telco_issue_complexity",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "simple",
+    "1": "guided",
+    "2": "multi_step",
+    "3": "backend_required",
+    "4": "human_required"
+  },
+  "label2id": {
+    "simple": 0,
+    "guided": 1,
+    "multi_step": 2,
+    "backend_required": 3,
+    "human_required": 4
+  }
+}
