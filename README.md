@@ -153,6 +153,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | BookMind | Offline RAG study assistant for asking questions and generating exercises from PDF textbooks, powered by LFM2-2.6B | [Code](https://github.com/Ksirailway-base/BookMind) |
 | Liquid-CLI | Fine-tune and run Liquid AI's LFM2-8B-A1B as a local terminal agent | [Code](https://github.com/gyunggyung/Liquid-CLI) |
 | LFM Podcast Studio | Turn any PDF into a two-host podcast episode locally using LFM2.5-Audio TTS via llama.cpp | [Code](https://github.com/nikhilprasanth/LFM-Podcast-Studio) |
+| GalamseyWatch | Two-layer agentic Earth observation (LFM2.5-VL-450M perception + LFM2-2.6B tool-calling policy) over Sentinel-2 imagery, applied to illegal mining detection in Ghana | [Code](https://github.com/samadon1/GalamseyWatch) |
 
 ## 🕐 Technical Deep Dives
 
