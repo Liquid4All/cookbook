@@ -3,7 +3,9 @@
 Telco Triage is a SwiftUI reference app for a private, on-device home internet
 support assistant powered by Liquid Foundation Models.
 
-The app demonstrates an edge-first support architecture:
+The app demonstrates an edge-first support architecture that is relevant to
+carriers, banks, retailers, and any customer-facing mobile app with a long tail
+of support requests:
 
 1. A compact LFM runs in the iOS app.
 2. A shared telco classifier adapter produces nine support decisions in one
@@ -30,6 +32,11 @@ values.
   selection.
 - Optional audio and vision pack scaffolding for voice support and visual
   troubleshooting.
+
+The reference implementation is deliberately transparent. The model emits
+typed signals, deterministic policy owns the final routing decision, and the UI
+shows enough trace detail for developers and customers to inspect why a request
+stayed local or moved toward cloud assist.
 
 ## Architecture
 
@@ -84,15 +91,10 @@ Large GGUF files are intentionally not committed to the cookbook repository.
 The small classifier head files and metadata are committed under
 `TelcoTriage/Resources/`.
 
-Recommended distribution pattern:
-
-1. Keep source, manifests, sample KB, and small classifier heads in Git.
-2. Host full GGUF model/adaptor artifacts in a versioned model registry such
-   as Hugging Face Hub, gated if the license or customer terms require it.
-3. Pin the exact model revision and checksums in release notes or an internal
-   manifest before sharing a customer build.
-4. Use `bootstrap-models.sh` to copy the downloaded artifacts into the app
-   bundle before `xcodegen generate`.
+The model architecture and distribution rationale are covered in
+[MODELS.md](MODELS.md). In short: app source, sample data, manifests, and small
+classifier heads belong in Git; full GGUF artifacts belong in a versioned model
+registry or in a packaged demo build.
 
 Required local GGUFs:
 
@@ -113,7 +115,7 @@ Optional transitional adapters:
 Put these files in `examples/telco-triage-ios/models/telco/`, or set
 `TELCO_MODELS_DIR` to a directory containing them.
 
-## Build
+## Run Locally
 
 Requirements:
 
@@ -145,7 +147,7 @@ open TelcoTriage.xcodeproj
 Then run the `TelcoTriage` scheme. The display name on device is
 `Telco Triage`.
 
-## Test
+## Validation
 
 Fast non-LFM unit tests:
 
@@ -160,7 +162,8 @@ xcodebuild test \
   -skip-testing:TelcoTriageTests/LlamaBackendSmokeTests
 ```
 
-Full tests require the GGUFs to be copied with `./bootstrap-models.sh`.
+Full model smoke tests require the GGUFs to be copied with
+`./bootstrap-models.sh`.
 
 ## Demo Prompts
 
@@ -177,19 +180,21 @@ Why is my bill higher this month?
 I want to talk to a person
 ```
 
-In engineering mode, expand the trace card to show which decisions came from
-the local model, which tool was selected, and whether the request stayed local
-or moved to cloud assist.
+Engineering mode expands each response with the local model route, classifier
+confidence, retrieval result, selected tool, latency, and cloud-assist posture.
 
-## Customize
+## Extension Points
 
-- Replace `TelcoTriage/Resources/knowledge-base.json` with your carrier
-  support corpus.
-- Add or edit themes in `TelcoTriage/Core/Branding/`.
-- Add tools under `TelcoTriage/Core/Tools/` and register them in
-  `ToolRegistry`.
-- Retrain the shared classifier adapter if you change the support taxonomy,
-  tool catalog, or cloud-assist policy labels.
+Telco Triage is designed to be adapted without changing the core inference
+architecture:
+
+| Area | Extension point |
+| --- | --- |
+| Knowledge | `TelcoTriage/Resources/knowledge-base.json` |
+| Branding | `TelcoTriage/Core/Branding/` |
+| Local actions | `TelcoTriage/Core/Tools/` and `ToolRegistry` |
+| Routing taxonomy | ADR-015 classifier labels and deterministic router policy |
+| Cloud assist | Redacted payload contract for live carrier systems |
 
 ## Notes
 

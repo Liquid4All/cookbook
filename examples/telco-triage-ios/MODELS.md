@@ -1,112 +1,130 @@
-# Models
+# Model Architecture
 
-Telco Triage demonstrates an edge-first Liquid model stack for carrier support.
-Large GGUF files are intentionally excluded from the cookbook repository; use
-`bootstrap-models.sh` to copy them into the app bundle before generating the
-Xcode project.
+Telco Triage shows how a mobile app can use Liquid Foundation Models as a
+private first-response layer for carrier support. The design is intentionally
+small: one resident base model, a set of task adapters, and lightweight
+classifier heads that turn natural language into auditable support decisions.
+
+The goal is not to replace every backend workflow. It is to keep high-volume,
+low-risk support interactions on device, and to hand off only the cases that
+need live carrier systems such as outage, account, billing, appointment, or
+inventory services.
 
 ## Runtime Stack
 
 | Layer | Artifact | Role |
 | --- | --- | --- |
-| Base model | `lfm25-350m-base-Q4_K_M.gguf` | Resident LFM2.5-350M base model |
-| Shared classifier | `telco-shared-clf-v1.gguf` | One LoRA that drives the nine ADR-015 classifier heads |
-| Tool adapter | `telco-tool-selector-v3.gguf` | Generates/extracts tool arguments when a local tool path is selected |
-| Chat router fallback | `chat-mode-router-v2.gguf` | Generative fallback when classifier paths are unavailable |
-| KB extractor | `kb-extractor-v1.gguf` | Grounded answer extraction from the local support KB |
+| Resident base model | `lfm25-350m-base-Q4_K_M.gguf` | On-device LFM loaded once at app launch |
+| Shared classifier adapter | `telco-shared-clf-v1.gguf` | Shapes the hidden state for all telco routing heads |
+| Tool adapter | `telco-tool-selector-v3.gguf` | Produces tool-oriented language and argument summaries |
+| Router fallback adapter | `chat-mode-router-v2.gguf` | Legacy generative router when classifier artifacts are absent |
+| KB fallback adapter | `kb-extractor-v1.gguf` | Legacy generative KB selector retained for comparison |
+| Classifier heads | `*_classifier_weights.bin`, `*_classifier_bias.bin`, `*_classifier_meta.json` | Small linear projections over the LFM hidden state |
+| Knowledge base | `knowledge-base.json` | Carrier-agnostic home internet support corpus |
 
-Optional transitional classifier adapters:
+All adapters are trained against **LFM2.5-350M Base**. They should not be
+applied to DPO or instruction-tuned weights unless they are retrained against
+that exact base distribution.
 
-- `chat-mode-clf-v1.gguf`
-- `kb-extract-clf-v1.gguf`
-- `tool-selector-clf-v1.gguf`
+## Decision Vector
 
-## Recommended Distribution
+The main runtime pattern is a shared forward pass followed by multiple small
+heads. Instead of prompting a generative model to decide what to do next, the
+app produces a typed `TelcoDecisionVector`, then applies deterministic policy
+over that vector.
 
-Do not commit the full GGUF model artifacts to the public cookbook example.
-Keep the repository small and reviewable:
+| Head | Output | Why it exists |
+| --- | --- | --- |
+| `support_intent` | Troubleshooting, outage, billing, appointment, setup, plan/account, returns, handoff | Explains the customer goal |
+| `routing_lane` | Local answer, local tool, cloud assist, human escalation, blocked | Chooses the support lane |
+| `required_tool` | Restart, diagnostics, speed test, technician scheduling, no tool, cloud only | Selects a local action when one is appropriate |
+| `issue_complexity` | Simple, guided, multi-step, backend required, human required | Feeds trace and UX hints |
+| `cloud_requirements` | Live network, account state, billing record, appointment system, inventory, plan catalog, auth | Describes what a cloud handoff would need |
+| `customer_escalation_risk` | Low, frustrated, churn risk, complaint, urgent | Keeps the automation boundary customer-aware |
+| `pii_risk` | Safe, account data, contact data, payment/identity data | Controls redaction and egress posture |
+| `transcript_quality` | Clean, noisy, partial, ASR uncertain | Gives voice workflows a confidence signal |
+| `slot_completeness` | Missing device, symptom, duration, location, auth, contact preference | Identifies clarifying questions before escalation |
 
-- Commit app source, model manifests, checksums, sample data, and the small
-  classifier head binaries/metadata.
-- Host large GGUFs in a versioned model registry such as Hugging Face Hub.
-- Use gated model access for non-public demos, restricted licenses, early
-  research weights, or customer-specific adapters.
-- Pin a model revision or commit hash, and publish SHA-256 checksums for every
-  GGUF used in a shared customer build.
-- For a zero-friction hands-on demo, distribute a signed TestFlight, IPA, or
-  release artifact with the models already bundled. Keep source clones light.
+The heads are tiny compared with the base model. They are committed with the
+sample app because they make the architecture concrete and inspectable without
+turning the repository into a model-weight distribution channel.
 
-Git LFS can work for private engineering repos, but it is a poor default for a
-public cookbook sample because every clone becomes a model-distribution event
-and LFS bandwidth/account limits become part of the customer setup path.
+## RAG On Device
 
-## Nine Telco Classifier Heads
+The primary RAG path is deliberately practical. `KeywordKBExtractor` retrieves
+from a small local support corpus using curated aliases and topic terms, then
+the resident LFM writes the final answer from the selected article.
 
-The shared classifier adapter feeds these small committed head artifacts:
+That choice is intentional. For compact carrier FAQs, aliases such as
+`pause internet`, `ssid`, `router lights`, and `slow bedroom wifi` are strong
+human-authored retrieval signals. Keyword/BM25-style retrieval is fast,
+deterministic, easy to debug, and resilient to classifier retraining. Embedding
+retrieval remains useful for larger or less-curated corpora, but the best
+production pattern is usually hybrid: lexical precision first, embedding
+fallback for paraphrase.
 
-| Head | Purpose |
+The important boundary is that retrieval and generation are separate:
+
+1. The classifier decides whether the query belongs on the knowledge lane.
+2. The retriever selects the local article.
+3. The LFM turns that article into a concise support response.
+4. The UI shows source metadata and pipeline trace details.
+
+## Tool And Cloud Boundaries
+
+The same model stack also supports local agentic actions. When the routing lane
+is `local_tool`, the app proposes a tool such as speed test, diagnostics,
+restart, WPS pairing, extender reboot, parental controls, or technician
+scheduling. User-visible confirmation sits between the model decision and any
+state-changing action.
+
+When the routing lane is `cloud_assist`, the demo prepares a redacted payload
+instead of silently calling a backend. In a carrier integration, that payload is
+the contract to live systems of record. The cloud path is reserved for data the
+phone cannot know locally: outage state, authenticated account status, billing
+records, device inventory, appointment availability, or plan catalog changes.
+
+## Optional Packs
+
+The app includes extension points for richer multimodal support:
+
+| Pack | Role |
 | --- | --- |
-| `support_intent` | Troubleshooting, billing, outage, appointment, account, handoff |
-| `issue_complexity` | Simple, guided, backend-required, human-required |
-| `routing_lane` | Local answer, local tool, cloud assist, human escalation, blocked |
-| `cloud_requirements` | Live network, account, billing, appointment, inventory, catalog, auth |
-| `required_tool` | Restart, diagnostics, speed test, technician scheduling, cloud-only |
-| `customer_escalation_risk` | Frustration, churn risk, complaint, urgent |
-| `pii_risk` | Whether egress needs redaction or blocking |
-| `transcript_quality` | Clean, noisy, partial, uncertain |
-| `slot_completeness` | Missing symptom, device, location, duration, auth, contact preference |
+| LFM2.5-Audio | On-device voice transcription and future end-to-end voice assistance |
+| LFM2.5-VL-style vision | Router-light, bill, and error-screen troubleshooting |
 
-The key architectural idea is that one local forward pass produces a typed
-decision vector. The app does not ask a generative model to decide whether it
-should call a tool or cloud. It uses a deterministic router over model-produced
-signals.
+These packs are optional in this sample. The core architecture works with text,
+local KB retrieval, classifier heads, and local tools.
 
-## Why This Matters
+## Model Distribution
 
-Carrier support contains many high-volume requests that do not need cloud
-reasoning:
+Large GGUF artifacts are intentionally excluded from the public cookbook
+repository. The repository carries the app source, sample KB, manifests, and
+small classifier heads. Full model artifacts belong in a versioned model
+registry such as Hugging Face Hub or an internal Liquid/customer registry.
 
-- Restart or diagnose local equipment.
-- Explain common router lights.
-- Walk through Wi-Fi setup.
-- Answer support KB questions.
-- Collect missing slots before an escalation.
+Recommended customer distribution patterns:
 
-Keeping those interactions local reduces latency and backend load. When a
-request needs live network status, authenticated account state, billing records,
-appointment systems, or human escalation, the app can hand off a redacted
-structured bundle to cloud assist.
+| Use case | Pattern |
+| --- | --- |
+| Public source example | Keep GGUFs out of Git; document expected filenames and checksums |
+| Hands-on demo | Ship a signed TestFlight, IPA, or release artifact with models bundled |
+| Private customer pilot | Use a gated model registry with pinned revisions and SHA-256 checksums |
+| Enterprise fork | Host customer-specific adapters in the customer's approved artifact store |
 
-## Audio And Vision Packs
+Git LFS can be useful in private engineering repos, but it is not the best
+default for a public cookbook example. It makes every clone depend on model
+download bandwidth and account quota, while model registries provide clearer
+versioning, access control, and model-card metadata.
 
-The app includes scaffolding for:
+## Local Artifact Layout
 
-- **LFM2.5-Audio-1.5B** for stronger on-device voice transcription.
-- **LFM2.5-VL** style visual troubleshooting for router lights, bill images,
-  and error screens.
-
-Those packs are optional in this example. The core Telco Triage path is text
-plus on-device support routing.
-
-## Model Placement
-
-Put GGUFs here:
+The sample app expects GGUFs under:
 
 ```text
 examples/telco-triage-ios/models/telco/
 ```
 
-or point the bootstrap script at another directory:
-
-```bash
-TELCO_MODELS_DIR=/path/to/telco-models ./bootstrap-models.sh
-```
-
-Then run:
-
-```bash
-xcodegen generate
-```
-
-XcodeGen includes whatever GGUFs are present under
-`TelcoTriage/Resources/Models/` at generation time.
+`bootstrap-models.sh` copies those files into `TelcoTriage/Resources/Models/`
+before `xcodegen generate`. `TELCO_MODELS_DIR` can point at another local model
+cache when artifacts are managed outside the repository.
