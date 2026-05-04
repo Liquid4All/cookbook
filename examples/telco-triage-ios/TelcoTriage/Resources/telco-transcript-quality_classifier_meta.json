@@ -1,0 +1,21 @@
+{
+  "num_classes": 4,
+  "hidden_dim": 1024,
+  "weight_file": "telco-transcript-quality_classifier_weights.bin",
+  "bias_file": "telco-transcript-quality_classifier_bias.bin",
+  "task": "telco_transcript_quality",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "clean",
+    "1": "noisy",
+    "2": "partial",
+    "3": "asr_uncertain"
+  },
+  "label2id": {
+    "clean": 0,
+    "noisy": 1,
+    "partial": 2,
+    "asr_uncertain": 3
+  }
+}

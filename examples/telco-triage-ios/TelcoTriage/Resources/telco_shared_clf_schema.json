@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "heads": {
+    "telco_support_intent": {
+      "task": "telco_support_intent",
+      "num_labels": 8,
+      "type": "single_label",
+      "id2label": {
+        "0": "troubleshooting",
+        "1": "outage",
+        "2": "billing",
+        "3": "appointment",
+        "4": "device_setup",
+        "5": "plan_account",
+        "6": "equipment_return",
+        "7": "agent_handoff"
+      },
+      "label2id": {
+        "troubleshooting": 0,
+        "outage": 1,
+        "billing": 2,
+        "appointment": 3,
+        "device_setup": 4,
+        "plan_account": 5,
+        "equipment_return": 6,
+        "agent_handoff": 7
+      }
+    },
+    "telco_issue_complexity": {
+      "task": "telco_issue_complexity",
+      "num_labels": 5,
+      "type": "single_label",
+      "id2label": {
+        "0": "simple",
+        "1": "guided",
+        "2": "multi_step",
+        "3": "backend_required",
+        "4": "human_required"
+      },
+      "label2id": {
+        "simple": 0,
+        "guided": 1,
+        "multi_step": 2,
+        "backend_required": 3,
+        "human_required": 4
+      }
+    },
+    "telco_routing_lane": {
+      "task": "telco_routing_lane",
+      "num_labels": 5,
+      "type": "single_label",
+      "id2label": {
+        "0": "local_answer",
+        "1": "local_tool",
+        "2": "cloud_assist",
+        "3": "human_escalation",
+        "4": "blocked"
+      },
+      "label2id": {
+        "local_answer": 0,
+        "local_tool": 1,
+        "cloud_assist": 2,
+        "human_escalation": 3,
+        "blocked": 4
+      }
+    },
+    "telco_cloud_requirements": {
+      "task": "telco_cloud_requirements",
+      "num_labels": 7,
+      "type": "multi_label",
+      "labels": [
+        "live_network_status",
+        "account_state",
+        "billing_record",
+        "appointment_system",
+        "device_inventory",
+        "plan_catalog",
+        "auth"
+      ],
+      "label2id": {
+        "live_network_status": 0,
+        "account_state": 1,
+        "billing_record": 2,
+        "appointment_system": 3,
+        "device_inventory": 4,
+        "plan_catalog": 5,
+        "auth": 6
+      }
+    },
+    "telco_required_tool": {
+      "task": "telco_required_tool",
+      "num_labels": 6,
+      "type": "single_label",
+      "id2label": {
+        "0": "restart_gateway",
+        "1": "run_diagnostics",
+        "2": "speed_test",
+        "3": "schedule_technician",
+        "4": "no_tool",
+        "5": "cloud_only"
+      },
+      "label2id": {
+        "restart_gateway": 0,
+        "run_diagnostics": 1,
+        "speed_test": 2,
+        "schedule_technician": 3,
+        "no_tool": 4,
+        "cloud_only": 5
+      }
+    },
+    "telco_customer_escalation_risk": {
+      "task": "telco_customer_escalation_risk",
+      "num_labels": 5,
+      "type": "single_label",
+      "id2label": {
+        "0": "low",
+        "1": "frustrated",
+        "2": "churn_risk",
+        "3": "complaint",
+        "4": "urgent"
+      },
+      "label2id": {
+        "low": 0,
+        "frustrated": 1,
+        "churn_risk": 2,
+        "complaint": 3,
+        "urgent": 4
+      }
+    },
+    "telco_pii_risk": {
+      "task": "telco_pii_risk",
+      "num_labels": 4,
+      "type": "single_label",
+      "id2label": {
+        "0": "safe",
+        "1": "contains_account_data",
+        "2": "contains_contact_data",
+        "3": "contains_payment_identity_data"
+      },
+      "label2id": {
+        "safe": 0,
+        "contains_account_data": 1,
+        "contains_contact_data": 2,
+        "contains_payment_identity_data": 3
+      }
+    },
+    "telco_transcript_quality": {
+      "task": "telco_transcript_quality",
+      "num_labels": 4,
+      "type": "single_label",
+      "id2label": {
+        "0": "clean",
+        "1": "noisy",
+        "2": "partial",
+        "3": "asr_uncertain"
+      },
+      "label2id": {
+        "clean": 0,
+        "noisy": 1,
+        "partial": 2,
+        "asr_uncertain": 3
+      }
+    },
+    "telco_slot_completeness": {
+      "task": "telco_slot_completeness",
+      "num_labels": 6,
+      "type": "multi_label",
+      "labels": [
+        "missing_device",
+        "missing_symptom",
+        "missing_duration",
+        "missing_location",
+        "missing_account_auth",
+        "missing_contact_preference"
+      ],
+      "label2id": {
+        "missing_device": 0,
+        "missing_symptom": 1,
+        "missing_duration": 2,
+        "missing_location": 3,
+        "missing_account_auth": 4,
+        "missing_contact_preference": 5
+      }
+    }
+  }
+}

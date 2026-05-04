@@ -1,0 +1,876 @@
+{
+  "version": "telco-triage-sample-2026-04-22",
+  "entries": [
+    {
+      "id": "router-speed-test",
+      "topic": "Router Speed Test",
+      "aliases": [
+        "Speed Test",
+        "Router Speed",
+        "Internet Speed"
+      ],
+      "category": "Speed",
+      "answer": "Here are the steps for conducting a router speed test:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Select the \"Router speed test\" option towards the top of the Router Details page.\n**Step 3:** Select \"Start speed test\".",
+      "deepLinks": [
+        {
+          "label": "Speed Test",
+          "url": "telco://speed-test"
+        }
+      ],
+      "tags": [
+        "speed",
+        "test",
+        "internet"
+      ],
+      "requiresToolExecution": true
+    },
+    {
+      "id": "restart-router",
+      "topic": "Restart Router",
+      "aliases": [
+        "Turn off and on again router"
+      ],
+      "category": "Troubleshooting",
+      "answer": "To restart your router:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Select the \"Restart router\" option towards the top of the Router Details page.\n**Step 3:** Select \"Restart router\".\n\nPlease note that all devices connected to the internet through this router will temporarily lose their connection.",
+      "deepLinks": [
+        {
+          "label": "Restart Router",
+          "url": "telco://restart-router"
+        }
+      ],
+      "tags": [
+        "router",
+        "restart"
+      ],
+      "requiresToolExecution": true
+    },
+    {
+      "id": "wps-connect",
+      "topic": "WPS",
+      "aliases": [
+        "Connect device without internet password",
+        "Automatic wifi connection"
+      ],
+      "category": "WiFi",
+      "answer": "Here's how to connect a device through WPS:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Select the \"WPS (Wi-Fi protected setup)\" option towards the top of the Router Details page.\n**Step 3:** If WPS is not enabled, enable WPS using the toggle towards the top-right of the page.\n**Step 4:** Select the \"Start WPS\" button at the bottom of the page.\n\nPlease note that all devices connected to the internet through this router will temporarily lose their connection.",
+      "deepLinks": [
+        {
+          "label": "WPS",
+          "url": "telco://equipment-wps"
+        }
+      ],
+      "tags": [
+        "wps",
+        "wifi",
+        "pair"
+      ],
+      "requiresToolExecution": true
+    },
+    {
+      "id": "backup-settings",
+      "topic": "Save Settings",
+      "aliases": [
+        "Backup Settings"
+      ],
+      "category": "Settings",
+      "answer": "Follow these instructions to backup your router settings:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Select the \"Save settings\" option on the Router Details page.\n**Step 3:** Select the \"Manual save\" button.\n\nIf you would like your router to back up its setting automatically every 7 days, select the \"Automatic\" toggle.",
+      "deepLinks": [
+        {
+          "label": "Equipment",
+          "url": "telco://equipment"
+        }
+      ],
+      "tags": [
+        "settings",
+        "backup",
+        "save"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "restore-settings",
+      "topic": "Restore Settings",
+      "aliases": [
+        "Restore from Backup"
+      ],
+      "category": "Settings",
+      "answer": "Here's how you can restore your router settings:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Choose the \"Restore or reset settings\" option on the Router Details page.\n**Step 3:** Select which backup you would like to restore your settings from.\n**Step 4:** Select the \"Continue\" button at the bottom of the page.\n\nPlease note that if your networks and passwords were different in this backup that all devices connected through your router will need to be reconnected.",
+      "deepLinks": [
+        {
+          "label": "Reset Settings",
+          "url": "telco://reset-settings"
+        }
+      ],
+      "tags": [
+        "settings",
+        "restore",
+        "backup"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "reset-settings",
+      "topic": "Reset Settings",
+      "aliases": [
+        "Reset Router Settings"
+      ],
+      "category": "Settings",
+      "answer": "Here's how you can reset your router settings:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Choose the \"Restore or reset settings\" option on the Router Details page.\n**Step 3:** Select whether you would like to maintain your network names and passwords or erase all settings.\n**Step 4:** Select the \"Continue\" button at the bottom of the page.\n\nPlease note that if you erase all of your router settings, all devices connected through the router will need to be reconnected.",
+      "deepLinks": [
+        {
+          "label": "Reset Settings",
+          "url": "telco://reset-settings"
+        }
+      ],
+      "tags": [
+        "settings",
+        "reset",
+        "factory"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "led-brightness",
+      "topic": "Change LED Brightness",
+      "aliases": [
+        "Change brightness",
+        "Change light Indicator",
+        "Lower Light",
+        "Dim",
+        "Dimmer"
+      ],
+      "category": "Settings",
+      "answer": "Follow these instructions to change your LED settings:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Select the \"LED brightness\" option on the Router Details page.\n**Step 3:** Choose which brightness level you would like your Router to have.\n**Step 4:** Select \"Save\" at the bottom of the page.",
+      "deepLinks": [
+        {
+          "label": "Equipment LED",
+          "url": "telco://equipment-led"
+        }
+      ],
+      "tags": [
+        "led",
+        "brightness",
+        "light"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "router-model",
+      "topic": "What router do I have?",
+      "aliases": [
+        "Router Model",
+        "What kind of router",
+        "Router type"
+      ],
+      "category": "Router info",
+      "answer": "You can find your router model by:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Scroll to the bottom of the page.\n**Step 3:** Your router model number is contained in the \"Technical information\" section.",
+      "deepLinks": [
+        {
+          "label": "Equipment Details",
+          "url": "telco://equipment-details"
+        }
+      ],
+      "tags": [
+        "router",
+        "model",
+        "info"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "ipv4-address",
+      "topic": "Technical Information Ipv4",
+      "aliases": [
+        "Ipv4 address",
+        "Ipv4",
+        "IP address"
+      ],
+      "category": "Router info",
+      "answer": "Here's where you can find your Ipv4 address:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Scroll to the bottom of the page.\n**Step 3:** Your Ipv4 address is contained in the \"Technical information\" section.",
+      "deepLinks": [
+        {
+          "label": "Equipment Details",
+          "url": "telco://equipment-details"
+        }
+      ],
+      "tags": [
+        "ipv4",
+        "ip",
+        "network"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "ipv6-address",
+      "topic": "Technical Information Ipv6",
+      "aliases": [
+        "Ipv6 address",
+        "Ipv6"
+      ],
+      "category": "Router info",
+      "answer": "To find your Ipv 6 address follow these instructions:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Scroll to the bottom of the page.\n**Step 3:** Your Ipv6 address is contained in the \"Technical information\" section.",
+      "deepLinks": [
+        {
+          "label": "Equipment Details",
+          "url": "telco://equipment-details"
+        }
+      ],
+      "tags": [
+        "ipv6",
+        "ip",
+        "network"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "mac-address",
+      "topic": "Technical Information MAC Address",
+      "aliases": [
+        "MAC address",
+        "Hardware address"
+      ],
+      "category": "Router info",
+      "answer": "To find your MAC address follow these instructions:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Scroll to the bottom of the page.\n**Step 3:** Your MAC address is contained in the \"Technical information\" section.",
+      "deepLinks": [
+        {
+          "label": "Equipment Details",
+          "url": "telco://equipment-details"
+        }
+      ],
+      "tags": [
+        "mac",
+        "hardware",
+        "address"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "firmware-version",
+      "topic": "Technical Information Firmware Version",
+      "aliases": [
+        "Firmware Version",
+        "router firmware"
+      ],
+      "category": "Router info",
+      "answer": "You can find your firmware version by:\n\n**Step 1:** Select the \"Equipment\" tile from the Home page.\n**Step 2:** Scroll to the bottom of the page.\n**Step 3:** Your firmware version is contained in the \"Technical information\" section.",
+      "deepLinks": [
+        {
+          "label": "Equipment Details",
+          "url": "telco://equipment-details"
+        }
+      ],
+      "tags": [
+        "firmware",
+        "version"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "serial-number",
+      "topic": "Technical Information Serial Number",
+      "aliases": [
+        "Serial Number",
+        "router serial"
+      ],
+      "category": "Router info",
+      "answer": "Here's where you can find your router's serial number:\n\n**Step 1:** Tap on the \"Equipment\" tile from the Home page.\n**Step 2:** Scroll to the bottom of the page.\n**Step 3:** Your serial number is contained in the \"Technical information\" section.",
+      "deepLinks": [
+        {
+          "label": "Equipment Details",
+          "url": "telco://equipment-details"
+        }
+      ],
+      "tags": [
+        "serial",
+        "number"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "activate-wifi-network",
+      "topic": "Turn on Wi-Fi",
+      "aliases": [
+        "Turn on",
+        "Activate Network",
+        "Turn on Wi-Fi network"
+      ],
+      "category": "WiFi",
+      "answer": "Here's how you can turn on a Wi-Fi network:\n\n**Step 1:** Select the \"Network\" tile from the Home page.\n**Step 2:** Find the Wi-Fi network you'd like to turn on.\n**Step 3:** Select the On/Off toggle next to your network's name.",
+      "deepLinks": [
+        {
+          "label": "Network",
+          "url": "telco://network"
+        }
+      ],
+      "tags": [
+        "wifi",
+        "network",
+        "enable"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "find-wifi-name",
+      "topic": "Find Your WiFi Name (SSID)",
+      "aliases": [
+        "ssid",
+        "wifi name",
+        "network name",
+        "what is my ssid",
+        "find my ssid",
+        "what wifi am i on",
+        "wireless network name",
+        "my wifi name",
+        "show ssid"
+      ],
+      "category": "WiFi",
+      "answer": "To find your WiFi network name (SSID):\n\n**Step 1:** Select the \"Network\" tile from the Home page.\n**Step 2:** Tap your WiFi network \u2014 the name shown at the top is your SSID.\n**Step 3:** You can also find the default SSID printed on the sticker on the back or bottom of your router.\n\nThe SSID is the public name your devices see when scanning for WiFi.",
+      "deepLinks": [
+        {
+          "label": "Network",
+          "url": "telco://network"
+        }
+      ],
+      "tags": [
+        "wifi",
+        "ssid",
+        "network-name"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "home-page",
+      "topic": "Home Page",
+      "aliases": [
+        "home screen",
+        "landing page",
+        "main screen",
+        "start page",
+        "what's on the home page"
+      ],
+      "category": "Navigation",
+      "answer": "The Home page is the landing page of a carrier home internet app \u2014 it opens automatically once you log in.\n\n**Top of the page:** an AI-generated city/state image of your approximate neighborhood (based on location, not customizable). If you have more than one address on your account, the top-left dropdown lets you switch between them. The top-right button is Notifications.\n\n**Connections section:** three tiles \u2014 Equipment, Network, Devices. Each shows a health dot (green = online, amber = unhealthy, grey = offline) and a status label. Tapping a tile takes you to its detail page.\n\n**Quick actions section:** four buttons \u2014 Share Wi-Fi, Troubleshoot, Speed Test, Restart Router.\n\n**Digital Secure Home section:**\n- If you haven't enrolled, you'll see a description and an \"Enroll for $0/mo\" CTA.\n- If you cancelled a prior subscription, the tile moves to the Discover page.\n- If you're actively subscribed, you'll see a Dashboard button plus tiles for \"Threats blocked\" (last 7 days) and \"Vulnerabilities found\".",
+      "deepLinks": [
+        {
+          "label": "Home",
+          "url": "telco://tab-home"
+        }
+      ],
+      "tags": [
+        "home",
+        "navigation",
+        "landing",
+        "dashboard"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "check-connection",
+      "topic": "Check Connection Status",
+      "aliases": [
+        "check connection",
+        "am I online",
+        "is my internet working",
+        "is the internet up",
+        "connection status",
+        "is there service"
+      ],
+      "category": "Troubleshooting",
+      "answer": "I can check the status of every device on your account in a second:\n\n**Step 1:** Open the Home page and look at the three Connection tiles \u2014 Equipment, Network, Devices.\n**Step 2:** A green dot means online, amber means degraded, grey means offline.\n**Step 3:** Tap any tile for detail on a specific piece of equipment.\n\nOr I can run the check for you now \u2014 I'll ping each piece of equipment and report back.",
+      "deepLinks": [
+        {
+          "label": "Connections",
+          "url": "telco://tab-home"
+        }
+      ],
+      "tags": [
+        "connection",
+        "status",
+        "online",
+        "offline",
+        "health"
+      ],
+      "requiresToolExecution": true
+    },
+    {
+      "id": "run-diagnostics",
+      "topic": "Run Network Diagnostics",
+      "aliases": [
+        "run diagnostics",
+        "run network diagnostics",
+        "diagnose my network",
+        "diagnose my home network",
+        "diagnostics",
+        "network diagnostic",
+        "troubleshoot network",
+        "check my network",
+        "network health check"
+      ],
+      "category": "Troubleshooting",
+      "answer": "I can run a full network diagnostic from the router: latency, packet loss, DNS resolution, and gateway reachability. It takes about 15 seconds and doesn't interrupt anything connected.\n\n**Step 1:** Tap \"Run diagnostics\" below.\n**Step 2:** Wait for the report \u2014 any failing check will be highlighted.\n**Step 3:** If something is failing, I'll suggest the next step (restart router, reboot extender, or schedule a technician).",
+      "deepLinks": [
+        {
+          "label": "Diagnostics",
+          "url": "telco://troubleshoot"
+        }
+      ],
+      "tags": [
+        "diagnostics",
+        "network",
+        "latency",
+        "packet loss",
+        "dns",
+        "health"
+      ],
+      "requiresToolExecution": true
+    },
+    {
+      "id": "billing-inquiry",
+      "topic": "Billing & Payments",
+      "aliases": [
+        "bill",
+        "charges",
+        "payment",
+        "auto-pay",
+        "billing cycle",
+        "pay bill"
+      ],
+      "category": "Billing",
+      "answer": "You can manage billing and payments through your carrier app or account portal:\n\n**View your bill:** Log in to the carrier app \u2192 select \"Bill\" from the navigation menu.\n**Make a payment:** Select \"Pay Bill\" and choose your payment method.\n**Set up Auto Pay:** Go to Bill \u2192 Payment Methods \u2192 enroll in Auto Pay for a monthly discount.\n**Dispute a charge:** Contact carrier support or chat in the carrier app.",
+      "deepLinks": [
+        {
+          "label": "Billing",
+          "url": "telco://billing"
+        }
+      ],
+      "tags": [
+        "billing",
+        "payment",
+        "charges",
+        "auto-pay"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "plan-change",
+      "topic": "Internet Plans",
+      "aliases": [
+        "upgrade plan",
+        "downgrade plan",
+        "change plan",
+        "fiber plans",
+        "internet speed options"
+      ],
+      "category": "Plans",
+      "answer": "To view or change your home internet plan:\n\n**Step 1:** Open the carrier app or account portal.\n**Step 2:** Select your current internet plan to see available options.\n**Step 3:** Compare available 300 Mbps, 500 Mbps, and Gigabit speed tiers.\n**Step 4:** Select your desired plan and confirm the change.\n\nPlan changes typically take effect on your next billing cycle.",
+      "deepLinks": [
+        {
+          "label": "Plans",
+          "url": "telco://plans"
+        }
+      ],
+      "tags": [
+        "plan",
+        "upgrade",
+        "downgrade",
+        "speed",
+        "fios"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "device-management",
+      "topic": "Connected Devices",
+      "aliases": [
+        "connected devices",
+        "who is on my network",
+        "devices on wifi",
+        "kick device",
+        "block device"
+      ],
+      "category": "Devices",
+      "answer": "You can manage all devices connected to your network:\n\n**Step 1:** Select the \"Devices\" tile from the Home page.\n**Step 2:** View all connected devices with their status and bandwidth usage.\n**Step 3:** Tap any device to see details, rename it, or manage its access.\n\nTo remove an unknown device, tap it and select \"Block device\" to prevent it from reconnecting.",
+      "deepLinks": [
+        {
+          "label": "Devices",
+          "url": "telco://devices"
+        }
+      ],
+      "tags": [
+        "devices",
+        "connected",
+        "network",
+        "block",
+        "manage"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "parental-controls",
+      "topic": "Parental Controls",
+      "aliases": [
+        "parental controls",
+        "block websites",
+        "time limits",
+        "pause internet",
+        "content filter",
+        "kids"
+      ],
+      "category": "Parental Controls",
+      "answer": "Manage parental controls through the carrier home internet app:\n\n**Step 1:** Select the \"Devices\" tile from the Home page.\n**Step 2:** Tap the device you want to manage.\n**Step 3:** Select \"Parental Controls\" to set content filters, time limits, or pause internet access.\n\nYou can also create device profiles for each family member and set schedules for internet access.",
+      "deepLinks": [
+        {
+          "label": "Parental Controls",
+          "url": "telco://parental-controls"
+        }
+      ],
+      "tags": [
+        "parental",
+        "controls",
+        "block",
+        "filter",
+        "kids",
+        "pause"
+      ],
+      "requiresToolExecution": true
+    },
+    {
+      "id": "security-settings",
+      "topic": "Digital Secure & Network Security",
+      "aliases": [
+        "Digital Secure",
+        "Home Network Protection",
+        "security",
+        "threats",
+        "vulnerability",
+        "hacked"
+      ],
+      "category": "Security",
+      "answer": "Carriers often offer digital security and home network protection features to keep your network safe:\n\n**Digital Secure:** Enroll from the Home page \u2192 Digital Secure section. View threats blocked and vulnerabilities found.\n**Network Security:** Go to Equipment \u2192 Advanced Settings to manage WPA3/WPA2 encryption, hide your SSID, or configure firewall settings.\n**If you suspect unauthorized access:** Change your WiFi password immediately via Network \u2192 select your network \u2192 Edit password.",
+      "deepLinks": [
+        {
+          "label": "Digital Secure Home",
+          "url": "telco://digital-secure-home"
+        }
+      ],
+      "tags": [
+        "security",
+        "digital-secure",
+        "threats",
+        "protection",
+        "hacked"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "service-outage",
+      "topic": "Service Outage",
+      "aliases": [
+        "outage",
+        "service down",
+        "everyone down",
+        "area outage",
+        "carrier down",
+        "is there an outage"
+      ],
+      "category": "Outage",
+      "answer": "To check for service outages in your area:\n\n**Step 1:** Open the carrier home internet app \u2014 any active outages will appear as a banner on the Home page.\n**Step 2:** You can also check the outage map in your carrier portal.\n**Step 3:** If an outage is confirmed, estimated restoration times will be displayed when available.\n\nIf no outage is reported but your service is down, try restarting your router or running a connection check.",
+      "deepLinks": [
+        {
+          "label": "Outage Map",
+          "url": "telco://outage-map"
+        }
+      ],
+      "tags": [
+        "outage",
+        "down",
+        "service",
+        "area",
+        "restoration"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "account-settings",
+      "topic": "Account Settings",
+      "aliases": [
+        "account",
+        "change email",
+        "update password",
+        "notifications",
+        "move service",
+        "transfer service"
+      ],
+      "category": "Account",
+      "answer": "Manage your account settings through the carrier home internet app or account portal:\n\n**Change email/password:** Go to Account \u2192 Profile \u2192 update your credentials.\n**Notification preferences:** Account \u2192 Notifications \u2192 toggle alerts for outages, billing, and security.\n**Move service:** Contact carrier support or use the carrier portal to transfer home internet service to a new address. Start the process at least 2 weeks before your move date.",
+      "deepLinks": [
+        {
+          "label": "Account",
+          "url": "telco://account"
+        }
+      ],
+      "tags": [
+        "account",
+        "settings",
+        "email",
+        "password",
+        "move",
+        "transfer"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "change-wifi-password",
+      "topic": "Change Wi-Fi Password",
+      "aliases": [
+        "change wifi password",
+        "change wi-fi password",
+        "update wifi password",
+        "reset network password",
+        "new wifi password",
+        "wifi password"
+      ],
+      "category": "WiFi",
+      "answer": "To change your Wi-Fi password:\n\n**Step 1:** Select the \"Network\" tile from the Home page.\n**Step 2:** Select the Wi-Fi network you'd like to update.\n**Step 3:** Tap \"Password\" and enter your new password.\n**Step 4:** Tap \"Save\".\n\nAll devices currently connected will need to reconnect with the new password.",
+      "deepLinks": [
+        {
+          "label": "Network",
+          "url": "telco://network"
+        }
+      ],
+      "tags": [
+        "wifi",
+        "password",
+        "security",
+        "change"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "share-wifi",
+      "topic": "Share Wi-Fi",
+      "aliases": [
+        "share wifi",
+        "share my wifi",
+        "how do I share wifi",
+        "send wifi password",
+        "wifi qr code",
+        "guest wifi access",
+        "share network with friend"
+      ],
+      "category": "WiFi",
+      "answer": "Here's how to share your Wi-Fi with someone in your home:\n\n**Step 1:** From the Home page, tap \"Share Wi-Fi\" under Quick actions.\n**Step 2:** Choose the network you'd like to share (main or guest).\n**Step 3:** Show the QR code on your phone \u2014 the guest scans it with their camera and joins automatically, no password typing.\n\nYou can also tap \"Copy password\" if they'd rather paste it. For occasional visitors we recommend enabling your Guest network first so the main network password stays private.",
+      "deepLinks": [
+        {
+          "label": "Share Wi-Fi",
+          "url": "telco://share-wifi"
+        }
+      ],
+      "tags": [
+        "share",
+        "wifi",
+        "guest",
+        "qr",
+        "password"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "weak-signal-troubleshoot",
+      "topic": "Weak Wi-Fi Signal",
+      "aliases": [
+        "why is my signal weak",
+        "weak signal",
+        "bad wifi signal",
+        "wifi not strong",
+        "dead zone",
+        "wifi bedroom",
+        "wifi basement"
+      ],
+      "category": "Troubleshooting",
+      "answer": "Weak signal usually comes from one of a few places:\n\n**1. Distance from the router** \u2014 the farther away, the weaker the signal.\n**2. Physical barriers** \u2014 walls, floors, and appliances block Wi-Fi.\n**3. Channel overcrowding** \u2014 in dense areas, networks compete for the same channel.\n**4. Router placement** \u2014 avoid corners, floors, and large appliances.\n**5. Interference** \u2014 microwaves, cordless phones, and Bluetooth gadgets can all interfere.\n\n**Quick fixes:**\n- Power-cycle the router (unplug, 30s, plug back in).\n- Move the router to a central, elevated spot.\n- For persistent dead zones, a mesh extender or Mesh Wi-Fi pack can help.",
+      "deepLinks": [
+        {
+          "label": "Network",
+          "url": "telco://network"
+        }
+      ],
+      "tags": [
+        "signal",
+        "weak",
+        "troubleshoot",
+        "wifi",
+        "dead-zone"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "internet-slow-troubleshoot",
+      "topic": "Slow Internet",
+      "aliases": [
+        "my internet is slow",
+        "slow internet",
+        "slow wifi",
+        "streaming buffering",
+        "netflix buffering",
+        "everything is slow"
+      ],
+      "category": "Troubleshooting",
+      "answer": "If your internet feels slow, try these steps in order:\n\n**Step 1:** Run a router speed test and compare to your plan speed.\n**Step 2:** Check your Wi-Fi signal strength \u2014 weak signal is the most common cause.\n**Step 3:** Power-cycle your router (unplug, 30s, plug back in).\n**Step 4:** See if a specific device is slow or all of them \u2014 a single slow device usually points to that device, not the network.\n**Step 5:** If speeds are consistently below plan, we can look at an equipment swap or a retention credit.",
+      "deepLinks": [
+        {
+          "label": "Speed Test",
+          "url": "telco://speed-test"
+        },
+        {
+          "label": "Network",
+          "url": "telco://network"
+        }
+      ],
+      "tags": [
+        "slow",
+        "internet",
+        "troubleshoot",
+        "speed"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "identify-device",
+      "topic": "Identify a Device",
+      "aliases": [
+        "what device is this",
+        "unknown device",
+        "device on my network",
+        "whose device",
+        "what is this device"
+      ],
+      "category": "Devices",
+      "answer": "To identify a device on your network:\n\n**Step 1:** Open the Devices tile on the Home page.\n**Step 2:** Tap any device to see its name, type (computer / phone / tablet / smart home), connection status, signal strength, and MAC address.\n**Step 3:** If you don't recognize it, you can rename it, pause its access, or block it entirely.",
+      "deepLinks": [
+        {
+          "label": "All Devices",
+          "url": "telco://devices"
+        }
+      ],
+      "tags": [
+        "device",
+        "identify",
+        "connected",
+        "unknown"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "wifi-extender-troubleshoot",
+      "topic": "WiFi Extender Troubleshooting",
+      "aliases": [
+        "extender not working",
+        "extender dropping",
+        "upstairs wifi dead",
+        "mesh node offline",
+        "bad signal upstairs",
+        "extender disconnected"
+      ],
+      "category": "Troubleshooting",
+      "answer": "If a mesh extender (or mesh node) is dropping or offline:\n\n**Step 1:** Confirm the extender is powered \u2014 the status LED should be solid white. Amber or blinking usually means it has lost its backhaul to the main router.\n**Step 2:** From the Home page, tap Equipment \u2192 select the extender \u2192 tap \"Restart extender\".\n**Step 3:** Wait 60 seconds for the extender to rejoin the mesh. The LED should return to solid white.\n\nIf it's still offline, try moving the extender closer to the main router \u2014 walls and appliances drop backhaul strength quickly. If you've had to restart it more than once this week, schedule a technician visit.",
+      "deepLinks": [
+        {
+          "label": "Mesh Health",
+          "url": "telco://mesh-health"
+        }
+      ],
+      "tags": [
+        "extender",
+        "mesh",
+        "upstairs",
+        "troubleshoot",
+        "wifi"
+      ],
+      "requiresToolExecution": true
+    },
+    {
+      "id": "wifi-extender-placement",
+      "topic": "WiFi Extender Placement",
+      "aliases": [
+        "where should extender go",
+        "best place for extender",
+        "extender location",
+        "wifi coverage tips",
+        "wifi dead zone fix"
+      ],
+      "category": "WiFi",
+      "answer": "To get the most out of a mesh extender:\n\n**1. Halfway between the router and the dead zone.** Too far and backhaul drops; too close and you're not extending much coverage.\n**2. Elevated and unobstructed.** On a shelf, not in a cabinet or behind a TV. Wi-Fi is line-of-sight \u2014 every wall and large appliance cuts range.\n**3. Away from interference.** Keep at least a few feet away from microwaves, cordless phones, and baby monitors.\n**4. One floor at a time.** For multi-story homes, an extender per floor usually beats a single powerful one downstairs.\n\nAfter repositioning, wait ~60 seconds for the mesh to re-optimize, then run a speed test from the dead zone to confirm.",
+      "deepLinks": [
+        {
+          "label": "Mesh Health",
+          "url": "telco://mesh-health"
+        }
+      ],
+      "tags": [
+        "extender",
+        "placement",
+        "coverage",
+        "wifi",
+        "mesh"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "billing-dupe-charge",
+      "topic": "Duplicate or Double Charge",
+      "aliases": [
+        "double charged",
+        "charged twice",
+        "duplicate charge",
+        "extra bill",
+        "wrong amount",
+        "i've been billed twice"
+      ],
+      "category": "Billing",
+      "answer": "If you see a duplicate charge on your carrier bill:\n\n**Step 1:** Open the carrier app \u2192 Bill \u2192 Payment history. Confirm the two transactions have different transaction IDs (a single charge showing twice in pending vs posted is normal and will reconcile within 1-2 business days).\n**Step 2:** If both IDs are unique, the fastest resolution is chat: open Billing \u2192 Contact us \u2192 Chat. Reference both transaction IDs.\n**Step 3:** For urgent disputes over $100, contact carrier support. Keep the transaction IDs handy.\n\nDisputed charges are typically credited within 1-2 billing cycles.",
+      "deepLinks": [
+        {
+          "label": "Billing",
+          "url": "telco://billing"
+        }
+      ],
+      "tags": [
+        "billing",
+        "dispute",
+        "duplicate",
+        "double",
+        "charge"
+      ],
+      "requiresToolExecution": false
+    },
+    {
+      "id": "stream-tv-outage",
+      "topic": "TV Service Issue",
+      "aliases": [
+        "stream tv outage",
+        "fios tv frozen",
+        "tv not working",
+        "stream tv not loading",
+        "fios tv stream",
+        "tv buffering"
+      ],
+      "category": "TV",
+      "answer": "If TV service is frozen or won't load:\n\n**Step 1:** Check the Service tile on the Home page \u2014 a red dot indicates a known outage.\n**Step 2:** If service looks up, power-cycle the set-top box: unplug, wait 30 seconds, plug back in.\n**Step 3:** Verify the HDMI cable is seated in both the TV and the box.\n**Step 4:** If only streaming apps are affected, confirm the router is online and the TV has strong Wi-Fi signal.",
+      "deepLinks": [
+        {
+          "label": "Service",
+          "url": "telco://service"
+        }
+      ],
+      "tags": [
+        "tv",
+        "fios",
+        "stream",
+        "outage",
+        "frozen"
+      ],
+      "requiresToolExecution": false
+    }
+  ]
+}

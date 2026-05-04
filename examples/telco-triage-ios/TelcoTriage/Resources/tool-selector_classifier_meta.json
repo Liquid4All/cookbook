@@ -1,0 +1,32 @@
+{
+  "num_classes": 9,
+  "hidden_dim": 1024,
+  "weight_bytes": 36864,
+  "bias_bytes": 36,
+  "weight_file": "tool-selector_classifier_weights.bin",
+  "bias_file": "tool-selector_classifier_bias.bin",
+  "id2label": {
+    "0": "none",
+    "1": "check-connection",
+    "2": "enable-wps",
+    "3": "reboot-extender",
+    "4": "restart-router",
+    "5": "run-diagnostics",
+    "6": "run-speed-test",
+    "7": "schedule-technician",
+    "8": "toggle-parental-controls"
+  },
+  "label2id": {
+    "none": 0,
+    "check-connection": 1,
+    "enable-wps": 2,
+    "reboot-extender": 3,
+    "restart-router": 4,
+    "run-diagnostics": 5,
+    "run-speed-test": 6,
+    "schedule-technician": 7,
+    "toggle-parental-controls": 8
+  },
+  "task": "tool_selection",
+  "format": "float32_row_major"
+}

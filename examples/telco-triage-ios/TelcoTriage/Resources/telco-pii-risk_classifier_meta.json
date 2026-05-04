@@ -1,0 +1,21 @@
+{
+  "num_classes": 4,
+  "hidden_dim": 1024,
+  "weight_file": "telco-pii-risk_classifier_weights.bin",
+  "bias_file": "telco-pii-risk_classifier_bias.bin",
+  "task": "telco_pii_risk",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "safe",
+    "1": "contains_account_data",
+    "2": "contains_contact_data",
+    "3": "contains_payment_identity_data"
+  },
+  "label2id": {
+    "safe": 0,
+    "contains_account_data": 1,
+    "contains_contact_data": 2,
+    "contains_payment_identity_data": 3
+  }
+}

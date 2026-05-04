@@ -81,6 +81,7 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 | Recipe Generator | Structured output generation | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
 | Voice Assistant | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/ios/LeapVoiceAssistantDemo) |
 | Vision Assistant | Visual language model chat on iOS using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapVLMExample) |
+| Telco Triage | Edge-first home internet support assistant with on-device LFM routing, local tools, and cloud-assist handoff | [Code](./examples/telco-triage-ios/README.md) |
 
 ## 🎯 Fine-Tuning Examples
 
