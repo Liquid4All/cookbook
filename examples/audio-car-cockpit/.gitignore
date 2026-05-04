@@ -5,8 +5,9 @@ uv.lock
 .ruff_cache
 
 # Local server runtimes and models
-llama-server
-llama.cpp
+llama-server*
+llama.cpp-rocm
+llama.cpp-cpu
 llama-liquid-audio*
 runners/
 LFM2.5-Audio-1.5B-GGUF

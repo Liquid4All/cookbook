@@ -149,6 +149,7 @@
         isBuffering: false,
         nextStartTime: 0, // Schedule time for next audio chunk
         scheduledSources: [], // Track all scheduled sources
+        pcmFormat: null, // Set by server config: 'int16' or 'float32'
       };
 
       // UI element references (set during initialization)
@@ -692,6 +693,7 @@
       if (!this.audio.isRecording || !this.audio.mediaRecorder) return false;
 
       if (this.audio.mediaRecorder.state === 'recording') {
+        this.audio.ttfaStart = performance.now();
         this.audio.mediaRecorder.stop();
         this.audio.isRecording = false;
         this.renderAudio();
@@ -704,6 +706,7 @@
 
       this.audio.isProcessing = true;
       this.audio.transcribedText = '';
+      this.audio.ttfaLogged = false;
       this.audio.audioQueue = [];
       this.audio.totalBufferedMs = 0;
       this.audio.isBuffering = false;
@@ -748,8 +751,9 @@
             } else if (msg.role === 'model') {
               this.captions.updateModel(msg.text, msg.tool, msg.tool_valid);
             }
+          } else if (msg.type === 'config') {
+            this.audio.pcmFormat = msg.audio_pcm_format;
           } else if (msg.type === 'audio') {
-            // Queue audio chunk for streaming playback
             this.queueAudioChunk(msg.data, msg.sample_rate);
           } else if (msg.type === 'done') {
             // Server has completed the full pipeline (ASR → Tool Calling → TTS)
@@ -850,11 +854,30 @@
     }
 
     queueAudioChunk(base64Data, sampleRate) {
-      // Decode PCM data
+      if (this.audio.ttfaStart && !this.audio.ttfaLogged) {
+        console.log('TTFA:', (performance.now() - this.audio.ttfaStart).toFixed(0), 'ms');
+        this.audio.ttfaLogged = true;
+      }
       const pcmBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-      const floatArray = new Float32Array(pcmBytes.buffer);
 
-      // Calculate chunk duration in seconds
+      // PCM format (int16 or float32) is set by the server via a config message
+      // at websocket connect time, based on the AUDIO_PCM_FORMAT env var from the
+      // Makefile (ROCm build = int16, pre-built CPU binary = float32).
+      const isInt16 = this.audio.pcmFormat === 'int16';
+
+      let floatArray;
+      if (isInt16) {
+        const int16 = new Int16Array(pcmBytes.buffer);
+        floatArray = new Float32Array(int16.length);
+        for (let i = 0; i < int16.length; i++) {
+          floatArray[i] = int16[i] / 32768.0;
+        }
+      } else {
+        floatArray = new Float32Array(pcmBytes.buffer);
+      }
+
+      if (floatArray.length === 0) return;
+
       const durationSec = floatArray.length / sampleRate;
 
       // Add to queue
