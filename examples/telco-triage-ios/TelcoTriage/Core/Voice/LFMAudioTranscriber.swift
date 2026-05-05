@@ -267,9 +267,9 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
 
     private func configureAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
+        // Capture in the route's native format and resample to 16 kHz before
+        // LFM2.5-Audio inference. This avoids simulator/device tap crashes.
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try? session.setPreferredInputNumberOfChannels(1)
-        try? session.setPreferredSampleRate(Self.targetSampleRate)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionActive = true
     }

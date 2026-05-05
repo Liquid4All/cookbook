@@ -125,9 +125,10 @@ public actor AppleSpeechTranscriber: VoiceTranscriber {
 
     private func configureSession() throws {
         let session = AVAudioSession.sharedInstance()
+        // Let AVAudioEngine use the simulator/device's native input format.
+        // Forcing 16 kHz mono can make AVFAudio throw an uncaught exception
+        // before Swift can surface a recoverable transcription error.
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
-        try? session.setPreferredInputNumberOfChannels(1)
-        try? session.setPreferredSampleRate(16_000)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionActive = true
     }
