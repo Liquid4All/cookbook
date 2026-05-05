@@ -19,6 +19,13 @@ This is a carrier-agnostic example. The Xcode project, scheme, app target,
 source module, bundle ID, and visible app name are all generic Telco Triage
 values.
 
+## Demo Video
+
+[![Watch the Telco Triage demo](https://cdn.loom.com/sessions/thumbnails/fe2ca71564c64bcea75a74848582f5dc-671dded135722cb5-full-play.gif)](https://www.loom.com/share/fe2ca71564c64bcea75a74848582f5dc)
+
+Watch the demo:
+[Telco Triage local-first support assistant](https://www.loom.com/share/fe2ca71564c64bcea75a74848582f5dc)
+
 ## What This Shows
 
 - Real LFM inference on device, not a scripted frontend.
