@@ -228,6 +228,7 @@ final class AppState: ObservableObject {
         // each head sees the hidden-state distribution it was trained on.
         var decisionEngine: (any TelcoDecisionEngine)?
         var classifier: TelcoMultiHeadClassifier?
+        var classifierBridge: ClassifierBackedBridge?
 
         if TelcoModelBundle.classifierHeadsBundled(),
            TelcoModelBundle.classifierStackBundled() {
@@ -273,6 +274,19 @@ final class AppState: ObservableObject {
                 )
                 classifier = loadedClassifier
                 decisionEngine = MultiHeadTelcoDecisionEngine(classifier: loadedClassifier)
+                if let chatModeAdapterPath = TelcoModelBundle.chatModeClfAdapterPath(),
+                   let kbExtractAdapterPath = TelcoModelBundle.kbExtractClfAdapterPath(),
+                   let toolSelectorAdapterPath = TelcoModelBundle.toolSelectorClfAdapterPath() {
+                    classifierBridge = ClassifierBackedBridge(
+                        backend: backend,
+                        chatModeHead: chatModeHead,
+                        kbEntryHead: kbEntryHead,
+                        toolHead: toolHead,
+                        chatModeClfAdapterPath: chatModeAdapterPath,
+                        kbExtractClfAdapterPath: kbExtractAdapterPath,
+                        toolSelectorClfAdapterPath: toolSelectorAdapterPath
+                    )
+                }
                 let adr015Status = adr015Heads != nil ? "9 ADR-015 heads loaded" : "ADR-015 heads absent"
                 AppLog.lfm.info("Telco decision engine loaded: chat-mode (\(chatModeHead.numClasses)-way), kb-extract (\(kbEntryHead.numClasses)-way), tool-selector (\(toolHead.numClasses)-way), mode=\(loadedClassifier.inferenceMode.rawValue, privacy: .public), \(adr015Status, privacy: .public)")
             } catch {
@@ -337,13 +351,24 @@ final class AppState: ObservableObject {
         //     fallback for paraphrase. We mirror that here — keyword
         //     is the primary, with zero ML-component coupling.
         let kbExtractor = KeywordKBExtractor()
+        let chatModeRouter: ChatModeRouter
+        let toolSelector: ToolSelector
+        if let classifierBridge {
+            chatModeRouter = ClassifierChatModeRouter(bridge: classifierBridge)
+            toolSelector = ClassifierToolSelector(bridge: classifierBridge)
+            AppLog.lfm.info("Fast classifier-backed chat router and tool selector enabled")
+        } else {
+            chatModeRouter = LFMChatModeRouter(backend: bridge, adapterPath: chatModeRouterAdapter)
+            toolSelector = LFMToolSelector(backend: bridge, adapterPath: toolAdapter)
+            AppLog.lfm.warning("Classifier-backed chat/tool primitives unavailable - using generative routing fallback")
+        }
 
         return LFMStack(
             backend: backend,
             decisionEngine: decisionEngine,
-            chatModeRouter: LFMChatModeRouter(backend: bridge, adapterPath: chatModeRouterAdapter),
+            chatModeRouter: chatModeRouter,
             kbExtractor: kbExtractor,
-            tool: LFMToolSelector(backend: bridge, adapterPath: toolAdapter),
+            tool: toolSelector,
             chat: chat
         )
     }

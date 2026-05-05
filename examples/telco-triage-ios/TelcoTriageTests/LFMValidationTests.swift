@@ -1,10 +1,9 @@
 import XCTest
 @testable import TelcoTriage
 
-/// Phase B validation harness for the LFM-backed routing + retrieval
-/// primitives. Measures whether the base LFM2.5-350M (no LoRA) is
-/// discriminative enough for the 4-way ChatMode classification and
-/// the 32-entry KB generative retrieval.
+/// Validation harness for the LFM-backed routing + retrieval primitives.
+/// Measures the bundled LFM2.5-350M plus task LoRA adapters against the
+/// chat-mode and KB-selection fixtures.
 ///
 /// Gated behind `LFM_ON_DEVICE_SMOKE=1` — the full 30-query mode
 /// fixture plus the KB-extractor sweep takes ~2-5 minutes on the

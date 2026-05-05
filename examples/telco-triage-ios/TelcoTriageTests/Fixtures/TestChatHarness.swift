@@ -35,7 +35,8 @@ final class TestChatHarness {
     init(
         kb: KnowledgeBase = .loadFromBundle(),
         profile: CustomerProfile = .demo,
-        useSimulatorFastGroundedQA: Bool = false
+        useSimulatorFastGroundedQA: Bool = false,
+        decisionEngine: (any TelcoDecisionEngine)? = nil
     ) {
         self.knowledgeBase = kb
         let pii = PIIAnalyzer()
@@ -71,6 +72,7 @@ final class TestChatHarness {
         self.kbExtractor = kbExtractor
 
         self.vm = ChatViewModel(
+            decisionEngine: decisionEngine,
             chatModeRouter: modeRouter,
             kbExtractor: kbExtractor,
             provider: provider,

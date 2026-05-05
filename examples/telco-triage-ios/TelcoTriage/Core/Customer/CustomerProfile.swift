@@ -9,9 +9,32 @@ public struct CustomerProfile: Codable, Sendable, Equatable {
     public let lastName: String
     public let plan: Plan
     public let address: Address
+    public let homeNetwork: HomeNetwork
     public let equipment: [Equipment]
     public let recentIssues: [PastIssue]
     public let usage: UsageSnapshot
+
+    public init(
+        customerID: String,
+        firstName: String,
+        lastName: String,
+        plan: Plan,
+        address: Address,
+        homeNetwork: HomeNetwork = .demo,
+        equipment: [Equipment],
+        recentIssues: [PastIssue],
+        usage: UsageSnapshot
+    ) {
+        self.customerID = customerID
+        self.firstName = firstName
+        self.lastName = lastName
+        self.plan = plan
+        self.address = address
+        self.homeNetwork = homeNetwork
+        self.equipment = equipment
+        self.recentIssues = recentIssues
+        self.usage = usage
+    }
 
     public struct Plan: Codable, Sendable, Equatable {
         public let name: String           // "Fiber Gigabit Connection"
@@ -25,6 +48,32 @@ public struct CustomerProfile: Codable, Sendable, Equatable {
         public let city: String
         public let state: String
         public let zip: String
+    }
+
+    public struct HomeNetwork: Codable, Sendable, Equatable {
+        public let ssid: String
+        public let guestSSID: String?
+        public let securityMode: String
+        public let bandSteeringEnabled: Bool
+
+        public init(
+            ssid: String,
+            guestSSID: String?,
+            securityMode: String,
+            bandSteeringEnabled: Bool
+        ) {
+            self.ssid = ssid
+            self.guestSSID = guestSSID
+            self.securityMode = securityMode
+            self.bandSteeringEnabled = bandSteeringEnabled
+        }
+
+        public static let demo = HomeNetwork(
+            ssid: "Alex-Fiber-Home",
+            guestSSID: "Alex-Fiber-Guest",
+            securityMode: "WPA3/WPA2",
+            bandSteeringEnabled: true
+        )
     }
 
     public struct Equipment: Codable, Sendable, Equatable, Identifiable {
@@ -115,6 +164,7 @@ public struct CustomerProfile: Codable, Sendable, Equatable {
                 state: "CA",
                 zip: "00000"
             ),
+            homeNetwork: .demo,
             equipment: [
                 Equipment(
                     kind: .router,
@@ -173,6 +223,41 @@ public struct CustomerProfile: Codable, Sendable, Equatable {
     }()
 }
 
+/// Resolves second-level customer profile facts after the LFM chat-mode
+/// classifier has already selected the personal-summary path.
+public enum CustomerProfileFact: Sendable, Equatable {
+    case homeSSID
+}
+
+public struct CustomerProfileFactResolver: Sendable {
+    public init() {}
+
+    public func resolve(_ query: String) -> CustomerProfileFact? {
+        let normalized = Self.normalize(query)
+        if Self.homeSSIDAliases.contains(where: { normalized.contains($0) }) {
+            return .homeSSID
+        }
+        return nil
+    }
+
+    private static let homeSSIDAliases = [
+        "ssid",
+        "wifi name",
+        "wi fi name",
+        "wireless name",
+        "network name"
+    ]
+
+    private static func normalize(_ query: String) -> String {
+        query
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .replacingOccurrences(of: "-", with: " ")
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+}
+
 public extension CustomerProfile {
     /// Copy-with-change helper so `CustomerContext` can update a single slice
     /// of profile state without repeating every field at each call site.
@@ -182,6 +267,7 @@ public extension CustomerProfile {
         lastName: String? = nil,
         plan: Plan? = nil,
         address: Address? = nil,
+        homeNetwork: HomeNetwork? = nil,
         equipment: [Equipment]? = nil,
         recentIssues: [PastIssue]? = nil,
         usage: UsageSnapshot? = nil
@@ -192,6 +278,7 @@ public extension CustomerProfile {
             lastName: lastName ?? self.lastName,
             plan: plan ?? self.plan,
             address: address ?? self.address,
+            homeNetwork: homeNetwork ?? self.homeNetwork,
             equipment: equipment ?? self.equipment,
             recentIssues: recentIssues ?? self.recentIssues,
             usage: usage ?? self.usage

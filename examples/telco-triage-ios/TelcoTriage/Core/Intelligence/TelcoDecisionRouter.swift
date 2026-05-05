@@ -1,13 +1,14 @@
 import Foundation
 
-/// Pure router over telco head outputs.
+/// Pure candidate router over telco head outputs.
 ///
 /// No model calls live here. The function composes the ADR-015 head
-/// outputs into the next app action: answer from KB, propose a tool,
-/// summarize local customer context, or decline locally.
+/// outputs into a typed candidate action: answer from KB, propose a
+/// tool, summarize local customer context, or decline locally.
 ///
-/// Why we drive dispatch from ADR-015 (`routing_lane` + `required_tool`)
-/// instead of the legacy Phase-1 `mode`/`tool`/`kbEntry` heads:
+/// Why this candidate is built from ADR-015 (`routing_lane` +
+/// `required_tool`) instead of the legacy Phase-1 `mode`/`tool`/
+/// `kbEntry` heads:
 ///
 /// The Phase-1 heads were trained against per-task classification
 /// adapters (`chat-mode-clf-v1`, `tool-selector-clf-v1`,
@@ -17,11 +18,14 @@ import Foundation
 /// restart my router" → kb_question instead of tool_action). The
 /// ADR-015 heads (`routing_lane`, `required_tool`, `support_intent`,
 /// …) WERE trained against the shared adapter, so their alignment is
-/// correct and they're the right heads to route from.
+/// correct and they're the right heads for cloud-assist, privacy, and
+/// escalation policy.
 ///
 /// The legacy heads remain in the vector for the engineering-mode
 /// trace (so the demo can show them side-by-side), but they no
-/// longer drive the actual dispatch.
+/// longer drive the actual dispatch. The chat surface then passes this
+/// candidate through `TelcoModelModeArbiter`, which lets the dedicated
+/// chat-mode LFM own the natural-language mode boundary.
 public enum TelcoDecisionRouter {
     public static func route(
         _ vector: TelcoDecisionVector,
@@ -44,7 +48,7 @@ public enum TelcoDecisionRouter {
         switch mode {
         case .kbQuestion:
             // Citation is intentionally `noMatch` here — the chat
-            // dispatch will run the LFM-embedding KB RAG separately.
+                // dispatch will run retrieval separately.
             // Returning a router-side citation from the misaligned
             // kb-entry head was a regression source ("restart my
             // router" → LED article). The trace UI surfaces both
@@ -98,7 +102,7 @@ public enum TelcoDecisionRouter {
                 // Classifier couldn't process the input cleanly. We
                 // refuse to refuse — the user asked a real question
                 // and it's not their fault that confidence dropped.
-                // Treat as a KB question so the embedding RAG path
+                // Treat as a KB question so the retrieval path
                 // still attempts retrieval; if RAG also misses, the
                 // grounded-QA "no match" message is more honest than
                 // an "off-topic" refusal.
@@ -213,7 +217,7 @@ public enum TelcoDecisionRouter {
         }
     }
 
-    private static func arguments(
+    static func arguments(
         for intent: ToolIntent,
         extraction: ExtractionResult
     ) -> ToolArguments {

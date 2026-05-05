@@ -16,8 +16,8 @@ inventory services.
 | --- | --- | --- |
 | Resident base model | `lfm25-350m-base-Q4_K_M.gguf` | On-device LFM loaded once at app launch |
 | Shared classifier adapter | `telco-shared-clf-v1.gguf` | Shapes the hidden state for all telco routing heads |
-| Tool adapter | `telco-tool-selector-v3.gguf` | Produces tool-oriented language and argument summaries |
-| Router fallback adapter | `chat-mode-router-v2.gguf` | Legacy generative router when classifier artifacts are absent |
+| Chat-mode adapter | `chat-mode-router-v2.gguf` | Classifies the customer-visible mode boundary: KB question, tool action, personal summary, or out of scope |
+| Tool adapter | `telco-tool-selector-v3.gguf` | Selects the local tool and extracts tool arguments |
 | KB fallback adapter | `kb-extractor-v1.gguf` | Legacy generative KB selector retained for comparison |
 | Classifier heads | `*_classifier_weights.bin`, `*_classifier_bias.bin`, `*_classifier_meta.json` | Small linear projections over the LFM hidden state |
 | Knowledge base | `knowledge-base.json` | Carrier-agnostic home internet support corpus |
@@ -29,9 +29,11 @@ that exact base distribution.
 ## Decision Vector
 
 The main runtime pattern is a shared forward pass followed by multiple small
-heads. Instead of prompting a generative model to decide what to do next, the
-app produces a typed `TelcoDecisionVector`, then applies deterministic policy
-over that vector.
+heads. The app produces a typed `TelcoDecisionVector` for trace, cloud
+requirements, privacy, escalation, and tool hints. It then asks the dedicated
+`chat-mode-router-v2` adapter for the customer-visible chat branch. This keeps
+model responsibility aligned with training data: ADR-015 owns telco support
+signals, while the chat-mode LFM owns the question-versus-action boundary.
 
 | Head | Output | Why it exists |
 | --- | --- | --- |

@@ -1,22 +1,20 @@
 import Foundation
 
-/// Production `ChatModeRouter` backed by an LFM2.5-350M prompt over
-/// the base model — no LoRA adapter, no training data, no fine-tune.
-/// If validation shows the base model is not discriminative enough
-/// across the 4 modes, upgrade to a small dedicated LoRA (~1,500
-/// examples of query → mode pairs) without changing the protocol.
+/// Production `ChatModeRouter` backed by LFM2.5-350M plus the
+/// `chat-mode-router-v2` LoRA adapter.
 ///
-/// Why base model first:
-///   1. No training data to generate for the baseline path.
-///   2. A 4-way classification over short queries is within the
-///      competence envelope of a decently-prompted 350M model.
-///   3. If we end up needing a fine-tune, validation lets us size
-///      the dataset from measured confusion pairs — not guesses.
+/// This adapter is trained on the user-intent boundary that caused the
+/// original telco demo failures: how/why support questions should go to
+/// local RAG, while imperative requests should go to the tool selector.
+/// Examples from the parent eval set include "why is my wifi slow" and
+/// "how do I restart my router" as `kb_question`, while "restart my
+/// router" and "run diagnostics on my home network" stay `tool_action`.
 ///
 /// Inference dispatches through `AdapterInferenceBackend` so the
 /// router works identically against on-device llama.cpp, a sidecar
-/// backend, or any future transport. `adapterPath: ""` signals "use
-/// the loaded base model, do not apply a LoRA."
+/// backend, or any future transport. `adapterPath: ""` is reserved for
+/// degraded tests or missing-artifact mode; production bundles pass the
+/// trained adapter path.
 ///
 /// Errors are caught and surfaced as `.outOfScope` with confidence
 /// 0.0 — a fail-safe default that keeps the chat flow alive even when

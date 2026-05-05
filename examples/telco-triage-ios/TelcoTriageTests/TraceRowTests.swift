@@ -51,4 +51,35 @@ final class TraceRowTests: XCTestCase {
         // a buggy adapter ever does, treat as neutral rather than low.
         XCTAssertEqual(ConfidenceBand.classify(-0.1), .neutral)
     }
+
+    func test_callTraceCustomerVisibleMSUsesPipelineTotalWhenPresent() {
+        let primary = TelcoPipelineTrace.Step(
+            id: "classify_all",
+            title: "classifyAll",
+            detail: "Intent: Troubleshooting",
+            modelTag: "LFM2.5-350M",
+            confidence: 0.95,
+            latencyMs: 94
+        )
+        let trace = TelcoPipelineTrace(
+            intent: "Troubleshooting",
+            intentConfidence: 0.95,
+            modelName: "LFM2.5-350M",
+            inferenceMode: "shared_adapter",
+            totalLatencyMs: 212,
+            primaryStep: primary,
+            downstreamStep: nil,
+            answerSummary: "On-device tool proposal",
+            target: "Local tool",
+            laneLabel: "Local tool",
+            laneReason: "classifier-backed routing"
+        )
+        let callTrace = CallTrace(
+            surface: .tool,
+            inferenceMS: 118,
+            telcoPipeline: trace
+        )
+
+        XCTAssertEqual(callTrace.customerVisibleMS, 212)
+    }
 }

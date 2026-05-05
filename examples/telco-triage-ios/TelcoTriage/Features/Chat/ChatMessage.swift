@@ -178,6 +178,9 @@ public struct CallTrace: Equatable {
     public var totalMS: Int { (retrievalMS ?? 0) + inferenceMS }
 
     public var customerVisibleMS: Int {
+        if let telcoPipeline {
+            return Int(telcoPipeline.totalLatencyMs.rounded())
+        }
         switch surface {
         case .onDeviceRAG:
             return (chatModeRuntimeMS ?? 0) + (retrievalMS ?? 0) + inferenceMS

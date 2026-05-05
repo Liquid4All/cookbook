@@ -10,8 +10,8 @@ of support requests:
 1. A compact LFM runs in the iOS app.
 2. A shared telco classifier adapter produces nine support decisions in one
    forward pass.
-3. A deterministic router decides whether to answer locally, propose a local
-   tool, use cloud assist, escalate to a human, or block.
+3. Classifier heads arbitrate chat mode and tool selection on the low-latency
+   path; generative LoRA routers remain available as fallback.
 4. Cloud assist receives only a redacted support bundle, and only when the
    workflow needs live account, billing, outage, or appointment systems.
 
@@ -26,6 +26,7 @@ values.
 - Nine ADR-015 classifier heads for support routing, cloud requirements,
   escalation risk, PII risk, tool selection, transcript quality, and slot
   completeness.
+- Classifier-backed chat routing and tool selection for sub-second tool cards.
 - Local support tools such as restart router, speed test, diagnostics, WPS,
   extender reboot, and technician scheduling.
 - A visible pipeline trace for model latency, confidence, route, and tool
@@ -33,8 +34,8 @@ values.
 - Optional audio and vision pack scaffolding for voice support and visual
   troubleshooting.
 
-The reference implementation is deliberately transparent. The model emits
-typed signals, deterministic policy owns the final routing decision, and the UI
+The reference implementation is deliberately transparent. LFMs emit typed
+signals, typed policy enforces privacy and approval boundaries, and the UI
 shows enough trace detail for developers and customers to inspect why a request
 stayed local or moved toward cloud assist.
 
@@ -47,43 +48,56 @@ flowchart TD
     Scope -- "No" --> Refuse["Local refusal<br/>no LFM call"]
     Scope -- "Yes" --> Heads["LFM2.5-350M + telco-shared-clf-v1<br/>one forward pass, 9 ADR-015 heads"]
 
+    Q --> Mode["LFM2.5-350M + chat-mode-clf-v1<br/>chat-mode classifier head"]
     Heads --> Vector["TelcoDecisionVector<br/>intent, lane, tool, cloud needs, PII, slots"]
-    Vector --> Overrides["Deterministic overrides<br/>PersonalSummaryDetector + ImperativeToolDetector"]
-    Overrides --> Router["TelcoDecisionRouter<br/>pure policy over model signals"]
-    Router --> Lane{"Routing lane"}
+    Vector --> Candidate["TelcoDecisionRouter<br/>ADR-015 candidate + cloud/privacy trace"]
+    Mode --> Arbiter["TelcoModelModeArbiter<br/>classifier mode owns the chat branch"]
+    Candidate --> Arbiter
+    Arbiter --> Lane{"Customer-visible branch"}
 
-    Lane -- "local_answer" --> KB["KeywordKBExtractor<br/>alias / BM25-style local KB retrieval"]
+    Lane -- "kb_question" --> KB["KeywordKBExtractor<br/>alias / BM25-style local KB retrieval"]
     KB --> Entry["Top KBEntry + confidence<br/>source article + deep links"]
     Entry --> Grounded["Local LFM grounded QA<br/>answer only from retrieved context"]
     Grounded --> UI["Chat response<br/>source + pipeline trace"]
 
-    Lane -- "local_tool" --> Proposal["Tool proposal<br/>customer confirmation"]
+    Lane -- "tool_action" --> Selector{"Tool already selected<br/>by ADR-015?"}
+    Selector -- "Yes" --> Proposal["Tool proposal<br/>customer confirmation"]
+    Selector -- "No" --> ToolHead["LFM2.5-350M + tool-selector-clf-v1<br/>tool classifier head + extracted slots"]
+    ToolHead --> Proposal
     Proposal --> Tool["ToolExecutor<br/>speed test, diagnostics, restart, schedule"]
     Tool --> Summary["Local LFM summarizes result"]
     Summary --> UI
 
-    Lane -- "cloud_assist" --> Payload["PII check + cloud requirements<br/>redacted payload prepared"]
+    Vector -- "cloud_assist signal" --> Payload["PII check + cloud requirements<br/>redacted payload prepared"]
     Payload --> Approval["Customer-visible approval surface<br/>no silent background egress"]
     Approval --> Cloud["Carrier cloud systems<br/>outage, account, billing, appointment"]
     Cloud --> UI
 
-    Lane -- "human_escalation" --> Agent["Agent handoff surface"]
+    Vector -- "human_escalation signal" --> Agent["Agent handoff surface"]
     Agent --> UI
-    Lane -- "blocked" --> Block["Local safety / auth refusal"]
+    Vector -- "blocked signal" --> Block["Local safety / auth refusal"]
     Block --> UI
+
+    Mode -. "fallback if classifier assets are absent" .-> GenMode["chat-mode-router-v2<br/>generative JSON router"]
+    ToolHead -. "fallback if classifier assets are absent" .-> GenTool["telco-tool-selector-v3<br/>generative tool JSON"]
 ```
 
-The model emits typed signals. The router owns the policy decision. This keeps
-the agentic behavior auditable and testable.
+The model boundary is intentional. ADR-015 produces the rich telco trace and
+cloud-assist signals; classifier-backed mode routing owns the conversational
+mode boundary; ADR-015 or the classifier-backed tool selector owns tool choice.
+The generative chat/tool adapters are packaged as fallback paths, not the
+normal low-latency critical path. The app uses typed policy to compose those
+model outputs into auditable behavior.
 
 For the slow-Wi-Fi prompt, the expected model signals are
-`support_intent=troubleshooting` and either `routing_lane=local_answer`
-or `routing_lane=local_tool`. The local RAG path uses `KeywordKBExtractor`
-as the primary retriever because this KB has curated aliases; the LFM
-then writes the final answer from the retrieved article. Cloud assist is
-reserved for live outage/account/billing/appointment systems and is
-represented in the demo as a redacted, customer-visible payload prepared
-for integration.
+`support_intent=troubleshooting` from ADR-015 and `mode=kb_question` from the
+chat-mode classifier head. That sends the request to local RAG instead of a
+diagnostics tool card. The retriever selects a local article and the resident
+LFM writes the final answer from that article. Customer-owned facts such as
+SSID are answered from `CustomerContext`; how-to SSID questions are answered
+from the local KB. Cloud assist is reserved for live outage/account/billing/
+appointment systems and is represented in the demo as a redacted,
+customer-visible payload prepared for integration.
 
 ## Model Artifacts
 
@@ -102,15 +116,16 @@ Required local GGUFs:
 | --- | --- |
 | `lfm25-350m-base-Q4_K_M.gguf` | Resident LFM2.5-350M base model |
 | `telco-shared-clf-v1.gguf` | Shared classifier LoRA for the nine telco heads |
-| `telco-tool-selector-v3.gguf` | Tool argument and selection adapter |
-| `chat-mode-router-v2.gguf` | Generative fallback router |
+| `chat-mode-clf-v1.gguf` | Fast chat-mode classifier adapter |
+| `tool-selector-clf-v1.gguf` | Fast tool-selection classifier adapter |
+| `kb-extract-clf-v1.gguf` | Transitional KB classifier adapter and head pairing |
+| `telco-tool-selector-v3.gguf` | Tool selection and argument adapter |
+| `chat-mode-router-v2.gguf` | Dedicated chat-mode adapter for question vs action routing |
 | `kb-extractor-v1.gguf` | Grounded KB answer adapter |
 
-Optional transitional adapters:
-
-- `chat-mode-clf-v1.gguf`
-- `kb-extract-clf-v1.gguf`
-- `tool-selector-clf-v1.gguf`
+The classifier adapters are what keep the visible demo path fast. The
+generative chat/tool adapters are still useful for fallback experiments and for
+teams comparing classifier-head routing against JSON-generating routers.
 
 Put these files in `examples/telco-triage-ios/models/telco/`, or set
 `TELCO_MODELS_DIR` to a directory containing them.
@@ -173,6 +188,7 @@ Try these in the Chat tab:
 Restart my router
 Run a speed test
 My wifi is slow in the bedroom
+Can you tell me what's my SSID?
 What do the lights on my router mean?
 Block my son's tablet from the internet
 Is there an outage in my area?
