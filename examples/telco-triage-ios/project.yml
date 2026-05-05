@@ -32,6 +32,10 @@ settings:
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "21"
     CODE_SIGN_STYLE: Automatic
+    # LeapSDK's simulator dylibs are built with an iOS 18.5 simulator
+    # deployment target. Keep physical devices on iOS 17.0, but avoid
+    # simulator linker mismatches in Xcode by raising only simulator builds.
+    "IPHONEOS_DEPLOYMENT_TARGET[sdk=iphonesimulator*]": "18.5"
 
 targets:
   TelcoTriage:
