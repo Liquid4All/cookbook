@@ -146,7 +146,7 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
         }
 
         let input = audioEngine.inputNode
-        let recordingFormat = try AudioInputTapFormat.resolve(for: input)
+        let recordingFormat = try AudioInputTapFormat.nativeTapFormat(for: input)
         captureSampleRate = recordingFormat.sampleRate
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 4_096, format: recordingFormat) { [weak self] buffer, _ in

@@ -48,33 +48,14 @@ public enum TranscriptionError: LocalizedError {
 }
 
 enum AudioInputTapFormat {
-    static func resolve(
-        for input: AVAudioInputNode,
-        session: AVAudioSession = .sharedInstance()
-    ) throws -> AVAudioFormat {
-        let inputFormat = input.inputFormat(forBus: 0)
-        if isValid(inputFormat) {
-            return inputFormat
-        }
-
+    /// AVAudioInputNode taps are installed on the node's output bus.
+    /// Passing `inputFormat(forBus:)` or a preferred-session fallback can
+    /// trip AVFAudio's native `IsFormatSampleRateAndChannelCountValid`
+    /// precondition in Simulator before Swift can throw a recoverable error.
+    static func nativeTapFormat(for input: AVAudioInputNode) throws -> AVAudioFormat {
         let outputFormat = input.outputFormat(forBus: 0)
-        if isValid(outputFormat) {
-            return outputFormat
-        }
-
-        let sessionSampleRate = session.sampleRate
-        let sessionChannels = AVAudioChannelCount(max(session.inputNumberOfChannels, 0))
-        if isValid(sampleRate: sessionSampleRate, channelCount: sessionChannels),
-           let fallback = AVAudioFormat(
-            commonFormat: .pcmFormatFloat32,
-            sampleRate: sessionSampleRate,
-            channels: sessionChannels,
-            interleaved: false
-           ) {
-            return fallback
-        }
-
-        throw TranscriptionError.unavailable
+        guard isValid(outputFormat) else { throw TranscriptionError.unavailable }
+        return outputFormat
     }
 
     static func isValid(_ format: AVAudioFormat) -> Bool {
