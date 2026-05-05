@@ -146,7 +146,7 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
         }
 
         let input = audioEngine.inputNode
-        let recordingFormat = input.outputFormat(forBus: 0)
+        let recordingFormat = try AudioInputTapFormat.resolve(for: input)
         captureSampleRate = recordingFormat.sampleRate
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 4_096, format: recordingFormat) { [weak self] buffer, _ in
@@ -268,6 +268,8 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
     private func configureAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try? session.setPreferredInputNumberOfChannels(1)
+        try? session.setPreferredSampleRate(Self.targetSampleRate)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionActive = true
     }

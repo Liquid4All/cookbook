@@ -53,7 +53,7 @@ public actor AppleSpeechTranscriber: VoiceTranscriber {
         }
 
         let input = audioEngine.inputNode
-        let recordingFormat = input.outputFormat(forBus: 0)
+        let recordingFormat = try AudioInputTapFormat.resolve(for: input)
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
             // Buffer callbacks also fire off-actor. Ferry the buffer in.
@@ -126,6 +126,8 @@ public actor AppleSpeechTranscriber: VoiceTranscriber {
     private func configureSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try? session.setPreferredInputNumberOfChannels(1)
+        try? session.setPreferredSampleRate(16_000)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionActive = true
     }
