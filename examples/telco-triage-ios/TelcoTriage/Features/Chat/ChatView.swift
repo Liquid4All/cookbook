@@ -235,7 +235,7 @@ struct ChatView: View {
                     // user isn't greeted by a stale "permission denied"
                     // strip after they fix the setting.
                     appState.voice.reset()
-                    appState.voice.start()
+                    appState.voice.start(localRuntimeBusy: (holder.vm?.isProcessing ?? false) || appState.isModelWarming)
                 }
             },
             onCameraTap: { showingPhotoPicker = true },

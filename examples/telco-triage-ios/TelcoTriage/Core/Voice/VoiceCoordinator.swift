@@ -62,8 +62,14 @@ public final class VoiceCoordinator: ObservableObject {
         isPackInstalled ? LFMAudioTranscriber() : AppleSpeechTranscriber()
     }
 
-    public func start() {
+    public func start(localRuntimeBusy: Bool = false) {
         guard !isListening else { return }
+        guard !localRuntimeBusy else {
+            state = .error("Voice input is available after the current on-device answer finishes.")
+            isListening = false
+            usingPack = false
+            return
+        }
         state = .listening(partial: "")
         isListening = true
         let packInstalled = packManager.isInstalled(SpecialistPack.audio.id)

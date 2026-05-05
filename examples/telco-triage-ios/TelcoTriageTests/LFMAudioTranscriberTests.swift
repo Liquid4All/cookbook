@@ -64,8 +64,8 @@ final class LFMAudioTranscriberTests: XCTestCase {
     }
 
     func test_audioInputTapFormat_rejectsZeroRateOrChannels() {
-        XCTAssertFalse(AudioInputTapFormat.isValid(sampleRate: 0, channelCount: 1))
-        XCTAssertFalse(AudioInputTapFormat.isValid(sampleRate: 16_000, channelCount: 0))
-        XCTAssertTrue(AudioInputTapFormat.isValid(sampleRate: 16_000, channelCount: 1))
+        XCTAssertFalse(AudioTapInstaller.isValid(sampleRate: 0, channelCount: 1))
+        XCTAssertFalse(AudioTapInstaller.isValid(sampleRate: 16_000, channelCount: 0))
+        XCTAssertTrue(AudioTapInstaller.isValid(sampleRate: 16_000, channelCount: 1))
     }
 }

@@ -165,10 +165,16 @@ struct ChatInputBar: View {
         Button(action: onMicTap) {
             Image(systemName: isListening ? "mic.fill" : "mic")
                 .font(.system(size: 22))
-                .foregroundStyle(isListening ? brand.primary : brand.textSecondary)
+                .foregroundStyle(micForeground)
                 .frame(width: 36, height: 36)
         }
         .accessibilityLabel(isListening ? "Stop recording" : "Voice input")
+    }
+
+    private var micForeground: Color {
+        if isListening { return brand.primary }
+        if isProcessing { return brand.textSecondary.opacity(0.35) }
+        return brand.textSecondary
     }
 
     private var sendButton: some View {

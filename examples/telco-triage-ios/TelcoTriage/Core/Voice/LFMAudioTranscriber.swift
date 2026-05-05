@@ -146,10 +146,9 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
         }
 
         let input = audioEngine.inputNode
-        let recordingFormat = try AudioInputTapFormat.nativeTapFormat(for: input)
-        captureSampleRate = recordingFormat.sampleRate
+        captureSampleRate = Self.targetSampleRate
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: 4_096, format: recordingFormat) { [weak self] buffer, _ in
+        try AudioTapInstaller.install(on: input, bufferSize: 4_096) { [weak self] buffer, _ in
             // Buffer callbacks fire off the main actor — hop back before
             // touching `capturedSamples`.
             Task { @MainActor [weak self] in
@@ -159,7 +158,7 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
 
         audioEngine.prepare()
         try audioEngine.start()
-        logger.info("Recording started (rate=\(recordingFormat.sampleRate))")
+        logger.info("Recording started")
 
         return stream
     }
@@ -254,6 +253,9 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
     // MARK: - Audio capture
 
     private func appendSamples(_ buffer: AVAudioPCMBuffer) {
+        if AudioTapInstaller.isValid(buffer.format) {
+            captureSampleRate = buffer.format.sampleRate
+        }
         guard let channelData = buffer.floatChannelData?[0] else { return }
         let frameCount = Int(buffer.frameLength)
         let bufferPointer = UnsafeBufferPointer(start: channelData, count: frameCount)

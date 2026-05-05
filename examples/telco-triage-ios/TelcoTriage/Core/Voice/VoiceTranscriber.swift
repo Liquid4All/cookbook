@@ -47,15 +47,31 @@ public enum TranscriptionError: LocalizedError {
     }
 }
 
-enum AudioInputTapFormat {
-    /// AVAudioInputNode taps are installed on the node's output bus.
-    /// Passing `inputFormat(forBus:)` or a preferred-session fallback can
-    /// trip AVFAudio's native `IsFormatSampleRateAndChannelCountValid`
-    /// precondition in Simulator before Swift can throw a recoverable error.
-    static func nativeTapFormat(for input: AVAudioInputNode) throws -> AVAudioFormat {
-        let outputFormat = input.outputFormat(forBus: 0)
-        guard isValid(outputFormat) else { throw TranscriptionError.unavailable }
-        return outputFormat
+enum AudioTapInstaller {
+    /// AVFAudio reports some microphone-route failures by throwing an
+    /// Objective-C `NSException`, which Swift cannot catch. Install taps only
+    /// through the Obj-C bridge so bad simulator routes become recoverable
+    /// voice errors instead of process-ending crashes.
+    static func install(
+        on node: AVAudioNode,
+        bus: AVAudioNodeBus = 0,
+        bufferSize: AVAudioFrameCount,
+        block: @escaping (AVAudioPCMBuffer, AVAudioTime) -> Void
+    ) throws {
+        var error: NSError?
+        let installed = LFMInstallAudioTapSafely(
+            node,
+            UInt(bus),
+            bufferSize,
+            nil,
+            block,
+            &error
+        )
+        guard installed else {
+            throw TranscriptionError.recognitionFailed(
+                error?.localizedDescription ?? "Microphone input route could not be opened."
+            )
+        }
     }
 
     static func isValid(_ format: AVAudioFormat) -> Bool {

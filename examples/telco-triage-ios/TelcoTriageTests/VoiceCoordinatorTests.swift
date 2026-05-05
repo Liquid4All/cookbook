@@ -143,6 +143,27 @@ final class VoiceCoordinatorTests: XCTestCase {
         XCTAssertEqual(factoryCalls, 1)
     }
 
+    func test_start_whenLocalRuntimeBusy_setsRecoverableError_withoutOpeningTranscriber() {
+        var factoryCalls = 0
+        let coordinator = VoiceCoordinator(
+            packManager: packManager,
+            transcriberFactory: { _ in
+                factoryCalls += 1
+                return ScriptedTranscriber(events: [])
+            }
+        )
+
+        coordinator.start(localRuntimeBusy: true)
+
+        XCTAssertEqual(factoryCalls, 0, "busy runtime must not open AVAudioEngine")
+        XCTAssertFalse(coordinator.isListening)
+        if case .error(let message) = coordinator.state {
+            XCTAssertTrue(message.contains("current on-device answer"))
+        } else {
+            XCTFail("expected recoverable error, got \(coordinator.state)")
+        }
+    }
+
     func test_factory_receivesInstalledFalse_whenPackNotInstalled() {
         var sawFlag: Bool?
         let coordinator = VoiceCoordinator(

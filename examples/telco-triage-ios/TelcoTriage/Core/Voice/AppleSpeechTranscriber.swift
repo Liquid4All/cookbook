@@ -53,9 +53,8 @@ public actor AppleSpeechTranscriber: VoiceTranscriber {
         }
 
         let input = audioEngine.inputNode
-        let recordingFormat = try AudioInputTapFormat.nativeTapFormat(for: input)
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+        try AudioTapInstaller.install(on: input, bufferSize: 1024) { [weak self] buffer, _ in
             // Buffer callbacks also fire off-actor. Ferry the buffer in.
             Task { await self?.append(buffer: buffer) }
         }

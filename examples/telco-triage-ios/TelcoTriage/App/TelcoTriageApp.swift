@@ -59,6 +59,7 @@ final class AppState: ObservableObject {
 
     // Brand
     @Published var brands: BrandRegistry
+    @Published var isModelWarming: Bool = false
 
     // Data / retrieval
     let knowledgeBase: KnowledgeBase
@@ -169,6 +170,18 @@ final class AppState: ObservableObject {
         self.toolSelector = stack.tool
         self.modelProvider = stack.chat
         self.toolExecutor = ToolExecutor(chatProvider: stack.chat)
+        if let warmup = stack.warmup {
+            isModelWarming = true
+            #if targetEnvironment(simulator)
+            let warmupPriority: TaskPriority = .utility
+            #else
+            let warmupPriority: TaskPriority = .userInitiated
+            #endif
+            Task(priority: warmupPriority) { [weak self] in
+                await warmup()
+                self?.isModelWarming = false
+            }
+        }
 
         // Bridge nested ObservableObjects up to AppState. `ChatView` and
         // friends observe `appState` via `@EnvironmentObject`; without
@@ -192,7 +205,13 @@ final class AppState: ObservableObject {
     /// ChatModeRouter replaced its gating role; ToolSelector handles
     /// tool_action queries directly without an intermediate intent step.
     private static func buildLFMStack(kb: KnowledgeBase) -> LFMStack {
+        // Simulator audio is a real-time Mac HAL path. Leaving a couple of
+        // cores idle prevents llama.cpp CPU inference from starving mic I/O.
+        #if targetEnvironment(simulator)
+        let backend = LlamaBackend(threadCount: 4)
+        #else
         let backend = LlamaBackend()
+        #endif
         guard let basePath = TelcoModelBundle.basePath(),
               let toolAdapter = TelcoModelBundle.toolAdapterPath(),
               let chatModeRouterAdapter = TelcoModelBundle.chatModeRouterAdapterPath(),
@@ -206,7 +225,8 @@ final class AppState: ObservableObject {
                 chatModeRouter: LFMChatModeRouter(backend: missingBackend, adapterPath: ""),
                 kbExtractor: KeywordKBExtractor(),
                 tool: LFMToolSelector(backend: missingBackend, adapterPath: ""),
-                chat: LFMChatProvider(backend: missingBackend)
+                chat: LFMChatProvider(backend: missingBackend),
+                warmup: nil
             )
         }
 
@@ -294,11 +314,13 @@ final class AppState: ObservableObject {
             }
         }
 
-        // Kick the model load off the main thread. LoRA adapters are
-        // still loaded for the chat provider (base-model generative
-        // responses) even when classifier heads handle classification.
+        // LoRA adapters are still loaded for the chat provider (base-model
+        // generative responses) even when classifier heads handle
+        // classification. AppState schedules this warmup after its published
+        // model-loading state is initialized so the voice UI can avoid racing
+        // audio capture against a CPU-heavy llama.cpp graph reservation.
         let classifierForWarmup = classifier
-        Task.detached(priority: .userInitiated) {
+        let warmup: @Sendable () async -> Void = {
             do {
                 try await backend.loadModel(
                     path: basePath,
@@ -369,7 +391,8 @@ final class AppState: ObservableObject {
             chatModeRouter: chatModeRouter,
             kbExtractor: kbExtractor,
             tool: toolSelector,
-            chat: chat
+            chat: chat,
+            warmup: warmup
         )
     }
 
@@ -425,6 +448,7 @@ final class AppState: ObservableObject {
         let kbExtractor: KBExtractor
         let tool: ToolSelector
         let chat: LFMChatProvider
+        let warmup: (@Sendable () async -> Void)?
     }
 
     private struct MissingModelBackend: AdapterInferenceBackend {
