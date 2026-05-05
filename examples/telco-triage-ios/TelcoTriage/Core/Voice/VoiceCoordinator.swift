@@ -82,24 +82,31 @@ public final class VoiceCoordinator: ObservableObject {
             do {
                 let stream = try await chosen.startListening()
                 for await event in stream {
-                    await MainActor.run {
-                        switch event {
-                        case .partial(let text):
+                    switch event {
+                    case .partial(let text):
+                        await MainActor.run {
                             self.state = .listening(partial: text)
-                        case .final(let text):
-                            self.state = .finalized(text)
-                            self.isListening = false
-                        case .error(let msg):
-                            self.state = .error(msg)
-                            self.isListening = false
                         }
+                    case .final(let text):
+                        await self.finishStream(
+                            finalState: .finalized(text),
+                            transcriber: chosen
+                        )
+                        return
+                    case .error(let msg):
+                        await self.finishStream(
+                            finalState: .error(msg),
+                            transcriber: chosen
+                        )
+                        return
                     }
                 }
+                await self.finishStream(finalState: .idle, transcriber: chosen)
             } catch {
-                await MainActor.run {
-                    self.state = .error(error.localizedDescription)
-                    self.isListening = false
-                }
+                await self.finishStream(
+                    finalState: .error(error.localizedDescription),
+                    transcriber: chosen
+                )
             }
         }
     }
@@ -121,6 +128,7 @@ public final class VoiceCoordinator: ObservableObject {
         await transcriber?.stopListening()
         await transcriber?.releaseResources()
         transcriber = nil
+        await Self.waitForAudioRouteToSettle()
 
         isListening = false
         usingPack = false
@@ -147,5 +155,22 @@ public final class VoiceCoordinator: ObservableObject {
     public func reset() {
         state = .idle
         isListening = false
+    }
+
+    private func finishStream(finalState: State, transcriber completedTranscriber: VoiceTranscriber) async {
+        await completedTranscriber.stopListening()
+        await completedTranscriber.releaseResources()
+        transcriber = nil
+        streamTask = nil
+        await Self.waitForAudioRouteToSettle()
+        isListening = false
+        usingPack = false
+        state = finalState
+    }
+
+    private static func waitForAudioRouteToSettle() async {
+        #if targetEnvironment(simulator)
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        #endif
     }
 }

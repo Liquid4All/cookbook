@@ -26,6 +26,10 @@ private actor ScriptedTranscriber: VoiceTranscriber {
     func stopListening() async {
         stopped = true
     }
+
+    func didStop() -> Bool {
+        stopped
+    }
 }
 
 /// Transcriber that stays "listening" indefinitely — the stream never
@@ -66,7 +70,7 @@ final class VoiceCoordinatorTests: XCTestCase {
         XCTAssertTrue(coordinator.isListening)
 
         // Wait for the scripted events to drain
-        try await Task.sleep(nanoseconds: 200_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
         XCTAssertFalse(coordinator.isListening)
         if case .finalized(let text) = coordinator.state {
@@ -84,7 +88,7 @@ final class VoiceCoordinatorTests: XCTestCase {
             }
         )
         coordinator.start()
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
         if case .error(let msg) = coordinator.state {
             XCTAssertEqual(msg, "mic busy")
@@ -102,10 +106,26 @@ final class VoiceCoordinatorTests: XCTestCase {
             }
         )
         coordinator.start()
-        try await Task.sleep(nanoseconds: 100_000_000)
+        try await Task.sleep(nanoseconds: 500_000_000)
 
         XCTAssertEqual(coordinator.consumeFinal(), "test")
         XCTAssertEqual(coordinator.state, .idle)
+    }
+
+    func test_finalEventStopsTranscriberBeforeExposingFinalState() async throws {
+        let transcriber = ScriptedTranscriber(events: [.final("what is my ssid")])
+        let coordinator = VoiceCoordinator(
+            packManager: packManager,
+            transcriberFactory: { _ in transcriber }
+        )
+
+        coordinator.start()
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        let stopped = await transcriber.didStop()
+        XCTAssertTrue(stopped, "terminal speech events must tear down AVAudioEngine before the text can be sent")
+        XCTAssertFalse(coordinator.isListening)
+        XCTAssertEqual(coordinator.state, .finalized("what is my ssid"))
     }
 
     func test_consumeFinal_whenNotFinalized_returnsNil() {
