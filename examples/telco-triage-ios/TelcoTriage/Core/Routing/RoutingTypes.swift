@@ -25,6 +25,11 @@ public enum RoutingPath: String, Sendable, Equatable {
     /// LFM composes a polite "I only handle home internet support" reply
     /// that reinforces the privacy guarantee: nothing left the device.
     case outOfScope
+
+    /// The on-device classifier determined the request needs live operator
+    /// systems. The app prepares a redacted handoff payload and does not
+    /// silently send raw customer text.
+    case cloudAssist
 }
 
 /// Tool intents the assistant recognizes. Maps 1:1 to the tool catalog

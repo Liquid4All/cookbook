@@ -26,6 +26,8 @@ import os.log
 /// existing `VoiceCoordinator` isolation model.
 @MainActor
 public final class LFMAudioTranscriber: VoiceTranscriber {
+    public let stopBehavior: VoiceStopBehavior = .awaitFinalEventAfterStop
+
     // MARK: - Constants
 
     /// HuggingFace repo hosting the LEAP bundle manifest + GGUFs.
@@ -146,9 +148,13 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
         }
 
         let input = audioEngine.inputNode
-        captureSampleRate = Self.targetSampleRate
+        let recordingFormat = input.outputFormat(forBus: 0)
+        let tapFormat = AudioTapInstaller.isValid(recordingFormat) ? recordingFormat : nil
+        captureSampleRate = AudioTapInstaller.isValid(recordingFormat)
+            ? recordingFormat.sampleRate
+            : Self.targetSampleRate
         input.removeTap(onBus: 0)
-        try AudioTapInstaller.install(on: input, bufferSize: 4_096) { [weak self] buffer, _ in
+        try AudioTapInstaller.install(on: input, bufferSize: 4_096, format: tapFormat) { [weak self] buffer, _ in
             // Buffer callbacks fire off the main actor — hop back before
             // touching `capturedSamples`.
             Task { @MainActor [weak self] in
@@ -158,7 +164,7 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
 
         audioEngine.prepare()
         try audioEngine.start()
-        logger.info("Recording started")
+        logger.info("Recording started (rate=\(self.captureSampleRate))")
 
         return stream
     }

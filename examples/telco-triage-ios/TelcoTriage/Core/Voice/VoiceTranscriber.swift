@@ -6,6 +6,11 @@ import AVFoundation
 /// downloaded — after the audio pack is installed, a richer LFM-based
 /// transcriber takes over for accented / noisy audio.
 public protocol VoiceTranscriber: Sendable {
+    /// How the transcriber produces the final transcript when the user taps
+    /// Stop. Apple Speech usually has useful partials before stop; LFM audio
+    /// records first, then runs ASR and emits the final text after stop.
+    var stopBehavior: VoiceStopBehavior { get }
+
     /// Start listening. Returns a stream of partial and final transcripts.
     /// Implementations should emit at least one `.final` before finishing.
     func startListening() async throws -> AsyncStream<TranscriptionEvent>
@@ -21,7 +26,14 @@ public protocol VoiceTranscriber: Sendable {
 }
 
 public extension VoiceTranscriber {
+    var stopBehavior: VoiceStopBehavior { .finalizeFromLatestPartial }
+
     func releaseResources() async { /* no-op by default */ }
+}
+
+public enum VoiceStopBehavior: Sendable {
+    case finalizeFromLatestPartial
+    case awaitFinalEventAfterStop
 }
 
 public enum TranscriptionEvent: Sendable {
@@ -56,6 +68,7 @@ enum AudioTapInstaller {
         on node: AVAudioNode,
         bus: AVAudioNodeBus = 0,
         bufferSize: AVAudioFrameCount,
+        format: AVAudioFormat? = nil,
         block: @escaping (AVAudioPCMBuffer, AVAudioTime) -> Void
     ) throws {
         var error: NSError?
@@ -63,7 +76,7 @@ enum AudioTapInstaller {
             node,
             UInt(bus),
             bufferSize,
-            nil,
+            format,
             block,
             &error
         )

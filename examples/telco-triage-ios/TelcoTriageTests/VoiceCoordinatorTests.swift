@@ -43,6 +43,43 @@ private actor NeverEndingTranscriber: VoiceTranscriber {
     func stopListening() async {}
 }
 
+private actor PartialThenHangsTranscriber: VoiceTranscriber {
+    func startListening() async throws -> AsyncStream<TranscriptionEvent> {
+        AsyncStream { continuation in
+            Task {
+                continuation.yield(.partial("restart my"))
+                try? await Task.sleep(nanoseconds: 10_000_000)
+                continuation.yield(.partial("restart my router"))
+            }
+        }
+    }
+
+    func stopListening() async {}
+}
+
+/// Simulates LFM audio: recording produces no stable partial, then
+/// stopListening() runs ASR and emits the final transcript.
+private actor PostStopFinalTranscriber: VoiceTranscriber {
+    nonisolated let stopBehavior: VoiceStopBehavior = .awaitFinalEventAfterStop
+
+    private var continuation: AsyncStream<TranscriptionEvent>.Continuation?
+
+    func startListening() async throws -> AsyncStream<TranscriptionEvent> {
+        AsyncStream { continuation in
+            Task { await self.setContinuation(continuation) }
+        }
+    }
+
+    func stopListening() async {
+        continuation?.yield(.final("run diagnostics on my home network"))
+        continuation?.finish()
+    }
+
+    private func setContinuation(_ continuation: AsyncStream<TranscriptionEvent>.Continuation) {
+        self.continuation = continuation
+    }
+}
+
 @MainActor
 final class VoiceCoordinatorTests: XCTestCase {
     private var packManager: SpecialistPackManager!
@@ -285,10 +322,7 @@ final class VoiceCoordinatorTests: XCTestCase {
         let coordinator = VoiceCoordinator(
             packManager: packManager,
             transcriberFactory: { _ in
-                ScriptedTranscriber(events: [
-                    .partial("restart my"),
-                    .partial("restart my router"),
-                ])
+                PartialThenHangsTranscriber()
             }
         )
 
@@ -310,6 +344,26 @@ final class VoiceCoordinatorTests: XCTestCase {
             return
         }
         XCTAssertFalse(finalText.isEmpty, "finalized text must not be empty")
+        XCTAssertFalse(coordinator.isListening)
+    }
+
+    func test_stop_waitsForPostStopFinalTranscript() async throws {
+        let coordinator = VoiceCoordinator(
+            packManager: packManager,
+            transcriberFactory: { _ in PostStopFinalTranscriber() }
+        )
+
+        coordinator.start()
+        try await Task.sleep(nanoseconds: 30_000_000)
+
+        await coordinator.stop()
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        guard case .finalized(let finalText) = coordinator.state else {
+            XCTFail("LFM audio should finalize from the post-stop ASR event; got \(coordinator.state)")
+            return
+        }
+        XCTAssertEqual(finalText, "run diagnostics on my home network")
         XCTAssertFalse(coordinator.isListening)
     }
 

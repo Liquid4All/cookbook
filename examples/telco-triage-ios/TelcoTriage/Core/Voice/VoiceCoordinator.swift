@@ -9,6 +9,7 @@ public final class VoiceCoordinator: ObservableObject {
     public enum State: Equatable {
         case idle
         case listening(partial: String)
+        case transcribing(partial: String)
         case finalized(String)
         case error(String)
     }
@@ -16,6 +17,11 @@ public final class VoiceCoordinator: ObservableObject {
     @Published public private(set) var state: State = .idle
     @Published public private(set) var isListening: Bool = false
     @Published public private(set) var usingPack: Bool = false
+
+    public var isTranscribing: Bool {
+        if case .transcribing = state { return true }
+        return false
+    }
 
     /// Factory receives `isPackInstalled` so the coordinator can choose
     /// between Apple Speech (no pack) and LFM2.5-Audio via LEAP (pack
@@ -88,8 +94,9 @@ public final class VoiceCoordinator: ObservableObject {
                             self.state = .listening(partial: text)
                         }
                     case .final(let text):
+                        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
                         await self.finishStream(
-                            finalState: .finalized(text),
+                            finalState: trimmed.isEmpty ? .idle : .finalized(trimmed),
                             transcriber: chosen
                         )
                         return
@@ -120,13 +127,38 @@ public final class VoiceCoordinator: ObservableObject {
         let capturedPartial: String
         if case .listening(let partial) = state { capturedPartial = partial } else { capturedPartial = "" }
 
-        // Cancel the consumer FIRST so no late partial events on the
-        // stream can overwrite the .finalized state we're about to set.
+        guard let activeTranscriber = transcriber else {
+            isListening = false
+            usingPack = false
+            state = .idle
+            return
+        }
+
+        if activeTranscriber.stopBehavior == .awaitFinalEventAfterStop {
+            await activeTranscriber.stopListening()
+            await Self.waitForAudioRouteToSettle()
+            isListening = false
+            usingPack = false
+
+            // LFM audio runs ASR after capture stops. Leave the stream
+            // consumer alive so the model's final transcript can flow
+            // back into ChatView. If the stream already produced a
+            // terminal state while stopListening() was suspended, keep it.
+            if !state.isTerminal {
+                let trimmed = capturedPartial.trimmingCharacters(in: .whitespacesAndNewlines)
+                state = .transcribing(partial: trimmed)
+            }
+            return
+        }
+
+        // Apple Speech often finishes its AsyncStream before sending a
+        // final callback. For that backend the latest partial is the safest
+        // user-visible final text.
         streamTask?.cancel()
         streamTask = nil
 
-        await transcriber?.stopListening()
-        await transcriber?.releaseResources()
+        await activeTranscriber.stopListening()
+        await activeTranscriber.releaseResources()
         transcriber = nil
         await Self.waitForAudioRouteToSettle()
 
@@ -172,5 +204,16 @@ public final class VoiceCoordinator: ObservableObject {
         #if targetEnvironment(simulator)
         try? await Task.sleep(nanoseconds: 250_000_000)
         #endif
+    }
+}
+
+private extension VoiceCoordinator.State {
+    var isTerminal: Bool {
+        switch self {
+        case .finalized, .error, .idle:
+            return true
+        case .listening, .transcribing:
+            return false
+        }
     }
 }

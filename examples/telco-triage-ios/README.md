@@ -57,7 +57,7 @@ flowchart TD
 
     Lane -- "kb_question" --> KB["KeywordKBExtractor<br/>alias / BM25-style local KB retrieval"]
     KB --> Entry["Top KBEntry + confidence<br/>source article + deep links"]
-    Entry --> Grounded["Local LFM grounded QA<br/>answer only from retrieved context"]
+    Entry --> Grounded["Fast local RAG answer<br/>rendered from retrieved context"]
     Grounded --> UI["Chat response<br/>source + pipeline trace"]
 
     Lane -- "tool_action" --> Selector{"Tool already selected<br/>by ADR-015?"}
@@ -92,12 +92,15 @@ model outputs into auditable behavior.
 For the slow-Wi-Fi prompt, the expected model signals are
 `support_intent=troubleshooting` from ADR-015 and `mode=kb_question` from the
 chat-mode classifier head. That sends the request to local RAG instead of a
-diagnostics tool card. The retriever selects a local article and the resident
-LFM writes the final answer from that article. Customer-owned facts such as
-SSID are answered from `CustomerContext`; how-to SSID questions are answered
-from the local KB. Cloud assist is reserved for live outage/account/billing/
-appointment systems and is represented in the demo as a redacted,
-customer-visible payload prepared for integration.
+diagnostics tool card. The retriever selects a local article and the app renders
+a concise customer answer from that article on the critical path. Freeform
+grounded generation is still available behind an environment flag for model
+experiments, but the public demo keeps the customer experience aligned with the
+low-latency architecture. Customer-owned facts such as SSID are answered from
+`CustomerContext`; how-to SSID questions are answered from the local KB. Cloud
+assist is reserved for live outage/account/billing/appointment systems and is
+represented in the demo as a redacted, customer-visible payload prepared for
+integration.
 
 ## Model Artifacts
 

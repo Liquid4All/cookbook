@@ -98,6 +98,7 @@ public struct CallTrace: Equatable {
         case tool             // LFM2.5-350M emits a tool call, tool runs locally
         case visionPack       // LFM2.5-VL-450M (or heuristic if pack absent)
         case voicePack        // LFM2.5-Audio-1.5B (or Apple Speech fallback)
+        case cloudAssist      // Redacted cloud-assist payload prepared locally
 
         public var modelLabel: String {
             switch self {
@@ -105,6 +106,7 @@ public struct CallTrace: Equatable {
             case .tool: return "LFM2.5-350M + Tool"
             case .visionPack: return "LFM2.5-VL-450M"
             case .voicePack: return "LFM2.5-Audio-1.5B"
+            case .cloudAssist: return "LFM2.5-350M"
             }
         }
 
@@ -114,6 +116,7 @@ public struct CallTrace: Equatable {
             case .tool: return "Tool call"
             case .visionPack: return "Vision pack"
             case .voicePack: return "Voice pack"
+            case .cloudAssist: return "Cloud assist"
             }
         }
     }
@@ -184,7 +187,7 @@ public struct CallTrace: Equatable {
         switch surface {
         case .onDeviceRAG:
             return (chatModeRuntimeMS ?? 0) + (retrievalMS ?? 0) + inferenceMS
-        case .tool, .visionPack, .voicePack:
+        case .tool, .visionPack, .voicePack, .cloudAssist:
             return totalMS
         }
     }

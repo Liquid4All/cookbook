@@ -48,8 +48,8 @@ final class ChatViewModelIntegrationTests: XCTestCase {
         await harness.assertAllPromptsMatched()
     }
 
-    func test_kbQuestionPath_simulatorFastPath_usesKBAnswerWithoutChatGeneration() async {
-        let harness = TestChatHarness(useSimulatorFastGroundedQA: true)
+    func test_kbQuestionPath_fastGroundedPath_usesKBAnswerWithoutChatGeneration() async {
+        let harness = TestChatHarness(useFastGroundedQA: true)
         await harness
             .whenModeIs(.kbQuestion, matching: "wifi password")
             .whenKBCitation(
@@ -93,7 +93,7 @@ final class ChatViewModelIntegrationTests: XCTestCase {
         let engine = StaticTelcoDecisionEngine(
             result: TelcoDecisionResult(decision: decision, vector: nil, lane: nil)
         )
-        let harness = TestChatHarness(useSimulatorFastGroundedQA: true, decisionEngine: engine)
+        let harness = TestChatHarness(useFastGroundedQA: true, decisionEngine: engine)
         await harness
             .whenModeIs(.kbQuestion, matching: "wifi slow")
             .whenKBCitation(
@@ -112,6 +112,52 @@ final class ChatViewModelIntegrationTests: XCTestCase {
         XCTAssertEqual(reply.sourceEntry?.id, "internet-slow-troubleshoot")
         XCTAssertEqual(reply.trace?.chatMode, .kbQuestion)
         await harness.assertAllPromptsMatched()
+    }
+
+    func test_decisionEngine_cloudAssistLanePreemptsBadPersonalSummaryMode() async {
+        let vector = TelcoDecisionVector(
+            inputHash: 77,
+            mode: .unavailable,
+            kbEntry: .unavailable,
+            tool: .unavailable,
+            supportIntent: TelcoHeadResult(label: "outage", confidence: 1.0),
+            issueComplexity: TelcoHeadResult(label: "backend_required", confidence: 0.98),
+            routingLane: TelcoHeadResult(label: "local_answer", confidence: 0.99),
+            cloudRequirements: .unavailable,
+            requiredTool: TelcoHeadResult(label: "no_tool", confidence: 0.86),
+            customerEscalationRisk: TelcoHeadResult(label: "frustrated", confidence: 0.82),
+            piiRisk: TelcoHeadResult(label: "safe", confidence: 0.95),
+            transcriptQuality: TelcoHeadResult(label: "clean", confidence: 0.99),
+            slotCompleteness: .unavailable,
+            inferenceMode: .sharedAdapter,
+            forwardPassMs: 200,
+            headProjectionMs: 2
+        )
+        let lane = TelcoLaneRouter.route(vector)
+        let engine = StaticTelcoDecisionEngine(
+            result: TelcoDecisionResult(
+                decision: .personalSummary(modePrediction: ChatModePrediction(
+                    mode: .personalSummary,
+                    confidence: 1.0,
+                    reasoning: "bad downstream mode head",
+                    runtimeMS: 194
+                )),
+                vector: vector,
+                lane: lane
+            )
+        )
+        let harness = TestChatHarness(decisionEngine: engine)
+
+        await harness.send("Is there an outage in my area?")
+
+        guard let reply = harness.lastAssistantMessage else {
+            return XCTFail("no assistant reply")
+        }
+        XCTAssertEqual(reply.routing?.path, .cloudAssist)
+        XCTAssertTrue(reply.text.contains("live outage status"))
+        XCTAssertTrue(reply.text.contains("Nothing has been sent"))
+        XCTAssertEqual(reply.trace?.telcoPipeline?.target, "Cloud assist")
+        XCTAssertEqual(reply.trace?.telcoPipeline?.downstreamStep?.id, "cloud_payload")
     }
 
     func test_decisionEngine_toolActionModeUsesLFMToolSelector() async {

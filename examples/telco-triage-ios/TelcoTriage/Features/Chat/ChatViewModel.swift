@@ -39,7 +39,7 @@ final class ChatViewModel: ObservableObject {
 
     // Tool execution + result synthesis
     let toolExecutor: ToolExecutor
-    private let useSimulatorFastGroundedQA: Bool
+    private let useFastGroundedQA: Bool
 
     /// Deterministic off-topic gate. See `TelcoTopicGate` for rationale —
     /// closed-domain vocabulary check, no LFM call, prevents
@@ -136,7 +136,7 @@ final class ChatViewModel: ObservableObject {
         queryExtractor: QueryExtractor = RegexQueryExtractor(),
         toolSelector: ToolSelector,
         toolExecutor: ToolExecutor,
-        useSimulatorFastGroundedQA: Bool = ChatViewModel.shouldUseSimulatorFastGroundedQA,
+        useFastGroundedQA: Bool = ChatViewModel.shouldUseFastGroundedQA,
         welcomeGreetingProvider: @escaping @MainActor () -> String
     ) {
         self.decisionEngine = decisionEngine
@@ -154,7 +154,7 @@ final class ChatViewModel: ObservableObject {
         self.queryExtractor = queryExtractor
         self.toolSelector = toolSelector
         self.toolExecutor = toolExecutor
-        self.useSimulatorFastGroundedQA = useSimulatorFastGroundedQA
+        self.useFastGroundedQA = useFastGroundedQA
         self.welcomeGreetingProvider = welcomeGreetingProvider
         seedWelcomeMessage()
     }
@@ -306,6 +306,16 @@ final class ChatViewModel: ObservableObject {
             lastTelcoVector = result.vector
             lastTelcoLane = result.lane
 
+            if let lane = result.lane,
+               await dispatchTerminalTelcoLaneIfNeeded(
+                    lane,
+                    query: query,
+                    extraction: extraction,
+                    containsPII: containsPII
+               ) {
+                return
+            }
+
             // ADR-015 emits the rich 9-head vector, but the customer-
             // visible branch should be owned by the model that was
             // trained/evaluated for chat mode boundaries. This preserves
@@ -380,6 +390,45 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Path handlers
 
+    private func dispatchTerminalTelcoLaneIfNeeded(
+        _ lane: TelcoLaneDecision,
+        query: String,
+        extraction: ExtractionResult,
+        containsPII: Bool
+    ) async -> Bool {
+        switch lane {
+        case .cloudAssist:
+            routingStage = .composing
+            await runCloudAssist(
+                query: query,
+                lane: lane,
+                extraction: extraction,
+                containsPII: containsPII
+            )
+            return true
+        case .humanEscalation, .blocked:
+            // These policy lanes are terminal for the customer-visible
+            // dispatch as well, but the demo currently renders them
+            // through the local refusal surface. Keep that behavior
+            // explicit so chat-mode cannot accidentally turn policy
+            // decisions into profile summaries.
+            routingStage = .composing
+            await runOutOfScope(
+                query: query,
+                modePrediction: ChatModePrediction(
+                    mode: .outOfScope,
+                    confidence: lastTelcoVector?.routingLane.confidence ?? 1.0,
+                    reasoning: Self.terminalLaneReason(lane),
+                    runtimeMS: 0
+                ),
+                extraction: extraction
+            )
+            return true
+        case .localAnswer, .localTool, .degraded:
+            return false
+        }
+    }
+
     private func dispatch(
         _ decision: TelcoRoutingDecision,
         query: String,
@@ -437,6 +486,56 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    private func runCloudAssist(
+        query: String,
+        lane: TelcoLaneDecision,
+        extraction: ExtractionResult,
+        containsPII: Bool
+    ) async {
+        guard case .cloudAssist(let supportIntent, let requirements, let missingSlots, let piiRisk, let reason) = lane else {
+            return
+        }
+
+        let visibleMS = telcoClassifierRuntimeMS
+        let text = Self.cloudAssistResponse(
+            supportIntent: supportIntent,
+            requirements: requirements,
+            missingSlots: missingSlots
+        )
+        let inputTokens = TokenEstimator.estimate(query)
+        let outputTokens = TokenEstimator.estimate(text)
+        let pipelineTrace = currentTelcoPipelineTrace(
+            totalLatencyMS: visibleMS,
+            answerSummary: "Cloud assist payload prepared",
+            target: "Cloud assist",
+            laneLabel: "Cloud assist (\(requirements.count) requirement\(requirements.count == 1 ? "" : "s"))",
+            laneReason: reason
+        )
+
+        let message = ChatMessage(
+            role: .assistant,
+            text: text,
+            routing: RoutingSummary(
+                path: .cloudAssist,
+                toolIntent: nil,
+                containsPII: containsPII || piiRisk != .safe,
+                confidence: lastTelcoVector?.routingLane.confidence
+            ),
+            latencyMS: visibleMS,
+            trace: CallTrace(
+                surface: .cloudAssist,
+                inferenceMS: visibleMS,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                extraction: extraction,
+                telcoPipeline: pipelineTrace
+            )
+        )
+        tokenLedger.recordDeflection()
+        messages.append(message)
+        sessionStats.recordLatency(visibleMS)
+    }
+
     private func runGroundedQA(
         query: String,
         citation: KBCitation,
@@ -448,9 +547,8 @@ final class ChatViewModel: ObservableObject {
         // Resolve the cited KB entry if the extractor returned a
         // match. A `.noMatch` citation or a hallucinated id (already
         // guarded by `LFMKBExtractor`) falls back to the synthetic
-        // "no match" stub so the grounded-QA prompt still runs —
-        // the prompt tells the model to say "no matching article"
-        // when the reference doesn't fit.
+        // "no match" stub so both the fast renderer and optional
+        // generative path have a trusted local article boundary.
         let topEntry: KBEntry
         if citation.entryId == EmbeddingKBExtractor.loadingEntryID {
             // KB embedding index is still building (cold-start window,
@@ -463,7 +561,7 @@ final class ChatViewModel: ObservableObject {
         } else {
             topEntry = fallbackEntryForEmptyKB()
         }
-        if useSimulatorFastGroundedQA {
+        if useFastGroundedQA {
             let displayText = Self.compactGroundedAnswer(topEntry.answer)
             let inputTokens = TokenEstimator.estimate(query)
             let outputTokens = TokenEstimator.estimate(displayText)
@@ -736,6 +834,51 @@ final class ChatViewModel: ObservableObject {
             return "I'll reboot your extender."
         default:
             return "I'll \(tool.displayName.lowercased()) now."
+        }
+    }
+
+    private static func cloudAssistResponse(
+        supportIntent: TelcoSupportIntent,
+        requirements: [TelcoCloudRequirement],
+        missingSlots: [TelcoSlotKind]
+    ) -> String {
+        let system = cloudAssistSystemName(for: supportIntent)
+        let needs = requirements.isEmpty
+            ? "live carrier systems"
+            : TelcoLabelDisplay.list(requirements.map(\.rawValue)).lowercased()
+        var text = "To answer that, I need \(system). I've prepared a cloud-assist handoff with only the required context: \(needs)."
+        if !missingSlots.isEmpty {
+            text += " It also needs \(missingSlots.count) missing field\(missingSlots.count == 1 ? "" : "s") before submission."
+        }
+        text += " Nothing has been sent from the app yet."
+        return text
+    }
+
+    private static func cloudAssistSystemName(for supportIntent: TelcoSupportIntent) -> String {
+        switch supportIntent {
+        case .outage:
+            return "live outage status from the carrier network"
+        case .billing:
+            return "the carrier billing system"
+        case .appointment:
+            return "the carrier appointment system"
+        case .planAccount:
+            return "live account and plan data"
+        case .troubleshooting, .deviceSetup, .equipmentReturn, .agentHandoff, .unknown:
+            return "live carrier systems"
+        }
+    }
+
+    private static func terminalLaneReason(_ lane: TelcoLaneDecision) -> String {
+        switch lane {
+        case .cloudAssist(_, _, _, _, let reason),
+             .humanEscalation(_, let reason),
+             .localAnswer(_, let reason),
+             .localTool(_, _, let reason),
+             .degraded(let reason):
+            return reason
+        case .blocked(let reason):
+            return "blocked: \(reason)"
         }
     }
 

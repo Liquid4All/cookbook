@@ -35,7 +35,7 @@ final class TestChatHarness {
     init(
         kb: KnowledgeBase = .loadFromBundle(),
         profile: CustomerProfile = .demo,
-        useSimulatorFastGroundedQA: Bool = false,
+        useFastGroundedQA: Bool = false,
         decisionEngine: (any TelcoDecisionEngine)? = nil
     ) {
         self.knowledgeBase = kb
@@ -86,7 +86,7 @@ final class TestChatHarness {
             nbaEngine: nba,
             toolSelector: tool,
             toolExecutor: executor,
-            useSimulatorFastGroundedQA: useSimulatorFastGroundedQA,
+            useFastGroundedQA: useFastGroundedQA,
             welcomeGreetingProvider: { "Welcome" }
         )
     }
