@@ -85,6 +85,29 @@ public struct TelcoPipelineTrace: Equatable {
 }
 
 extension TelcoPipelineTrace {
+    public func updatingRuntime(
+        totalLatencyMs: Double,
+        downstreamStep: TelcoPipelineTrace.Step? = nil,
+        answerSummary: String? = nil,
+        target: String? = nil,
+        laneLabel: String? = nil,
+        laneReason: String? = nil
+    ) -> TelcoPipelineTrace {
+        TelcoPipelineTrace(
+            intent: intent,
+            intentConfidence: intentConfidence,
+            modelName: modelName,
+            inferenceMode: inferenceMode,
+            totalLatencyMs: totalLatencyMs,
+            primaryStep: primaryStep,
+            downstreamStep: downstreamStep ?? self.downstreamStep,
+            answerSummary: answerSummary ?? self.answerSummary,
+            target: target ?? self.target,
+            laneLabel: laneLabel ?? self.laneLabel,
+            laneReason: laneReason ?? self.laneReason
+        )
+    }
+
     /// Build a trace from a `TelcoDecisionVector` + lane. `nil` when the
     /// 9-head ADR-015 stack didn't run (paired-adapter fallback or the
     /// vision/voice path).

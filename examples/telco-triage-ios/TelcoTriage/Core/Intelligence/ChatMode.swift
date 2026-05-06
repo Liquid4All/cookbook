@@ -3,23 +3,21 @@ import Foundation
 /// A first-class chat-mode classifier. The mode gate is the primary
 /// branch in the telco support chat flow:
 ///
-///  - `.kbQuestion`      → generative retrieval over the 32-entry KB
-///                         (`KBExtractor` emits `[cite_passage(...)]`).
+///  - `.kbQuestion`      → local KB retrieval, then LFM grounded answer.
 ///  - `.toolAction`      → `ToolSelector` picks one of 8 tools and
 ///                         fills parameters; user confirms; tool runs.
 ///  - `.personalSummary` → grounded on `CustomerContext`, not the KB.
 ///                         ("Summarize my home network.")
 ///  - `.outOfScope`      → decline locally or escalate to cloud.
 ///
-/// This replaces the TF-IDF-driven `SupportRouter` path that couples
-/// retrieval to routing. Routing is now a pure LFM decision; retrieval
-/// happens only on the question branch and is itself generative.
+/// This replaces the old router path that coupled retrieval to routing.
+/// Routing is now an LFM decision; retrieval happens only on the
+/// question branch.
 ///
-/// Production implementation is `LFMChatModeRouter`, backed by the
-/// base LFM2.5-350M on device (or a sidecar backend — same protocol,
-/// injectable). `StubChatModeRouter` is the compile-only deterministic
-/// stub used in tests and during the BUG-022 on-device inference
-/// outage so the surrounding pipeline stays exercisable.
+/// Production implementation is `LFMChatModeRouter`, backed by
+/// LFM2.5-350M plus the `chat-mode-router-v2` adapter. `StubChatModeRouter`
+/// is the compile-only deterministic stub used in tests so the
+/// surrounding pipeline stays exercisable.
 public protocol ChatModeRouter: Sendable {
     func classify(query: String) async -> ChatModePrediction
 }
@@ -45,10 +43,8 @@ public enum ChatMode: String, Sendable, Codable, CaseIterable {
         }
     }
 
-    /// Bridge to the legacy `RoutingPath` so `RoutingSummary` renders
-    /// identically whether the decision came from the TF-IDF-era
-    /// `SupportRouter` or the new `ChatModeRouter`. Will become the
-    /// single source of truth once Phase A.3 deletes `RoutingPath`.
+    /// Bridge to `RoutingPath` so `RoutingSummary` renders consistently
+    /// for every mode-router implementation.
     public var routingPath: RoutingPath {
         switch self {
         case .kbQuestion:      return .answerWithRAG

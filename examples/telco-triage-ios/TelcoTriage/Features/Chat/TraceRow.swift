@@ -8,8 +8,8 @@ import SwiftUI
 ///  - INTENT   : classifier intent + calibrated confidence + runtime
 ///  - SOURCE   : tool id (if any) or "RAG: kb-entry-id"
 ///  - LATENCY  : inference ms + token counts
-///  - EGRESS   : "0 bytes ✓" — always, on every path. The demo never
-///               leaves the device.
+///  - EGRESS   : on-device paths show "0 bytes"; cloud-assist paths show
+///               that a redacted packet is prepared but not silently sent.
 ///
 /// Source of truth is `CallTrace` on the assistant message. Missing
 /// fields render as an em-dash rather than disappearing — the layout
@@ -26,8 +26,8 @@ struct TraceRow: View {
                  tint: intentConfidenceTint)
             cell(title: "Source", value: sourceText, subtitle: sourceSubtitle)
             cell(title: "Latency", value: latencyText, subtitle: tokensText)
-            cell(title: "Egress", value: "0 bytes", subtitle: "on-device ✓",
-                 tint: brand.success)
+            cell(title: "Egress", value: egressText, subtitle: egressSubtitle,
+                 tint: egressTint)
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 10)
@@ -96,6 +96,8 @@ struct TraceRow: View {
             return "profile"
         case .outOfScope:
             return "unknown"
+        case .cloudAssist:
+            return "cloud prep"
         }
     }
 
@@ -112,7 +114,21 @@ struct TraceRow: View {
             return "customer context"
         case .outOfScope:
             return "off-topic, declined"
+        case .cloudAssist:
+            return "redacted payload"
         }
+    }
+
+    private var egressText: String {
+        routingPath == .cloudAssist ? "prepared" : "0 bytes"
+    }
+
+    private var egressSubtitle: String {
+        routingPath == .cloudAssist ? "approval required" : "on-device ✓"
+    }
+
+    private var egressTint: Color {
+        routingPath == .cloudAssist ? brand.warning : brand.success
     }
 
     private var latencyText: String {

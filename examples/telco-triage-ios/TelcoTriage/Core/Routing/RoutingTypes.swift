@@ -1,10 +1,10 @@
 import Foundation
 
-/// Where this query is handled. Every path terminates at an LFM-generated
-/// assistant message — there are no fallback or "cloud-escalated" paths.
-/// The demo surface is pure edge AI.
+/// Where this query is handled. Every chat path terminates at an
+/// LFM-generated assistant message on device; cloud-assist signals are
+/// surfaced in the engineering trace and approval UI, not sent silently.
 public enum RoutingPath: String, Sendable, Equatable {
-    /// Grounded Q&A. TF-IDF retrieves the top KB article, the base LFM
+    /// Grounded Q&A. The local retriever selects the top KB article, the base LFM
     /// synthesizes a short answer citing the retrieved material, and the
     /// user can tap "Read full article" to see the source KB entry.
     case answerWithRAG
@@ -25,6 +25,11 @@ public enum RoutingPath: String, Sendable, Equatable {
     /// LFM composes a polite "I only handle home internet support" reply
     /// that reinforces the privacy guarantee: nothing left the device.
     case outOfScope
+
+    /// The on-device classifier determined the request needs live operator
+    /// systems. The app prepares a redacted handoff payload and does not
+    /// silently send raw customer text.
+    case cloudAssist
 }
 
 /// Tool intents the assistant recognizes. Maps 1:1 to the tool catalog

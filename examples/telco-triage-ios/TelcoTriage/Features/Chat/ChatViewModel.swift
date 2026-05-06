@@ -39,7 +39,7 @@ final class ChatViewModel: ObservableObject {
 
     // Tool execution + result synthesis
     let toolExecutor: ToolExecutor
-    private let useSimulatorFastGroundedQA: Bool
+    private let useFastGroundedQA: Bool
 
     /// Deterministic off-topic gate. See `TelcoTopicGate` for rationale —
     /// closed-domain vocabulary check, no LFM call, prevents
@@ -84,9 +84,35 @@ final class ChatViewModel: ObservableObject {
     /// produced one. Each CallTrace construction site forwards this so
     /// the engineering-mode pipeline card can render all 9 head outputs
     /// + lane decision under the assistant bubble.
-    func currentTelcoPipelineTrace() -> TelcoPipelineTrace? {
+    func currentTelcoPipelineTrace(
+        totalLatencyMS: Int? = nil,
+        downstreamStep: TelcoPipelineTrace.Step? = nil,
+        answerSummary: String? = nil,
+        target: String? = nil,
+        laneLabel: String? = nil,
+        laneReason: String? = nil
+    ) -> TelcoPipelineTrace? {
         guard let vector = lastTelcoVector else { return nil }
-        return TelcoPipelineTrace.from(vector: vector, lane: lastTelcoLane)
+        guard let trace = TelcoPipelineTrace.from(vector: vector, lane: lastTelcoLane) else {
+            return nil
+        }
+        guard totalLatencyMS != nil || downstreamStep != nil || answerSummary != nil
+                || target != nil || laneLabel != nil || laneReason != nil
+        else {
+            return trace
+        }
+        return trace.updatingRuntime(
+            totalLatencyMs: Double(totalLatencyMS ?? Int(trace.totalLatencyMs.rounded())),
+            downstreamStep: downstreamStep,
+            answerSummary: answerSummary,
+            target: target,
+            laneLabel: laneLabel,
+            laneReason: laneReason
+        )
+    }
+
+    private var telcoClassifierRuntimeMS: Int {
+        Int(lastTelcoVector?.totalMs.rounded() ?? 0)
     }
 
     /// Resolves the current brand's welcome greeting at call time. Passed
@@ -110,7 +136,7 @@ final class ChatViewModel: ObservableObject {
         queryExtractor: QueryExtractor = RegexQueryExtractor(),
         toolSelector: ToolSelector,
         toolExecutor: ToolExecutor,
-        useSimulatorFastGroundedQA: Bool = ChatViewModel.shouldUseSimulatorFastGroundedQA,
+        useFastGroundedQA: Bool = ChatViewModel.shouldUseFastGroundedQA,
         welcomeGreetingProvider: @escaping @MainActor () -> String
     ) {
         self.decisionEngine = decisionEngine
@@ -128,7 +154,7 @@ final class ChatViewModel: ObservableObject {
         self.queryExtractor = queryExtractor
         self.toolSelector = toolSelector
         self.toolExecutor = toolExecutor
-        self.useSimulatorFastGroundedQA = useSimulatorFastGroundedQA
+        self.useFastGroundedQA = useFastGroundedQA
         self.welcomeGreetingProvider = welcomeGreetingProvider
         seedWelcomeMessage()
     }
@@ -280,33 +306,30 @@ final class ChatViewModel: ObservableObject {
             lastTelcoVector = result.vector
             lastTelcoLane = result.lane
 
-            // Deterministic post-classifier overrides. Each runs only
-            // on unambiguous patterns that the LFM heads can't
-            // represent in their fixed schemas:
-            //   1. PersonalSummaryDetector — "summarize my X" / "show
-            //      me my X" / "what devices are on my network" → the
-            //      `personalSummary` lane that reads CustomerContext.
-            //      Without this, the classifier picks `run_diagnostics`
-            //      because that's the closest tool-vocab token.
-            //   2. ImperativeToolDetector — "pause internet for kid",
-            //      "restart wifi extender" → the iOS-only tools that
-            //      the 6-class `required_tool` head can't represent.
-            //
-            // Order matters: PersonalSummary is checked first because
-            // its triggers ("show me my", "summarize") are more
-            // specific than imperative verbs alone.
-            let summaryAware = applyPersonalSummaryOverride(
-                decision: result.decision,
-                query: query
-            )
-            let overridden = applyImperativeToolOverride(
-                decision: summaryAware,
-                query: query,
-                extraction: extraction
+            if let lane = result.lane,
+               await dispatchTerminalTelcoLaneIfNeeded(
+                    lane,
+                    query: query,
+                    extraction: extraction,
+                    containsPII: containsPII
+               ) {
+                return
+            }
+
+            // ADR-015 emits the rich 9-head vector, but the customer-
+            // visible branch should be owned by the model that was
+            // trained/evaluated for chat mode boundaries. This preserves
+            // the shared classifier trace while preventing a compact
+            // `routing_lane` head from overloading "why/how" questions
+            // into diagnostic tool actions.
+            let modePrediction = await chatModeRouter.classify(query: query)
+            let modelRouted = TelcoModelModeArbiter.arbitrate(
+                candidate: result.decision,
+                modePrediction: modePrediction
             )
 
             await dispatch(
-                overridden,
+                modelRouted,
                 query: query,
                 extraction: extraction,
                 containsPII: containsPII
@@ -314,9 +337,8 @@ final class ChatViewModel: ObservableObject {
             return
         }
 
-        // 2) Classify mode via LFM fallback. Pure routing decision — no
-        //    lexical retrieval, no TF-IDF. The model picks one of
-        //    four mutually-exclusive branches.
+        // 2) Classify mode via LFM fallback. Pure routing decision:
+        //    the model picks one of four mutually-exclusive branches.
         let modePrediction = await chatModeRouter.classify(query: query)
 
         // 3) Dispatch on the chat mode. KB retrieval runs only on the
@@ -366,102 +388,46 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    /// Deterministic override that converts a `kbQuestion` or
-    /// `toolAction` decision into a `personalSummary` when the query
-    /// is unambiguously asking the assistant to *read out* the user's
-    /// own data ("summarize my home network", "show my connected
-    /// devices"). The LFM heads don't have a "show my data" slot, so
-    /// the classifier defaults to either `run_diagnostics` (because
-    /// that's the closest tool-vocab token) or `local_answer`
-    /// (KB lookup). Neither is what the user wants.
-    private func applyPersonalSummaryOverride(
-        decision: TelcoRoutingDecision,
-        query: String
-    ) -> TelcoRoutingDecision {
-        guard PersonalSummaryDetector.detect(query) else { return decision }
-
-        // Already a personalSummary? Nothing to do.
-        if case .personalSummary = decision { return decision }
-
-        let priorPrediction: ChatModePrediction
-        switch decision {
-        case .kbQuestion(let p, _),
-             .toolAction(let p, _),
-             .personalSummary(let p),
-             .outOfScope(let p):
-            priorPrediction = p
-        }
-
-        AppLog.intelligence.info("personal-summary override: classifier=\(priorPrediction.mode.rawValue, privacy: .public) → personalSummary for query")
-
-        let promoted = ChatModePrediction(
-            mode: .personalSummary,
-            confidence: max(0.85, priorPrediction.confidence),
-            reasoning: "personal-summary override: \(priorPrediction.reasoning) → personalSummary",
-            runtimeMS: priorPrediction.runtimeMS
-        )
-        return .personalSummary(modePrediction: promoted)
-    }
-
-    /// Deterministic override that converts a `kbQuestion` decision
-    /// into a `toolAction` when the query is an unambiguous imperative
-    /// for an iOS-only tool the classifier head cannot represent.
-    /// Returns the decision unchanged when no imperative pattern hits.
-    private func applyImperativeToolOverride(
-        decision: TelcoRoutingDecision,
-        query: String,
-        extraction: ExtractionResult
-    ) -> TelcoRoutingDecision {
-        guard case .kbQuestion(let modePrediction, _) = decision else {
-            return decision
-        }
-        guard let intent = ImperativeToolDetector.detect(query),
-              let _ = toolRegistry.tool(for: intent) else {
-            return decision
-        }
-        AppLog.intelligence.info("imperative override: classifier=kbQuestion → tool=\(intent.rawValue, privacy: .public) for query")
-
-        // Promote the prediction's mode to `.toolAction` so the trace
-        // and downstream surfaces reflect the actual decision.
-        let promotedPrediction = ChatModePrediction(
-            mode: .toolAction,
-            confidence: max(0.85, modePrediction.confidence),
-            reasoning: "imperative override: \(modePrediction.reasoning) → toolAction(\(intent.rawValue))",
-            runtimeMS: modePrediction.runtimeMS
-        )
-        let selection = ToolSelection(
-            intent: intent,
-            confidence: 0.95,
-            arguments: imperativeOverrideArguments(intent: intent, extraction: extraction),
-            reasoning: "deterministic imperative pattern (iOS-only tool, not in classifier schema)",
-            runtimeMS: 0
-        )
-        return .toolAction(modePrediction: promotedPrediction, selection: selection)
-    }
-
-    private func imperativeOverrideArguments(
-        intent: ToolIntent,
-        extraction: ExtractionResult
-    ) -> ToolArguments {
-        switch intent {
-        case .toggleParentalControls:
-            var values: [String: String] = ["action": "pause_internet"]
-            if let target = extraction.targetDevice {
-                values["target_device"] = target
-            }
-            return ToolArguments(values)
-        case .rebootExtender:
-            var values: [String: String] = [:]
-            if let location = extraction.locationHint {
-                values["extender_name"] = location
-            }
-            return ToolArguments(values)
-        default:
-            return .empty
-        }
-    }
-
     // MARK: - Path handlers
+
+    private func dispatchTerminalTelcoLaneIfNeeded(
+        _ lane: TelcoLaneDecision,
+        query: String,
+        extraction: ExtractionResult,
+        containsPII: Bool
+    ) async -> Bool {
+        switch lane {
+        case .cloudAssist:
+            routingStage = .composing
+            await runCloudAssist(
+                query: query,
+                lane: lane,
+                extraction: extraction,
+                containsPII: containsPII
+            )
+            return true
+        case .humanEscalation, .blocked:
+            // These policy lanes are terminal for the customer-visible
+            // dispatch as well, but the demo currently renders them
+            // through the local refusal surface. Keep that behavior
+            // explicit so chat-mode cannot accidentally turn policy
+            // decisions into profile summaries.
+            routingStage = .composing
+            await runOutOfScope(
+                query: query,
+                modePrediction: ChatModePrediction(
+                    mode: .outOfScope,
+                    confidence: lastTelcoVector?.routingLane.confidence ?? 1.0,
+                    reasoning: Self.terminalLaneReason(lane),
+                    runtimeMS: 0
+                ),
+                extraction: extraction
+            )
+            return true
+        case .localAnswer, .localTool, .degraded:
+            return false
+        }
+    }
 
     private func dispatch(
         _ decision: TelcoRoutingDecision,
@@ -472,12 +438,12 @@ final class ChatViewModel: ObservableObject {
         switch decision {
         case .kbQuestion(let modePrediction, let routerCitation):
             routingStage = .searching
-            // Source-of-truth for KB citation is the LFM-embedding RAG
+            // Source-of-truth for KB citation is the configured KB
             // extractor wired in `AppState.buildLFMStack`. The router-
             // provided citation is `.noMatch` by design — see
             // `TelcoDecisionRouter.route` for the why. This call runs
-            // mean-pool over LFM2.5-350M hidden states (no LoRA), then
-            // cosine over the pre-built KB index.
+            // retrieval only after the chat-mode LFM has selected the
+            // question branch.
             let retrievalStart = Date()
             let citation = await kbExtractor.extract(query: query, kb: kb.entries)
             let retrievalMS = Int(Date().timeIntervalSince(retrievalStart) * 1000)
@@ -499,7 +465,7 @@ final class ChatViewModel: ObservableObject {
                 modePrediction: modePrediction,
                 extraction: extraction,
                 containsPII: containsPII,
-                preselectedToolSelection: selection
+                preselectedToolSelection: selection.intent == nil ? nil : selection
             )
 
         case .personalSummary(let modePrediction):
@@ -520,6 +486,56 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    private func runCloudAssist(
+        query: String,
+        lane: TelcoLaneDecision,
+        extraction: ExtractionResult,
+        containsPII: Bool
+    ) async {
+        guard case .cloudAssist(let supportIntent, let requirements, let missingSlots, let piiRisk, let reason) = lane else {
+            return
+        }
+
+        let visibleMS = telcoClassifierRuntimeMS
+        let text = Self.cloudAssistResponse(
+            supportIntent: supportIntent,
+            requirements: requirements,
+            missingSlots: missingSlots
+        )
+        let inputTokens = TokenEstimator.estimate(query)
+        let outputTokens = TokenEstimator.estimate(text)
+        let pipelineTrace = currentTelcoPipelineTrace(
+            totalLatencyMS: visibleMS,
+            answerSummary: "Cloud assist payload prepared",
+            target: "Cloud assist",
+            laneLabel: "Cloud assist (\(requirements.count) requirement\(requirements.count == 1 ? "" : "s"))",
+            laneReason: reason
+        )
+
+        let message = ChatMessage(
+            role: .assistant,
+            text: text,
+            routing: RoutingSummary(
+                path: .cloudAssist,
+                toolIntent: nil,
+                containsPII: containsPII || piiRisk != .safe,
+                confidence: lastTelcoVector?.routingLane.confidence
+            ),
+            latencyMS: visibleMS,
+            trace: CallTrace(
+                surface: .cloudAssist,
+                inferenceMS: visibleMS,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                extraction: extraction,
+                telcoPipeline: pipelineTrace
+            )
+        )
+        tokenLedger.recordDeflection()
+        messages.append(message)
+        sessionStats.recordLatency(visibleMS)
+    }
+
     private func runGroundedQA(
         query: String,
         citation: KBCitation,
@@ -531,9 +547,8 @@ final class ChatViewModel: ObservableObject {
         // Resolve the cited KB entry if the extractor returned a
         // match. A `.noMatch` citation or a hallucinated id (already
         // guarded by `LFMKBExtractor`) falls back to the synthetic
-        // "no match" stub so the grounded-QA prompt still runs —
-        // the prompt tells the model to say "no matching article"
-        // when the reference doesn't fit.
+        // "no match" stub so both the fast renderer and optional
+        // generative path have a trusted local article boundary.
         let topEntry: KBEntry
         if citation.entryId == EmbeddingKBExtractor.loadingEntryID {
             // KB embedding index is still building (cold-start window,
@@ -546,12 +561,20 @@ final class ChatViewModel: ObservableObject {
         } else {
             topEntry = fallbackEntryForEmptyKB()
         }
-        if useSimulatorFastGroundedQA {
+        if useFastGroundedQA {
             let displayText = Self.compactGroundedAnswer(topEntry.answer)
             let inputTokens = TokenEstimator.estimate(query)
             let outputTokens = TokenEstimator.estimate(displayText)
-            let visibleMS = modePrediction.runtimeMS + retrievalMS
+            let visibleMS = telcoClassifierRuntimeMS + modePrediction.runtimeMS + retrievalMS
             tokenLedger.recordOnDevice(inputTokens: inputTokens, outputTokens: outputTokens)
+            let pipelineTrace = currentTelcoPipelineTrace(
+                totalLatencyMS: visibleMS,
+                downstreamStep: Self.kbPipelineStep(citation: citation, entry: topEntry, retrievalMS: retrievalMS),
+                answerSummary: "On-device KB grounded answer",
+                target: "Local answer",
+                laneLabel: "Local answer",
+                laneReason: citation.isMatch ? "answered from on-device KB" : "no matching KB article"
+            )
 
             var message = ChatMessage(
                 role: .assistant,
@@ -578,7 +601,7 @@ final class ChatViewModel: ObservableObject {
                     chatModeConfidence: modePrediction.confidence,
                     chatModeRuntimeMS: modePrediction.runtimeMS,
                     extraction: extraction,
-                    telcoPipeline: currentTelcoPipelineTrace()
+                    telcoPipeline: pipelineTrace
                 )
             )
             attachNBAIfAvailable(to: &message, query: query)
@@ -604,6 +627,20 @@ final class ChatViewModel: ObservableObject {
             let displayText = Self.isTerseGeneration(response.text)
                 ? Self.firstParagraph(of: topEntry.answer)
                 : response.text
+            let visibleMS = telcoClassifierRuntimeMS + modePrediction.runtimeMS + retrievalMS + response.latencyMS
+            let pipelineTrace = currentTelcoPipelineTrace(
+                totalLatencyMS: visibleMS,
+                downstreamStep: Self.groundedResponsePipelineStep(
+                    citation: citation,
+                    entry: topEntry,
+                    retrievalMS: retrievalMS,
+                    responseMS: response.latencyMS
+                ),
+                answerSummary: "On-device KB grounded answer",
+                target: "Local answer",
+                laneLabel: "Local answer",
+                laneReason: citation.isMatch ? "retrieved local KB article and composed answer" : "no matching KB article"
+            )
             var message = ChatMessage(
                 role: .assistant,
                 text: displayText,
@@ -615,7 +652,7 @@ final class ChatViewModel: ObservableObject {
                 ),
                 sourceEntry: citation.isMatch ? topEntry : nil,
                 deepLinks: response.deepLinks,
-                latencyMS: modePrediction.runtimeMS + retrievalMS + response.latencyMS,
+                latencyMS: visibleMS,
                 trace: CallTrace(
                     surface: .onDeviceRAG,
                     retrievalMS: retrievalMS,
@@ -629,7 +666,7 @@ final class ChatViewModel: ObservableObject {
                     chatModeConfidence: modePrediction.confidence,
                     chatModeRuntimeMS: modePrediction.runtimeMS,
                     extraction: extraction,
-                    telcoPipeline: currentTelcoPipelineTrace()
+                    telcoPipeline: pipelineTrace
                 )
             )
             attachNBAIfAvailable(to: &message, query: query)
@@ -708,9 +745,22 @@ final class ChatViewModel: ObservableObject {
 
         // Real on-device LFM time that the user waited on: ChatModeRouter
         // (classify the 4-way gate) + ToolSelector (pick tool + extract
-        // args). Both are LFM calls with LoRA adapter swaps. The final
-        // framing sentence is deterministic, so no third inference to add.
-        let onDeviceMS = modePrediction.runtimeMS + toolSelection.runtimeMS
+        // args) plus the shared ADR classifyAll pass when present. The
+        // final framing sentence is deterministic, so no third inference
+        // to add.
+        let onDeviceMS = telcoClassifierRuntimeMS + modePrediction.runtimeMS + toolSelection.runtimeMS
+        let pipelineTrace = currentTelcoPipelineTrace(
+            totalLatencyMS: onDeviceMS,
+            downstreamStep: Self.toolSelectionPipelineStep(
+                tool: tool,
+                selection: toolSelection,
+                modePrediction: modePrediction
+            ),
+            answerSummary: "On-device tool proposal",
+            target: "Local tool · \(tool.displayName)",
+            laneLabel: "Local tool · \(tool.displayName)",
+            laneReason: toolSelection.reasoning.isEmpty ? nil : toolSelection.reasoning
+        )
         var message = ChatMessage(
             role: .assistant,
             text: framingText,
@@ -739,7 +789,7 @@ final class ChatViewModel: ObservableObject {
                 extraction: extraction,
                 toolSelectionReasoning: toolSelection.reasoning.isEmpty ? nil : toolSelection.reasoning,
                 toolSelectionConfidence: toolSelection.confidence,
-                telcoPipeline: currentTelcoPipelineTrace()
+                telcoPipeline: pipelineTrace
             )
         )
         attachNBAIfAvailable(to: &message, query: query)
@@ -787,6 +837,127 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    private static func cloudAssistResponse(
+        supportIntent: TelcoSupportIntent,
+        requirements: [TelcoCloudRequirement],
+        missingSlots: [TelcoSlotKind]
+    ) -> String {
+        let system = cloudAssistSystemName(for: supportIntent)
+        let needs = requirements.isEmpty
+            ? "live carrier systems"
+            : TelcoLabelDisplay.list(requirements.map(\.rawValue)).lowercased()
+        var text = "To answer that, I need \(system). I've prepared a cloud-assist handoff with only the required context: \(needs)."
+        if !missingSlots.isEmpty {
+            text += " It also needs \(missingSlots.count) missing field\(missingSlots.count == 1 ? "" : "s") before submission."
+        }
+        text += " Nothing has been sent from the app yet."
+        return text
+    }
+
+    private static func cloudAssistSystemName(for supportIntent: TelcoSupportIntent) -> String {
+        switch supportIntent {
+        case .outage:
+            return "live outage status from the carrier network"
+        case .billing:
+            return "the carrier billing system"
+        case .appointment:
+            return "the carrier appointment system"
+        case .planAccount:
+            return "live account and plan data"
+        case .troubleshooting, .deviceSetup, .equipmentReturn, .agentHandoff, .unknown:
+            return "live carrier systems"
+        }
+    }
+
+    private static func terminalLaneReason(_ lane: TelcoLaneDecision) -> String {
+        switch lane {
+        case .cloudAssist(_, _, _, _, let reason),
+             .humanEscalation(_, let reason),
+             .localAnswer(_, let reason),
+             .localTool(_, _, let reason),
+             .degraded(let reason):
+            return reason
+        case .blocked(let reason):
+            return "blocked: \(reason)"
+        }
+    }
+
+    private static func modeRoutingPipelineStep(
+        _ prediction: ChatModePrediction
+    ) -> TelcoPipelineTrace.Step {
+        TelcoPipelineTrace.Step(
+            id: "mode_routing",
+            title: "Mode Routing",
+            detail: prediction.mode.displayName,
+            modelTag: lfmStageTag(from: prediction.reasoning),
+            confidence: prediction.confidence,
+            latencyMs: Double(prediction.runtimeMS)
+        )
+    }
+
+    private static func kbPipelineStep(
+        citation: KBCitation,
+        entry: KBEntry,
+        retrievalMS: Int
+    ) -> TelcoPipelineTrace.Step {
+        TelcoPipelineTrace.Step(
+            id: "kb_retrieval",
+            title: "KB Retrieval",
+            detail: citation.isMatch ? entry.topic : "no matching KB article",
+            modelTag: "on-device knowledge base",
+            confidence: citation.isMatch ? citation.confidence : nil,
+            latencyMs: Double(retrievalMS)
+        )
+    }
+
+    private static func groundedResponsePipelineStep(
+        citation: KBCitation,
+        entry: KBEntry,
+        retrievalMS: Int,
+        responseMS: Int
+    ) -> TelcoPipelineTrace.Step {
+        TelcoPipelineTrace.Step(
+            id: "grounded_response",
+            title: "Grounded Response",
+            detail: citation.isMatch ? entry.topic : "no matching KB article",
+            modelTag: "local KB + LFM response",
+            confidence: citation.isMatch ? citation.confidence : nil,
+            latencyMs: Double(retrievalMS + responseMS)
+        )
+    }
+
+    private static func toolSelectionPipelineStep(
+        tool: Tool,
+        selection: ToolSelection,
+        modePrediction: ChatModePrediction
+    ) -> TelcoPipelineTrace.Step {
+        let selectorLatency = modePrediction.runtimeMS + selection.runtimeMS
+        let detail = selection.arguments.values.isEmpty
+            ? tool.displayName
+            : "\(tool.displayName) · \(selection.arguments.values.count) slot\(selection.arguments.values.count == 1 ? "" : "s")"
+        let tag = selection.runtimeMS == 0
+            ? "shared classifier"
+            : lfmStageTag(from: selection.reasoning)
+        return TelcoPipelineTrace.Step(
+            id: "tool_selection",
+            title: "Tool Selection",
+            detail: detail,
+            modelTag: tag,
+            confidence: selection.confidence,
+            latencyMs: Double(selectorLatency)
+        )
+    }
+
+    private static func lfmStageTag(from reasoning: String) -> String {
+        if reasoning.localizedCaseInsensitiveContains("classifier head") {
+            return "LFM classifier head"
+        }
+        if reasoning.localizedCaseInsensitiveContains("ADR-015") {
+            return "shared classifier"
+        }
+        return "LFM routing adapter"
+    }
+
     private func runPersonalizedSummary(
         query: String,
         modePrediction: ChatModePrediction,
@@ -812,16 +983,32 @@ final class ChatViewModel: ObservableObject {
         // (verified via scripts/test_telco_chat_pipeline_local.py). See F8 in
         // FEATURES.yaml for the v2 plan that reintroduces LFM-generated
         // summaries once we have a summarizer adapter.
-        let text: String =
-            Self.isBillingQuery(query)
-                ? Self.billingResponse(profile: profile)
-                : Self.personalSummaryResponse(query: query, profile: profile)
+        let text: String
+        if Self.isBillingQuery(query) {
+            text = Self.billingResponse(profile: profile)
+        } else if let homeNetworkAnswer = Self.homeNetworkFieldResponse(
+            query: query,
+            profile: profile
+        ) {
+            text = homeNetworkAnswer
+        } else {
+            text = Self.personalSummaryResponse(query: query, profile: profile)
+        }
 
         // The ChatModeRouter is a real on-device LFM inference — its
         // latency is what the user actually waited on, and it's what
         // should show in the "On-device · …ms" badge. The final text
         // is composed in Swift from the profile data (see F8 for the
         // v2 summarizer that replaces the Swift-side composer).
+        let visibleMS = telcoClassifierRuntimeMS + modePrediction.runtimeMS
+        let pipelineTrace = currentTelcoPipelineTrace(
+            totalLatencyMS: visibleMS,
+            downstreamStep: Self.modeRoutingPipelineStep(modePrediction),
+            answerSummary: "On-device customer profile answer",
+            target: "Local profile",
+            laneLabel: "Personal summary",
+            laneReason: modePrediction.reasoning
+        )
         let message = ChatMessage(
             role: .assistant,
             text: text,
@@ -831,7 +1018,7 @@ final class ChatViewModel: ObservableObject {
                 containsPII: false,
                 confidence: modePrediction.confidence
             ),
-            latencyMS: modePrediction.runtimeMS,
+            latencyMS: visibleMS,
             trace: CallTrace(
                 surface: .onDeviceRAG,
                 retrievalMS: nil,
@@ -842,12 +1029,12 @@ final class ChatViewModel: ObservableObject {
                 chatModeConfidence: modePrediction.confidence,
                 chatModeRuntimeMS: modePrediction.runtimeMS,
                 extraction: extraction,
-                telcoPipeline: currentTelcoPipelineTrace()
+                telcoPipeline: pipelineTrace
             )
         )
         tokenLedger.recordDeflection()
         messages.append(message)
-        sessionStats.recordLatency(modePrediction.runtimeMS)
+        sessionStats.recordLatency(visibleMS)
     }
 
     private func runOutOfScope(
@@ -869,6 +1056,15 @@ final class ChatViewModel: ObservableObject {
         // on — it's the on-device LFM call that decided this was
         // out-of-scope. Showing its runtime in the badge (rather than
         // 0ms) is honest about what the model did.
+        let visibleMS = telcoClassifierRuntimeMS + modePrediction.runtimeMS
+        let pipelineTrace = currentTelcoPipelineTrace(
+            totalLatencyMS: visibleMS,
+            downstreamStep: Self.modeRoutingPipelineStep(modePrediction),
+            answerSummary: "Refused locally",
+            target: "Out of scope",
+            laneLabel: "Out of scope",
+            laneReason: modePrediction.reasoning
+        )
         let message = ChatMessage(
             role: .assistant,
             text: Self.outOfScopeRefusal,
@@ -878,7 +1074,7 @@ final class ChatViewModel: ObservableObject {
                 containsPII: false,
                 confidence: modePrediction.confidence
             ),
-            latencyMS: modePrediction.runtimeMS,
+            latencyMS: visibleMS,
             trace: CallTrace(
                 surface: .onDeviceRAG,
                 retrievalMS: nil,
@@ -889,11 +1085,11 @@ final class ChatViewModel: ObservableObject {
                 chatModeConfidence: modePrediction.confidence,
                 chatModeRuntimeMS: modePrediction.runtimeMS,
                 extraction: extraction,
-                telcoPipeline: currentTelcoPipelineTrace()
+                telcoPipeline: pipelineTrace
             )
         )
         messages.append(message)
-        sessionStats.recordLatency(modePrediction.runtimeMS)
+        sessionStats.recordLatency(visibleMS)
     }
 
     private static let outOfScopeRefusal =
@@ -957,6 +1153,30 @@ final class ChatViewModel: ObservableObject {
             options: [.caseInsensitive]
         )
     }()
+
+    /// Answers specific customer-owned network facts from `CustomerContext`.
+    /// The mode classifier is correct to treat "my SSID" as personal
+    /// account state; this resolver keeps that path precise instead of
+    /// collapsing every personal-summary query into a broad household recap.
+    static func homeNetworkFieldResponse(
+        query: String,
+        profile: CustomerProfile
+    ) -> String? {
+        switch CustomerProfileFactResolver().resolve(query) {
+        case .homeSSID:
+            let network = profile.homeNetwork
+            var sentences = [
+                "\(profile.firstName), your Wi-Fi network name (SSID) is \(network.ssid)."
+            ]
+            if let guest = network.guestSSID, !guest.isEmpty {
+                sentences.append("Your guest network is \(guest).")
+            }
+            sentences.append("Security is set to \(network.securityMode).")
+            return sentences.joined(separator: " ")
+        case nil:
+            return nil
+        }
+    }
 
     /// Deterministic household summary populated from the profile.
     /// The 350M base, given raw profile fields + "write a summary,"

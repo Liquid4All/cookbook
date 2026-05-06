@@ -26,6 +26,8 @@ import os.log
 /// existing `VoiceCoordinator` isolation model.
 @MainActor
 public final class LFMAudioTranscriber: VoiceTranscriber {
+    public let stopBehavior: VoiceStopBehavior = .awaitFinalEventAfterStop
+
     // MARK: - Constants
 
     /// HuggingFace repo hosting the LEAP bundle manifest + GGUFs.
@@ -147,9 +149,12 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
 
         let input = audioEngine.inputNode
         let recordingFormat = input.outputFormat(forBus: 0)
-        captureSampleRate = recordingFormat.sampleRate
+        let tapFormat = AudioTapInstaller.isValid(recordingFormat) ? recordingFormat : nil
+        captureSampleRate = AudioTapInstaller.isValid(recordingFormat)
+            ? recordingFormat.sampleRate
+            : Self.targetSampleRate
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: 4_096, format: recordingFormat) { [weak self] buffer, _ in
+        try AudioTapInstaller.install(on: input, bufferSize: 4_096, format: tapFormat) { [weak self] buffer, _ in
             // Buffer callbacks fire off the main actor — hop back before
             // touching `capturedSamples`.
             Task { @MainActor [weak self] in
@@ -159,7 +164,7 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
 
         audioEngine.prepare()
         try audioEngine.start()
-        logger.info("Recording started (rate=\(recordingFormat.sampleRate))")
+        logger.info("Recording started (rate=\(self.captureSampleRate))")
 
         return stream
     }
@@ -254,6 +259,9 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
     // MARK: - Audio capture
 
     private func appendSamples(_ buffer: AVAudioPCMBuffer) {
+        if AudioTapInstaller.isValid(buffer.format) {
+            captureSampleRate = buffer.format.sampleRate
+        }
         guard let channelData = buffer.floatChannelData?[0] else { return }
         let frameCount = Int(buffer.frameLength)
         let bufferPointer = UnsafeBufferPointer(start: channelData, count: frameCount)
@@ -267,6 +275,8 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
 
     private func configureAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
+        // Capture in the route's native format and resample to 16 kHz before
+        // LFM2.5-Audio inference. This avoids simulator/device tap crashes.
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionActive = true

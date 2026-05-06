@@ -62,4 +62,10 @@ final class LFMAudioTranscriberTests: XCTestCase {
             "https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF-LEAP/resolve/main/leap/Q4_0.json"
         )
     }
+
+    func test_audioInputTapFormat_rejectsZeroRateOrChannels() {
+        XCTAssertFalse(AudioTapInstaller.isValid(sampleRate: 0, channelCount: 1))
+        XCTAssertFalse(AudioTapInstaller.isValid(sampleRate: 16_000, channelCount: 0))
+        XCTAssertTrue(AudioTapInstaller.isValid(sampleRate: 16_000, channelCount: 1))
+    }
 }

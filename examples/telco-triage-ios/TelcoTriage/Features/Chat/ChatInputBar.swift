@@ -6,6 +6,7 @@ struct ChatInputBar: View {
     let isProcessing: Bool
     let attachedImage: UIImage?
     let isListening: Bool
+    let isTranscribing: Bool
     let listeningPartial: String
     /// Non-nil when the last voice attempt failed (permissions denied,
     /// session refused, etc.). Shown inline so "nothing happens" stops
@@ -28,10 +29,10 @@ struct ChatInputBar: View {
             if let image = attachedImage {
                 attachmentChip(image)
             }
-            if isListening {
+            if isListening || isTranscribing {
                 listeningStrip
             }
-            if let err = voiceError, !isListening {
+            if let err = voiceError, !isListening && !isTranscribing {
                 voiceErrorStrip(err)
             }
             HStack(spacing: 8) {
@@ -98,12 +99,12 @@ struct ChatInputBar: View {
                 .onDisappear { pulseOn = false }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(listeningPartial.isEmpty ? "Listening… tap Stop when done" : listeningPartial)
+                Text(voiceStatusText)
                     .font(.callout)
                     .foregroundStyle(brand.textPrimary)
                     .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
-                if !listeningPartial.isEmpty {
+                if !listeningPartial.isEmpty || isTranscribing {
                     Text("On-device · nothing leaves your phone")
                         .font(.caption2)
                         .foregroundStyle(brand.textSecondary)
@@ -112,19 +113,21 @@ struct ChatInputBar: View {
 
             Spacer()
 
-            // Full-size Stop button — primary-filled so it reads as
-            // the main action on this strip.
-            Button(action: onMicTap) {
-                HStack(spacing: 6) {
-                    Image(systemName: "stop.fill")
-                    Text("Stop")
+            if isListening {
+                // Full-size Stop button — primary-filled so it reads as
+                // the main action on this strip.
+                Button(action: onMicTap) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "stop.fill")
+                        Text("Stop")
+                    }
+                    .font(.subheadline).fontWeight(.semibold)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(brand.primary, in: Capsule())
+                    .foregroundStyle(brand.onPrimary)
                 }
-                .font(.subheadline).fontWeight(.semibold)
-                .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(brand.primary, in: Capsule())
-                .foregroundStyle(brand.onPrimary)
+                .accessibilityLabel("Stop recording and place text in input field")
             }
-            .accessibilityLabel("Stop recording and place text in input field")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -133,6 +136,13 @@ struct ChatInputBar: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(brand.primary.opacity(0.25), lineWidth: 1)
         )
+    }
+
+    private var voiceStatusText: String {
+        if isTranscribing {
+            return listeningPartial.isEmpty ? "Transcribing locally…" : listeningPartial
+        }
+        return listeningPartial.isEmpty ? "Listening… tap Stop when done" : listeningPartial
     }
 
     private var cameraButton: some View {
@@ -165,10 +175,17 @@ struct ChatInputBar: View {
         Button(action: onMicTap) {
             Image(systemName: isListening ? "mic.fill" : "mic")
                 .font(.system(size: 22))
-                .foregroundStyle(isListening ? brand.primary : brand.textSecondary)
+                .foregroundStyle(micForeground)
                 .frame(width: 36, height: 36)
         }
+        .disabled(isTranscribing)
         .accessibilityLabel(isListening ? "Stop recording" : "Voice input")
+    }
+
+    private var micForeground: Color {
+        if isListening { return brand.primary }
+        if isProcessing || isTranscribing { return brand.textSecondary.opacity(0.35) }
+        return brand.textSecondary
     }
 
     private var sendButton: some View {

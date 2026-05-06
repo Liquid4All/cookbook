@@ -1,14 +1,13 @@
 import XCTest
 @testable import TelcoTriage
 
-/// Pin-down tests for the deterministic primitives that replaced the
-/// brittle ML approaches:
-///   - `TelcoTopicGate` — off-topic refusal
-///   - `KeywordKBExtractor` — KB selection over curated aliases
-///   - `ImperativeToolDetector` — iOS-only tool overrides
-///
-/// Every failing scenario the user reported gets a test here. If a
-/// regression sneaks in, these tests catch it before the build ships.
+    /// Pin-down tests for deterministic primitives that stay outside the
+    /// learned routing path:
+    ///   - `TelcoTopicGate` — off-topic refusal
+    ///   - `KeywordKBExtractor` — KB selection over curated aliases
+    ///
+    /// Every failing scenario the user reported gets a test here. If a
+    /// regression sneaks in, these tests catch it before the build ships.
 final class TelcoFirstPrinciplePrimitivesTests: XCTestCase {
     // MARK: - Topic gate
 
@@ -76,92 +75,6 @@ final class TelcoFirstPrinciplePrimitivesTests: XCTestCase {
             kb: TelcoFirstPrinciplePrimitivesTests.fixtureKB()
         )
         XCTAssertEqual(citation.entryId, KBCitation.noMatchID)
-    }
-
-    // MARK: - Imperative tool detector — schema-missing tools
-
-    func test_imperativeDetector_pauseInternetForKid() {
-        XCTAssertEqual(
-            ImperativeToolDetector.detect("pause internet for my son's tablet"),
-            .toggleParentalControls
-        )
-    }
-
-    func test_imperativeDetector_blockKidsWifi() {
-        XCTAssertEqual(
-            ImperativeToolDetector.detect("block wifi for the kids"),
-            .toggleParentalControls
-        )
-    }
-
-    func test_imperativeDetector_restartExtender() {
-        XCTAssertEqual(
-            ImperativeToolDetector.detect("restart the wifi extender upstairs"),
-            .rebootExtender
-        )
-    }
-
-    func test_imperativeDetector_resetMeshNode() {
-        XCTAssertEqual(
-            ImperativeToolDetector.detect("reset the mesh node in the bedroom"),
-            .rebootExtender
-        )
-    }
-
-    func test_imperativeDetector_doesNotOverrideHowToQuestion() {
-        // "How do I pause internet" is a real KB lookup question.
-        // The override must NOT fire — classifier output stands.
-        XCTAssertNil(ImperativeToolDetector.detect("how do I pause internet for my kid"))
-    }
-
-    func test_imperativeDetector_doesNotOverrideWhatIsQuestion() {
-        XCTAssertNil(ImperativeToolDetector.detect("what is parental controls"))
-    }
-
-    func test_imperativeDetector_ignoresUnrelatedQueries() {
-        XCTAssertNil(ImperativeToolDetector.detect("how do I share wifi with a guest"))
-        XCTAssertNil(ImperativeToolDetector.detect("what is the ssid"))
-        XCTAssertNil(ImperativeToolDetector.detect("restart my router"))   // restart_gateway is in-schema
-    }
-
-    // MARK: - Personal summary detector — "show me my data"
-
-    func test_personalSummaryDetector_summarizeMyHomeNetwork() {
-        // The exact failure the user flagged: "summarize my home
-        // network" was being routed to run_diagnostics. It's a
-        // status read, not a fix-it action.
-        XCTAssertTrue(PersonalSummaryDetector.detect("summarize my home network"))
-    }
-
-    func test_personalSummaryDetector_showMyConnectedDevices() {
-        XCTAssertTrue(PersonalSummaryDetector.detect("show my connected devices"))
-        XCTAssertTrue(PersonalSummaryDetector.detect("show me my connected devices"))
-    }
-
-    func test_personalSummaryDetector_whatDevices() {
-        XCTAssertTrue(PersonalSummaryDetector.detect("what devices are on my network"))
-        XCTAssertTrue(PersonalSummaryDetector.detect("which devices are connected"))
-    }
-
-    func test_personalSummaryDetector_doesNotFireOnUnrelatedSummary() {
-        // No personal-data noun → not a personalSummary signal.
-        XCTAssertFalse(PersonalSummaryDetector.detect("summarize this article"))
-        XCTAssertFalse(PersonalSummaryDetector.detect("give me a summary of news"))
-    }
-
-    func test_personalSummaryDetector_doesNotFireOnHowToQuestion() {
-        // "how do I view my devices" is a KB question, not a
-        // personalSummary read — the user wants steps, not data.
-        // The detector keys on phrases like "show my" / "summarize"
-        // / "what devices", which "how do I view my devices" doesn't
-        // contain.
-        XCTAssertFalse(PersonalSummaryDetector.detect("how do I view my devices"))
-    }
-
-    func test_personalSummaryDetector_ignoresActionRequests() {
-        XCTAssertFalse(PersonalSummaryDetector.detect("restart my router"))
-        XCTAssertFalse(PersonalSummaryDetector.detect("pause internet for my son's tablet"))
-        XCTAssertFalse(PersonalSummaryDetector.detect("what is the ssid"))
     }
 
     // MARK: - Fixtures

@@ -1,10 +1,16 @@
 import Foundation
+import AVFoundation
 
 /// Protocol for on-device speech-to-text. Defaults to Apple's
 /// SFSpeechRecognizer (built in) so voice works before any pack is
 /// downloaded — after the audio pack is installed, a richer LFM-based
 /// transcriber takes over for accented / noisy audio.
 public protocol VoiceTranscriber: Sendable {
+    /// How the transcriber produces the final transcript when the user taps
+    /// Stop. Apple Speech usually has useful partials before stop; LFM audio
+    /// records first, then runs ASR and emits the final text after stop.
+    var stopBehavior: VoiceStopBehavior { get }
+
     /// Start listening. Returns a stream of partial and final transcripts.
     /// Implementations should emit at least one `.final` before finishing.
     func startListening() async throws -> AsyncStream<TranscriptionEvent>
@@ -20,7 +26,14 @@ public protocol VoiceTranscriber: Sendable {
 }
 
 public extension VoiceTranscriber {
+    var stopBehavior: VoiceStopBehavior { .finalizeFromLatestPartial }
+
     func releaseResources() async { /* no-op by default */ }
+}
+
+public enum VoiceStopBehavior: Sendable {
+    case finalizeFromLatestPartial
+    case awaitFinalEventAfterStop
 }
 
 public enum TranscriptionEvent: Sendable {
@@ -29,8 +42,56 @@ public enum TranscriptionEvent: Sendable {
     case error(String)
 }
 
-public enum TranscriptionError: Error {
+public enum TranscriptionError: LocalizedError {
     case permissionDenied
     case unavailable
     case recognitionFailed(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .permissionDenied:
+            return "Microphone or speech recognition permission was denied."
+        case .unavailable:
+            return "No valid microphone input route is available."
+        case .recognitionFailed(let message):
+            return message
+        }
+    }
+}
+
+enum AudioTapInstaller {
+    /// AVFAudio reports some microphone-route failures by throwing an
+    /// Objective-C `NSException`, which Swift cannot catch. Install taps only
+    /// through the Obj-C bridge so bad simulator routes become recoverable
+    /// voice errors instead of process-ending crashes.
+    static func install(
+        on node: AVAudioNode,
+        bus: AVAudioNodeBus = 0,
+        bufferSize: AVAudioFrameCount,
+        format: AVAudioFormat? = nil,
+        block: @escaping (AVAudioPCMBuffer, AVAudioTime) -> Void
+    ) throws {
+        var error: NSError?
+        let installed = LFMInstallAudioTapSafely(
+            node,
+            UInt(bus),
+            bufferSize,
+            format,
+            block,
+            &error
+        )
+        guard installed else {
+            throw TranscriptionError.recognitionFailed(
+                error?.localizedDescription ?? "Microphone input route could not be opened."
+            )
+        }
+    }
+
+    static func isValid(_ format: AVAudioFormat) -> Bool {
+        isValid(sampleRate: format.sampleRate, channelCount: format.channelCount)
+    }
+
+    static func isValid(sampleRate: Double, channelCount: AVAudioChannelCount) -> Bool {
+        sampleRate.isFinite && sampleRate > 0 && channelCount > 0
+    }
 }

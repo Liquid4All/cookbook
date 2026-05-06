@@ -1,22 +1,24 @@
 import Foundation
 
 extension ChatViewModel {
-    /// The iOS Simulator cannot safely use Metal offload for this GGUF
-    /// stack, so it runs llama.cpp on CPU. A base-model grounded-QA decode
-    /// that runs to the 256-token cap takes ~5s there; real iPhones keep
-    /// the generative path. Set TELCO_TRIAGE_DISABLE_SIMULATOR_FAST_RAG=1 when
-    /// validating simulator generative behavior directly.
-    nonisolated static var shouldUseSimulatorFastGroundedQA: Bool {
-        #if targetEnvironment(simulator)
-        return ProcessInfo.processInfo.environment["TELCO_TRIAGE_DISABLE_SIMULATOR_FAST_RAG"] != "1"
-        #else
-        return false
-        #endif
+    /// Keep customer-visible RAG on the low-latency path by default.
+    ///
+    /// The model stack still does the on-device work that matters for the
+    /// demo: classify the request, arbitrate the support lane, select local
+    /// tools, and choose whether the request can be answered from device
+    /// knowledge. The final KB wording is rendered from the retrieved local
+    /// article so the customer path does not pay autoregressive decode cost.
+    ///
+    /// Set TELCO_TRIAGE_ENABLE_GENERATIVE_GROUNDED_QA=1 when deliberately
+    /// testing freeform local answer generation; that is an experiment path,
+    /// not the latency-critical demo default.
+    nonisolated static var shouldUseFastGroundedQA: Bool {
+        ProcessInfo.processInfo.environment["TELCO_TRIAGE_ENABLE_GENERATIVE_GROUNDED_QA"] != "1"
     }
 
-    /// Customer-readable KB answer used by the simulator fast path after
-    /// LFM routing + KB selection have already run. This keeps simulator
-    /// demos responsive while preserving the same local grounding source.
+    /// Customer-readable KB answer used by the fast path after LFM routing
+    /// + KB selection have already run. This keeps demos responsive while
+    /// preserving the same local grounding source.
     static func compactGroundedAnswer(_ answer: String, maxDetailLines: Int = 4) -> String {
         let blocks = answer
             .components(separatedBy: "\n\n")

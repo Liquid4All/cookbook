@@ -130,6 +130,21 @@ final class TelcoLaneRouterTests: XCTestCase {
         }
     }
 
+    func test_backendRequiredOutage_overridesLocalAnswerLane() {
+        let v = adr015Vector(
+            supportIntent: ("outage", 0.99),
+            issueComplexity: ("backend_required", 0.96),
+            routingLane: ("local_answer", 0.98),
+            cloudRequirements: [],
+            requiredTool: ("no_tool", 0.83)
+        )
+        guard case .cloudAssist(let intent, let reqs, _, _, _) = TelcoLaneRouter.route(v) else {
+            return XCTFail("expected backend-required outage to require cloud assist")
+        }
+        XCTAssertEqual(intent, .outage)
+        XCTAssertEqual(reqs, [.liveNetworkStatus])
+    }
+
     func test_lowLaneConfidence_falls_back_to_localAnswer_for_deviceSetup() {
         let v = adr015Vector(
             supportIntent: ("device_setup", 0.85),
@@ -146,6 +161,7 @@ final class TelcoLaneRouterTests: XCTestCase {
 
     private func adr015Vector(
         supportIntent: (String, Double),
+        issueComplexity: (String, Double) = ("guided", 0.7),
         routingLane: (String, Double),
         cloudRequirements: [String],
         requiredTool: (String, Double),
@@ -159,7 +175,7 @@ final class TelcoLaneRouterTests: XCTestCase {
             kbEntry: .unavailable,
             tool: .unavailable,
             supportIntent: TelcoHeadResult(label: supportIntent.0, confidence: supportIntent.1),
-            issueComplexity: TelcoHeadResult(label: "guided", confidence: 0.7),
+            issueComplexity: TelcoHeadResult(label: issueComplexity.0, confidence: issueComplexity.1),
             routingLane: TelcoHeadResult(label: routingLane.0, confidence: routingLane.1),
             cloudRequirements: TelcoMultiLabelHeadResult(activeLabels: cloudRequirements),
             requiredTool: TelcoHeadResult(label: requiredTool.0, confidence: requiredTool.1),

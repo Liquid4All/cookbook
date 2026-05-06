@@ -1,34 +1,22 @@
 import Foundation
 
-/// Generative retrieval primitive. Given the query plus the complete
-/// 32-entry knowledge base in-context, the extractor returns exactly
-/// one verbatim passage cited to its source entry — or the `none`
-/// sentinel when no entry is a good fit.
+/// Retrieval primitive for the local support KB.
 ///
-/// There is no lexical retriever, TF-IDF, or embedding step. The LFM
-/// performs the retrieval in its forward pass, picking an `entry_id`
-/// from a fixed 32-class enum and emitting a verbatim snippet of that
-/// entry's `answer`. This matches the generative-retrieval pattern
-/// proven in the Spotify demo (semantic-ID beam search over a closed
-/// catalog).
-///
-/// Why a single protocol instead of "retrieve top-K + re-rank":
-///   1. The KB is tiny (32 entries). The entire KB fits in the 8K
-///      context window of LFM2.5-350M with room to spare.
-///   2. Ranking and selection are the same decision — the model
-///      doesn't waste tokens on re-ranking.
-///   3. Verbatim-passage output makes UI citation trivial: the
-///      returned string is rendered as-is, no post-processing.
+/// Implementations can be lexical, embedding-backed, or generative; the
+/// chat flow depends only on the returned citation. The current cookbook
+/// app wires `KeywordKBExtractor` for the small curated KB, then lets the
+/// resident LFM synthesize the answer from the selected article. Larger
+/// customer corpora can swap in `EmbeddingKBExtractor` or `LFMKBExtractor`
+/// without changing the chat pipeline.
 public protocol KBExtractor: Sendable {
     func extract(query: String, kb: [KBEntry]) async -> KBCitation
 }
 
 /// Single extraction result. `entryId == KBCitation.noMatchID` is the
-/// sentinel for "no KB entry fits" — callers should route the query
-/// to `.outOfScope` or a soft decline in that case. `passage` is the
-/// verbatim substring the LFM emitted from the selected entry's
-/// `answer`; it is NOT a summary or paraphrase (preserves training
-/// distribution and avoids hallucination risk).
+    /// sentinel for "no KB entry fits" — callers should route the query
+    /// to `.outOfScope` or a soft decline in that case. `passage` is an
+    /// excerpt from the selected entry's `answer`; it is NOT a summary
+    /// or paraphrase.
 public struct KBCitation: Sendable, Equatable {
     /// Sentinel entry id for "no KB entry fits the query." Matches
     /// the training-time convention used by the (future) KB-extract
