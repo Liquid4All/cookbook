@@ -165,7 +165,7 @@ struct HowItWorksView: View {
                     tint: brand.textSecondary
                 )
             }
-            Text("Routing is a multi-head classifier decision over the same local LFM backbone: simple questions stay on-device, actions become auditable tool proposals, and complex requests hand off to cloud only after privacy review.")
+            Text("Routing combines two local LFM decisions: ADR-015 heads produce telco/cloud/privacy signals, and chat-mode-router-v2 decides question vs. action. Simple questions stay on-device, actions become auditable tool proposals, and complex requests prepare cloud handoff only after privacy review.")
                 .font(.caption2)
                 .foregroundStyle(brand.textSecondary)
         }
@@ -215,7 +215,7 @@ struct HowItWorksView: View {
             PhaseRow(
                 status: .shipped,
                 phase: "Phase 3",
-                detail: "Intelligent on-device vs. operator-cloud routing with a customer-visible Privacy Shield showing the exact escalation packet. Structured handoff (PII-scrubbed, whitelisted context) replaces raw-string forwarding. Vision understanding via LFM2.5-VL-450M pack. Voice via LFM2.5-Audio-1.5B. ARPU-driving Next-Best-Action engine."
+                detail: "ADR-015 telco heads for operator-cloud routing signals, with a customer-visible Privacy Shield showing the exact escalation packet. Structured handoff (PII-scrubbed, whitelisted context) replaces raw-string forwarding. Vision understanding via LFM2.5-VL-450M pack. Voice via LFM2.5-Audio-1.5B. ARPU-driving Next-Best-Action engine."
             )
             PhaseRow(
                 status: .next,
@@ -225,7 +225,7 @@ struct HowItWorksView: View {
             PhaseRow(
                 status: .future,
                 phase: "Future",
-                detail: "Shared-adapter telco classifier heads · personalized LoRA adapters per customer segment · edge-reasoning benchmarks published alongside operator data."
+                detail: "Customer-specific classifier heads · personalized LoRA adapters per segment · edge-reasoning benchmarks published alongside operator data."
             )
         }
     }

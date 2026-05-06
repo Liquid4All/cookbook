@@ -124,6 +124,19 @@ public enum TelcoLaneRouter {
             )
         }
 
+        // Policy boundary: if the shared heads say this needs live
+        // carrier/backend state, keep it on the cloud-assist lane even
+        // if another local chat-mode head later sees "my area" or
+        // "my service" and mistakes it for a profile summary. The
+        // model emits signals; this router owns the egress decision.
+        if Self.requiresCloudAssist(vector: vector, supportIntent: supportIntent) {
+            return cloudAssistDecision(
+                vector: vector,
+                supportIntent: supportIntent,
+                piiRisk: piiRisk
+            )
+        }
+
         // Below confidence floor on the lane head: derive lane from
         // cloud_requirements + intent.
         let laneLabel: String
@@ -147,18 +160,10 @@ public enum TelcoLaneRouter {
                 reason: "on-device action: \(tool.rawValue)"
             )
         case "cloud_assist":
-            let requirements = vector.cloudRequirements.activeLabels.compactMap {
-                TelcoCloudRequirement(rawValue: $0)
-            }
-            let missingSlots = vector.slotCompleteness.activeLabels.compactMap {
-                TelcoSlotKind(rawValue: $0)
-            }
-            return .cloudAssist(
+            return cloudAssistDecision(
+                vector: vector,
                 supportIntent: supportIntent,
-                requirements: requirements,
-                missingSlots: missingSlots,
-                piiRisk: piiRisk,
-                reason: cloudReason(intent: supportIntent, requirements: requirements)
+                piiRisk: piiRisk
             )
         case "human_escalation":
             return .humanEscalation(
@@ -212,6 +217,70 @@ public enum TelcoLaneRouter {
         let lowIntentConfidence = vector.supportIntent.confidence < 0.4
         let agentHandoff = vector.supportIntent.label == "agent_handoff"
         return urgent && agentHandoff && lowIntentConfidence
+    }
+
+    private static func requiresCloudAssist(
+        vector: TelcoDecisionVector,
+        supportIntent: TelcoSupportIntent
+    ) -> Bool {
+        if !vector.cloudRequirements.activeLabels.isEmpty {
+            return true
+        }
+        let requiredTool = TelcoTool(rawValue: vector.requiredTool.label) ?? .noTool
+        if requiredTool == .cloudOnly {
+            return true
+        }
+        guard vector.issueComplexity.label == "backend_required" else {
+            return false
+        }
+        switch supportIntent {
+        case .outage, .billing, .appointment, .planAccount:
+            return true
+        case .troubleshooting, .deviceSetup, .equipmentReturn, .agentHandoff, .unknown:
+            return false
+        }
+    }
+
+    private static func cloudAssistDecision(
+        vector: TelcoDecisionVector,
+        supportIntent: TelcoSupportIntent,
+        piiRisk: TelcoPIIRisk
+    ) -> TelcoLaneDecision {
+        let requirements = cloudRequirements(from: vector, supportIntent: supportIntent)
+        let missingSlots = vector.slotCompleteness.activeLabels.compactMap {
+            TelcoSlotKind(rawValue: $0)
+        }
+        return .cloudAssist(
+            supportIntent: supportIntent,
+            requirements: requirements,
+            missingSlots: missingSlots,
+            piiRisk: piiRisk,
+            reason: cloudReason(intent: supportIntent, requirements: requirements)
+        )
+    }
+
+    private static func cloudRequirements(
+        from vector: TelcoDecisionVector,
+        supportIntent: TelcoSupportIntent
+    ) -> [TelcoCloudRequirement] {
+        let explicit = vector.cloudRequirements.activeLabels.compactMap {
+            TelcoCloudRequirement(rawValue: $0)
+        }
+        if !explicit.isEmpty {
+            return explicit
+        }
+        switch supportIntent {
+        case .outage:
+            return [.liveNetworkStatus]
+        case .billing:
+            return [.billingRecord, .accountState]
+        case .appointment:
+            return [.appointmentSystem]
+        case .planAccount:
+            return [.accountState, .planCatalog]
+        case .troubleshooting, .deviceSetup, .equipmentReturn, .agentHandoff, .unknown:
+            return []
+        }
     }
 
     private static func cloudReason(

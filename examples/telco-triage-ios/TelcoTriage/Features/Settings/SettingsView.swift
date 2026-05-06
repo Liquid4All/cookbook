@@ -54,13 +54,25 @@ struct SettingsView: View {
             Section(header: Text("On-device models")) {
                 LabeledContent("Base", value: TelcoModelBundle.baseModelName)
                 LabeledContent("Decision heads", value: TelcoModelBundle.sharedClfAdapterPath() == nil ? "paired adapters" : TelcoModelBundle.sharedClfAdapterName)
-                LabeledContent("Chat router", value: TelcoModelBundle.chatModeRouterAdapterName)
-                LabeledContent("Tool selector", value: TelcoModelBundle.toolAdapterName)
+                LabeledContent("Chat router", value: Self.chatRouterLabel)
+                LabeledContent("Tool selector", value: Self.toolSelectorLabel)
                 LabeledContent("KB extractor", value: TelcoModelBundle.kbExtractorAdapterName)
                 Text("Simple support decisions run on-device. Complex requests can be handed to an existing cloud AI stack after privacy review.")
                     .font(.caption).foregroundStyle(brand.textSecondary)
             }
         }
+    }
+
+    private static var chatRouterLabel: String {
+        TelcoModelBundle.pairedClassifierStackBundled()
+            ? "\(TelcoModelBundle.chatModeClfAdapterName) + head"
+            : TelcoModelBundle.chatModeRouterAdapterName
+    }
+
+    private static var toolSelectorLabel: String {
+        TelcoModelBundle.pairedClassifierStackBundled()
+            ? "\(TelcoModelBundle.toolSelectorClfAdapterName) + head"
+            : TelcoModelBundle.toolAdapterName
     }
 
     @ViewBuilder

@@ -6,9 +6,9 @@ import Foundation
 /// prompt format the fine-tune was trained against (see
 /// `scripts/generate_telco_tool_selector.py`).
 ///
-/// There is no keyword fallback: for a pitch demo we require the
-/// fine-tuned model to run. If the GGUFs are missing, `AppState.init`
-/// fails fast rather than silently degrading.
+/// There is no keyword fallback in the production path: if the model
+/// cannot select a valid tool, callers receive `ToolSelection.none` and
+/// the chat flow falls back to a support answer.
 public protocol ToolSelector: Sendable {
     func select(
         query: String,

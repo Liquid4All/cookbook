@@ -2,13 +2,11 @@ import Foundation
 
 /// Conversation-starter chips shown above the input bar when the chat
 /// is fresh. Six chips, each anchored to a distinct edge-AI primitive
-/// proven by the chat-mode-router-v2 + telco-tool-selector-v3 +
-/// kb-extractor-v1 training sets and the scenario suite in
-/// `scripts/test_telco_sidecar_scenarios.py`.
+/// proven by the chat-mode-router-v2 + telco-tool-selector-v3 adapters,
+/// local KB retrieval, and the scenario suite behind the parent app.
 ///
-/// Every chip's pipeline terminates at an LFM-generated response —
-/// there are no keyword fallbacks, no cloud mocks, no hardcoded
-/// answer copy.
+/// Every chip's pipeline terminates at an LFM-generated response. Retrieval
+/// may select local context, but the chat answer itself is not hardcoded copy.
 ///
 /// Chip → primitive table:
 ///

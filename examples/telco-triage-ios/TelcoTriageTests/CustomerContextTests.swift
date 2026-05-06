@@ -19,6 +19,20 @@ final class CustomerContextTests: XCTestCase {
         XCTAssertNotEqual(ctx.profile.address.line1, "14305 Branham Lane")
     }
 
+    func test_demoProfile_hasHomeNetworkFacts() {
+        let ctx = CustomerContext()
+        XCTAssertEqual(ctx.profile.homeNetwork.ssid, "Alex-Fiber-Home")
+        XCTAssertEqual(ctx.profile.homeNetwork.guestSSID, "Alex-Fiber-Guest")
+        XCTAssertEqual(ctx.profile.homeNetwork.securityMode, "WPA3/WPA2")
+    }
+
+    func test_customerProfileFactResolver_mapsSSIDPhrases() {
+        let resolver = CustomerProfileFactResolver()
+        XCTAssertEqual(resolver.resolve("Can you tell me what's my SSID?"), .homeSSID)
+        XCTAssertEqual(resolver.resolve("What is my Wi-Fi name?"), .homeSSID)
+        XCTAssertNil(resolver.resolve("Summarize my home network"))
+    }
+
     func test_markRouterRebooted_setsStatusOnlineAndLastRebootRecent() {
         let ctx = CustomerContext()
         let router = ctx.profile.equipment.first { $0.kind == .router }!

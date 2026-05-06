@@ -48,8 +48,8 @@ final class ChatViewModelIntegrationTests: XCTestCase {
         await harness.assertAllPromptsMatched()
     }
 
-    func test_kbQuestionPath_simulatorFastPath_usesKBAnswerWithoutChatGeneration() async {
-        let harness = TestChatHarness(useSimulatorFastGroundedQA: true)
+    func test_kbQuestionPath_fastGroundedPath_usesKBAnswerWithoutChatGeneration() async {
+        let harness = TestChatHarness(useFastGroundedQA: true)
         await harness
             .whenModeIs(.kbQuestion, matching: "wifi password")
             .whenKBCitation(
@@ -71,6 +71,126 @@ final class ChatViewModelIntegrationTests: XCTestCase {
         XCTAssertEqual(reply.trace?.inferenceMS, 0)
         let prompts = await harness.backend.recordedPrompts
         XCTAssertEqual(prompts.count, 0)
+        await harness.assertAllPromptsMatched()
+    }
+
+    func test_decisionEngine_usesChatModeRouterForModeArbitration() async {
+        let decision = TelcoRoutingDecision.toolAction(
+            modePrediction: ChatModePrediction(
+                mode: .toolAction,
+                confidence: 0.91,
+                reasoning: "ADR-015 lane=local_tool intent=troubleshooting tool=run_diagnostics",
+                runtimeMS: 12
+            ),
+            selection: ToolSelection(
+                intent: .runDiagnostics,
+                confidence: 0.88,
+                arguments: .empty,
+                reasoning: "ADR-015 required_tool=run_diagnostics",
+                runtimeMS: 0
+            )
+        )
+        let engine = StaticTelcoDecisionEngine(
+            result: TelcoDecisionResult(decision: decision, vector: nil, lane: nil)
+        )
+        let harness = TestChatHarness(useFastGroundedQA: true, decisionEngine: engine)
+        await harness
+            .whenModeIs(.kbQuestion, matching: "wifi slow")
+            .whenKBCitation(
+                entryID: "internet-slow-troubleshoot",
+                passage: "If your internet feels slow, try these steps in order.",
+                matching: "wifi slow"
+            )
+
+        await harness.send("why is my wifi slow")
+
+        guard let reply = harness.lastAssistantMessage else {
+            return XCTFail("no assistant reply")
+        }
+        XCTAssertEqual(reply.routing?.path, .answerWithRAG)
+        XCTAssertNil(reply.toolDecision)
+        XCTAssertEqual(reply.sourceEntry?.id, "internet-slow-troubleshoot")
+        XCTAssertEqual(reply.trace?.chatMode, .kbQuestion)
+        await harness.assertAllPromptsMatched()
+    }
+
+    func test_decisionEngine_cloudAssistLanePreemptsBadPersonalSummaryMode() async {
+        let vector = TelcoDecisionVector(
+            inputHash: 77,
+            mode: .unavailable,
+            kbEntry: .unavailable,
+            tool: .unavailable,
+            supportIntent: TelcoHeadResult(label: "outage", confidence: 1.0),
+            issueComplexity: TelcoHeadResult(label: "backend_required", confidence: 0.98),
+            routingLane: TelcoHeadResult(label: "local_answer", confidence: 0.99),
+            cloudRequirements: .unavailable,
+            requiredTool: TelcoHeadResult(label: "no_tool", confidence: 0.86),
+            customerEscalationRisk: TelcoHeadResult(label: "frustrated", confidence: 0.82),
+            piiRisk: TelcoHeadResult(label: "safe", confidence: 0.95),
+            transcriptQuality: TelcoHeadResult(label: "clean", confidence: 0.99),
+            slotCompleteness: .unavailable,
+            inferenceMode: .sharedAdapter,
+            forwardPassMs: 200,
+            headProjectionMs: 2
+        )
+        let lane = TelcoLaneRouter.route(vector)
+        let engine = StaticTelcoDecisionEngine(
+            result: TelcoDecisionResult(
+                decision: .personalSummary(modePrediction: ChatModePrediction(
+                    mode: .personalSummary,
+                    confidence: 1.0,
+                    reasoning: "bad downstream mode head",
+                    runtimeMS: 194
+                )),
+                vector: vector,
+                lane: lane
+            )
+        )
+        let harness = TestChatHarness(decisionEngine: engine)
+
+        await harness.send("Is there an outage in my area?")
+
+        guard let reply = harness.lastAssistantMessage else {
+            return XCTFail("no assistant reply")
+        }
+        XCTAssertEqual(reply.routing?.path, .cloudAssist)
+        XCTAssertTrue(reply.text.contains("live outage status"))
+        XCTAssertTrue(reply.text.contains("Nothing has been sent"))
+        XCTAssertEqual(reply.trace?.telcoPipeline?.target, "Cloud assist")
+        XCTAssertEqual(reply.trace?.telcoPipeline?.downstreamStep?.id, "cloud_payload")
+    }
+
+    func test_decisionEngine_toolActionModeUsesLFMToolSelector() async {
+        let decision = TelcoRoutingDecision.kbQuestion(
+            modePrediction: ChatModePrediction(
+                mode: .kbQuestion,
+                confidence: 0.91,
+                reasoning: "ADR-015 lane=local_answer intent=troubleshooting tool=no_tool",
+                runtimeMS: 12
+            ),
+            citation: KBCitation.noMatch(runtimeMS: 0)
+        )
+        let engine = StaticTelcoDecisionEngine(
+            result: TelcoDecisionResult(decision: decision, vector: nil, lane: nil)
+        )
+        let harness = TestChatHarness(decisionEngine: engine)
+        await harness
+            .whenModeIs(.toolAction, matching: "diagnostics")
+            .whenToolPrompt(returns: """
+                {"tool_id": "run-diagnostics",
+                 "arguments": {},
+                 "reasoning": "Customer asked to run diagnostics",
+                 "requires_confirmation": false, "confidence": 0.91}
+                """)
+
+        await harness.send("run diagnostics on my home network")
+
+        guard let decision = harness.lastToolDecision else {
+            return XCTFail("expected toolDecision on the assistant message")
+        }
+        XCTAssertEqual(decision.toolID, "run-diagnostics")
+        XCTAssertEqual(harness.lastAssistantMessage?.routing?.path, .toolCall)
+        XCTAssertEqual(harness.lastAssistantMessage?.trace?.chatMode, .toolAction)
         await harness.assertAllPromptsMatched()
     }
 
@@ -147,6 +267,24 @@ final class ChatViewModelIntegrationTests: XCTestCase {
         XCTAssertNil(reply.sourceEntry, "personalized path doesn't use RAG")
         XCTAssertNil(reply.toolDecision)
         XCTAssertEqual(reply.trace?.chatMode, .personalSummary)
+        await harness.assertAllPromptsMatched()
+    }
+
+    func test_personalSummaryPath_answersSSIDFromCustomerContext() async {
+        let harness = TestChatHarness()
+        await harness
+            .whenModeIs(.personalSummary, matching: "SSID")
+
+        await harness.send("Can you tell me what's my SSID")
+
+        guard let reply = harness.lastAssistantMessage else {
+            return XCTFail("no assistant reply")
+        }
+        XCTAssertEqual(reply.routing?.path, .personalized)
+        XCTAssertEqual(reply.trace?.chatMode, .personalSummary)
+        XCTAssertTrue(reply.text.contains("Alex-Fiber-Home"))
+        XCTAssertTrue(reply.text.contains("SSID"))
+        XCTAssertFalse(reply.text.contains("18 devices"))
         await harness.assertAllPromptsMatched()
     }
 
@@ -239,5 +377,22 @@ final class ChatViewModelIntegrationTests: XCTestCase {
         )
         // Mode is preserved — we know where the failure happened.
         XCTAssertEqual(reply.routing?.path, .answerWithRAG)
+    }
+}
+
+private final class StaticTelcoDecisionEngine: TelcoDecisionEngine, @unchecked Sendable {
+    private let result: TelcoDecisionResult
+
+    init(result: TelcoDecisionResult) {
+        self.result = result
+    }
+
+    func decide(
+        query: String,
+        kb: [KBEntry],
+        extraction: ExtractionResult,
+        availableTools: [Tool]
+    ) async -> TelcoDecisionResult {
+        result
     }
 }

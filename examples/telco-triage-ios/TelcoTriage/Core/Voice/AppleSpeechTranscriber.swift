@@ -54,8 +54,9 @@ public actor AppleSpeechTranscriber: VoiceTranscriber {
 
         let input = audioEngine.inputNode
         let recordingFormat = input.outputFormat(forBus: 0)
+        let tapFormat = AudioTapInstaller.isValid(recordingFormat) ? recordingFormat : nil
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+        try AudioTapInstaller.install(on: input, bufferSize: 1024, format: tapFormat) { [weak self] buffer, _ in
             // Buffer callbacks also fire off-actor. Ferry the buffer in.
             Task { await self?.append(buffer: buffer) }
         }
@@ -125,6 +126,9 @@ public actor AppleSpeechTranscriber: VoiceTranscriber {
 
     private func configureSession() throws {
         let session = AVAudioSession.sharedInstance()
+        // Let AVAudioEngine use the simulator/device's native input format.
+        // Forcing 16 kHz mono can make AVFAudio throw an uncaught exception
+        // before Swift can surface a recoverable transcription error.
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         sessionActive = true

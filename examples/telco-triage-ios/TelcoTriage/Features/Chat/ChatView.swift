@@ -218,9 +218,14 @@ struct ChatView: View {
             isProcessing: holder.vm?.isProcessing ?? false,
             attachedImage: holder.vm?.attachedImage,
             isListening: appState.voice.isListening,
+            isTranscribing: appState.voice.isTranscribing,
             listeningPartial: {
-                if case .listening(let partial) = appState.voice.state { return partial }
-                return ""
+                switch appState.voice.state {
+                case .listening(let partial), .transcribing(let partial):
+                    return partial
+                default:
+                    return ""
+                }
             }(),
             voiceError: {
                 if case .error(let msg) = appState.voice.state { return msg }
@@ -228,6 +233,7 @@ struct ChatView: View {
             }(),
             onSend: { holder.vm?.send() },
             onMicTap: {
+                guard !appState.voice.isTranscribing else { return }
                 if appState.voice.isListening {
                     Task { await appState.voice.stop() }
                 } else {
@@ -235,7 +241,7 @@ struct ChatView: View {
                     // user isn't greeted by a stale "permission denied"
                     // strip after they fix the setting.
                     appState.voice.reset()
-                    appState.voice.start()
+                    appState.voice.start(localRuntimeBusy: (holder.vm?.isProcessing ?? false) || appState.isModelWarming)
                 }
             },
             onCameraTap: { showingPhotoPicker = true },

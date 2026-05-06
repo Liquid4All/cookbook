@@ -16,8 +16,8 @@ inventory services.
 | --- | --- | --- |
 | Resident base model | `lfm25-350m-base-Q4_K_M.gguf` | On-device LFM loaded once at app launch |
 | Shared classifier adapter | `telco-shared-clf-v1.gguf` | Shapes the hidden state for all telco routing heads |
-| Tool adapter | `telco-tool-selector-v3.gguf` | Produces tool-oriented language and argument summaries |
-| Router fallback adapter | `chat-mode-router-v2.gguf` | Legacy generative router when classifier artifacts are absent |
+| Chat-mode adapter | `chat-mode-router-v2.gguf` | Classifies the customer-visible mode boundary: KB question, tool action, personal summary, or out of scope |
+| Tool adapter | `telco-tool-selector-v3.gguf` | Selects the local tool and extracts tool arguments |
 | KB fallback adapter | `kb-extractor-v1.gguf` | Legacy generative KB selector retained for comparison |
 | Classifier heads | `*_classifier_weights.bin`, `*_classifier_bias.bin`, `*_classifier_meta.json` | Small linear projections over the LFM hidden state |
 | Knowledge base | `knowledge-base.json` | Carrier-agnostic home internet support corpus |
@@ -29,9 +29,11 @@ that exact base distribution.
 ## Decision Vector
 
 The main runtime pattern is a shared forward pass followed by multiple small
-heads. Instead of prompting a generative model to decide what to do next, the
-app produces a typed `TelcoDecisionVector`, then applies deterministic policy
-over that vector.
+heads. The app produces a typed `TelcoDecisionVector` for trace, cloud
+requirements, privacy, escalation, and tool hints. It then asks the dedicated
+`chat-mode-router-v2` adapter for the customer-visible chat branch. This keeps
+model responsibility aligned with training data: ADR-015 owns telco support
+signals, while the chat-mode LFM owns the question-versus-action boundary.
 
 | Head | Output | Why it exists |
 | --- | --- | --- |
@@ -53,7 +55,8 @@ turning the repository into a model-weight distribution channel.
 
 The primary RAG path is deliberately practical. `KeywordKBExtractor` retrieves
 from a small local support corpus using curated aliases and topic terms, then
-the resident LFM writes the final answer from the selected article.
+the app renders a concise answer from the selected article on the customer
+critical path.
 
 That choice is intentional. For compact carrier FAQs, aliases such as
 `pause internet`, `ssid`, `router lights`, and `slow bedroom wifi` are strong
@@ -63,12 +66,17 @@ retrieval remains useful for larger or less-curated corpora, but the best
 production pattern is usually hybrid: lexical precision first, embedding
 fallback for paraphrase.
 
-The important boundary is that retrieval and generation are separate:
+The important boundary is that retrieval and answer composition are separate:
 
 1. The classifier decides whether the query belongs on the knowledge lane.
 2. The retriever selects the local article.
-3. The LFM turns that article into a concise support response.
+3. The customer path renders a concise response from that trusted local article.
 4. The UI shows source metadata and pipeline trace details.
+
+Freeform grounded generation remains useful for experiments and richer future
+workflows, but it is not the default demo path because autoregressive decoding
+would hide the value of the classifier-head architecture behind avoidable UI
+latency.
 
 ## Tool And Cloud Boundaries
 
