@@ -3,7 +3,11 @@ GGUF set to a HuggingFace model repo so `scripts/eval.py` (or any other
 llama-liquid-audio-server consumer) can load it.
 
 Pipeline:
-  1. snapshot_download the fine-tuned safetensors checkpoint from `--source-repo`.
+  1. Materialise the source HF-shaped checkpoint directory:
+     - `--source-repo` snapshot-downloads a full fine-tuned HF repo, OR
+     - `--source-checkpoint` overlays a local fine-tuned `model.safetensors`
+       on top of `--base-repo`'s configs (Trainer only saves weights, so we
+       supply the surrounding config.json / tokenizer files from upstream).
   2. Clone llama.cpp PR #18641 (audio-mtmd support is WIP and not yet on main).
   3. Run `convert_hf_to_gguf.py` twice on the checkpoint: once for the LM
      backbone, once with `--mmproj` for the audio encoder + projector.
@@ -35,11 +39,13 @@ from huggingface_hub import HfApi, snapshot_download
 
 UPSTREAM_GGUF_REPO = "LiquidAI/LFM2.5-Audio-1.5B-GGUF"
 UPSTREAM_MODEL_STEM = "LFM2.5-Audio-1.5B"
+UPSTREAM_BASE_REPO = "LiquidAI/LFM2.5-Audio-1.5B"  # safetensors repo with configs we overlay
 
-# llama.cpp branch where LFM2.5-Audio multimodal support lives. Once the PR
+# llama.cpp PR where LFM2.5-Audio multimodal support lives. Once the PR
 # merges to main, this can be retargeted to a stable tag.
 LLAMA_CPP_REPO = "https://github.com/ggml-org/llama.cpp"
-LLAMA_CPP_PR_BRANCH = "audio-mtmd"  # PR #18641 branch name
+LLAMA_CPP_PR_NUMBER = 18641
+LLAMA_CPP_PR_LOCAL_BRANCH = "audio-mtmd"  # local checkout name for the PR
 LLAMA_CPP_DIR = Path(__file__).parent.parent / "llama.cpp"
 
 VALID_QUANTS = ["F16", "Q8_0", "Q4_0"]
@@ -71,18 +77,14 @@ def setup_llama_cpp() -> Path:
     Returns the path to the convert_hf_to_gguf.py script.
     """
     if not LLAMA_CPP_DIR.exists():
-        print(f"Cloning {LLAMA_CPP_REPO} into {LLAMA_CPP_DIR} ...", flush=True)
-        run(
-            [
-                "git",
-                "clone",
-                "--depth=1",
-                "--branch",
-                LLAMA_CPP_PR_BRANCH,
-                LLAMA_CPP_REPO,
-                str(LLAMA_CPP_DIR),
-            ]
-        )
+        print(f"Cloning {LLAMA_CPP_REPO} (depth=1, main only) ...", flush=True)
+        run(["git", "clone", "--depth=1", LLAMA_CPP_REPO, str(LLAMA_CPP_DIR)])
+        # The PR head ref is the universal way to grab a GitHub PR's tip
+        # without needing to know which fork / branch it came from.
+        pr_refspec = f"pull/{LLAMA_CPP_PR_NUMBER}/head:{LLAMA_CPP_PR_LOCAL_BRANCH}"
+        print(f"Fetching PR #{LLAMA_CPP_PR_NUMBER} ({pr_refspec}) ...", flush=True)
+        run(["git", "fetch", "--depth=1", "origin", pr_refspec], cwd=LLAMA_CPP_DIR)
+        run(["git", "checkout", LLAMA_CPP_PR_LOCAL_BRANCH], cwd=LLAMA_CPP_DIR)
 
     quantize_bin = LLAMA_CPP_DIR / "build" / "bin" / "llama-quantize"
     if not quantize_bin.exists():
@@ -166,18 +168,27 @@ def copy_unchanged_artifacts(
 
 
 def download_upstream_runners(target_dir: Path) -> Path:
-    """Pull the entire upstream runners/ directory; we re-publish it as-is so
-    that consumers don't need to dual-source GGUFs and binaries.
+    """Pull the upstream runner zips (one per platform) so the published repo
+    is self-contained: consumers can resolve their platform's binaries from
+    the same place as the GGUFs.
+
+    We copy only the `*.zip` files, NOT the entire `runners/` snapshot dir.
+    `scripts/eval.py` extracts the zip in-place on first run, so a cached
+    snapshot of this repo may also contain the extracted platform subfolders
+    (50+ files of dylibs, headers, licenses). Republishing those would bloat
+    the target repo without adding anything consumers can't extract themselves.
     """
-    print(f"Downloading upstream runners/ from {UPSTREAM_GGUF_REPO} ...", flush=True)
+    print(f"Downloading upstream runner zips from {UPSTREAM_GGUF_REPO} ...", flush=True)
     upstream_dir = Path(
-        snapshot_download(repo_id=UPSTREAM_GGUF_REPO, allow_patterns=["runners/*"])
+        snapshot_download(repo_id=UPSTREAM_GGUF_REPO, allow_patterns=["runners/*.zip"])
     )
     runners_src = upstream_dir / "runners"
     runners_dst = target_dir / "runners"
     if runners_dst.exists():
         shutil.rmtree(runners_dst)
-    shutil.copytree(runners_src, runners_dst)
+    runners_dst.mkdir(parents=True)
+    for zip_file in runners_src.glob("*.zip"):
+        shutil.copy2(zip_file, runners_dst / zip_file.name)
     return runners_dst
 
 
@@ -251,11 +262,16 @@ def push_to_hub(target_dir: Path, target_repo: str, target_stem: str, quant: str
     api = HfApi()
     print(f"Creating repo: {target_repo} ...", flush=True)
     api.create_repo(repo_id=target_repo, repo_type="model", private=private, exist_ok=True)
-    print(f"Uploading folder {target_dir} ...", flush=True)
+    print(f"Uploading folder {target_dir} (GGUFs + runner zips only) ...", flush=True)
+    # Defensive enumeration: even though we control which files land under
+    # target_dir, allow_patterns guarantees we never accidentally republish
+    # staging dirs (e.g. _staging/merged/) or unzipped runner contents that
+    # a future change might leak into the output folder.
     api.upload_folder(
         folder_path=str(target_dir),
         repo_id=target_repo,
         repo_type="model",
+        allow_patterns=["*.gguf", "runners/*.zip"],
     )
     print("Uploading model card ...", flush=True)
     api.upload_file(
@@ -267,13 +283,70 @@ def push_to_hub(target_dir: Path, target_repo: str, target_stem: str, quant: str
     print(f"Done. Model at https://huggingface.co/{target_repo}", flush=True)
 
 
+def overlay_checkpoint_on_base(
+    checkpoint_path: Path, base_repo: str, output_dir: Path
+) -> Path:
+    """Build a local HF-shaped directory by overlaying a single fine-tuned
+    `model.safetensors` on top of `base_repo`'s configs.
+
+    The Trainer in liquid-audio v1.2.0 saves only `model.safetensors` (via
+    `accelerator.save_state` and a final `accelerator.save_model`), without
+    the surrounding config.json / tokenizer files that `convert_hf_to_gguf.py`
+    needs. We snapshot the upstream base, copy its non-weight files into a
+    staging dir, then drop our checkpoint on top.
+
+    The merged dir lives under `output_dir/_staging/` (rather than directly in
+    `output_dir`) so the eventual `upload_folder(folder_path=output_dir,
+    allow_patterns=...)` call leaves it on local disk. Republishing a 3 GB
+    `model.safetensors` we already encode as the LM GGUF would just bloat
+    the target repo.
+
+    Returns the path to the merged directory.
+    """
+    print(f"Snapshotting base model configs from {base_repo} ...", flush=True)
+    base_dir = Path(
+        snapshot_download(
+            repo_id=base_repo,
+            allow_patterns=["*.json", "*.txt", "tokenizer*", "*.model", "*.py"],
+        )
+    )
+    merged = output_dir / "_staging" / "merged"
+    if merged.exists():
+        shutil.rmtree(merged)
+    merged.mkdir(parents=True)
+    for f in base_dir.iterdir():
+        if f.is_file():
+            shutil.copy2(f, merged / f.name)
+    print(f"Copying fine-tuned weights from {checkpoint_path} ...", flush=True)
+    shutil.copy2(checkpoint_path, merged / "model.safetensors")
+    return merged
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
+    src_group = parser.add_mutually_exclusive_group(required=True)
+    src_group.add_argument(
         "--source-repo",
-        required=True,
         metavar="REPO",
-        help="HF repo with the fine-tuned safetensors checkpoint.",
+        help="HF repo with the fine-tuned safetensors checkpoint (full HF directory).",
+    )
+    src_group.add_argument(
+        "--source-checkpoint",
+        type=Path,
+        metavar="PATH",
+        help=(
+            "Local fine-tuned model.safetensors (weights only). The script "
+            "overlays it on --base-repo configs before conversion."
+        ),
+    )
+    parser.add_argument(
+        "--base-repo",
+        default=UPSTREAM_BASE_REPO,
+        metavar="REPO",
+        help=(
+            "Base model whose configs to overlay our weights on. Only used "
+            f"with --source-checkpoint. (default: {UPSTREAM_BASE_REPO})"
+        ),
     )
     parser.add_argument(
         "--target-repo",
@@ -311,8 +384,19 @@ def main() -> None:
     target_stem = args.target_repo.split("/")[-1].removesuffix("-GGUF")
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Downloading source checkpoint: {args.source_repo} ...", flush=True)
-    src_dir = Path(snapshot_download(repo_id=args.source_repo))
+    if args.source_repo:
+        print(f"Downloading source checkpoint: {args.source_repo} ...", flush=True)
+        src_dir = Path(snapshot_download(repo_id=args.source_repo))
+    else:
+        if not args.source_checkpoint.is_file():
+            raise FileNotFoundError(
+                f"--source-checkpoint not found or not a file: {args.source_checkpoint}"
+            )
+        src_dir = overlay_checkpoint_on_base(
+            checkpoint_path=args.source_checkpoint,
+            base_repo=args.base_repo,
+            work_dir=args.output_dir,
+        )
 
     lm_f16 = args.output_dir / f"{target_stem}-F16.gguf"
     convert_lm(convert_script, src_dir, lm_f16)
