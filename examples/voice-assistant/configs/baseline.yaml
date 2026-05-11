@@ -1,0 +1,26 @@
+# Baseline-mode eval config.
+#
+# Evaluates the unmodified upstream model in pure ASR mode. The
+# llama-liquid-audio-server only accepts a closed set of system prompts (the
+# strings in liquid_audio_chat.py's SYSTEM_PROMPTS); long custom specs prompts
+# are rejected with a 422-style "Unsupported system prompt" error, and a user
+# message text + audio combination is ignored: the server keeps the model in
+# the trained ASR/TTS/interleaved behavior dictated by the system prompt.
+#
+# So baseline mode here measures: when the unmodified model is run through its
+# trained audio-to-text pathway, does the resulting transcription accidentally
+# match the function-call format? It will not. The headline of the eval pair
+# is therefore "fine-tuning unlocks function-call output that prompting alone
+# cannot elicit on this runtime", not "fine-tuning beats a prompted baseline".
+# See docs/adr/0001 for the full methodology note.
+
+name: baseline
+model_repo: LiquidAI/LFM2.5-Audio-1.5B-GGUF
+quant: F16
+
+system_prompt: "Perform ASR."
+
+samples_per_function: 10
+max_new_tokens: 64
+temperature: 0.0
+port: 8080

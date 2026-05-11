@@ -1,0 +1,22 @@
+[project]
+name = "voice-assistant"
+version = "0.1.0"
+description = "Fine-tune LFM2.5-Audio-1.5B to map spoken Home Assistant commands to function calls."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "Pau Labarta Bajo", email = "plabartabajo@gmail.com" },
+]
+dependencies = [
+    "liquid-audio>=1.2.0",
+    "huggingface-hub>=0.22",
+    "scikit-learn>=1.8.0",
+    "pyyaml>=6.0.3",
+    "openai>=2.36.0",
+]
+
+[dependency-groups]
+finetune = [
+    "modal>=0.64",
+    "wandb>=0.17",
+]
