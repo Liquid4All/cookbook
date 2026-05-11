@@ -1,5 +1,5 @@
 """Fine-tune `LiquidAI/LFM2.5-Audio-1.5B` on the preprocessed OHF-Voice train
-split, optionally on a Modal A100-80GB with W&B logging.
+split, optionally on a Modal A100-80GB.
 
 Expects `scripts/preprocess_ohf_voice.py` to have produced an on-disk dataset
 under `--data` (locally) or `--modal-data-path` (on Modal's ohf-voice-data
@@ -7,12 +7,15 @@ volume). A `--val-split-ratio` slice is carved off the train split for the
 training-loop validation metric. The held-out evaluation **Test set** lives in
 the `test` split of `Paulescu/OHF-Voice-audio-20260504` and is never seen here.
 
+Loss and val-loss stream to stdout (visible in Modal logs). W&B integration is
+deferred until public liquid-audio adds tracker args to its Trainer; see
+`.scratch/wandb-integration/issues/01-tracker-args.md`.
+
 Run locally on a single GPU:
     uv run --group finetune python scripts/train.py --data data/ohf_voice/train
 
-Run on Modal with an A100-80GB and W&B logging:
-    HF_TOKEN=hf_... uv run --group finetune python scripts/train.py \\
-        --modal --log-with wandb --wandb-run-name "ohf-voice-run-1"
+Run on Modal with an A100-80GB:
+    HF_TOKEN=hf_... uv run --group finetune python scripts/train.py --modal
 
 Vendored from liquid-audio-staging on 2026-05-11.
   source : examples/train.py
@@ -29,12 +32,23 @@ Adaptations from upstream:
   - `.add_local_python_source("liquid_audio")` removed from the Modal image
     build: this cookbook installs `liquid-audio` from PyPI rather than from a
     local editable workspace, so there is no local source to add.
+  - W&B tracker integration dropped: staging's Trainer accepted `log_with` /
+    `tracker_project_name` / `tracker_run_name`, but those args aren't
+    available in public liquid-audio v1.2.0. Tracked in
+    .scratch/wandb-integration/issues/01-tracker-args.md.
+  - Per-run output subfolder: instead of bare `/checkpoints` (staging) we
+    write to `/checkpoints/{run_id}` where `run_id` is a CLI flag with a
+    timestamped default. Accelerate's `automatic_checkpoint_naming=True`
+    refuses to overwrite `checkpoint_N`, so without this each re-run would
+    collide with the previous run's saves; per-run folders make collisions
+    structurally impossible.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+from datetime import datetime
 from pathlib import Path
 
 from liquid_audio.data.dataloader import LFM2DataLoader
@@ -51,9 +65,6 @@ def run_training(
     lr: float,
     num_workers: int,
     output_dir: str,
-    log_with: str | None = None,
-    wandb_project: str = "lfm2-audio-finetuning",
-    wandb_run_name: str | None = None,
     val_split_ratio: float = 0.0,
     seed: int = 42,
 ) -> None:
@@ -73,6 +84,12 @@ def run_training(
         val_data = LFM2DataLoader(dataset_path=str(dataset_path), context_length=context_length)
         val_data.dataset = splits["test"]
 
+    # W&B / Accelerate tracker integration lives in liquid-audio-staging's
+    # Trainer but hasn't landed in public liquid-audio v1.2.0 yet (no
+    # `log_with`, `tracker_project_name`, or `tracker_run_name` kwargs). For
+    # this cookbook iteration the run's loss/val-loss/checkpoints stream to
+    # stdout (visible in Modal logs); revisit when v1.2.1+ ships tracker
+    # support. See `.scratch/wandb-integration/issues/01-tracker-args.md`.
     trainer = Trainer(
         model_id=model_id,
         train_data=train_data,
@@ -86,9 +103,6 @@ def run_training(
         save_interval=500,
         val_interval=100,
         output_dir=output_dir,
-        log_with=log_with,
-        tracker_project_name=wandb_project,
-        tracker_run_name=wandb_run_name,
     )
     trainer.train()
 
@@ -98,14 +112,10 @@ def run_on_modal(args: argparse.Namespace) -> None:
 
     app = modal.App("lfm2-audio-train")
 
-    optional_deps: list[str] = []
-    if args.log_with == "wandb":
-        optional_deps.append("wandb")
-
     image = (
         modal.Image.debian_slim(python_version="3.12")
         .apt_install("ffmpeg")
-        .pip_install_from_pyproject("pyproject.toml", optional_dependencies=optional_deps)
+        .pip_install_from_pyproject("pyproject.toml")
     )
 
     data_vol = modal.Volume.from_name(args.modal_volume)
@@ -114,8 +124,6 @@ def run_on_modal(args: argparse.Namespace) -> None:
         modal.Secret.from_name("huggingface-secret"),
         modal.Secret.from_dict({"HF_TOKEN": os.environ["HF_TOKEN"]}),
     ]
-    if args.log_with == "wandb":
-        secrets.append(modal.Secret.from_name("wandb-secret"))
 
     @app.function(
         gpu=args.modal_gpu,
@@ -135,10 +143,7 @@ def run_on_modal(args: argparse.Namespace) -> None:
             warmup_steps=args.warmup_steps,
             lr=args.lr,
             num_workers=args.num_workers,
-            output_dir="/checkpoints",
-            log_with=args.log_with,
-            wandb_project=args.wandb_project,
-            wandb_run_name=args.wandb_run_name,
+            output_dir=f"/checkpoints/{args.run_id}",
             val_split_ratio=args.val_split_ratio,
             seed=args.seed,
         )
@@ -158,6 +163,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=5e-5)
     parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--output-dir", default="outputs/ohf_voice")
+    parser.add_argument(
+        "--run-id",
+        default=datetime.now().strftime("ohf-voice-%Y%m%d-%H%M%S"),
+        help=(
+            "Per-run subfolder under the output volume / output dir. Defaults "
+            "to a timestamped id so re-runs never collide with each other's "
+            "checkpoint_N directories."
+        ),
+    )
 
     # Train/val split (val is carved from the train split, NOT from the held-out test set)
     parser.add_argument(
@@ -167,11 +181,6 @@ def parse_args() -> argparse.Namespace:
         help="Fraction of the preprocessed train split held out for in-loop validation.",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed for the in-loop val split.")
-
-    # Experiment tracking
-    parser.add_argument("--log-with", default=None, help="Experiment tracker (e.g. wandb).")
-    parser.add_argument("--wandb-project", default="lfm2-audio-finetuning")
-    parser.add_argument("--wandb-run-name", default=None)
 
     # Modal arguments
     parser.add_argument("--modal", action="store_true", help="Run training on Modal with a GPU.")
@@ -214,10 +223,7 @@ if __name__ == "__main__":
             warmup_steps=args.warmup_steps,
             lr=args.lr,
             num_workers=args.num_workers,
-            output_dir=args.output_dir,
-            log_with=args.log_with,
-            wandb_project=args.wandb_project,
-            wandb_run_name=args.wandb_run_name,
+            output_dir=f"{args.output_dir}/{args.run_id}",
             val_split_ratio=args.val_split_ratio,
             seed=args.seed,
         )
