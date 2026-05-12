@@ -1,8 +1,9 @@
 # Fine-tuned-mode eval config (Q4_0 quant).
 #
 # Evaluates the Q4_0 GGUF of the fine-tuned LFM2.5-Audio-1.5B on OHF-Voice.
-# Numbers for this quant are not measured yet; rerun scripts/eval.py against
-# this file to populate the reference table in the README.
+# Reference run (2026-05-12, 1000-step fine-tune, 397-sample subset):
+# format compliance 99.0%, function-name accuracy 98.2%, argument
+# accuracy (exact) 89.7%.
 #
 # system_prompt is set to "Perform ASR." for two reasons:
 # - The llama-liquid-audio-server only accepts a closed set of approved

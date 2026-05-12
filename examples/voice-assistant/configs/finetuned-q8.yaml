@@ -1,9 +1,9 @@
-# Fine-tuned-mode eval config (Q8_0 quant). Canonical reference.
+# Fine-tuned-mode eval config (Q8_0 quant).
 #
 # Evaluates the Q8_0 GGUF of the fine-tuned LFM2.5-Audio-1.5B on OHF-Voice.
 # Reference run (2026-05-12, 1000-step fine-tune, 397-sample subset):
-# format compliance 100.0%, function-name accuracy 99.2%, argument
-# accuracy (exact) 90.4%.
+# format compliance 99.7%, function-name accuracy 99.0%, argument
+# accuracy (exact) 90.2%.
 #
 # system_prompt is set to "Perform ASR." for two reasons:
 # - The llama-liquid-audio-server only accepts a closed set of approved

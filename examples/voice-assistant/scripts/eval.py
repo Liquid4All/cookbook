@@ -9,7 +9,8 @@ Configs that ship in this repo:
 - configs/baseline.yaml: upstream LiquidAI/LFM2.5-Audio-1.5B-GGUF, system_prompt
   "Perform ASR.", establishes the floor (0/0/0 on all three metrics).
 - configs/finetuned-q8.yaml: fine-tuned fork, Q8_0 quant, system_prompt
-  "Perform ASR." (matches the training-time chat shape). Canonical reference.
+  "Perform ASR." (matches the training-time chat shape). The default used
+  in the README snippets.
 - configs/finetuned-f16.yaml, configs/finetuned-q4.yaml: same fine-tune at
   other quants for sweep comparisons.
 
