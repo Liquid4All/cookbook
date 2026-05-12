@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Talk to LFM2.5-Audio</title>
+<style>
+  :root {
+    --bg: #0e1014;
+    --panel: #151821;
+    --panel-2: #1c2030;
+    --border: #2a2f40;
+    --text: #e6e9f2;
+    --text-dim: #8b93a8;
+    --accent: #7aa2ff;
+    --accent-warm: #ffb86b;
+    --accent-good: #5dd39e;
+    --accent-bad: #ff7a8a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    padding: 28px 40px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+  header p {
+    margin: 6px 0 0;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .recorder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  #recBtn {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 15px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s, transform 0.08s;
+    user-select: none;
+    -webkit-user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 16px;
+  }
+  #recBtn:hover { border-color: var(--accent); }
+  #recBtn.recording {
+    border-color: var(--accent-bad);
+    background: #2a1820;
+    transform: scale(0.97);
+  }
+  #recBtn:disabled {
+    opacity: 0.5;
+    cursor: wait;
+  }
+  .hint {
+    color: var(--text-dim);
+    font-size: 13px;
+    height: 18px;
+  }
+  canvas#wave {
+    width: 100%;
+    max-width: 600px;
+    height: 60px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: block;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .panel h2 {
+    margin: 0 0 10px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  pre#raw {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-all;
+    min-height: 22px;
+  }
+  pre#raw.empty::before {
+    content: "(waiting for first recording)";
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  pre#raw.bad { color: var(--accent-bad); }
+  .card-fn {
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .pill {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .pill .k { color: var(--accent-warm); }
+  .pill .v { color: var(--text); }
+  .preview-tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-left: 10px;
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    vertical-align: middle;
+  }
+  .bulb {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .bulb-svg {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--bulb-glow, #444) 0%, #222 70%);
+    box-shadow: 0 0 var(--bulb-blur, 0px) var(--bulb-glow, transparent);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .bulb-meta { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+  .bulb-meta .area { color: var(--text); font-weight: 500; }
+  .countdown {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 48px;
+    font-weight: 600;
+    color: var(--accent-warm);
+    letter-spacing: 2px;
+  }
+  .countdown.done { color: var(--accent-good); }
+  .clock {
+    margin-top: 16px;
+    font-family: var(--mono);
+    font-size: 48px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel-2);
+    border: 1px solid var(--accent-bad);
+    color: var(--accent-bad);
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  .mic-error {
+    background: #2a1820;
+    border-color: var(--accent-bad);
+    color: var(--accent-bad);
+  }
+  .mic-error button {
+    margin-top: 10px;
+    background: transparent;
+    color: var(--accent-bad);
+    border: 1px solid var(--accent-bad);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Talk to LFM2.5-Audio</h1>
+  <p>Hold <kbd>SPACE</kbd> or click and hold the button to record. Release to send.</p>
+</header>
+<main>
+  <section class="recorder">
+    <button id="recBtn" aria-label="push to talk">Hold to talk</button>
+    <div id="hint" class="hint"></div>
+    <canvas id="wave" width="1200" height="120"></canvas>
+  </section>
+
+  <section id="micError" class="panel mic-error hidden">
+    <h2>Microphone</h2>
+    <div id="micErrorMsg">Microphone access denied. Grant permission to record.</div>
+    <button id="retryMic">Request again</button>
+  </section>
+
+  <section class="panel">
+    <h2>Raw model output</h2>
+    <pre id="raw" class="empty"></pre>
+  </section>
+
+  <section id="cardWrap" class="panel hidden">
+    <h2>Function call</h2>
+    <div id="card"></div>
+  </section>
+</main>
+<div id="toast" class="toast hidden"></div>
+
+<script type="module">
+"use strict";
+
+// ---------- DOM ----------
+const recBtn = document.getElementById("recBtn");
+const hint = document.getElementById("hint");
+const canvas = document.getElementById("wave");
+const canvasCtx = canvas.getContext("2d");
+const rawEl = document.getElementById("raw");
+const cardWrap = document.getElementById("cardWrap");
+const cardEl = document.getElementById("card");
+const toastEl = document.getElementById("toast");
+const micErrorEl = document.getElementById("micError");
+const micErrorMsg = document.getElementById("micErrorMsg");
+const retryMicBtn = document.getElementById("retryMic");
+
+// ---------- State machine ----------
+const STATE = Object.freeze({
+  IDLE: "idle",
+  RECORDING: "recording",
+  SUBMITTING: "submitting",
+  RENDERING: "rendering",
+});
+let state = STATE.IDLE;
+
+function setState(next) {
+  state = next;
+  recBtn.classList.toggle("recording", next === STATE.RECORDING);
+  recBtn.disabled = (next === STATE.SUBMITTING);
+  switch (next) {
+    case STATE.IDLE:     hint.textContent = ""; break;
+    case STATE.RECORDING: hint.textContent = "Listening..."; break;
+    case STATE.SUBMITTING: hint.textContent = "Sending to model..."; break;
+    case STATE.RENDERING: hint.textContent = ""; break;
+  }
+}
+
+// ---------- Audio capture ----------
+const TARGET_SAMPLE_RATE = 24000;
+let micStream = null;
+let audioCtx = null;
+let analyser = null;
+let recorder = null;
+let chunks = [];
+let drawHandle = null;
+
+async function ensureMic() {
+  if (micStream) return true;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micErrorEl.classList.add("hidden");
+    return true;
+  } catch (err) {
+    micStream = null;
+    micErrorMsg.textContent = `Microphone access denied (${err.name}). Grant permission and try again.`;
+    micErrorEl.classList.remove("hidden");
+    return false;
+  }
+}
+
+function pickRecorderMime() {
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+  ];
+  for (const m of candidates) {
+    if (MediaRecorder.isTypeSupported(m)) return m;
+  }
+  return "";
+}
+
+async function startRecording() {
+  if (state !== STATE.IDLE) return;
+  if (!(await ensureMic())) return;
+
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  const src = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 1024;
+  src.connect(analyser);
+
+  const mime = pickRecorderMime();
+  recorder = new MediaRecorder(micStream, mime ? { mimeType: mime } : undefined);
+  chunks = [];
+  recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+  recorder.start();
+
+  setState(STATE.RECORDING);
+  drawWaveform();
+}
+
+function stopRecordingAndSubmit() {
+  if (state !== STATE.RECORDING) return;
+  setState(STATE.SUBMITTING);
+  cancelAnimationFrame(drawHandle);
+  clearWaveform();
+
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: recorder.mimeType });
+    try {
+      const wavBytes = await blobToWav24k(blob);
+      const audioB64 = bytesToBase64(wavBytes);
+      await sendToModel(audioB64);
+    } catch (err) {
+      toast(`Audio processing failed: ${err.message}`);
+      setState(STATE.IDLE);
+    }
+  };
+  recorder.stop();
+}
+
+function drawWaveform() {
+  const w = canvas.width, h = canvas.height;
+  const buf = new Float32Array(analyser.fftSize);
+
+  function frame() {
+    analyser.getFloatTimeDomainData(buf);
+    canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--panel");
+    canvasCtx.fillRect(0, 0, w, h);
+    canvasCtx.lineWidth = 2;
+    canvasCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent");
+    canvasCtx.beginPath();
+    const slice = w / buf.length;
+    let x = 0;
+    for (let i = 0; i < buf.length; i++) {
+      const y = (buf[i] * 0.5 + 0.5) * h;
+      if (i === 0) canvasCtx.moveTo(x, y);
+      else canvasCtx.lineTo(x, y);
+      x += slice;
+    }
+    canvasCtx.stroke();
+    drawHandle = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function clearWaveform() {
+  const w = canvas.width, h = canvas.height;
+  canvasCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--panel");
+  canvasCtx.fillRect(0, 0, w, h);
+}
+
+// ---------- WAV pipeline ----------
+async function blobToWav24k(blob) {
+  const arrayBuf = await blob.arrayBuffer();
+  // Decode at source rate using a throwaway AudioContext, then resample.
+  const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const decoded = await decodeCtx.decodeAudioData(arrayBuf.slice(0));
+  decodeCtx.close();
+
+  // Mix to mono.
+  const monoSrc = mixToMono(decoded);
+
+  // Resample to 24 kHz using OfflineAudioContext.
+  const dur = monoSrc.length / decoded.sampleRate;
+  const targetLen = Math.ceil(dur * TARGET_SAMPLE_RATE);
+  const offline = new OfflineAudioContext(1, targetLen, TARGET_SAMPLE_RATE);
+  const tmpBuf = offline.createBuffer(1, monoSrc.length, decoded.sampleRate);
+  tmpBuf.copyToChannel(monoSrc, 0, 0);
+  const src = offline.createBufferSource();
+  src.buffer = tmpBuf;
+  src.connect(offline.destination);
+  src.start(0);
+  const rendered = await offline.startRendering();
+  const samples = rendered.getChannelData(0);
+  return packWav(samples, TARGET_SAMPLE_RATE);
+}
+
+function mixToMono(audioBuf) {
+  if (audioBuf.numberOfChannels === 1) return audioBuf.getChannelData(0);
+  const len = audioBuf.length;
+  const out = new Float32Array(len);
+  for (let ch = 0; ch < audioBuf.numberOfChannels; ch++) {
+    const data = audioBuf.getChannelData(ch);
+    for (let i = 0; i < len; i++) out[i] += data[i];
+  }
+  for (let i = 0; i < len; i++) out[i] /= audioBuf.numberOfChannels;
+  return out;
+}
+
+function packWav(samples, sampleRate) {
+  const numSamples = samples.length;
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+  writeStr(view, 0, "RIFF");
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeStr(view, 8, "WAVE");
+  writeStr(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(view, 36, "data");
+  view.setUint32(40, numSamples * 2, true);
+  let off = 44;
+  for (let i = 0; i < numSamples; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    off += 2;
+  }
+  return new Uint8Array(buffer);
+}
+
+function writeStr(view, off, str) {
+  for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+}
+
+function bytesToBase64(bytes) {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+// ---------- Streaming SSE consumer ----------
+async function sendToModel(audioB64) {
+  rawEl.classList.remove("empty", "bad");
+  rawEl.textContent = "";
+  cardWrap.classList.add("hidden");
+  cardEl.innerHTML = "";
+
+  let resp;
+  try {
+    resp = await fetch("/api/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audio_b64: audioB64 }),
+    });
+  } catch (err) {
+    toast(`Lost connection to model server (${err.message}).`);
+    setState(STATE.IDLE);
+    return;
+  }
+  if (!resp.ok || !resp.body) {
+    toast(`Model server returned ${resp.status}.`);
+    setState(STATE.IDLE);
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  let full = "";
+
+  setState(STATE.RENDERING);
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const ln of lines) {
+      const line = ln.trim();
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") continue;
+      try {
+        const obj = JSON.parse(payload);
+        const delta = obj?.choices?.[0]?.delta?.content;
+        if (typeof delta === "string" && delta.length > 0) {
+          full += delta;
+          rawEl.textContent = full;
+        }
+      } catch (_) { /* swallow keep-alives */ }
+    }
+  }
+
+  renderCard(full);
+  setState(STATE.IDLE);
+}
+
+// ---------- Renderer registry ----------
+function parseCall(text) {
+  const t = text.trim();
+  if (!t) return null;
+  const parts = t.split("|");
+  const fn = parts[0].trim();
+  if (!fn || !/^[A-Za-z0-9_]+$/.test(fn)) return null;
+  const args = {};
+  for (let i = 1; i < parts.length; i++) {
+    const p = parts[i];
+    const eq = p.indexOf("=");
+    if (eq < 0) return null;
+    const k = p.slice(0, eq).trim();
+    const v = p.slice(eq + 1).trim();
+    if (!k.startsWith("$") || !/^[A-Za-z0-9_]+$/.test(k.slice(1))) return null;
+    args[k] = v;
+  }
+  return { fn, args };
+}
+
+const RENDERERS = {
+  HassLightSet: renderLight,
+  HassStartTimer: renderTimer,
+  HassGetCurrentTime: renderClock,
+};
+
+function renderCard(rawText) {
+  cardWrap.classList.remove("hidden");
+  const parsed = parseCall(rawText);
+  if (!parsed) {
+    rawEl.classList.add("bad");
+    cardEl.innerHTML = `<div class="card-fn" style="color: var(--accent-bad)">did not parse as a function call</div>`;
+    return;
+  }
+  const renderer = RENDERERS[parsed.fn] || renderGeneric;
+  cardEl.innerHTML = "";
+  cardEl.appendChild(renderer(parsed.fn, parsed.args));
+}
+
+function header(fn, withPreview) {
+  const h = document.createElement("div");
+  h.className = "card-fn";
+  h.textContent = fn;
+  if (withPreview) {
+    const tag = document.createElement("span");
+    tag.className = "preview-tag";
+    tag.textContent = "preview";
+    h.appendChild(tag);
+  }
+  return h;
+}
+
+function pillRow(args) {
+  const row = document.createElement("div");
+  row.className = "pill-row";
+  for (const [k, v] of Object.entries(args)) {
+    const p = document.createElement("span");
+    p.className = "pill";
+    p.innerHTML = `<span class="k">${escapeHtml(k)}</span>=<span class="v">${escapeHtml(v)}</span>`;
+    row.appendChild(p);
+  }
+  return row;
+}
+
+function renderGeneric(fn, args) {
+  const root = document.createElement("div");
+  root.appendChild(header(fn, false));
+  if (Object.keys(args).length) root.appendChild(pillRow(args));
+  return root;
+}
+
+function renderLight(fn, args) {
+  const root = document.createElement("div");
+  root.appendChild(header(fn, true));
+  root.appendChild(pillRow(args));
+
+  const brightnessRaw = parseInt(args["$brightness"] || "100", 10);
+  const brightness = isNaN(brightnessRaw) ? 100 : Math.max(0, Math.min(100, brightnessRaw));
+  const area = args["$area"] || args["$name"] || "(unspecified)";
+
+  const wrap = document.createElement("div");
+  wrap.className = "bulb";
+  const bulb = document.createElement("div");
+  bulb.className = "bulb-svg";
+  const intensity = brightness / 100;
+  const glow = `rgba(255, 220, 130, ${0.2 + 0.7 * intensity})`;
+  bulb.style.setProperty("--bulb-glow", glow);
+  bulb.style.setProperty("--bulb-blur", `${10 + 40 * intensity}px`);
+  const meta = document.createElement("div");
+  meta.className = "bulb-meta";
+  meta.innerHTML = `<div class="area">${escapeHtml(area)}</div><div>brightness: ${brightness}%</div>`;
+  wrap.appendChild(bulb);
+  wrap.appendChild(meta);
+  root.appendChild(wrap);
+  return root;
+}
+
+function renderTimer(fn, args) {
+  const root = document.createElement("div");
+  root.appendChild(header(fn, true));
+  root.appendChild(pillRow(args));
+
+  const minutes = parseInt(args["$minutes"] || "0", 10);
+  const totalReal = (isNaN(minutes) ? 1 : Math.max(0, minutes)) * 60;
+  const demoSec = 4;
+
+  const cd = document.createElement("div");
+  cd.className = "countdown";
+  root.appendChild(cd);
+
+  const start = performance.now();
+  function tick() {
+    const elapsed = (performance.now() - start) / 1000;
+    const ratio = Math.min(1, elapsed / demoSec);
+    const remainReal = Math.max(0, totalReal * (1 - ratio));
+    const mm = Math.floor(remainReal / 60).toString().padStart(2, "0");
+    const ss = Math.floor(remainReal % 60).toString().padStart(2, "0");
+    cd.textContent = `${mm}:${ss}`;
+    if (ratio < 1) {
+      requestAnimationFrame(tick);
+    } else {
+      cd.textContent = "00:00";
+      cd.classList.add("done");
+    }
+  }
+  requestAnimationFrame(tick);
+  return root;
+}
+
+function renderClock(fn, _args) {
+  const root = document.createElement("div");
+  root.appendChild(header(fn, true));
+  const clock = document.createElement("div");
+  clock.className = "clock";
+  root.appendChild(clock);
+  function update() {
+    const d = new Date();
+    const hh = d.getHours().toString().padStart(2, "0");
+    const mm = d.getMinutes().toString().padStart(2, "0");
+    const ss = d.getSeconds().toString().padStart(2, "0");
+    clock.textContent = `${hh}:${mm}:${ss}`;
+  }
+  update();
+  // Update for a few seconds; we are in single-shot mode so this gets replaced
+  // when the next prediction arrives.
+  const handle = setInterval(update, 1000);
+  setTimeout(() => clearInterval(handle), 30000);
+  return root;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
+
+// ---------- Toast ----------
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.remove("hidden");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.add("hidden"), 4000);
+}
+
+// ---------- Wiring ----------
+function attachHoldEvents() {
+  // Pointer (mouse + touch) on the button.
+  recBtn.addEventListener("pointerdown", (e) => {
+    if (recBtn.disabled) return;
+    recBtn.setPointerCapture(e.pointerId);
+    startRecording();
+  });
+  recBtn.addEventListener("pointerup", () => {
+    if (state === STATE.RECORDING) stopRecordingAndSubmit();
+  });
+  recBtn.addEventListener("pointercancel", () => {
+    if (state === STATE.RECORDING) stopRecordingAndSubmit();
+  });
+  recBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  // Spacebar hold.
+  let spaceHeld = false;
+  document.addEventListener("keydown", (e) => {
+    if (e.code !== "Space" || e.repeat) return;
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    e.preventDefault();
+    if (spaceHeld) return;
+    spaceHeld = true;
+    if (!recBtn.disabled) startRecording();
+  });
+  document.addEventListener("keyup", (e) => {
+    if (e.code !== "Space") return;
+    spaceHeld = false;
+    if (state === STATE.RECORDING) stopRecordingAndSubmit();
+  });
+}
+
+retryMicBtn.addEventListener("click", async () => {
+  micStream = null;
+  await ensureMic();
+});
+
+attachHoldEvents();
+setState(STATE.IDLE);
+clearWaveform();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Demo (Step 5) config. Boots the fine-tuned Q8_0 GGUF locally and serves
+# a browser page that captures audio, posts it to the model, and renders the
+# emitted function call.
+#
+# `port` is the llama-liquid-audio-server's port (defaults to 8090 here to
+# avoid colliding with eval.py's default 8080, so a reader can keep both
+# running side by side).
+#
+# `demo_port` is the wrapper the browser hits. The wrapper serves the static
+# frontend and proxies streaming completions to the model server.
+#
+# `system_prompt` matches the training-time chat shape; see ADR-0001.
+
+name: demo
+model_repo: Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF
+quant: Q8_0
+
+system_prompt: "Perform ASR."
+
+max_new_tokens: 64
+temperature: 0.0
+port: 8090
+demo_port: 8000

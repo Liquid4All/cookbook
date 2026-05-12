@@ -17,6 +17,8 @@ In this tutorial you will:
    as a GGUF set that runs inside `llama-liquid-audio-server`.
 4. [Evaluate the fine-tuned model](#step-4-evaluate-the-fine-tuned-model) and
    measure the gap.
+5. [Talk to the model](#step-5-talk-to-the-model) in your browser via a small
+   push-to-talk demo.
 
 ## Table of contents
 
@@ -32,6 +34,7 @@ In this tutorial you will:
   - [Drain checkpoint](#drain-checkpoint)
   - [Quantize and publish](#quantize-and-publish)
 - [Step 4: Evaluate the fine-tuned model](#step-4-evaluate-the-fine-tuned-model)
+- [Step 5: Talk to the model](#step-5-talk-to-the-model)
 - [What's next](#whats-next)
 - [File map](#file-map)
 
@@ -309,6 +312,30 @@ emitting a different but plausible argument key, e.g.
 has `$name=master bedroom fan|$percentage=80`. Format and function-name are
 effectively solved at this step count.
 
+## Step 5: Talk to the model
+
+The eval in Step 4 is text in, text out. To actually hear what the model does
+on your own voice, run the browser demo:
+
+```bash
+uv run python scripts/demo.py --config configs/demo.yaml
+```
+
+This boots the same `llama-liquid-audio-server` Step 4 uses (on port 8090 by
+default, so it does not collide with `eval.py`'s 8080) and serves a single
+push-to-talk page from a Starlette wrapper on port 8000. A browser tab opens
+automatically; hold <kbd>SPACE</kbd> or click and hold the on-screen button to
+record, release to send.
+
+The page streams the raw model output into a monospace panel as tokens arrive,
+then renders a parsed card below once the stream completes. Three function
+signatures get bespoke visuals: `HassLightSet` shows a bulb at the emitted
+brightness, `HassStartTimer` shows a demo-speed countdown, and
+`HassGetCurrentTime` shows a live clock. Anything else renders as a generic
+card with the function name and `$key=value` argument pills. The bespoke
+visuals are labelled "preview": the model emits a function call, the demo
+visualises what the call would do, it does not bridge to a real Home Assistant.
+
 ## What's next
 
 - Try a smaller quant (`--quant Q4_0`) and measure the accuracy/size tradeoff.
@@ -328,16 +355,23 @@ voice-assistant/
 │   ├── baseline.yaml                           eval config for the unmodified model
 │   ├── finetuned-f16.yaml                      eval config: fine-tuned, F16 quant
 │   ├── finetuned-q8.yaml                       eval config: fine-tuned, Q8_0 quant (reference)
-│   └── finetuned-q4.yaml                       eval config: fine-tuned, Q4_0 quant
+│   ├── finetuned-q4.yaml                       eval config: fine-tuned, Q4_0 quant
+│   └── demo.yaml                               browser demo config (Step 5)
 ├── docs/adr/
 │   ├── 0001-eval-methodology.md                two-mode eval design
 │   └── 0002-vendoring-strategy.md              why preprocess/train are vendored
-├── pyproject.toml                              base deps + `finetune` group
+├── pyproject.toml                              base deps + `finetune` and `dev` groups
+├── tests/
+│   └── test_parser.py                          pins the function-call parser contract
 └── scripts/
     ├── prepare_raw_data.py                     publish the 95/5 train/test split
     ├── preprocess_ohf_voice.py                 OHF-Voice → tensor dataset (vendored)
     ├── train.py                                fine-tune LFM2.5-Audio-1.5B (vendored)
     ├── eval.py                                 GGUF-based eval (server + OpenAI client)
     ├── quantize.py                             safetensors → GGUF, push to HF
+    ├── demo.py                                 browser demo wrapper (Step 5)
+    ├── demo_static/index.html                  single-file demo frontend
+    ├── _server.py                              shared server-lifecycle helpers
+    ├── _parser.py                              shared function-call parser
     └── smoke_test_pytorch.py                   PyTorch inference on Modal (debug only)
 ```

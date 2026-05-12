@@ -14,10 +14,16 @@ dependencies = [
     "pyyaml>=6.0.3",
     "openai>=2.36.0",
     "python-dotenv>=1.0",
+    "starlette>=0.36",
+    "uvicorn>=0.29",
+    "httpx>=0.27",
 ]
 
 [dependency-groups]
 finetune = [
     "modal>=0.64",
     "wandb>=0.17",
+]
+dev = [
+    "pytest>=8.0",
 ]
