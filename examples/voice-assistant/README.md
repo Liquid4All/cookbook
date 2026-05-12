@@ -155,41 +155,45 @@ length exceeds 512 tokens.
 ### Fine-tune
 
 ```bash
-HF_TOKEN=hf_... uv run --group finetune python scripts/train.py \
-    --modal \
-    --log-with wandb \
-    --wandb-run-name "ohf-voice-run-1"
+HF_TOKEN=hf_... uv run --group finetune python scripts/train.py --modal --max-steps 1000
 ```
 
-This runs `scripts/train.py` on a Modal A100-80GB. Defaults baked in:
+This runs `scripts/train.py` on a Modal A100-80GB. Defaults baked into the script:
 
 | knob | value |
 |---|---|
 | `--context-length` | 512 |
 | `--batch-size`     | 32 |
-| `--max-steps`      | 10,000 |
+| `--max-steps`      | 10,000 (`--max-steps 1000` is enough for the reference run; see results below) |
 | `--warmup-steps`   | 250 |
 | `--lr`             | 5e-5 |
 | `--val-split-ratio`| 0.05 (carved from train, **not** the test split) |
 | `--seed`           | 42 |
+| `--run-id`         | `ohf-voice-{YYYYMMDD-HHMMSS}` (per-run subfolder so re-runs never collide) |
 
-Checkpoints land in the Modal volume `lfm2-training-output`. The validation
-slice is carved from the train split, never from the held-out test set, so the
-final eval against `Paulescu/OHF-Voice-audio-20260504` `test` remains clean.
+Each invocation writes checkpoints to `/checkpoints/{run_id}/...` on the Modal
+volume `lfm2-training-output`. The in-loop validation slice is carved from the
+train split, never from the held-out test set, so the final eval against
+`Paulescu/OHF-Voice-audio-20260504` `test` remains clean.
 
 Both `preprocess_ohf_voice.py` and `train.py` are vendored from
 `liquid-audio-staging` (`examples/audio-to-function-calling` branch, commit
 `376b06a`). See [ADR-0002](./docs/adr/0002-vendoring-strategy.md) for why we
 vendor instead of upstreaming.
 
-When training finishes, push the resulting safetensors checkpoint to HF:
+Reference run: 1000 steps converged to train loss ~0.026, val loss ~0.023 in
+~19 min on A100-80GB. The final weights live at
+`/checkpoints/{run_id}/final/model.safetensors` on the `lfm2-training-output`
+volume; drain them locally before quantizing:
 
-```
-Paulescu/LFM2.5-Audio-1.5B-OHF-Voice
+```bash
+modal volume get lfm2-training-output \
+    /checkpoints/{run_id}/final/model.safetensors \
+    outputs/checkpoint/model.safetensors
 ```
 
-(The exact push mechanism depends on how you choose to drain the Modal volume.
-The simplest option is `modal volume get` then `huggingface-cli upload-large-folder`.)
+You can skip pushing an intermediate safetensors HF repo; `scripts/quantize.py`
+in Step 4 reads the local checkpoint directly.
 
 ## Step 3: Evaluate the fine-tuned model
 
@@ -201,51 +205,62 @@ then:
 HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/finetuned.yaml
 ```
 
-Same 397-sample stratified test subset as the baseline. Expected outcome (numbers
-filled in once the canonical run lands):
+Same 397-sample stratified test subset as the baseline.
 
-| metric                  | baseline    | fine-tuned |
+Reference results (2026-05-12, 1000-step fine-tune, Q8_0 GGUF, 397 samples):
+
+| metric                          | baseline | fine-tuned |
 |---|---|---|
-| Format compliance       | 0%          | _TBD_      |
-| Function-name accuracy  | 0%          | _TBD_      |
-| Argument accuracy       | 0%          | _TBD_      |
+| Format compliance (parseable)   | 0.0%     | 100.0%     |
+| Function-name accuracy          | 0.0%     | 99.2%      |
+| Argument accuracy (exact)       | 0.0%     | 90.4%      |
 
-Per-function breakdown lands at
-`evals/finetuned_<timestamp>/report.md` after the run.
+Per-function breakdown lands at `evals/finetuned_<timestamp>/report.md` after
+the run. The argument-accuracy gap (90.4% rather than 99.2%) is dominated by
+the model emitting a different but plausible argument key, e.g.
+`HassFanSetSpeed|$area=master bedroom|$percentage=80` when the ground truth
+has `$name=master bedroom fan|$percentage=80`. Format and function-name are
+effectively solved at this step count.
 
 ## Step 4: Quantize and deploy
 
-The fine-tuned checkpoint is a safetensors HF model. To run it inside
-`llama-liquid-audio-server` (the thing `scripts/eval.py` uses) we have to convert
-to GGUF.
+To run the fine-tuned checkpoint inside `llama-liquid-audio-server` (the thing
+`scripts/eval.py` uses) we have to convert to GGUF. With the local checkpoint
+drained in Step 2:
 
 ```bash
 HF_TOKEN=hf_... uv run --group finetune python scripts/quantize.py \
-    --source-repo Paulescu/LFM2.5-Audio-1.5B-OHF-Voice \
+    --source-checkpoint outputs/checkpoint/model.safetensors \
     --target-repo Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF \
-    --quant F16
+    --quant Q8_0
 ```
 
 `scripts/quantize.py`:
 
-1. Clones llama.cpp at PR #18641 branch (audio multimodal support, not yet on main).
-2. Runs `convert_hf_to_gguf.py` twice on your checkpoint: once for the LM backbone,
-   once with `--mmproj` for the audio encoder + projector.
-3. Quantizes the LM to your target level (`--quant`) via `llama-quantize`. Mmproj
-   stays F16.
-4. Copies the upstream `vocoder` and `tokenizer` GGUFs (these don't change with
-   fine-tuning) and the `runners/` folder of prebuilt binaries from
-   `LiquidAI/LFM2.5-Audio-1.5B-GGUF`.
-5. Pushes the four GGUFs + `runners/` to your target repo with a model card.
+1. Clones llama.cpp at PR #18641 (audio multimodal support, not yet on main).
+2. Overlays our `model.safetensors` on top of the upstream
+   `LiquidAI/LFM2.5-Audio-1.5B` configs so `convert_hf_to_gguf.py` has the
+   `config.json` / tokenizer / chat-template inputs it needs.
+3. Runs `convert_hf_to_gguf.py` twice on the merged dir: once for the LM
+   backbone, once with `--mmproj` for the audio encoder + projector.
+4. Quantizes the LM to your target level (`--quant`) via `llama-quantize`.
+   The mmproj always stays F16 (small file, no benefit to crunching it).
+5. Copies the upstream `vocoder` and `tokenizer` GGUFs (these don't change
+   with fine-tuning) and the `runners/` folder of prebuilt platform binaries
+   from `LiquidAI/LFM2.5-Audio-1.5B-GGUF`.
+6. Pushes the four GGUFs + `runners/` to your target repo with a model card.
 
 The resulting repo is self-contained: `scripts/eval.py` (or any other
 llama-liquid-audio-server consumer) downloads everything it needs from one
 place.
 
+`Q8_0` is the default we ship and the deployment-target quant. Q4_0 is also
+supported via `--quant Q4_0` for a smaller download and faster CPU inference
+at the cost of some accuracy drift.
+
 To verify the deployed model works end-to-end, point `configs/finetuned.yaml`
 at the new repo and re-run `scripts/eval.py`. The numbers should match what
-you got in Step 3 (any drift is the quantization tax, surfaced as a side-by-side
-F16 vs Q8_0 comparison).
+you got in Step 3.
 
 ## What's next
 
@@ -274,5 +289,6 @@ voice-assistant/
     ├── preprocess_ohf_voice.py                 OHF-Voice → tensor dataset (vendored)
     ├── train.py                                fine-tune LFM2.5-Audio-1.5B (vendored)
     ├── eval.py                                 GGUF-based eval (server + OpenAI client)
-    └── quantize.py                             safetensors → GGUF, push to HF
+    ├── quantize.py                             safetensors → GGUF, push to HF
+    └── smoke_test_pytorch.py                   PyTorch inference on Modal (debug only)
 ```
