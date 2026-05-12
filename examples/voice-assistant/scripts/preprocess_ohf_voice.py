@@ -45,14 +45,38 @@ from liquid_audio.data.types import AudioSegment, ChatMessage, TextSegment
 
 DATASET_REPO = "Paulescu/OHF-Voice-audio-20260504"
 
+# The `llama-liquid-audio-server` runtime enforces a closed allow-list of
+# system prompts (the strings in `liquid_audio_chat.py`'s SYSTEM_PROMPTS:
+# `"Perform ASR."`, the various `"Perform TTS. ..."`, and the interleaved
+# variant). Empty / missing / arbitrary system messages get rejected. To make
+# the fine-tune effective at inference, we therefore have to train with the
+# *exact* system prompt the server will be configured to send -- otherwise
+# the inference-time prompt acts as a pretrained behavioral trigger
+# ("Perform ASR." anchors the model in transcription mode) that overrides
+# the fine-tune. Empirically verified on 2026-05-12: a 500-step run trained
+# without a system prompt produced correct function calls in PyTorch (where
+# the chat shape can match the training shape) but produced plain
+# transcriptions through the GGUF server (which forces the prompt in).
+SYSTEM_PROMPT = "Perform ASR."
+
 
 class OHFVoiceIterator:
-    """Yields one list-of-ChatMessage per row of the train split."""
+    """Yields one list-of-ChatMessage per row of the train split.
+
+    Each emitted chat is prefixed with a `system` turn carrying the inference-
+    time system prompt (`SYSTEM_PROMPT`). The rest of the messages come from
+    the dataset's `audio_chat` field, which has only user + assistant turns.
+    """
 
     def __iter__(self) -> Iterator[list[ChatMessage]]:
         ds = load_dataset(DATASET_REPO, split="train")
         for row in ds:
-            messages: list[ChatMessage] = []
+            messages: list[ChatMessage] = [
+                ChatMessage(
+                    role="system",
+                    content=[TextSegment(text=SYSTEM_PROMPT)],
+                )
+            ]
             for msg in row["audio_chat"]:
                 segments: list[TextSegment | AudioSegment] = []
                 for item in msg["content"]:

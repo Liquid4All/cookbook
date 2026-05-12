@@ -16,7 +16,7 @@
 
 name: finetuned
 model_repo: Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF
-quant: F16
+quant: Q8_0
 
 system_prompt: "Perform ASR."
 

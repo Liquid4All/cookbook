@@ -304,10 +304,15 @@ def overlay_checkpoint_on_base(
     Returns the path to the merged directory.
     """
     print(f"Snapshotting base model configs from {base_repo} ...", flush=True)
+    # `*.jinja` is critical: LFM2.5-Audio's chat template lives in
+    # chat_template.jinja, and convert_hf_to_gguf.py embeds it as the
+    # tokenizer.chat_template GGUF key. Without it the server can't format
+    # incoming messages and rejects audio inputs with "audio input is not
+    # supported", even though the mmproj is loaded correctly.
     base_dir = Path(
         snapshot_download(
             repo_id=base_repo,
-            allow_patterns=["*.json", "*.txt", "tokenizer*", "*.model", "*.py"],
+            allow_patterns=["*.json", "*.txt", "*.jinja", "tokenizer*", "*.model", "*.py"],
         )
     )
     merged = output_dir / "_staging" / "merged"
@@ -395,7 +400,7 @@ def main() -> None:
         src_dir = overlay_checkpoint_on_base(
             checkpoint_path=args.source_checkpoint,
             base_repo=args.base_repo,
-            work_dir=args.output_dir,
+            output_dir=args.output_dir,
         )
 
     lm_f16 = args.output_dir / f"{target_stem}-F16.gguf"
