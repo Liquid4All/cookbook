@@ -5,6 +5,15 @@ commands directly to function calls, using a fine-tuned `LFM2.5-Audio-1.5B`
 running entirely on-device via llama.cpp. No cloud, no STT pipeline, no
 intermediate transcription step: audio in, function call out.
 
+```mermaid
+flowchart LR
+    AUDIO["'turn on the fan in the living room'<br/>(24 kHz WAV)"]
+    MODEL{{"Fine-tuned LFM2.5-Audio-1.5B"}}
+    CALL["HassTurnOn|$area=living room|$domain=fan"]
+
+    AUDIO --> MODEL --> CALL
+```
+
 In this tutorial you will:
 
 1. [Establish the floor](#step-1-establish-the-floor): evaluate the unmodified
@@ -19,36 +28,6 @@ In this tutorial you will:
    measure the gap.
 5. [Talk to the model](#step-5-talk-to-the-model) in your browser via a small
    push-to-talk demo.
-
-How data and artifacts flow across the tutorial:
-
-```mermaid
-flowchart TD
-    subgraph HF[HuggingFace Hub]
-        UPSTREAM[LiquidAI/LFM2.5-Audio-1.5B-GGUF]
-        DATA[Paulescu/OHF-Voice-audio-20260504]
-        TUNED[Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF]
-    end
-
-    subgraph MODAL[Modal volumes]
-        TENSORS["ohf-voice-data: tensors"]
-        SAFE["lfm2-training-output: model.safetensors"]
-    end
-
-    subgraph LOCAL[Local laptop]
-        LOCALSAFE["outputs/checkpoint/model.safetensors"]
-        EVAL[eval.py]
-        DEMO[demo.py]
-    end
-
-    DATA -- "preprocess_ohf_voice.py" --> TENSORS
-    TENSORS -- "train.py" --> SAFE
-    SAFE -- "modal volume get" --> LOCALSAFE
-    LOCALSAFE -- "quantize.py" --> TUNED
-    UPSTREAM -- "Step 1: floor" --> EVAL
-    TUNED -- "Step 4: ceiling" --> EVAL
-    TUNED -- "Step 5" --> DEMO
-```
 
 ## Table of contents
 
@@ -354,6 +333,26 @@ on your own voice, run the browser demo:
 ```bash
 uv run python scripts/demo.py --config configs/demo.yaml
 ```
+
+<img src="media/step5_demo_light.png" width="480" alt='Step 5 browser demo: a "Try saying" panel with five example phrases, a "Hold to talk" button, raw output streaming "HassLightSet|$area=bathroom|$brightness=75", and a parsed function-call card with a glowing bulb at 75% brightness for the bathroom.'>
+
+How the pieces fit together at runtime:
+
+```mermaid
+flowchart LR
+    subgraph LOCAL[Local laptop]
+        direction LR
+        BROWSER["Browser<br/>scripts/demo_static/index.html"]
+        WRAPPER["Demo wrapper :8000<br/>(Starlette + uvicorn)<br/>scripts/demo.py"]
+        MODEL["Model server :8090<br/>(llama-liquid-audio-server)"]
+    end
+
+    BROWSER -- "POST /api/predict<br/>(WAV bytes, base64)" --> WRAPPER
+    WRAPPER -- "POST /v1/chat/completions<br/>(stream=True)" --> MODEL
+    MODEL -- "SSE delta stream" --> WRAPPER
+    WRAPPER -- "SSE proxied through" --> BROWSER
+```
+
 
 This boots the same `llama-liquid-audio-server` Step 4 uses (on port 8090 by
 default, so it does not collide with `eval.py`'s 8080) and serves a single

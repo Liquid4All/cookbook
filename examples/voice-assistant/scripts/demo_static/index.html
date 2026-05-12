@@ -125,6 +125,22 @@
     font-style: italic;
   }
   pre#raw.bad { color: var(--accent-bad); }
+  .examples-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .examples-list li {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .examples-list li::before { content: "\201C"; color: var(--text-dim); margin-right: 2px; }
+  .examples-list li::after { content: "\201D"; color: var(--text-dim); margin-left: 2px; }
   .card-fn {
     font-family: var(--mono);
     font-size: 18px;
@@ -228,6 +244,17 @@
   <p>Hold <kbd>SPACE</kbd> or click and hold the button to record. Release to send.</p>
 </header>
 <main>
+  <section class="panel">
+    <h2>Try saying</h2>
+    <ul class="examples-list">
+      <li>set a timer for one hour named pizza</li>
+      <li>please adjust the brightness in the bathroom to seventy-five</li>
+      <li>please adjust the brightness in the bedroom to ten</li>
+      <li>what time is it, please</li>
+      <li>turn on the fan in the living room</li>
+    </ul>
+  </section>
+
   <section class="recorder">
     <button id="recBtn" aria-label="push to talk">Hold to talk</button>
     <div id="hint" class="hint"></div>
@@ -632,26 +659,39 @@ function renderTimer(fn, args) {
   root.appendChild(header(fn, true));
   root.appendChild(pillRow(args));
 
-  const minutes = parseInt(args["$minutes"] || "0", 10);
-  const totalReal = (isNaN(minutes) ? 1 : Math.max(0, minutes)) * 60;
+  const hours = parseInt(args["$hours"] || "0", 10) || 0;
+  const minutes = parseInt(args["$minutes"] || "0", 10) || 0;
+  const seconds = parseInt(args["$seconds"] || "0", 10) || 0;
+  const totalReal = Math.max(1, hours * 3600 + minutes * 60 + seconds);
+  const useHours = totalReal >= 3600;
   const demoSec = 4;
 
   const cd = document.createElement("div");
   cd.className = "countdown";
   root.appendChild(cd);
 
+  function fmt(rem) {
+    const r = Math.max(0, Math.floor(rem));
+    if (useHours) {
+      const h = Math.floor(r / 3600);
+      const m = Math.floor((r % 3600) / 60);
+      const s = r % 60;
+      return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    }
+    const m = Math.floor(r / 60);
+    const s = r % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+
   const start = performance.now();
   function tick() {
     const elapsed = (performance.now() - start) / 1000;
     const ratio = Math.min(1, elapsed / demoSec);
-    const remainReal = Math.max(0, totalReal * (1 - ratio));
-    const mm = Math.floor(remainReal / 60).toString().padStart(2, "0");
-    const ss = Math.floor(remainReal % 60).toString().padStart(2, "0");
-    cd.textContent = `${mm}:${ss}`;
+    cd.textContent = fmt(totalReal * (1 - ratio));
     if (ratio < 1) {
       requestAnimationFrame(tick);
     } else {
-      cd.textContent = "00:00";
+      cd.textContent = fmt(0);
       cd.classList.add("done");
     }
   }
@@ -736,6 +776,24 @@ retryMicBtn.addEventListener("click", async () => {
 attachHoldEvents();
 setState(STATE.IDLE);
 clearWaveform();
+
+// ---------- Documentation-screenshot hook ----------
+// Visit ?demo=<key> to render a canned prediction without using the mic.
+// Drives the result panels exactly the same way a real recording would,
+// minus the state machine churn. Useful for taking docs screenshots.
+const DEMO_FIXTURES = {
+  timer:   "HassStartTimer|$name=pizza|$hours=1",
+  light:   "HassLightSet|$area=bathroom|$brightness=75",
+  clock:   "HassGetCurrentTime",
+  generic: "HassTurnOn|$area=living room|$domain=fan",
+};
+const demoKey = new URLSearchParams(location.search).get("demo");
+if (demoKey && DEMO_FIXTURES[demoKey]) {
+  const canned = DEMO_FIXTURES[demoKey];
+  rawEl.classList.remove("empty", "bad");
+  rawEl.textContent = canned;
+  renderCard(canned);
+}
 </script>
 </body>
 </html>
