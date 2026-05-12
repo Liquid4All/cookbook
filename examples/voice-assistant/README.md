@@ -48,6 +48,17 @@ In this tutorial you will:
 - For quantization: `git`, `cmake`, and a C++ compiler (on macOS:
   `xcode-select --install` and `brew install cmake`).
 
+Before running any script, copy `.env.example` to `.env` and paste in your
+`HF_TOKEN`:
+
+```bash
+cp .env.example .env
+# then edit .env and replace hf_xxx with your token
+```
+
+Every script loads `.env` automatically. If `HF_TOKEN` is already set in your
+shell (or in CI), the `.env` value will not overwrite it.
+
 ## Quick start: run the published fine-tuned model
 
 If you just want to see the fine-tuned model in action and you don't care
@@ -57,14 +68,14 @@ about reproducing the training, run the published-checkpoint eval directly:
 git clone https://github.com/Liquid4All/cookbook
 cd cookbook/examples/voice-assistant
 uv sync
-HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/finetuned-q8.yaml
+uv run python scripts/eval.py --config configs/finetuned-q8.yaml
 ```
 
 This downloads `Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF` (the four-file
 audio model + the platform runner) and evaluates it on 397 stratified samples
-from the held-out test split. `configs/finetuned-q8.yaml` is the canonical
-reference quant; `configs/finetuned-f16.yaml` and `configs/finetuned-q4.yaml`
-ship alongside for comparison sweeps (see Step 4).
+from the held-out test split. The snippets in this README default to Q8_0;
+`configs/finetuned-f16.yaml` and `configs/finetuned-q4.yaml` ship alongside
+if you want to compare quants yourself (see Step 4).
 
 ## The dataset
 
@@ -98,8 +109,8 @@ If you want to reproduce the split locally instead of consuming the published
 artifact, run:
 
 ```bash
-HF_TOKEN=hf_... uv run python scripts/prepare_raw_data.py --dry-run
-HF_TOKEN=hf_... uv run python scripts/prepare_raw_data.py
+uv run python scripts/prepare_raw_data.py --dry-run
+uv run python scripts/prepare_raw_data.py
 ```
 
 The first invocation prints per-function counts; the second pushes the split
@@ -126,7 +137,7 @@ Before fine-tuning, run the eval against the *unmodified* model to see what
 the floor looks like.
 
 ```bash
-HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/baseline.yaml
+uv run python scripts/eval.py --config configs/baseline.yaml
 ```
 
 [`configs/baseline.yaml`](./configs/baseline.yaml) points at
@@ -162,7 +173,7 @@ trainer expects, then run the fine-tune on Modal.
 ### Preprocess
 
 ```bash
-HF_TOKEN=hf_... uv run --group finetune python scripts/preprocess_ohf_voice.py --modal
+uv run --group finetune python scripts/preprocess_ohf_voice.py --modal
 ```
 
 This runs `scripts/preprocess_ohf_voice.py` on a Modal A100. It reads
@@ -174,7 +185,7 @@ length exceeds 512 tokens.
 ### Fine-tune
 
 ```bash
-HF_TOKEN=hf_... uv run --group finetune python scripts/train.py --modal --max-steps 1000
+uv run --group finetune python scripts/train.py --modal --max-steps 1000
 ```
 
 This runs `scripts/train.py` on a Modal A100-80GB. Defaults baked into the script:
@@ -231,7 +242,7 @@ start of its run (or visible in `modal volume ls lfm2-training-output`).
 With the local checkpoint in place:
 
 ```bash
-HF_TOKEN=hf_... uv run --group finetune python scripts/quantize.py \
+uv run --group finetune python scripts/quantize.py \
     --source-checkpoint outputs/checkpoint/model.safetensors \
     --target-repo Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF \
     --quant Q8_0
@@ -256,11 +267,11 @@ The resulting repo is self-contained: `scripts/eval.py` in Step 4 (or any
 other llama-liquid-audio-server consumer) downloads everything it needs from
 one place.
 
-`Q8_0` is the canonical reference quant. To publish other levels alongside,
-rerun with `--quant F16` and `--quant Q4_0`. Each invocation adds its own
-file set (`*-F16.gguf`, `*-Q4_0.gguf`, etc.) to the same target repo; the
-runners and the unchanged vocoder/tokenizer are deduped by HuggingFace's
-content addressing.
+The snippet above publishes Q8_0. To publish other quants alongside, rerun
+with `--quant F16` and `--quant Q4_0`. Each invocation adds its own file set
+(`*-F16.gguf`, `*-Q4_0.gguf`, etc.) to the same target repo; the runners and
+the unchanged vocoder/tokenizer are deduped by HuggingFace's content
+addressing. See Step 4 for the size/accuracy tradeoff.
 
 ## Step 4: Evaluate the fine-tuned model
 
@@ -268,7 +279,7 @@ Run the eval against the GGUFs you just published. Three configs ship in
 this repo, one per quant:
 
 ```bash
-HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/finetuned-q8.yaml
+uv run python scripts/eval.py --config configs/finetuned-q8.yaml
 ```
 
 Swap `finetuned-q8.yaml` for `finetuned-f16.yaml` or `finetuned-q4.yaml` to
@@ -282,12 +293,18 @@ Reference results (2026-05-12, 1000-step fine-tune, 397 samples):
 
 | quant | format compliance | function-name acc. | argument acc. (exact) |
 |---|---|---|---|
-| F16  | 99.2%  | 98.5%  | 89.9%  |
-| Q8_0 | 100.0% | 99.2%  | 90.4%  |
-| Q4_0 | _TBD_  | _TBD_  | _TBD_  |
+| F16  | 99.7% | 99.0% | 90.2% |
+| Q8_0 | 99.7% | 99.0% | 90.2% |
+| Q4_0 | 99.0% | 98.2% | 89.7% |
 
-The argument-accuracy gap on Q8_0 (90.4% rather than 99.2%) is dominated by
-the model emitting a different but plausible argument key, e.g.
+All three quants land within run-to-run noise of each other (±1-3 samples
+per metric on rerun, T=0). At 1.5B parameters on this task, going from F16
+to Q4_0 is essentially free: the LM file shrinks from 2.3 GB to 696 MB with
+no detectable drop in any of the three metrics. Pick the smallest quant
+your deployment can tolerate.
+
+The argument-accuracy gap (~90% rather than ~99%) is dominated by the model
+emitting a different but plausible argument key, e.g.
 `HassFanSetSpeed|$area=master bedroom|$percentage=80` when the ground truth
 has `$name=master bedroom fan|$percentage=80`. Format and function-name are
 effectively solved at this step count.

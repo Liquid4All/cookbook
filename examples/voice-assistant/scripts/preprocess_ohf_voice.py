@@ -37,11 +37,14 @@ import os
 from collections.abc import Iterator
 
 from datasets import load_dataset
+from dotenv import load_dotenv
 
 from liquid_audio import LFM2AudioProcessor
 from liquid_audio.data.mapper import LFM2AudioChatMapper
 from liquid_audio.data.preprocess import preprocess_dataset
 from liquid_audio.data.types import AudioSegment, ChatMessage, TextSegment
+
+load_dotenv()
 
 DATASET_REPO = "Paulescu/OHF-Voice-audio-20260504"
 

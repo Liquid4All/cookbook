@@ -24,7 +24,10 @@ from collections import Counter
 
 import numpy as np
 from datasets import DatasetDict, load_dataset
+from dotenv import load_dotenv
 from sklearn.model_selection import train_test_split
+
+load_dotenv()
 
 SOURCE_REPO = "LiquidAI/OHF-Voice-audio-20260504"
 TARGET_REPO = "Paulescu/OHF-Voice-audio-20260504"

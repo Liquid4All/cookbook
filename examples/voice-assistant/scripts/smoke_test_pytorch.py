@@ -18,6 +18,9 @@ import io
 import os
 
 import modal
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = modal.App("lfm2-audio-pytorch-smoke")
 

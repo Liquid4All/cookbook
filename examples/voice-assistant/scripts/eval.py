@@ -40,8 +40,11 @@ from typing import Any
 import soundfile as sf
 import yaml
 from datasets import load_dataset
+from dotenv import load_dotenv
 from huggingface_hub import snapshot_download
 from openai import OpenAI
+
+load_dotenv()
 
 DATASET_REPO = "Paulescu/OHF-Voice-audio-20260504"
 TEST_SPLIT = "test"

@@ -51,8 +51,12 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from liquid_audio.data.dataloader import LFM2DataLoader
 from liquid_audio.trainer import Trainer
+
+load_dotenv()
 
 
 def run_training(

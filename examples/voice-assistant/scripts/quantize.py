@@ -35,7 +35,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 from huggingface_hub import HfApi, snapshot_download
+
+load_dotenv()
 
 UPSTREAM_GGUF_REPO = "LiquidAI/LFM2.5-Audio-1.5B-GGUF"
 UPSTREAM_MODEL_STEM = "LFM2.5-Audio-1.5B"
