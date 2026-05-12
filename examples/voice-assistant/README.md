@@ -96,11 +96,8 @@ if you want to compare quants yourself (see Step 4).
 ## The dataset
 
 [`Paulescu/OHF-Voice-audio-20260504`](https://huggingface.co/datasets/Paulescu/OHF-Voice-audio-20260504)
-is a fork of
-[`LiquidAI/OHF-Voice-audio-20260504`](https://huggingface.co/datasets/LiquidAI/OHF-Voice-audio-20260504)
-with a deterministic 95/5 train/test split, stratified by function name. The
-upstream dataset ships only a `train` split; the fork carves a disjoint test
-set once, so train and eval can never accidentally overlap.
+has a deterministic 95/5 train/test split, stratified by function name, so
+train and eval can never accidentally overlap.
 
 | split | samples |
 |---|---|
@@ -120,17 +117,6 @@ HassGetCurrentTime
 41 distinct function names. The four most common (Timer-related) cover ~28% of
 all samples; the rarest (`HassRespond`) appears 94 times. See
 [`CONTEXT.md`](./CONTEXT.md) for the full vocabulary.
-
-If you want to reproduce the split locally instead of consuming the published
-artifact, run:
-
-```bash
-uv run python scripts/prepare_raw_data.py --dry-run
-uv run python scripts/prepare_raw_data.py
-```
-
-The first invocation prints per-function counts; the second pushes the split
-to your HF namespace.
 
 ## The model
 
