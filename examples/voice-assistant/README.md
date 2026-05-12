@@ -20,6 +20,36 @@ In this tutorial you will:
 5. [Talk to the model](#step-5-talk-to-the-model) in your browser via a small
    push-to-talk demo.
 
+How data and artifacts flow across the tutorial:
+
+```mermaid
+flowchart TD
+    subgraph HF[HuggingFace Hub]
+        UPSTREAM[LiquidAI/LFM2.5-Audio-1.5B-GGUF]
+        DATA[Paulescu/OHF-Voice-audio-20260504]
+        TUNED[Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF]
+    end
+
+    subgraph MODAL[Modal volumes]
+        TENSORS["ohf-voice-data: tensors"]
+        SAFE["lfm2-training-output: model.safetensors"]
+    end
+
+    subgraph LOCAL[Local laptop]
+        LOCALSAFE["outputs/checkpoint/model.safetensors"]
+        EVAL[eval.py]
+        DEMO[demo.py]
+    end
+
+    DATA -- "preprocess_ohf_voice.py" --> TENSORS
+    TENSORS -- "train.py" --> SAFE
+    SAFE -- "modal volume get" --> LOCALSAFE
+    LOCALSAFE -- "quantize.py" --> TUNED
+    UPSTREAM -- "Step 1: floor" --> EVAL
+    TUNED -- "Step 4: ceiling" --> EVAL
+    TUNED -- "Step 5" --> DEMO
+```
+
 ## Table of contents
 
 - [Requirements](#requirements)
@@ -125,6 +155,10 @@ to your HF namespace.
 is a 1.5B-parameter multimodal model that consumes audio (and/or text) and
 emits audio (and/or text). For this project we only use the audio-to-text
 direction: spoken command in, function call text out.
+
+![LFM2-Audio architecture: a single LFM2 backbone consumes interleaved text and audio tokens; an audio encoder feeds continuous audio embeddings in, and a separate audio generation pipeline (VQ-GAN + Fourier vocoder) turns output audio tokens back into waveforms.](media/model_architecture.png)
+
+*Fig. 7 from the [LFM2 technical report](https://arxiv.org/pdf/2511.23404). This project exercises only the audio-to-text path through Panel A; Panel B's audio-generation pipeline ships inside the GGUF set (vocoder is copied through in Step 3) but is not used at inference for function calling.*
 
 Inference on-device runs through
 [`llama-liquid-audio-server`](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF),
