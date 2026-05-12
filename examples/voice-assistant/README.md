@@ -5,6 +5,10 @@ commands directly to function calls, using a fine-tuned `LFM2.5-Audio-1.5B`
 running entirely on-device via llama.cpp. No cloud, no STT pipeline, no
 intermediate transcription step: audio in, function call out.
 
+<p align="center">
+  <img src="media/demo.gif" width="480" alt="Screen recording of the Step 5 browser demo: the user holds space, speaks each of the five example phrases, and the page streams the raw function-call output plus a rendered card for each (light bulb, dim bulb, clock, timer countdown, generic).">
+</p>
+
 ```mermaid
 flowchart LR
     AUDIO["'turn on the fan in the living room'<br/>(24 kHz WAV)"]
