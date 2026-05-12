@@ -5,14 +5,17 @@ inference knobs. Downloads the GGUFs + platform-specific llama-liquid-audio-serv
 binary, starts the server, evaluates a stratified subset of the published test
 split, and writes a markdown report + a JSON dump of per-sample results.
 
-Two configs ship in this repo:
-- configs/baseline.yaml uses the upstream LiquidAI/LFM2.5-Audio-1.5B-GGUF with an
-  in-context function-specs prompt, establishing the floor.
-- configs/finetuned.yaml uses the fine-tuned fork with no system prompt, matching
-  the training-time chat shape (no system messages in audio_chat).
+Configs that ship in this repo:
+- configs/baseline.yaml: upstream LiquidAI/LFM2.5-Audio-1.5B-GGUF, system_prompt
+  "Perform ASR.", establishes the floor (0/0/0 on all three metrics).
+- configs/finetuned-q8.yaml: fine-tuned fork, Q8_0 quant, system_prompt
+  "Perform ASR." (matches the training-time chat shape). Canonical reference.
+- configs/finetuned-f16.yaml, configs/finetuned-q4.yaml: same fine-tune at
+  other quants for sweep comparisons.
 
 Usage:
     uv run python scripts/eval.py --config configs/baseline.yaml
+    uv run python scripts/eval.py --config configs/finetuned-q8.yaml
 """
 
 from __future__ import annotations

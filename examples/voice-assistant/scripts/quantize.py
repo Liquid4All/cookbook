@@ -248,8 +248,8 @@ for macos-arm64, ubuntu-x64, ubuntu-arm64, and android-arm64, built from \
 git clone https://github.com/Liquid4All/cookbook
 cd cookbook/examples/voice-assistant
 uv sync
-# point configs/finetuned.yaml at this repo and run:
-uv run python scripts/eval.py --config configs/finetuned.yaml
+# point configs/finetuned-{quant}.yaml at this repo and run:
+uv run python scripts/eval.py --config configs/finetuned-q8.yaml
 ```
 """
 

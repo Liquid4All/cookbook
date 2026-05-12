@@ -13,10 +13,27 @@ In this tutorial you will:
 2. [Preprocess and fine-tune](#step-2-preprocess-and-fine-tune) on
    [OHF-Voice](https://huggingface.co/datasets/Paulescu/OHF-Voice-audio-20260504),
    55,302 (audio, function call) pairs across 41 Home Assistant operations.
-3. [Evaluate the fine-tuned model](#step-3-evaluate-the-fine-tuned-model) and
+3. [Quantize and publish](#step-3-quantize-and-publish) the fine-tuned weights
+   as a GGUF set that runs inside `llama-liquid-audio-server`.
+4. [Evaluate the fine-tuned model](#step-4-evaluate-the-fine-tuned-model) and
    measure the gap.
-4. [Quantize and deploy](#step-4-quantize-and-deploy) the result as a GGUF pair
-   that runs inside `llama-liquid-audio-server`.
+
+## Table of contents
+
+- [Requirements](#requirements)
+- [Quick start: run the published fine-tuned model](#quick-start-run-the-published-fine-tuned-model)
+- [The dataset](#the-dataset)
+- [The model](#the-model)
+- [Step 1: Establish the floor](#step-1-establish-the-floor)
+- [Step 2: Preprocess and fine-tune](#step-2-preprocess-and-fine-tune)
+  - [Preprocess](#preprocess)
+  - [Fine-tune](#fine-tune)
+- [Step 3: Quantize and publish](#step-3-quantize-and-publish)
+  - [Drain checkpoint](#drain-checkpoint)
+  - [Quantize and publish](#quantize-and-publish)
+- [Step 4: Evaluate the fine-tuned model](#step-4-evaluate-the-fine-tuned-model)
+- [What's next](#whats-next)
+- [File map](#file-map)
 
 ## Requirements
 
@@ -40,12 +57,14 @@ about reproducing the training, run the published-checkpoint eval directly:
 git clone https://github.com/Liquid4All/cookbook
 cd cookbook/examples/voice-assistant
 uv sync
-HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/finetuned.yaml
+HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/finetuned-q8.yaml
 ```
 
 This downloads `Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF` (the four-file
 audio model + the platform runner) and evaluates it on 397 stratified samples
-from the held-out test split.
+from the held-out test split. `configs/finetuned-q8.yaml` is the canonical
+reference quant; `configs/finetuned-f16.yaml` and `configs/finetuned-q4.yaml`
+ship alongside for comparison sweeps (see Step 4).
 
 ## The dataset
 
@@ -184,7 +203,19 @@ vendor instead of upstreaming.
 Reference run: 1000 steps converged to train loss ~0.026, val loss ~0.023 in
 ~19 min on A100-80GB. The final weights live at
 `/checkpoints/{run_id}/final/model.safetensors` on the `lfm2-training-output`
-volume; drain them locally before quantizing:
+volume; Step 3 drains them locally and converts them to GGUF. No need to
+push an intermediate safetensors HF repo.
+
+## Step 3: Quantize and publish
+
+To run the fine-tuned checkpoint inside `llama-liquid-audio-server` (the
+thing `scripts/eval.py` uses in Step 4) we have to convert it to GGUF and
+publish the resulting file set to HuggingFace.
+
+### Drain checkpoint
+
+Pull the fine-tuned `model.safetensors` off the Modal volume to a local
+path:
 
 ```bash
 modal volume get lfm2-training-output \
@@ -192,41 +223,12 @@ modal volume get lfm2-training-output \
     outputs/checkpoint/model.safetensors
 ```
 
-You can skip pushing an intermediate safetensors HF repo; `scripts/quantize.py`
-in Step 4 reads the local checkpoint directly.
+`{run_id}` is the timestamped folder name `scripts/train.py` printed at the
+start of its run (or visible in `modal volume ls lfm2-training-output`).
 
-## Step 3: Evaluate the fine-tuned model
+### Quantize and publish
 
-Update [`configs/finetuned.yaml`](./configs/finetuned.yaml) to point at your
-fine-tuned GGUF repo (default: `Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF`),
-then:
-
-```bash
-HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/finetuned.yaml
-```
-
-Same 397-sample stratified test subset as the baseline.
-
-Reference results (2026-05-12, 1000-step fine-tune, Q8_0 GGUF, 397 samples):
-
-| metric                          | baseline | fine-tuned |
-|---|---|---|
-| Format compliance (parseable)   | 0.0%     | 100.0%     |
-| Function-name accuracy          | 0.0%     | 99.2%      |
-| Argument accuracy (exact)       | 0.0%     | 90.4%      |
-
-Per-function breakdown lands at `evals/finetuned_<timestamp>/report.md` after
-the run. The argument-accuracy gap (90.4% rather than 99.2%) is dominated by
-the model emitting a different but plausible argument key, e.g.
-`HassFanSetSpeed|$area=master bedroom|$percentage=80` when the ground truth
-has `$name=master bedroom fan|$percentage=80`. Format and function-name are
-effectively solved at this step count.
-
-## Step 4: Quantize and deploy
-
-To run the fine-tuned checkpoint inside `llama-liquid-audio-server` (the thing
-`scripts/eval.py` uses) we have to convert to GGUF. With the local checkpoint
-drained in Step 2:
+With the local checkpoint in place:
 
 ```bash
 HF_TOKEN=hf_... uv run --group finetune python scripts/quantize.py \
@@ -250,17 +252,45 @@ HF_TOKEN=hf_... uv run --group finetune python scripts/quantize.py \
    from `LiquidAI/LFM2.5-Audio-1.5B-GGUF`.
 6. Pushes the four GGUFs + `runners/` to your target repo with a model card.
 
-The resulting repo is self-contained: `scripts/eval.py` (or any other
-llama-liquid-audio-server consumer) downloads everything it needs from one
-place.
+The resulting repo is self-contained: `scripts/eval.py` in Step 4 (or any
+other llama-liquid-audio-server consumer) downloads everything it needs from
+one place.
 
-`Q8_0` is the default we ship and the deployment-target quant. Q4_0 is also
-supported via `--quant Q4_0` for a smaller download and faster CPU inference
-at the cost of some accuracy drift.
+`Q8_0` is the canonical reference quant. To publish other levels alongside,
+rerun with `--quant F16` and `--quant Q4_0`. Each invocation adds its own
+file set (`*-F16.gguf`, `*-Q4_0.gguf`, etc.) to the same target repo; the
+runners and the unchanged vocoder/tokenizer are deduped by HuggingFace's
+content addressing.
 
-To verify the deployed model works end-to-end, point `configs/finetuned.yaml`
-at the new repo and re-run `scripts/eval.py`. The numbers should match what
-you got in Step 3.
+## Step 4: Evaluate the fine-tuned model
+
+Run the eval against the GGUFs you just published. Three configs ship in
+this repo, one per quant:
+
+```bash
+HF_TOKEN=hf_... uv run python scripts/eval.py --config configs/finetuned-q8.yaml
+```
+
+Swap `finetuned-q8.yaml` for `finetuned-f16.yaml` or `finetuned-q4.yaml` to
+evaluate the other quants. Each config pins its own `quant` field and
+produces its own `evals/<name>_<timestamp>/report.md` so reruns never
+overwrite each other.
+
+Same 397-sample stratified test subset as the baseline.
+
+Reference results (2026-05-12, 1000-step fine-tune, 397 samples):
+
+| quant | format compliance | function-name acc. | argument acc. (exact) |
+|---|---|---|---|
+| F16  | 99.2%  | 98.5%  | 89.9%  |
+| Q8_0 | 100.0% | 99.2%  | 90.4%  |
+| Q4_0 | _TBD_  | _TBD_  | _TBD_  |
+
+The argument-accuracy gap on Q8_0 (90.4% rather than 99.2%) is dominated by
+the model emitting a different but plausible argument key, e.g.
+`HassFanSetSpeed|$area=master bedroom|$percentage=80` when the ground truth
+has `$name=master bedroom fan|$percentage=80`. Format and function-name are
+effectively solved at this step count.
 
 ## What's next
 
@@ -279,7 +309,9 @@ voice-assistant/
 ├── README.md                                   this file
 ├── configs/
 │   ├── baseline.yaml                           eval config for the unmodified model
-│   └── finetuned.yaml                          eval config for the fine-tuned model
+│   ├── finetuned-f16.yaml                      eval config: fine-tuned, F16 quant
+│   ├── finetuned-q8.yaml                       eval config: fine-tuned, Q8_0 quant (reference)
+│   └── finetuned-q4.yaml                       eval config: fine-tuned, Q4_0 quant
 ├── docs/adr/
 │   ├── 0001-eval-methodology.md                two-mode eval design
 │   └── 0002-vendoring-strategy.md              why preprocess/train are vendored
