@@ -371,40 +371,8 @@ visualises what the call would do, it does not bridge to a real Home Assistant.
 
 ## What's next
 
-- Try a smaller quant (`--quant Q4_0`) and measure the accuracy/size tradeoff.
 - Run the published GGUF on a Pi 5 or a phone via `llama-liquid-audio-cli` to
   see real on-device latency.
 - Swap the dataset for your own voice commands and re-run the pipeline.
 - Join the [Liquid AI Discord](https://discord.com/invite/liquid-ai) to share
   what you build.
-
-## File map
-
-```
-voice-assistant/
-├── CONTEXT.md                                  glossary of domain terms
-├── README.md                                   this file
-├── configs/
-│   ├── baseline.yaml                           eval config for the unmodified model
-│   ├── finetuned-f16.yaml                      eval config: fine-tuned, F16 quant
-│   ├── finetuned-q8.yaml                       eval config: fine-tuned, Q8_0 quant (reference)
-│   ├── finetuned-q4.yaml                       eval config: fine-tuned, Q4_0 quant
-│   └── demo.yaml                               browser demo config (Step 5)
-├── docs/adr/
-│   ├── 0001-eval-methodology.md                two-mode eval design
-│   └── 0002-vendoring-strategy.md              why preprocess/train are vendored
-├── pyproject.toml                              base deps + `finetune` and `dev` groups
-├── tests/
-│   └── test_parser.py                          pins the function-call parser contract
-└── scripts/
-    ├── prepare_raw_data.py                     publish the 95/5 train/test split
-    ├── preprocess_ohf_voice.py                 OHF-Voice → tensor dataset (vendored)
-    ├── train.py                                fine-tune LFM2.5-Audio-1.5B (vendored)
-    ├── eval.py                                 GGUF-based eval (server + OpenAI client)
-    ├── quantize.py                             safetensors → GGUF, push to HF
-    ├── demo.py                                 browser demo wrapper (Step 5)
-    ├── demo_static/index.html                  single-file demo frontend
-    ├── _server.py                              shared server-lifecycle helpers
-    ├── _parser.py                              shared function-call parser
-    └── smoke_test_pytorch.py                   PyTorch inference on Modal (debug only)
-```
