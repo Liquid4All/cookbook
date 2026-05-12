@@ -49,7 +49,6 @@ In this tutorial you will:
 - [Step 4: Evaluate the fine-tuned model](#step-4-evaluate-the-fine-tuned-model)
 - [Step 5: Talk to the model](#step-5-talk-to-the-model)
 - [What's next](#whats-next)
-- [File map](#file-map)
 
 ## Requirements
 
@@ -87,7 +86,7 @@ uv sync
 uv run python scripts/eval.py --config configs/finetuned-q8.yaml
 ```
 
-This downloads `Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF` (the four-file
+This downloads [`Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF`](https://huggingface.co/Paulescu/LFM2.5-Audio-1.5B-OHF-Voice-GGUF) (the four-file
 audio model + the platform runner) and evaluates it on 397 stratified samples
 from the held-out test split. The snippets in this README default to Q8_0;
 `configs/finetuned-f16.yaml` and `configs/finetuned-q4.yaml` ship alongside
