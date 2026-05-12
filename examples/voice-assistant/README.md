@@ -57,8 +57,8 @@ In this tutorial you will:
   toolchain.
 - An HF account + `HF_TOKEN` with write access to your username, for pushing
   the dataset/model artifacts you produce.
-- A [Modal](https://modal.com) account for the fine-tuning step (an
-  A100-80GB run takes a few hours).
+- A [Modal](https://modal.com) account for the fine-tuning step (~20 min on
+  A100-80GB).
 - For local GGUF eval / deployment: nothing extra. `scripts/eval.py` downloads
   the prebuilt `llama-liquid-audio-server` binary for your platform.
 - For quantization: `git`, `cmake`, and a C++ compiler (on macOS:
