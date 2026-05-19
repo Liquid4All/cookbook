@@ -128,7 +128,7 @@ def main() -> int:
     parser.add_argument("--remote-root", required=True)
     parser.add_argument("--min-samples", type=int, default=10_000)
     parser.add_argument("--replay", action="append", type=parse_replay_arg, default=[])
-    parser.add_argument("--seed", type=int, default=20260507)
+    parser.add_argument("--seed", type=int, default=1234)
     args = parser.parse_args()
 
     schema_path = Path(args.schema).resolve()

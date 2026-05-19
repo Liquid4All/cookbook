@@ -194,9 +194,9 @@ labels, held-out evals, and the customer schema.
 
 | Path | Purpose |
 |---|---|
-| `interactive_v6_demo.html` | Self-contained browser UI with embedded sample images and ground truth. |
+| `interactive_demo.html` | Self-contained browser UI with embedded sample images and ground truth. |
 | `schema.yaml` | Fixed flat schema sent to the model. |
-| `scripts/serve_demo.py` | Static web server plus `/api/infer` proxy. |
+| `scripts/serve_demo.py` | Static web server plus `/api/infer` endpoint bridge. |
 | `scripts/serve_local_methane.py` | Local base/fine model inference server. |
 | `scripts/download_models.sh` | Downloads base and fine-tuned models from Hugging Face. |
 | `AGENTS.md` | Canonical agent runbook for opening and validating the demo. |

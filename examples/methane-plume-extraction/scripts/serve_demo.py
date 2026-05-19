@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serve the interactive v6 demo and optional inference proxy."""
+"""Serve the interactive methane plume demo and optional inference endpoint bridge."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ class DemoHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):  # noqa: N802
         if self.path in {"/", "/demo"}:
-            self.path = "/interactive_v6_demo.html"
+            self.path = "/interactive_demo.html"
         return super().do_GET()
 
     def do_POST(self):  # noqa: N802

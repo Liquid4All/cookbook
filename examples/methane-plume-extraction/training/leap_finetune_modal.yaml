@@ -1,9 +1,9 @@
-project_name: "methane_plume_context_v6_train17234_replay_lfm25vl_modal"
+project_name: "methane_plume_observation_train17234_replay_lfm25vl_modal"
 model_name: "LFM2.5-VL-1.6B"
 training_type: "vlm_sft"
 
 dataset:
-  path: "/outputs/methane_plume_context_v6_train17234_replay20650/train.jsonl"
+  path: "/outputs/methane_plume_observation_train17234_replay20650/train.jsonl"
   type: "vlm_sft"
   test_size: 0.02
 
@@ -31,7 +31,7 @@ peft_config:
   lora_alpha: 32
 
 modal:
-  app_name: "leap-finetune-methane-plume-context-v6-train17234-replay"
+  app_name: "leap-finetune-methane-plume-observation-train17234-replay"
   gpu: "H100:1"
   timeout: 28800
   output_volume: "leap-finetune"

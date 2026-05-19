@@ -15,7 +15,7 @@
       "content": [
         {
           "type": "image",
-          "image": "/outputs/methane_plume_context_v6_train17234_replay20650/images/methane/vflip/starcop_ang20191023t162847_r256_c0_w512_h512__vflip.png"
+          "image": "/outputs/methane_plume_observation_train17234_replay20650/images/methane/vflip/starcop_ang20191023t162847_r256_c0_w512_h512__vflip.png"
         }
       ]
     },
