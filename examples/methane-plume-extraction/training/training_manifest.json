@@ -1,0 +1,125 @@
+{
+  "artifact": "felipeliquid/LFM2.5-1.6B-VL-Extract-Plume-Demo",
+  "base_model": "LiquidAI/LFM2.5-VL-1.6B",
+  "created_from_local_manifest": "final training manifest summarized for cookbook",
+  "schema_version": "methane_plume_observation_panel",
+  "dataset": {
+    "name": "methane_plume_observation_train17234_replay20650",
+    "train_jsonl_modal_path": "/outputs/methane_plume_observation_train17234_replay20650/train.jsonl",
+    "train_jsonl_sha256": "b95c62e532769f8070fd1dcaa94e5207e8392389194f8f7add63ec36fc84e904",
+    "schema_sha256": "dd7ddbdf57b272e71e29c6a86af98156bf2f158f5a244880300fe0de43066cfe",
+    "methane_labels_sha256": "97a439af58bf985a23fa6505fcae2237affd44af02030232d2a71b446b4eb3fa",
+    "rows_total": 20650,
+    "methane_rows": 17234,
+    "replay_rows": 3416,
+    "counts": {
+      "methane_plume_status": {
+        "absent": 5750,
+        "present": 9734,
+        "uncertain": 1750
+      },
+      "source_dataset": {
+        "starcop": 10904,
+        "methaneset": 6146,
+        "unknown_or_context_extra": 184
+      },
+      "sensor": {
+        "starcop_or_unspecified": 11088,
+        "landsat89": 3122,
+        "sentinel2": 3024
+      },
+      "source_context": {
+        "not_applicable": 5750,
+        "unknown": 3430,
+        "well_pad": 3070,
+        "landfill": 945,
+        "mine": 839,
+        "agriculture": 800,
+        "processing_facility": 800,
+        "pipeline_corridor": 800,
+        "compressor_station": 800
+      },
+      "augmentation": {
+        "original": 7248,
+        "hflip": 6980,
+        "vflip": 1062,
+        "hvflip": 1055,
+        "contrast": 236,
+        "hflip_contrast": 229,
+        "hvflip_contrast": 217,
+        "vflip_contrast": 207
+      },
+      "mix_source": {
+        "methane": 17234,
+        "replay_real_iad": 1500,
+        "replay_visa": 1500,
+        "replay_forge": 416
+      }
+    },
+    "replay": [
+      {
+        "name": "real_iad",
+        "selected_rows": 1500,
+        "available_rows": 5000,
+        "path_sha256": "cc34948e0145881f848bf32c7c337ba6bca51bf3947e5bce3198f04f26b7d8d6"
+      },
+      {
+        "name": "visa",
+        "selected_rows": 1500,
+        "available_rows": 10321,
+        "path_sha256": "e8c6d16aa1675351b24775863ea822f7a71a506d8d61cbbd87c568bf71a8b53b"
+      },
+      {
+        "name": "forge",
+        "selected_rows": 416,
+        "available_rows": 666,
+        "path_sha256": "95862c66dca214ae9106424e5e31004611e0d463059f5c5e9ae57324bd002ce0"
+      }
+    ],
+    "notes": [
+      "The JSONL used for training is intentionally minimal: sample_id plus messages.",
+      "Methane rows use one system prompt containing the fixed flat schema, one image message, and one assistant JSON string.",
+      "The 184 unknown_or_context_extra rows are context-augmented rows whose source_dataset field was not normalized in the original manifest; most were MethaneSET EMIT-derived context examples.",
+      "Replay rows are strict-JSON structured-output VLM tasks from other examples and are mixed in to reduce regression on general extraction behavior."
+    ]
+  },
+  "training": {
+    "method": "LEAP VLM SFT with LoRA, merged after training",
+    "epochs": 1,
+    "steps": 2529,
+    "learning_rate": 0.00002,
+    "per_device_train_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "hardware": "1x NVIDIA H100 on Modal",
+    "runtime": "1h 28m 47s after data upload",
+    "final_train_loss": 0.04211,
+    "final_eval_loss": 0.01687
+  },
+  "eval": {
+    "caveat": "Eval labels are demo-curated labels, not customer-verified production gold.",
+    "core": {
+      "rows": 235,
+      "sha256": "de304f47361ec7b65d1a484f9c2f6b91f80bda86884960aa4a88f7977fd90b29",
+      "json_valid": "100.0%",
+      "strict_value_exact": "94.4%",
+      "llm_judge": 0.959,
+      "vlm_judge": 0.889
+    },
+    "stress": {
+      "rows": 265,
+      "sha256": "07914d9c147a346ed435f852b65e4eafc3c0a9b762f8ac483882101aefba9d62",
+      "json_valid": "100.0%",
+      "strict_value_exact": "77.5%",
+      "llm_judge": 0.821,
+      "vlm_judge": 0.826
+    }
+  },
+  "public_release_caveats": [
+    "Source imagery and derived rendered products are not redistributed in this cookbook example.",
+    "Check source dataset licenses before redistributing any rendered images or derived labels.",
+    "The checkpoint is a controlled demo artifact, not a regulatory methane quantification system.",
+    "Ambiguous plume cases remained the hardest category and should be improved before open bring-your-own-image demos."
+  ]
+}
