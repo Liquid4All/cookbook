@@ -173,17 +173,20 @@ The demo fine-tune used public methane imagery and replay data:
 
 - STARCOP / AVIRIS-NG style rendered methane plume products.
 - MethaneSET-style Sentinel-2, Landsat 8/9, and EMIT observations.
-- JPL AVIRIS-NG methane benchmark style examples.
 - Replay rows to reduce regression against the base structured-output behavior.
 
-Latest demo training package:
+JPL AVIRIS-NG benchmark scenes were used for source/eval exploration and
+held-out demo evaluation, but they are not counted as final training rows in
+the manifest.
+
+Demo training package:
 
 ```text
 20,650 rows total
 17,234 methane/context rows
 3,416 replay rows
 1h 28m 47s training on 1x NVIDIA H100 after data upload
-~$5.84 training cost + $0 upload cost for the latest run
+~$5.84 estimated training cost + $0 upload cost for this run
 ```
 
 This is a controlled demo artifact, not a production methane-compliance system.
