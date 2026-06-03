@@ -142,7 +142,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 
 | Name | Description | Link |
 |------|-------------|------|
-| LFM Speech Dataset Studio | Local-first Bangla speech dataset workflow for LFM-Audio capability auditing, BanglaASR baseline analysis, Liquid text repair-potential measurement, abstaining evidence routing, and schema-valid reviewable action cards. | [Code](https://github.com/Hisernberg/lfm-speech-dataset-studio) |
+| LFM Speech Dataset Studio | Local-first Bangla speech dataset workflow for LFM-Audio capability auditing, BanglaASR baseline analysis, Liquid text repair-potential measurement, abstaining evidence routing, and schema-valid reviewable action cards. | [Code](https://github.com/Hisernberg/LFM-speech_dataset_studio) |
 | Image Classification on Edge | Fine-tune and deploy a local VLM for fast, accurate image classification on edge devices | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
 | Chess Game with Small LMs | Fine-tune and deploy a small language model to play chess | [Code](https://github.com/Paulescu/chess-game) |
 | Private Doc Q&A | On-device document Q&A with RAG and voice input | [Code](https://github.com/chintan-projects/private-doc-qa) |
