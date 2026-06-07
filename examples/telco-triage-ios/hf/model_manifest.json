@@ -1,20 +1,37 @@
 {
   "pack_id": "telco-triage-ios-current-runtime",
-  "pack_version": "0.1.0",
-  "runtime_architecture": "single_forward_understanding_composer_rag_with_repair_verbalizer",
+  "pack_version": "0.3.0",
+  "runtime_architecture": "stateful_relation_shared_understanding_bm25_policy_composer",
   "ios_example_path": "examples/telco-triage-ios",
+  "core_loop": [
+    "user_turn",
+    "chat_view_model_state",
+    "turn_relation_classifier",
+    "shared_support_understanding_classifiers",
+    "dialogue_blackboard",
+    "bm25_canonical_rag_units",
+    "swift_policy_engine",
+    "deterministic_answer_composer",
+    "ui_answer_citation_link_handoff_or_confirmation"
+  ],
   "required_models": [
     {
       "filename": "lfm25-350m-base-Q4_K_M.gguf",
-      "role": "LFM2.5-350M base model used by shared understanding and bounded verbalization",
+      "role": "LFM2.5-350M base model used for on-device inference",
       "required_by_bootstrap": true,
       "normal_qa_path": true
     },
     {
       "filename": "telco-shared-clf-v1.gguf",
-      "role": "Shared understanding adapter for the single-forward 9-head classifier runtime",
+      "role": "Support-understanding adapter for customer-intent classifiers",
       "required_by_bootstrap": true,
       "normal_qa_path": true
+    },
+    {
+      "filename": "telco-turn-relation-v4.gguf",
+      "role": "Stateful relation adapter for follow-up, repair, confirmation, topic-switch, and escalation turns",
+      "required_by_bootstrap": true,
+      "normal_qa_path": "prior_context_only"
     },
     {
       "filename": "telco-dialogue-repair-v4.gguf",
@@ -40,20 +57,50 @@
     },
     {
       "filename": "telco_shared_clf_schema.json",
-      "role": "Label schema for the shared understanding classifier heads"
+      "role": "Label schema for the support-understanding classifier projections"
     },
     {
       "filename": "telco-*_classifier_{weights,bias,meta}",
-      "role": "Nine classifier head triplets for support intent, issue complexity, routing lane, cloud requirements, required tool, escalation risk, PII risk, transcript quality, and slot completeness"
+      "role": "Nine required classifier projection triplets for support intent, issue complexity, routing lane, cloud requirements, required tool, escalation risk, PII risk, transcript quality, and slot completeness"
+    },
+    {
+      "filename": "telco-turn-relation_classifier_{weights,bias,meta}",
+      "role": "Required relation classifier projection triplet"
+    }
+  ],
+  "optional_resources": [
+    {
+      "filename": "telco-topic-scope_classifier_{weights,bias,meta}",
+      "role": "Optional off-domain scope projection. If absent, the iOS app ignores it."
     }
   ],
   "online_qa_runtime": {
     "understanding_forwards": 1,
+    "relation_forwards": "only when prior dialogue state exists",
     "first_turn_answer_generation_calls": 0,
     "repair_verbalizer_calls": "selected repair/follow-up acts only",
-    "retriever": "BM25HierarchyRetriever",
+    "retriever": "BM25HierarchyRetriever over canonical RAG units",
     "answer_layer": "DeterministicAnswerComposer",
     "citation_source": "RAGUnit.canonicalURL",
-    "policy_owner": "Swift route policy; verbalizer cannot choose tools, citations, routes, or handoffs"
-  }
+    "policy_owner": "Swift policy engine; verbalizers cannot choose tools, citations, routes, or handoffs"
+  },
+  "quality_gates": [
+    "BM25 retrieval parity fixture",
+    "deterministic answer composer tests",
+    "dialogue blackboard tests",
+    "state-operation resolver tests",
+    "policy engine route tests",
+    "opt-in phone-flow situation eval with PHONE_FLOW_EVAL=1"
+  ],
+  "excluded_legacy_artifacts": [
+    "knowledge-base.json as a runtime answer source",
+    "legacy chat-mode router",
+    "legacy topic gate",
+    "legacy refusal-flags adapter",
+    "legacy pairwise relation adapter",
+    "ColBERT model/index",
+    "Stage B free-form answer generator",
+    "raw source documents",
+    "customer account data"
+  ]
 }

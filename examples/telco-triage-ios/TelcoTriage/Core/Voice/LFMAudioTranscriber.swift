@@ -211,7 +211,7 @@ public final class LFMAudioTranscriber: VoiceTranscriber {
             samples16k,
             sampleRate: Int(Self.targetSampleRate)
         )
-        // Fully-qualified — `VerizonSupportPOC.Features.Chat.ChatMessage`
+        // Fully-qualified — `TelcoTriage.Features.Chat.ChatMessage`
         // is a local display type that otherwise shadows this one.
         let message = LeapSDK.ChatMessage(role: .user, content: [audioContent])
 

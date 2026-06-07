@@ -251,6 +251,31 @@ public struct StanceChangeOutcome: Sendable, Equatable {
     }
 }
 
+// MARK: - ADR-028 telco_turn_relation (12-way)
+
+/// ADR-028 12-way dialogue-state label. Kept alongside the legacy
+/// 5-way `TurnRelationshipOutcome` because the normal composer path
+/// needs policy-grade labels such as `step_focus`, `repair_failed`,
+/// and `topic_switch`, not just their compressed ADR-024 mapping.
+public struct TelcoTurnRelationOutcome: Sendable, Equatable {
+    public let value: TelcoTurnRelation
+    public let confidence: Double
+    /// Per-class softmax probabilities in `TelcoTurnRelation.allCases`
+    /// order. Surfaced for rollout audits; policy uses only top-1 plus
+    /// deterministic safety guards.
+    public let probabilities: [Double]
+
+    public init(
+        value: TelcoTurnRelation,
+        confidence: Double,
+        probabilities: [Double] = []
+    ) {
+        self.value = value
+        self.confidence = confidence
+        self.probabilities = probabilities
+    }
+}
+
 // MARK: - Strategy protocol
 
 /// Pairwise relational classifier — the architectural twin of
@@ -311,6 +336,16 @@ public protocol RelationalHeadsStrategy: Sendable {
         priorAssistantText: String?,
         priorUserText: String?
     ) async throws -> RelationalOutcomes
+
+    /// Text-surface classification with runtime state required by the
+    /// ADR-028 12-way turn-relation head. Strategies that do not need
+    /// these fields can use the default implementation.
+    func classifyFromText(
+        currentUserQuery: String,
+        priorAssistantText: String?,
+        priorUserText: String?,
+        runtimeState: RelationalRuntimeState
+    ) async throws -> RelationalOutcomes
 }
 
 extension RelationalHeadsStrategy {
@@ -331,11 +366,56 @@ extension RelationalHeadsStrategy {
             priorAssistantHidden: nil
         )
     }
+
+    public func classifyFromText(
+        currentUserQuery: String,
+        priorAssistantText: String?,
+        priorUserText: String?,
+        runtimeState: RelationalRuntimeState
+    ) async throws -> RelationalOutcomes {
+        _ = runtimeState
+        return try await classifyFromText(
+            currentUserQuery: currentUserQuery,
+            priorAssistantText: priorAssistantText,
+            priorUserText: priorUserText
+        )
+    }
+}
+
+public struct RelationalRuntimeState: Sendable, Equatable {
+    public let priorRoute: String?
+    public let priorPageID: String?
+    public let priorLinkID: String?
+    public let pendingTool: String?
+    public let pendingConfirmation: Bool
+    public let pendingClarification: String?
+    public let frustrationCount: Int
+
+    public init(
+        priorRoute: String? = nil,
+        priorPageID: String? = nil,
+        priorLinkID: String? = nil,
+        pendingTool: String? = nil,
+        pendingConfirmation: Bool = false,
+        pendingClarification: String? = nil,
+        frustrationCount: Int = 0
+    ) {
+        self.priorRoute = priorRoute
+        self.priorPageID = priorPageID
+        self.priorLinkID = priorLinkID
+        self.pendingTool = pendingTool
+        self.pendingConfirmation = pendingConfirmation
+        self.pendingClarification = pendingClarification
+        self.frustrationCount = frustrationCount
+    }
+
+    public static let empty = RelationalRuntimeState()
 }
 
 /// The combined output of one relational pass. All fields optional —
 /// router handles nil per ADR-022 §4.3 design principle.
 public struct RelationalOutcomes: Sendable, Equatable {
+    public let telcoTurnRelation: TelcoTurnRelationOutcome?
     public let turnRelationship: TurnRelationshipOutcome?
     public let slotAlignment: SlotAlignmentOutcome?
     public let stanceChange: StanceChangeOutcome?
@@ -345,11 +425,13 @@ public struct RelationalOutcomes: Sendable, Equatable {
     public let runtimeMs: Double
 
     public init(
+        telcoTurnRelation: TelcoTurnRelationOutcome? = nil,
         turnRelationship: TurnRelationshipOutcome? = nil,
         slotAlignment: SlotAlignmentOutcome? = nil,
         stanceChange: StanceChangeOutcome? = nil,
         runtimeMs: Double = 0
     ) {
+        self.telcoTurnRelation = telcoTurnRelation
         self.turnRelationship = turnRelationship
         self.slotAlignment = slotAlignment
         self.stanceChange = stanceChange

@@ -21,7 +21,7 @@ import Foundation
 ///
 /// All six are pure and value-typed — no instance state, no globals,
 /// no side effects. Tests live in
-/// `VerizonSupportPOCTests/MultiTurnHeuristicsTests.swift`.
+/// `TelcoTriageTests/MultiTurnHeuristicsTests.swift`.
 ///
 /// Composer stays stateless per the locked Step 6 guardrails. State lives in
 /// `ConversationState`; these helpers feed the dispatcher's decisions on

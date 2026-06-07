@@ -42,9 +42,17 @@ targets:
     type: application
     platform: iOS
     sources:
-      # Ship local GGUFs in the app bundle at `Resources/Models/` after
-      # running bootstrap-models.sh. The cookbook keeps those large files
-      # out of git.
+      # Ship the current Telco Triage runtime pack after running
+      # bootstrap-models.sh:
+      # - LFM2.5-350M base
+      # - telco-shared-clf-v1 support-understanding adapter
+      # - telco-turn-relation-v4 stateful follow-up classifier
+      # - telco-tool-selector-v3 action helper for ambiguous tool args
+      # - telco-dialogue-repair-v4 bounded repair verbalizer
+      #
+      # Large GGUFs stay out of git. The customer path is relation +
+      # shared heads + BM25 RAG + deterministic composer; legacy Stage B,
+      # ColBERT, and old router adapters are not part of the normal bundle.
       - path: TelcoTriage
       - path: Packages/LFMEngine/Sources/LFMEngine
         name: LFMEngine
@@ -104,6 +112,10 @@ targets:
       - TelcoTriageTests/MultiTurnHeuristicsTests.swift
       - TelcoTriageTests/MultiTurnIntegrationTests.swift
       - TelcoTriageTests/MultiTurnRetrievalAugmentationTests.swift
+      - TelcoTriageTests/PhoneFlowValidationTests.swift
+      - TelcoTriageTests/TelcoDialogueBlackboardTests.swift
+      - TelcoTriageTests/TelcoPolicyEngineTests.swift
+      - TelcoTriageTests/TelcoStateOperationResolverTests.swift
       - TelcoTriageTests/ToolExecutorTests.swift
       - TelcoTriageTests/VerizonDispatcherComposerPathTests.swift
       - TelcoTriageTests/Fixtures/ScriptedBackend.swift

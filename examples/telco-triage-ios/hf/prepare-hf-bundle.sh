@@ -18,6 +18,7 @@ BUNDLE_DIR="${HF_BUNDLE_DIR:-$EXAMPLE_DIR/.hf-bundle/telco-triage-ios}"
 REQUIRED_MODELS=(
   "lfm25-350m-base-Q4_K_M.gguf"
   "telco-shared-clf-v1.gguf"
+  "telco-turn-relation-v4.gguf"
   "telco-dialogue-repair-v4.gguf"
   "telco-tool-selector-v3.gguf"
 )
@@ -38,6 +39,14 @@ TELCO_HEADS=(
   "telco-pii-risk"
   "telco-transcript-quality"
   "telco-slot-completeness"
+)
+
+TURN_RELATION_HEADS=(
+  "telco-turn-relation"
+)
+
+OPTIONAL_TELCO_HEADS=(
+  "telco-topic-scope"
 )
 
 if [[ ! -d "$MODELS_DIR" ]]; then
@@ -75,6 +84,33 @@ for head in "${TELCO_HEADS[@]}"; do
     fi
     cp "$src" "$BUNDLE_DIR/$name"
   done
+done
+
+for head in "${TURN_RELATION_HEADS[@]}"; do
+  for suffix in weights.bin bias.bin meta.json; do
+    name="${head}_classifier_${suffix}"
+    src="$EXAMPLE_DIR/TelcoTriage/Resources/$name"
+    if [[ ! -f "$src" ]]; then
+      echo "error: missing turn-relation classifier artifact: $src" >&2
+      exit 1
+    fi
+    cp "$src" "$BUNDLE_DIR/$name"
+  done
+done
+
+for head in "${OPTIONAL_TELCO_HEADS[@]}"; do
+  have_all=1
+  for suffix in weights.bin bias.bin meta.json; do
+    if [[ ! -f "$EXAMPLE_DIR/TelcoTriage/Resources/${head}_classifier_${suffix}" ]]; then
+      have_all=0
+    fi
+  done
+  if [[ "$have_all" == "1" ]]; then
+    for suffix in weights.bin bias.bin meta.json; do
+      name="${head}_classifier_${suffix}"
+      cp "$EXAMPLE_DIR/TelcoTriage/Resources/$name" "$BUNDLE_DIR/$name"
+    done
+  fi
 done
 
 cp "$SCRIPT_DIR/README.md" "$BUNDLE_DIR/README.md"

@@ -7,19 +7,19 @@
       "top3": [
         {
           "page_id": "02.07",
-          "score": 11.670307,
+          "score": 11.682657,
           "link_id": "restart-router",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "02.14",
-          "score": 10.974806,
+          "score": 11.008999,
           "link_id": "equipment",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "02.13",
-          "score": 10.863799,
+          "score": 10.904117,
           "link_id": "equipment",
           "action_affordance": "tool_action"
         }
@@ -31,19 +31,19 @@
       "top3": [
         {
           "page_id": "02.07",
-          "score": 10.170307,
+          "score": 10.182657,
           "link_id": "restart-router",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "02.14",
-          "score": 9.474806,
+          "score": 9.508999,
           "link_id": "equipment",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "02.13",
-          "score": 9.363799,
+          "score": 9.404117,
           "link_id": "equipment",
           "action_affordance": "tool_action"
         }
@@ -55,19 +55,19 @@
       "top3": [
         {
           "page_id": "02.07",
-          "score": 14.399417,
+          "score": 14.518552,
           "link_id": "restart-router",
           "action_affordance": "tool_action"
         },
         {
-          "page_id": "01.02",
-          "score": 8.277501,
-          "link_id": "speed-test",
-          "action_affordance": "assist"
+          "page_id": "02.10",
+          "score": 8.788471,
+          "link_id": "equipment",
+          "action_affordance": "tool_action"
         },
         {
-          "page_id": "02.10",
-          "score": 2.704211,
+          "page_id": "02.15",
+          "score": 8.765002,
           "link_id": "equipment",
           "action_affordance": "tool_action"
         }
@@ -79,19 +79,19 @@
       "top3": [
         {
           "page_id": "02.07",
-          "score": 17.817661,
+          "score": 17.980218,
           "link_id": "restart-router",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "02.15",
-          "score": 7.73165,
+          "score": 7.69182,
           "link_id": "equipment",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "05.00",
-          "score": 5.801692,
+          "score": 6.082041,
           "link_id": "tab-discover",
           "action_affordance": "view"
         }
@@ -102,22 +102,22 @@
       "history": [],
       "top3": [
         {
+          "page_id": "03.01",
+          "score": 14.953365,
+          "link_id": "network",
+          "action_affordance": "tool_action"
+        },
+        {
           "page_id": "03.00",
-          "score": 15.634942,
+          "score": 14.075361,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "03.02",
-          "score": 13.954941,
+          "score": 12.917634,
           "link_id": "share-wifi",
           "action_affordance": "tool_action"
-        },
-        {
-          "page_id": "02.08",
-          "score": 11.99031,
-          "link_id": "equipment",
-          "action_affordance": "view"
         }
       ]
     },
@@ -126,22 +126,22 @@
       "history": [],
       "top3": [
         {
+          "page_id": "03.01",
+          "score": 12.69283,
+          "link_id": "network",
+          "action_affordance": "tool_action"
+        },
+        {
           "page_id": "03.00",
-          "score": 12.178936,
+          "score": 11.74319,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "06.01",
-          "score": 11.672156,
+          "score": 11.38022,
           "link_id": "tab-more",
           "action_affordance": "view"
-        },
-        {
-          "page_id": "03.02",
-          "score": 10.574082,
-          "link_id": "share-wifi",
-          "action_affordance": "tool_action"
         }
       ]
     },
@@ -151,20 +151,20 @@
       "top3": [
         {
           "page_id": "03.00",
-          "score": 14.84114,
+          "score": 13.972056,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "03.02",
-          "score": 13.954941,
+          "score": 12.917634,
           "link_id": "share-wifi",
           "action_affordance": "tool_action"
         },
         {
-          "page_id": "02.07",
-          "score": 12.936459,
-          "link_id": "restart-router",
+          "page_id": "03.08",
+          "score": 6.924213,
+          "link_id": "network",
           "action_affordance": "tool_action"
         }
       ]
@@ -175,21 +175,21 @@
       "top3": [
         {
           "page_id": "03.00",
-          "score": 12.823145,
+          "score": 11.756034,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "03.02",
-          "score": 12.454941,
+          "score": 11.417634,
           "link_id": "share-wifi",
           "action_affordance": "tool_action"
         },
         {
-          "page_id": "03.03",
-          "score": 10.821667,
+          "page_id": "03.01",
+          "score": 11.202383,
           "link_id": "network",
-          "action_affordance": "view"
+          "action_affordance": "tool_action"
         }
       ]
     },
@@ -199,21 +199,21 @@
       "top3": [
         {
           "page_id": "03.02",
-          "score": 16.117063,
+          "score": 15.060213,
           "link_id": "share-wifi",
           "action_affordance": "tool_action"
         },
         {
-          "page_id": "03.00",
-          "score": 12.486789,
+          "page_id": "03.01",
+          "score": 12.525492,
           "link_id": "network",
-          "action_affordance": "view"
+          "action_affordance": "tool_action"
         },
         {
-          "page_id": "02.07",
-          "score": 10.21823,
-          "link_id": "restart-router",
-          "action_affordance": "tool_action"
+          "page_id": "03.04",
+          "score": 12.505063,
+          "link_id": "network",
+          "action_affordance": "view"
         }
       ]
     },
@@ -223,21 +223,21 @@
       "top3": [
         {
           "page_id": "03.02",
-          "score": 19.191146,
+          "score": 18.175703,
           "link_id": "share-wifi",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "03.00",
-          "score": 15.853928,
+          "score": 15.08423,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
-          "page_id": "02.08",
-          "score": 10.710311,
-          "link_id": "equipment",
-          "action_affordance": "view"
+          "page_id": "03.01",
+          "score": 9.467339,
+          "link_id": "network",
+          "action_affordance": "tool_action"
         }
       ]
     },
@@ -247,21 +247,21 @@
       "top3": [
         {
           "page_id": "13.00",
-          "score": 13.294666,
+          "score": 12.956432,
           "link_id": "home",
           "action_affordance": "view"
         },
         {
-          "page_id": "05.00",
-          "score": 5.719878,
-          "link_id": "tab-discover",
+          "page_id": "04.02",
+          "score": 10.648105,
+          "link_id": "tab-devices",
           "action_affordance": "view"
         },
         {
-          "page_id": "01.00",
-          "score": 5.675414,
-          "link_id": "tab-home",
-          "action_affordance": "navigate"
+          "page_id": "13.08",
+          "score": 10.178491,
+          "link_id": "home",
+          "action_affordance": "tool_action"
         }
       ]
     },
@@ -271,20 +271,20 @@
       "top3": [
         {
           "page_id": "13.00",
-          "score": 13.636344,
+          "score": 15.359524,
           "link_id": "home",
           "action_affordance": "view"
         },
         {
-          "page_id": "13.02",
-          "score": 10.538348,
-          "link_id": "home",
+          "page_id": "03.01",
+          "score": 10.907368,
+          "link_id": "network",
           "action_affordance": "tool_action"
         },
         {
-          "page_id": "03.01",
-          "score": 3.292261,
-          "link_id": "network",
+          "page_id": "13.02",
+          "score": 10.678842,
+          "link_id": "home",
           "action_affordance": "tool_action"
         }
       ]
@@ -295,19 +295,19 @@
       "top3": [
         {
           "page_id": "13.00",
-          "score": 11.403291,
+          "score": 12.43776,
           "link_id": "home",
           "action_affordance": "view"
         },
         {
           "page_id": "13.03",
-          "score": 5.889149,
+          "score": 6.001155,
           "link_id": "home",
           "action_affordance": "view"
         },
         {
           "page_id": "13.02",
-          "score": 5.761057,
+          "score": 5.905865,
           "link_id": "home",
           "action_affordance": "tool_action"
         }
@@ -319,20 +319,20 @@
       "top3": [
         {
           "page_id": "01.02",
-          "score": 20.346027,
+          "score": 20.49105,
           "link_id": "speed-test",
           "action_affordance": "assist"
         },
         {
           "page_id": "01.01",
-          "score": 5.857904,
+          "score": 5.660901,
           "link_id": "tab-troubleshoot",
           "action_affordance": "assist"
         },
         {
-          "page_id": "02.02",
-          "score": 4.983887,
-          "link_id": "equipment",
+          "page_id": "03.00",
+          "score": 5.076556,
+          "link_id": "network",
           "action_affordance": "view"
         }
       ]
@@ -343,20 +343,20 @@
       "top3": [
         {
           "page_id": "01.02",
-          "score": 8.218051,
+          "score": 8.231437,
           "link_id": "speed-test",
           "action_affordance": "assist"
         },
         {
           "page_id": "13.00",
-          "score": 7.946645,
+          "score": 7.906921,
           "link_id": "home",
           "action_affordance": "view"
         },
         {
-          "page_id": "02.07",
-          "score": 7.560959,
-          "link_id": "restart-router",
+          "page_id": "13.08",
+          "score": 7.594438,
+          "link_id": "home",
           "action_affordance": "tool_action"
         }
       ]
@@ -367,19 +367,19 @@
       "top3": [
         {
           "page_id": "01.02",
-          "score": 13.859926,
+          "score": 13.920464,
           "link_id": "speed-test",
           "action_affordance": "assist"
         },
         {
           "page_id": "06.04",
-          "score": 3.401939,
+          "score": 3.554993,
           "link_id": "report-bug",
           "action_affordance": "view"
         },
         {
           "page_id": "03.06",
-          "score": 3.217603,
+          "score": 3.251312,
           "link_id": "tab-devices",
           "action_affordance": "view"
         }
@@ -391,19 +391,19 @@
       "top3": [
         {
           "page_id": "04.00",
-          "score": 9.594608,
+          "score": 9.525326,
           "link_id": "tab-devices",
           "action_affordance": "navigate"
         },
         {
           "page_id": "13.01",
-          "score": 8.691578,
+          "score": 8.632969,
           "link_id": "home",
           "action_affordance": "tool_action"
         },
         {
           "page_id": "04.02",
-          "score": 8.607154,
+          "score": 8.526568,
           "link_id": "tab-devices",
           "action_affordance": "view"
         }
@@ -414,21 +414,21 @@
       "history": [],
       "top3": [
         {
+          "page_id": "04.01",
+          "score": 12.267747,
+          "link_id": "device-network-map",
+          "action_affordance": "view"
+        },
+        {
           "page_id": "04.00",
-          "score": 10.393407,
+          "score": 10.413838,
           "link_id": "tab-devices",
           "action_affordance": "navigate"
         },
         {
           "page_id": "02.08",
-          "score": 9.900732,
+          "score": 9.950591,
           "link_id": "equipment",
-          "action_affordance": "view"
-        },
-        {
-          "page_id": "04.01",
-          "score": 6.177812,
-          "link_id": "device-network-map",
           "action_affordance": "view"
         }
       ]
@@ -438,22 +438,22 @@
       "history": [],
       "top3": [
         {
+          "page_id": "13.04",
+          "score": 11.266147,
+          "link_id": "home",
+          "action_affordance": "tool_action"
+        },
+        {
           "page_id": "04.00",
-          "score": 10.92732,
+          "score": 10.944678,
           "link_id": "tab-devices",
           "action_affordance": "navigate"
         },
         {
           "page_id": "13.00",
-          "score": 9.824307,
+          "score": 9.734035,
           "link_id": "home",
           "action_affordance": "view"
-        },
-        {
-          "page_id": "12.00",
-          "score": 9.043056,
-          "link_id": "tab-home",
-          "action_affordance": "navigate"
         }
       ]
     },
@@ -463,21 +463,21 @@
       "top3": [
         {
           "page_id": "04.00",
-          "score": 14.968102,
+          "score": 14.736628,
           "link_id": "tab-devices",
           "action_affordance": "navigate"
         },
         {
-          "page_id": "13.00",
-          "score": 10.653757,
+          "page_id": "13.04",
+          "score": 6.325438,
           "link_id": "home",
-          "action_affordance": "view"
+          "action_affordance": "tool_action"
         },
         {
-          "page_id": "12.00",
-          "score": 9.043056,
-          "link_id": "tab-home",
-          "action_affordance": "navigate"
+          "page_id": "13.02",
+          "score": 5.420706,
+          "link_id": "home",
+          "action_affordance": "tool_action"
         }
       ]
     },
@@ -487,20 +487,20 @@
       "top3": [
         {
           "page_id": "04.00",
-          "score": 15.712086,
+          "score": 15.656911,
           "link_id": "tab-devices",
           "action_affordance": "navigate"
         },
         {
           "page_id": "03.07",
-          "score": 14.151341,
+          "score": 14.202064,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
-          "page_id": "03.04",
-          "score": 5.763676,
-          "link_id": "network",
+          "page_id": "03.06",
+          "score": 5.427169,
+          "link_id": "tab-devices",
           "action_affordance": "view"
         }
       ]
@@ -511,13 +511,13 @@
       "top3": [
         {
           "page_id": "03.00",
-          "score": 10.113404,
+          "score": 10.517055,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "03.08",
-          "score": 4.503982,
+          "score": 4.589044,
           "link_id": "network",
           "action_affordance": "tool_action"
         }
@@ -528,21 +528,21 @@
       "history": [],
       "top3": [
         {
-          "page_id": "03.00",
-          "score": 15.694052,
-          "link_id": "network",
-          "action_affordance": "view"
-        },
-        {
           "page_id": "03.03",
-          "score": 9.771155,
+          "score": 17.613868,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "04.01",
-          "score": 2.680807,
+          "score": 9.978258,
           "link_id": "device-network-map",
+          "action_affordance": "view"
+        },
+        {
+          "page_id": "04.02",
+          "score": 9.305541,
+          "link_id": "tab-devices",
           "action_affordance": "view"
         }
       ]
@@ -552,21 +552,21 @@
       "history": [],
       "top3": [
         {
-          "page_id": "03.00",
-          "score": 15.694052,
-          "link_id": "network",
-          "action_affordance": "view"
-        },
-        {
           "page_id": "03.03",
-          "score": 9.771155,
+          "score": 17.613868,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "04.01",
-          "score": 2.680807,
+          "score": 9.978258,
           "link_id": "device-network-map",
+          "action_affordance": "view"
+        },
+        {
+          "page_id": "04.02",
+          "score": 9.305541,
+          "link_id": "tab-devices",
           "action_affordance": "view"
         }
       ]
@@ -576,20 +576,20 @@
       "history": [],
       "top3": [
         {
-          "page_id": "03.00",
-          "score": 13.487063,
+          "page_id": "03.03",
+          "score": 16.48777,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "04.01",
-          "score": 7.41941,
+          "score": 14.974886,
           "link_id": "device-network-map",
           "action_affordance": "view"
         },
         {
-          "page_id": "03.03",
-          "score": 6.466423,
+          "page_id": "03.04",
+          "score": 6.325204,
           "link_id": "network",
           "action_affordance": "view"
         }
@@ -600,20 +600,20 @@
       "history": [],
       "top3": [
         {
-          "page_id": "03.00",
-          "score": 11.521846,
+          "page_id": "03.03",
+          "score": 13.423402,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "04.01",
-          "score": 5.742106,
+          "score": 12.859861,
           "link_id": "device-network-map",
           "action_affordance": "view"
         },
         {
-          "page_id": "03.03",
-          "score": 5.113119,
+          "page_id": "03.04",
+          "score": 9.943223,
           "link_id": "network",
           "action_affordance": "view"
         }
@@ -625,20 +625,20 @@
       "top3": [
         {
           "page_id": "03.03",
-          "score": 21.837228,
-          "link_id": "network",
-          "action_affordance": "view"
-        },
-        {
-          "page_id": "03.00",
-          "score": 15.00017,
+          "score": 23.778598,
           "link_id": "network",
           "action_affordance": "view"
         },
         {
           "page_id": "03.04",
-          "score": 11.244406,
+          "score": 13.254514,
           "link_id": "network",
+          "action_affordance": "view"
+        },
+        {
+          "page_id": "04.01",
+          "score": 12.203958,
+          "link_id": "device-network-map",
           "action_affordance": "view"
         }
       ]
@@ -649,19 +649,19 @@
       "top3": [
         {
           "page_id": "02.00",
-          "score": 8.330892,
+          "score": 8.156963,
           "link_id": "equipment",
           "action_affordance": "view"
         },
         {
           "page_id": "02.02",
-          "score": 7.773055,
+          "score": 7.574997,
           "link_id": "equipment",
           "action_affordance": "view"
         },
         {
           "page_id": "02.05",
-          "score": 1.714857,
+          "score": 1.53818,
           "link_id": "equipment",
           "action_affordance": "view"
         }
@@ -673,19 +673,19 @@
       "top3": [
         {
           "page_id": "10.00",
-          "score": 11.289305,
+          "score": 11.3453,
           "link_id": "my-verizon-app",
           "action_affordance": "navigate"
         },
         {
           "page_id": "06.00",
-          "score": 3.401455,
+          "score": 3.525676,
           "link_id": "tab-more",
           "action_affordance": "navigate"
         },
         {
           "page_id": "05.00",
-          "score": 3.156237,
+          "score": 3.301235,
           "link_id": "tab-discover",
           "action_affordance": "view"
         }
@@ -697,21 +697,21 @@
       "top3": [
         {
           "page_id": "10.00",
-          "score": 13.440614,
+          "score": 13.450153,
           "link_id": "my-verizon-app",
           "action_affordance": "navigate"
         },
         {
           "page_id": "13.02",
-          "score": 10.415808,
+          "score": 10.294335,
           "link_id": "home",
           "action_affordance": "tool_action"
         },
         {
-          "page_id": "13.08",
-          "score": 4.438526,
-          "link_id": "home",
-          "action_affordance": "tool_action"
+          "page_id": "02.00",
+          "score": 8.563808,
+          "link_id": "equipment",
+          "action_affordance": "view"
         }
       ]
     }

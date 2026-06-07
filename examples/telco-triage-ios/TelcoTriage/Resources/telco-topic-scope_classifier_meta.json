@@ -1,0 +1,22 @@
+{
+  "num_classes": 3,
+  "hidden_dim": 1024,
+  "weight_file": "telco-topic-scope_classifier_weights.bin",
+  "bias_file": "telco-topic-scope_classifier_bias.bin",
+  "task": "telco_topic_scope",
+  "format": "float32_row_major",
+  "type": "single_label",
+  "id2label": {
+    "0": "in_scope",
+    "1": "out_of_scope",
+    "2": "greeting"
+  },
+  "label2id": {
+    "in_scope": 0,
+    "out_of_scope": 1,
+    "greeting": 2
+  },
+  "operating_tau": 0.5,
+  "oos_recall_at_tau": 0.9655172413793104,
+  "gate_pass": true
+}

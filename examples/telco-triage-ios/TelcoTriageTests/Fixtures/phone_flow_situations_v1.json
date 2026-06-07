@@ -1,0 +1,3462 @@
+{
+ "version": 1,
+ "source_fixture": "phone_flow_validation_v1.json",
+ "turns": [
+  {
+   "conversation_id": "CHAT_001",
+   "turn_index": 1,
+   "user_query": "Hi",
+   "situation_type": "greeting",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "live_agent_handoff"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "greeting",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_001",
+   "turn_index": 3,
+   "user_query": "I trying to enable my parental controls",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_001",
+   "turn_index": 5,
+   "user_query": "The system indicates that the order is awaiting completion.",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "no_rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_002",
+   "turn_index": 1,
+   "user_query": "Change password",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "low",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_002",
+   "turn_index": 3,
+   "user_query": "Where do I find Network?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_002",
+   "turn_index": 5,
+   "user_query": "What home page?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_003",
+   "turn_index": 1,
+   "user_query": "can i switch a device onto a different band?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_003",
+   "turn_index": 3,
+   "user_query": "i need to adjust the band on the device and not here in this app?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_003",
+   "turn_index": 5,
+   "user_query": "How do I switch bands for a Switch 2 device? I\u2019m stuck on the 2.4 band",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_003",
+   "turn_index": 7,
+   "user_query": "there is no such option. how do i split my bands manually in wifi settings?",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_004",
+   "turn_index": 1,
+   "user_query": "Hello I need my bill",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_004",
+   "turn_index": 3,
+   "user_query": "Send for email",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "out_of_scope",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_004",
+   "turn_index": 5,
+   "user_query": "Some one can help me?",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_004",
+   "turn_index": 7,
+   "user_query": "Chat with person",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 1,
+   "user_query": "Privacy separator",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "low",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 3,
+   "user_query": "Where do I find it",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 5,
+   "user_query": "Where do I find the parental controls",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 7,
+   "user_query": "Take me to privacy separator",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 9,
+   "user_query": "The app isn\u2019t giving me that option",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 11,
+   "user_query": "I can\u2019t even find parental controls other than creating a profile",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 13,
+   "user_query": "WiFi access point settings",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_005",
+   "turn_index": 15,
+   "user_query": "Disable privacy separator",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_006",
+   "turn_index": 2,
+   "user_query": "My Bluetooth printer won\u2019t print. Says something about a privacy setting being disabled.",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "no_rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_006",
+   "turn_index": 5,
+   "user_query": "Self organizing network",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_007",
+   "turn_index": 1,
+   "user_query": "How to install WiFi Extender",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_007",
+   "turn_index": 3,
+   "user_query": "Saying it\u2019s not connected",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_007",
+   "turn_index": 5,
+   "user_query": "Not finding troubleshooting",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_008",
+   "turn_index": 1,
+   "user_query": "Show gb usage",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_008",
+   "turn_index": 3,
+   "user_query": "My internet has slowed down",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_008",
+   "turn_index": 5,
+   "user_query": "Internet after 150gb has slowed dy",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_009",
+   "turn_index": 1,
+   "user_query": "Where is the 5g compass",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "no_rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_009",
+   "turn_index": 3,
+   "user_query": "Do I have 5g network",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_009",
+   "turn_index": 5,
+   "user_query": "Wifi compass",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "no_rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_010",
+   "turn_index": 1,
+   "user_query": "Why can\u2019t I remove the password from my WiFi",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_010",
+   "turn_index": 3,
+   "user_query": "Can I bypass that",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_010",
+   "turn_index": 5,
+   "user_query": "Even on guest networks?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_011",
+   "turn_index": 1,
+   "user_query": "Can't get cameras to connect",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_011",
+   "turn_index": 3,
+   "user_query": "Will this internet Support 2.4",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_011",
+   "turn_index": 5,
+   "user_query": "How",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_012",
+   "turn_index": 5,
+   "user_query": "No I want to add a user to my account",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_013",
+   "turn_index": 1,
+   "user_query": "My mb are slow on the game and when I ft it\u2019s super laggy",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_013",
+   "turn_index": 3,
+   "user_query": "The speed test says it\u2019s good but everything doesn\u2019t work right",
+   "situation_type": "repeated_failure",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_013",
+   "turn_index": 5,
+   "user_query": "Reset the router and it still don\u2019t work",
+   "situation_type": "repeated_failure",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_014",
+   "turn_index": 3,
+   "user_query": "Doesn't show",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_014",
+   "turn_index": 5,
+   "user_query": "Doesn't show in equipment spot",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_014",
+   "turn_index": 7,
+   "user_query": "There's no add extender there",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_015",
+   "turn_index": 1,
+   "user_query": "Disable my advanced security for WiFi",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_015",
+   "turn_index": 3,
+   "user_query": "Connect to person",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_015",
+   "turn_index": 5,
+   "user_query": "Connect me",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_016",
+   "turn_index": 2,
+   "user_query": "How do i block any new devices",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_016",
+   "turn_index": 4,
+   "user_query": "My son is changing his pc mac address to bypass parental controls. What can i do",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_016",
+   "turn_index": 6,
+   "user_query": "I need the time controls to work. He bypasses them when he changes mac address",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_017",
+   "turn_index": 2,
+   "user_query": "Live Agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_017",
+   "turn_index": 4,
+   "user_query": "Hello",
+   "situation_type": "greeting",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "live_agent_handoff"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "greeting",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_017",
+   "turn_index": 7,
+   "user_query": "Yes",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_017",
+   "turn_index": 9,
+   "user_query": "Hello",
+   "situation_type": "greeting",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "live_agent_handoff"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "greeting",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_017",
+   "turn_index": 11,
+   "user_query": "Please restore my internet",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_017",
+   "turn_index": 13,
+   "user_query": "I can\u2019t do that",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_018",
+   "turn_index": 1,
+   "user_query": "How can I turn off home network protection",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_018",
+   "turn_index": 3,
+   "user_query": "Can\u2019t find digital secure home",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_018",
+   "turn_index": 5,
+   "user_query": "How can I identify the devices Verizon app says are online?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_019",
+   "turn_index": 3,
+   "user_query": "I would like to know why the technician who installed my internet connection did not seal the hole where he ran the wire\u2014to prevent moisture and insects from getting in\u2014and did not clean up the debris.",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_019",
+   "turn_index": 5,
+   "user_query": "Chat agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_019",
+   "turn_index": 7,
+   "user_query": "Agent online",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_020",
+   "turn_index": 1,
+   "user_query": "I\u2019m showing an extender is offline",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_020",
+   "turn_index": 3,
+   "user_query": "How can I determine which one it is",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_020",
+   "turn_index": 5,
+   "user_query": "Live person",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_021",
+   "turn_index": 1,
+   "user_query": "How much would it cost to add another Igor line",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_021",
+   "turn_index": 3,
+   "user_query": "Phone",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "clarify",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_021",
+   "turn_index": 5,
+   "user_query": "How much would it cost to add another mobile phone line on my account",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_022",
+   "turn_index": 5,
+   "user_query": "Do I have 2.4?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_022",
+   "turn_index": 7,
+   "user_query": "Do I have a 2.4 available",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_023",
+   "turn_index": 5,
+   "user_query": "Setup WiFi booster",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_024",
+   "turn_index": 1,
+   "user_query": "Does router save data",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_024",
+   "turn_index": 3,
+   "user_query": "Do they see what the devices connected to them are doing",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_024",
+   "turn_index": 5,
+   "user_query": "Can I delete all data on router",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_025",
+   "turn_index": 1,
+   "user_query": "The extender is super unreliable.",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_025",
+   "turn_index": 3,
+   "user_query": "I'm tired of restarting it.",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_025",
+   "turn_index": 5,
+   "user_query": "I want to go to another Internet provider.",
+   "situation_type": "repeated_failure",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_026",
+   "turn_index": 1,
+   "user_query": "Why do I have 4 devices on my account??!!",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_026",
+   "turn_index": 3,
+   "user_query": "Agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_026",
+   "turn_index": 5,
+   "user_query": "Representative",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_027",
+   "turn_index": 4,
+   "user_query": "There is no option to select \u201cset-top-box\u201d",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_028",
+   "turn_index": 1,
+   "user_query": "Bring me back to my chat",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_028",
+   "turn_index": 3,
+   "user_query": "I need an agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_028",
+   "turn_index": 5,
+   "user_query": "I was over text",
+   "situation_type": "escalation_continuation",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_028",
+   "turn_index": 7,
+   "user_query": "I was already speaking to someone over this chat about a router issue",
+   "situation_type": "escalation_continuation",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_028",
+   "turn_index": 9,
+   "user_query": "Please transfer me to a chat support agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_029",
+   "turn_index": 1,
+   "user_query": "Edit address",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "low",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_029",
+   "turn_index": 3,
+   "user_query": "Reset wifi location",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_029",
+   "turn_index": 5,
+   "user_query": "How do I change the location of my wifi. I have a new address",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_030",
+   "turn_index": 1,
+   "user_query": "M this is stating I have high network, which is baloney. I hardly have any network. What the heck is going on this is one going on for two weeks. You need to fix this.",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_030",
+   "turn_index": 3,
+   "user_query": "You guys suck after 29 years. I can\u2019t stand you guys Wow and all the other internets are 10 times faster than you guys and you suck suck suck suck and you\u2019re nothing but liars. Bring it back to the United States so we can understand an AI is stupid.",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_031",
+   "turn_index": 1,
+   "user_query": "How many gigs of WiFi did we use",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_031",
+   "turn_index": 3,
+   "user_query": "Where can I find the all devices tab",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_031",
+   "turn_index": 5,
+   "user_query": "I don\u2019t see it",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_032",
+   "turn_index": 3,
+   "user_query": "Set top box",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_032",
+   "turn_index": 5,
+   "user_query": "I want to get a new set top box",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_032",
+   "turn_index": 7,
+   "user_query": "Speak with live agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_033",
+   "turn_index": 1,
+   "user_query": "How do I turn my fios tv online",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_033",
+   "turn_index": 3,
+   "user_query": "No tv connection",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_033",
+   "turn_index": 5,
+   "user_query": "Didn\u2019t work",
+   "situation_type": "repeated_failure",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_034",
+   "turn_index": 1,
+   "user_query": "Why is my router blinking white ?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_034",
+   "turn_index": 3,
+   "user_query": "How can you update manually?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_034",
+   "turn_index": 5,
+   "user_query": "How can I view current firmware",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_034",
+   "turn_index": 7,
+   "user_query": "Is there a new update for my router?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_035",
+   "turn_index": 1,
+   "user_query": "Is there a new update on my router ?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_035",
+   "turn_index": 3,
+   "user_query": "Why is my router blinking white ?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_035",
+   "turn_index": 5,
+   "user_query": "How long does it take to update ?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_035",
+   "turn_index": 7,
+   "user_query": "Thanks",
+   "situation_type": "greeting",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "live_agent_handoff"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_035",
+   "turn_index": 9,
+   "user_query": "Is there a new update for my router?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_036",
+   "turn_index": 1,
+   "user_query": "how to add wifi extender",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_036",
+   "turn_index": 3,
+   "user_query": "its not on the list",
+   "situation_type": "multiturn_repair_cannot_find",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "live_agent_handoff",
+    "local_answer",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_036",
+   "turn_index": 5,
+   "user_query": "how to add extender to the network",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_037",
+   "turn_index": 1,
+   "user_query": "My wifi for guest account is very slow.",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_037",
+   "turn_index": 3,
+   "user_query": "Guest WiFi is slow",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_037",
+   "turn_index": 5,
+   "user_query": "Need real human for help",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_038",
+   "turn_index": 2,
+   "user_query": "Agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_038",
+   "turn_index": 5,
+   "user_query": "Yes I\u2019d like to set up a plan",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_039",
+   "turn_index": 3,
+   "user_query": "WiFi extends",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "low",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_039",
+   "turn_index": 5,
+   "user_query": "Order one",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_040",
+   "turn_index": 1,
+   "user_query": "How to turn off safety block safety block home internet",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_040",
+   "turn_index": 3,
+   "user_query": "No parent control",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_040",
+   "turn_index": 5,
+   "user_query": "Home internet safety off",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_041",
+   "turn_index": 1,
+   "user_query": "Need to connect",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "clarify",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_041",
+   "turn_index": 3,
+   "user_query": "Home Verizon",
+   "situation_type": "clarification_answer",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "guided_page",
+    "local_answer",
+    "repair_same_task",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_041",
+   "turn_index": 5,
+   "user_query": "Troubleshoot",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_042",
+   "turn_index": 1,
+   "user_query": "This is the Home Assistant, Verizon\u2019s tool to help you manage your home internet.\n\n You can use one of these suggestions or ask a question to get started:\n- How do I change my Wi-Fi password?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_042",
+   "turn_index": 3,
+   "user_query": "Didn\u2019t work",
+   "situation_type": "repeated_failure",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "clarify",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_042",
+   "turn_index": 5,
+   "user_query": "The password field would not let me alter it",
+   "situation_type": "clarification_answer",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "guided_page",
+    "local_answer",
+    "repair_same_task",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_043",
+   "turn_index": 1,
+   "user_query": "How much gigabit do I have to",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "clarify",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_043",
+   "turn_index": 3,
+   "user_query": "Yes",
+   "situation_type": "clarification_answer",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "guided_page",
+    "local_answer",
+    "repair_same_task",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [
+    "must_preserve_task"
+   ],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_043",
+   "turn_index": 5,
+   "user_query": "Gigabits\nWhat plan am i on ??",
+   "situation_type": "account_backend_order",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "account_nav",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_044",
+   "turn_index": 3,
+   "user_query": "Connection issues",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_044",
+   "turn_index": 5,
+   "user_query": "Losing signal",
+   "situation_type": "ambiguous_short_turn",
+   "situation_confidence": "medium",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_044",
+   "turn_index": 7,
+   "user_query": "That doesn\u2019t work",
+   "situation_type": "repeated_failure",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff",
+    "repair_same_task"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_044",
+   "turn_index": 9,
+   "user_query": "TVs and internet",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_045",
+   "turn_index": 1,
+   "user_query": "My internet dam slow",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_045",
+   "turn_index": 3,
+   "user_query": "I have the speed test and it\u2019s showing latency",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_045",
+   "turn_index": 5,
+   "user_query": "What is the next steps after restart",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": true
+  },
+  {
+   "conversation_id": "CHAT_046",
+   "turn_index": 1,
+   "user_query": "How to manage parental control profile",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_046",
+   "turn_index": 3,
+   "user_query": "Speak to agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_046",
+   "turn_index": 5,
+   "user_query": "Speak to live agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_047",
+   "turn_index": 1,
+   "user_query": "How much GHz do I have?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_047",
+   "turn_index": 3,
+   "user_query": "How can I change my GHz?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_047",
+   "turn_index": 5,
+   "user_query": "How can I change my WiFi to 2.4GHz?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_048",
+   "turn_index": 1,
+   "user_query": "Extender  is offline, how do I fix it?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_048",
+   "turn_index": 3,
+   "user_query": "Its the white box ?",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_048",
+   "turn_index": 5,
+   "user_query": "Light is on and plugged in",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_049",
+   "turn_index": 5,
+   "user_query": "Turn wifi off",
+   "situation_type": "local_support_question",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "cloud_or_account_handoff",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": true,
+   "safety_flags": [],
+   "transcript_expected_route": "rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_050",
+   "turn_index": 1,
+   "user_query": "Bury the optic fiber line",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "cloud_or_account_handoff",
+    "live_agent_handoff",
+    "no_local_answer"
+   ],
+   "bad_decisions": [
+    "guided_page",
+    "local_answer",
+    "safe_tool_confirmation"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "forbid_backend_invention"
+   ],
+   "transcript_expected_route": "no_rag_answer",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_050",
+   "turn_index": 3,
+   "user_query": "Live agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_050",
+   "turn_index": 5,
+   "user_query": "Live agent",
+   "situation_type": "direct_agent_request",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "live_agent_handoff"
+   ],
+   "bad_decisions": [
+    "account_nav",
+    "ask_clarification",
+    "guided_page",
+    "local_answer",
+    "no_local_answer"
+   ],
+   "requires_specific_flow": false,
+   "safety_flags": [
+    "must_honor_agent_request"
+   ],
+   "transcript_expected_route": "live_agent",
+   "transcript_outside_acceptable": false
+  },
+  {
+   "conversation_id": "CHAT_OOD1",
+   "turn_index": 1,
+   "user_query": "what is the weather in new york",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "no_local_answer",
+    "live_agent_handoff",
+    "cloud_or_account_handoff"
+   ]
+  },
+  {
+   "conversation_id": "CHAT_OOD2",
+   "turn_index": 1,
+   "user_query": "how much does a tesla cost these days",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "no_local_answer",
+    "live_agent_handoff",
+    "cloud_or_account_handoff"
+   ]
+  },
+  {
+   "conversation_id": "CHAT_OOD3",
+   "turn_index": 1,
+   "user_query": "can you write me a poem about autumn",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "no_local_answer",
+    "live_agent_handoff",
+    "cloud_or_account_handoff"
+   ]
+  },
+  {
+   "conversation_id": "CHAT_OOD4",
+   "turn_index": 1,
+   "user_query": "who is playing in the super bowl",
+   "situation_type": "out_of_scope",
+   "situation_confidence": "high",
+   "acceptable_decisions": [
+    "no_local_answer",
+    "live_agent_handoff",
+    "cloud_or_account_handoff"
+   ]
+  }
+ ]
+}

@@ -134,7 +134,7 @@ private let actionVerbs: [String] = [
     "restart", "reboot", "reset", "turn off", "turn on", "block",
     "unblock", "pause", "enable", "disable", "set up", "set", "add",
     "remove", "delete", "share", "change", "rename", "run", "start",
-    "stop", "test", "create", "power cycle", "cycle",
+    "stop", "test", "create", "toggle", "power cycle", "cycle",
 ]
 
 private let navigateVerbs: [String] = [
@@ -205,42 +205,69 @@ public struct BM25Hit: Sendable, Equatable {
 
 // MARK: - Title/alias retriever (internal)
 
-/// Mirrors Python `TitleAliasRetriever`. Word-set overlap on title +
+/// Mirrors Python `TitleAliasRetriever`. Phrase-aware overlap on title +
 /// aliases only. Used as a precision-heavy second signal that the
 /// hierarchy retriever consults for the alias-confirmation boost.
 final class TitleAliasRetriever {
     private let units: [String: RAGUnit]
     let unitTokens: [String: Set<String>]
     private let unitTitleTokens: [String: Set<String>]
+    private let unitPhraseTokens: [String: [Set<String>]]
 
     init(units: [String: RAGUnit]) {
         self.units = units
         var unitTok: [String: Set<String>] = [:]
         var titleTok: [String: Set<String>] = [:]
+        var phraseTok: [String: [Set<String>]] = [:]
         for (pid, unit) in units {
             let titleSet = Set(BM25Tokenizer.tokenize(unit.title))
             var bag = titleSet
+            var phrases: [Set<String>] = []
+            if !titleSet.isEmpty { phrases.append(titleSet) }
             for alias in unit.aliases {
-                for t in BM25Tokenizer.tokenize(alias) { bag.insert(t) }
+                let aliasSet = Set(BM25Tokenizer.tokenize(alias))
+                if aliasSet.isEmpty { continue }
+                phrases.append(aliasSet)
+                for t in aliasSet { bag.insert(t) }
             }
             unitTok[pid] = bag
             titleTok[pid] = titleSet
+            phraseTok[pid] = phrases
         }
         self.unitTokens = unitTok
         self.unitTitleTokens = titleTok
+        self.unitPhraseTokens = phraseTok
+    }
+
+    func bestPhrasePrecision(queryTokens qToks: Set<String>) -> [String: Double] {
+        if qToks.isEmpty { return [:] }
+        var out: [String: Double] = [:]
+        for (pid, phrases) in unitPhraseTokens {
+            var best = 0.0
+            for phrase in phrases {
+                let overlap = qToks.intersection(phrase)
+                if overlap.isEmpty { continue }
+                best = max(best, Double(overlap.count) / Double(qToks.count))
+            }
+            if best > 0 { out[pid] = best }
+        }
+        return out
     }
 
     func rank(query: String, k: Int = 5) -> [BM25Hit] {
         let qToks = Set(BM25Tokenizer.tokenize(query))
         if qToks.isEmpty { return [] }
         var scored: [(Double, String)] = []
-        for (pid, toks) in unitTokens {
-            if toks.isEmpty { continue }
-            let overlap = qToks.intersection(toks)
-            if overlap.isEmpty { continue }
-            let recall = Double(overlap.count) / Double(toks.count)
-            let precision = Double(overlap.count) / Double(qToks.count)
-            var score = (recall + precision) / 2.0
+        for (pid, phrases) in unitPhraseTokens {
+            var score = 0.0
+            for phrase in phrases {
+                let overlap = qToks.intersection(phrase)
+                if overlap.isEmpty { continue }
+                let recall = Double(overlap.count) / Double(phrase.count)
+                let precision = Double(overlap.count) / Double(qToks.count)
+                score = max(score, (recall + precision) / 2.0)
+            }
+            if score <= 0 { continue }
             if !qToks.intersection(unitTitleTokens[pid] ?? []).isEmpty {
                 score += 0.05
             }
@@ -449,19 +476,12 @@ public final class BM25HierarchyRetriever: Sendable {
         }
         if base.isEmpty { return [] }
 
-        // Precision-only alias confirmation.
+        // Precision-only alias confirmation against one coherent
+        // title/alias phrase. This prevents false confidence from
+        // stitching query tokens across unrelated aliases on the same page.
         let qToks = Set(qTerms)
-        var aliasConfirmed: [String: Double] = [:]
-        if !qToks.isEmpty {
-            for (pid, bag) in alias.unitTokens {
-                if bag.isEmpty { continue }
-                let overlap = qToks.intersection(bag)
-                if overlap.isEmpty { continue }
-                let precision = Double(overlap.count) / Double(qToks.count)
-                if precision >= aliasConfirmedMinScore {
-                    aliasConfirmed[pid] = precision
-                }
-            }
+        let aliasConfirmed = alias.bestPhrasePrecision(queryTokens: qToks).filter {
+            $0.value >= aliasConfirmedMinScore
         }
         let activeStepEvidence = explicitPageHints.reduce(into: [String: Double]()) { out, pid in
             guard let unit = units[pid] else { return }

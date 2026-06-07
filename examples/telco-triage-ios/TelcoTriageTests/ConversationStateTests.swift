@@ -24,6 +24,7 @@ final class ConversationStateTests: XCTestCase {
         XCTAssertTrue(ConversationStateRecorder.isLiveAgentRequest("transfer me"))
         XCTAssertTrue(ConversationStateRecorder.isLiveAgentRequest("Can I talk to a real person?"))
         XCTAssertTrue(ConversationStateRecorder.isLiveAgentRequest("customer service"))
+        XCTAssertTrue(ConversationStateRecorder.isLiveAgentRequest("Need real human for help"))
     }
 
     func test_detector_rejectsAgenticAndAgency() {

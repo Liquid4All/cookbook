@@ -33,6 +33,8 @@ final class VerizonDispatcherComposerPathTests: XCTestCase {
                        "restart-router is a registered ToolIntent with requiresConfirmation=true")
         XCTAssertEqual(result.executableToolIntent, .restartRouter)
         XCTAssertEqual(result.citedRAGUnit?.pageID, "02.07")
+        XCTAssertEqual(result.retrievalCandidates.first?.pageID, "02.07")
+        XCTAssertFalse(result.retrievalCandidates.isEmpty)
         XCTAssertTrue(result.text.lowercased().contains("confirm"),
                       "tool_action text must carry the Confirm clause")
     }
@@ -143,6 +145,38 @@ final class VerizonDispatcherComposerPathTests: XCTestCase {
         XCTAssertNil(result.citedRAGUnit)
     }
 
+    func test_fallbackPolicyRoutesBillingBeforeRetrieval() async {
+        let result = await dispatch(query: "Hello I need my bill")
+
+        XCTAssertEqual(result.composerRoute, .accountNav)
+        XCTAssertNil(result.citedRAGUnit)
+        XCTAssertEqual(result.deepLink, AnswerComposerConstants.myVerizonURL)
+    }
+
+    func test_fallbackPolicyRoutesHumanHelpBeforeRetrieval() async {
+        let result = await dispatch(query: "Some one can help me?")
+
+        XCTAssertEqual(result.composerRoute, .liveAgent)
+        XCTAssertNil(result.citedRAGUnit)
+        XCTAssertEqual(result.deepLink, AnswerComposerConstants.liveAgentPhone)
+    }
+
+    func test_fallbackPolicyRoutesRealHumanRequestBeforeRetrieval() async {
+        let result = await dispatch(query: "Need real human for help")
+
+        XCTAssertEqual(result.composerRoute, .liveAgent)
+        XCTAssertNil(result.citedRAGUnit)
+        XCTAssertEqual(result.deepLink, AnswerComposerConstants.liveAgentPhone)
+    }
+
+    func test_fallbackPolicyRejectsUnsupportedEmailCommandBeforeRetrieval() async {
+        let result = await dispatch(query: "Send for email")
+
+        XCTAssertEqual(result.composerRoute, .outOfScope)
+        XCTAssertNil(result.citedRAGUnit)
+        XCTAssertNil(result.deepLink)
+    }
+
     func test_lowConfidenceHardPolicySignalsDoNotDeflectBeforeRAG() async {
         let base = makeTelcoUnderstanding(routingLane: .localAnswer)
         let understanding = TelcoSharedUnderstanding(
@@ -217,15 +251,16 @@ final class VerizonDispatcherComposerPathTests: XCTestCase {
     // MARK: - rag_answer: NO tool exists (no theatre confirmation)
 
     func test_change_wifi_password_is_rag_answer_no_confirmation() async {
-        // 03.00 Network — no ToolIntent registered for `network` linkID.
-        // Per guardrail #3, no confirmation theatre.
+        // 03.01 Edit Wi-Fi is the most specific grounded page, but no
+        // ToolIntent is registered for the shared `network` linkID. Per
+        // guardrail #3, no confirmation theatre.
         let result = await dispatch(query: "change my wifi password")
         XCTAssertEqual(result.composerRoute, .ragAnswer)
         XCTAssertEqual(result.requiresConfirmation, false,
                        "no real tool → no confirmation theatre (guardrail #3)")
-        XCTAssertEqual(result.citedRAGUnit?.pageID, "03.00")
+        XCTAssertEqual(result.citedRAGUnit?.pageID, "03.01")
         XCTAssertFalse(result.text.lowercased().contains("reply 'yes'"),
-                       "view-only page must NOT show the yes-to-confirm clause")
+                       "non-executable support page must NOT show the yes-to-confirm clause")
     }
 
     func test_share_wifi_password_is_rag_answer_no_confirmation() async {
@@ -528,7 +563,7 @@ final class VerizonDispatcherComposerPathTests: XCTestCase {
         })
     }
 
-    func test_chatViewModelComposerPathBypassesCompositeUnderstandingAndRelationalStack() async {
+    func test_chatViewModelComposerPathUsesADR028RelationAndBypassesCompositeUnderstanding() async {
         let stageA = CountingStageAClassifier()
         let telcoUnderstanding = CountingTelcoUnderstandingClassifier()
         let understanding = CountingUnderstandingClassifier()
@@ -551,7 +586,7 @@ final class VerizonDispatcherComposerPathTests: XCTestCase {
         XCTAssertEqual(stageACalls, 0)
         XCTAssertEqual(telcoCalls, 1)
         XCTAssertEqual(understandingCalls, 0)
-        XCTAssertEqual(relationalTextCalls, 0)
+        XCTAssertEqual(relationalTextCalls, 1)
         XCTAssertEqual(chatModeCalls, 0)
         XCTAssertEqual(harness.lastAssistantMessage?.trace?.chatModeRuntimeMS, 12)
         XCTAssertEqual(harness.lastAssistantMessage?.trace?.telcoUnderstandingMS, 12)
@@ -560,6 +595,58 @@ final class VerizonDispatcherComposerPathTests: XCTestCase {
         XCTAssertNotNil(harness.lastAssistantMessage?.trace?.routePolicyMS)
         XCTAssertNotNil(harness.lastAssistantMessage?.trace?.composerMS)
         XCTAssertNotNil(harness.lastAssistantMessage?.trace?.totalWallMS)
+    }
+
+    func test_chatViewModelComposerPathRecordsADR028BlackboardFacts() async {
+        let relational = ScriptedTelcoTurnRelationStrategy([
+            .independentNewTask,
+            .stepFocus
+        ])
+        let dispatcher = makeDispatcher()
+        let harness = TestChatHarness(
+            verizonDispatcher: dispatcher,
+            telcoUnderstandingClassifier: CountingTelcoUnderstandingClassifier(),
+            relationalStrategy: relational
+        )
+
+        await harness.send("how do I restart my router?")
+        await harness.send("where is that button?")
+
+        let blackboard = harness.vm.dialogueBlackboard
+        XCTAssertEqual(blackboard.lastTurnRelation, .stepFocus)
+        XCTAssertEqual(blackboard.priorPageID, "02.07")
+        XCTAssertEqual(blackboard.priorLinkID, "restart-router")
+        XCTAssertFalse(blackboard.lastRetrievalCandidates.isEmpty)
+        XCTAssertNotNil(blackboard.lastPolicyDecision)
+        XCTAssertTrue(blackboard.auditTrail.contains { $0.kind == .turnRelation })
+        XCTAssertTrue(blackboard.auditTrail.contains { $0.kind == .retrieval })
+        XCTAssertTrue(blackboard.auditTrail.contains { $0.kind == .policyDecision })
+        XCTAssertTrue(blackboard.auditTrail.contains { $0.kind == .responseRendered })
+    }
+
+    func test_bareNoOnPendingToolCancelsWithoutExecutionAndRecordsBlackboard() async {
+        let relational = ScriptedTelcoTurnRelationStrategy([
+            .independentNewTask,
+            .confirmationNo
+        ])
+        let dispatcher = makeDispatcher()
+        let harness = TestChatHarness(
+            verizonDispatcher: dispatcher,
+            telcoUnderstandingClassifier: CountingTelcoUnderstandingClassifier(),
+            relationalStrategy: relational
+        )
+
+        await harness.send("restart my router")
+        XCTAssertNotNil(harness.vm.dialogueBlackboard.pendingToolConfirmation)
+
+        await harness.send("no")
+
+        let blackboard = harness.vm.dialogueBlackboard
+        XCTAssertEqual(harness.lastAssistantMessage?.text, "Okay, I won't do that.")
+        XCTAssertEqual(blackboard.lastTurnRelation, .confirmationNo)
+        XCTAssertNil(blackboard.pendingToolConfirmation)
+        XCTAssertTrue(blackboard.auditTrail.contains { $0.kind == .toolCancelled })
+        XCTAssertFalse(blackboard.auditTrail.contains { $0.kind == .toolExecuted })
     }
 
     // MARK: - Helpers
@@ -592,12 +679,26 @@ final class VerizonDispatcherComposerPathTests: XCTestCase {
         verbalizer: DialogueRepairVerbalizing? = nil
     ) async -> VerizonDispatchResult {
         let dispatcher = makeDispatcher(verbalizer: verbalizer)
+        // Mirror the V4 dialogue state into the policy-engine state snapshot the
+        // production path builds from the blackboard, so these dispatcher-level
+        // tests exercise the same state threading as `ChatViewModel`.
+        let policyState = TelcoDialogueStateSnapshot(
+            hasActiveTask: context.priorPageID != nil,
+            priorPageID: context.priorPageID,
+            priorLinkID: context.priorLinkID,
+            pendingToolID: dialogueState.pendingTool,
+            repairAttemptsOnActiveTask: dialogueState.frustrationCount,
+            frustrationCount: dialogueState.frustrationCount,
+            hasPriorAssistantTurn: context.priorAssistantText != nil
+        )
         var finalResult: VerizonDispatchResult?
         for await event in dispatcher.dispatchComposer(
             query: query,
             retrievalContext: context,
             telcoUnderstanding: telcoUnderstanding,
-            dialogueState: dialogueState
+            dialogueState: dialogueState,
+            turnRelation: nil,
+            policyState: policyState
         ) {
             if case .response(let r) = event { finalResult = r }
         }
@@ -796,6 +897,46 @@ private actor CountingRelationalStrategy: RelationalHeadsStrategy {
 
     func textCallCount() -> Int {
         textCalls
+    }
+}
+
+private actor ScriptedTelcoTurnRelationStrategy: RelationalHeadsStrategy {
+    private var labels: [TelcoTurnRelation]
+
+    init(_ labels: [TelcoTurnRelation]) {
+        self.labels = labels
+    }
+
+    func classify(
+        currentUserQuery: String,
+        priorUserHidden: [Float]?,
+        priorAssistantHidden: [Float]?
+    ) async throws -> RelationalOutcomes {
+        _ = currentUserQuery
+        _ = priorUserHidden
+        _ = priorAssistantHidden
+        return .none
+    }
+
+    func classifyFromText(
+        currentUserQuery: String,
+        priorAssistantText: String?,
+        priorUserText: String?,
+        runtimeState: RelationalRuntimeState
+    ) async throws -> RelationalOutcomes {
+        _ = currentUserQuery
+        _ = priorAssistantText
+        _ = priorUserText
+        _ = runtimeState
+        let label = labels.isEmpty ? .independentNewTask : labels.removeFirst()
+        return RelationalOutcomes(
+            telcoTurnRelation: TelcoTurnRelationOutcome(value: label, confidence: 1.0),
+            turnRelationship: TurnRelationshipOutcome(
+                value: TelcoTurnRelationV4Strategy.mapToLegacyRelationship(label),
+                confidence: 1.0
+            ),
+            runtimeMs: 0
+        )
     }
 }
 

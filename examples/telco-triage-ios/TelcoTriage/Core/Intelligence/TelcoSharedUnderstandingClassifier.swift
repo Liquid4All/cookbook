@@ -43,6 +43,8 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
     private let piiRiskHead: ClassifierHead
     private let transcriptQualityHead: ClassifierHead
     private let slotCompletenessHead: ClassifierHead
+    /// Off-domain head (ADR-032 pilot). Optional + additive: absent → policy ignores it.
+    private let topicScopeHead: ClassifierHead?
     private let logger = Logger(
         subsystem: "ai.liquid.demos.telcotriage",
         category: "TelcoSharedUnderstanding"
@@ -59,7 +61,8 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
         escalationRiskHead: ClassifierHead,
         piiRiskHead: ClassifierHead,
         transcriptQualityHead: ClassifierHead,
-        slotCompletenessHead: ClassifierHead
+        slotCompletenessHead: ClassifierHead,
+        topicScopeHead: ClassifierHead? = nil
     ) {
         self.backend = backend
         self.sharedAdapterPath = sharedAdapterPath
@@ -72,6 +75,7 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
         self.piiRiskHead = piiRiskHead
         self.transcriptQualityHead = transcriptQualityHead
         self.slotCompletenessHead = slotCompletenessHead
+        self.topicScopeHead = topicScopeHead
     }
 
     public static func bundled(
@@ -97,6 +101,14 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
             }
         }
 
+        // Off-domain head is additive (ADR-032 pilot): load if bundled, else nil so
+        // the app still runs on the pre-topic-scope pack (rollback path, data-plan §9).
+        let topicScopeHead: ClassifierHead? = TelcoModelBundle.classifierHeadPaths(
+            task: "telco-topic-scope", in: bundle
+        ).flatMap {
+            try? ClassifierHead(weightsURL: $0.weightsURL, biasURL: $0.biasURL, metaURL: $0.metaURL)
+        }
+
         return try TelcoSharedUnderstandingClassifier(
             backend: backend,
             sharedAdapterPath: adapterPath,
@@ -108,7 +120,8 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
             escalationRiskHead: load("telco-customer-escalation-risk"),
             piiRiskHead: load("telco-pii-risk"),
             transcriptQualityHead: load("telco-transcript-quality"),
-            slotCompletenessHead: load("telco-slot-completeness")
+            slotCompletenessHead: load("telco-slot-completeness"),
+            topicScopeHead: topicScopeHead
         )
     }
 
@@ -117,13 +130,22 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
         let embedding: [Float]
         do {
             try await backend.setAdapter(path: sharedAdapterPath, scale: 1.0)
-            embedding = try await backend.embeddings(prompt: query, clearCache: true)
+            // Mean-pool all token hidden states to match the head training
+            // contract (train_shared_multi_head.py mean-pools; LFM2.5's final
+            // layer is conv, so last-token reads only ~3 tokens). Validated
+            // pooling lives in EmbeddingPooling.mean.
+            embedding = try await backend.meanPooledEmbedding(prompt: query, clearCache: true)
         } catch {
             throw TelcoSharedUnderstandingError.backendFailure(underlying: error)
         }
         let forwardMs = elapsed(t0)
 
         let headStart = CFAbsoluteTimeGetCurrent()
+        let topicScope: TelcoHeadOutcome<TelcoTopicScope>? = try topicScopeHead.map { head in
+            try projectSingle(
+                head.classify(embedding), task: "telco-topic-scope", as: TelcoTopicScope.self
+            )
+        }
         let vector = try TelcoSharedUnderstanding(
             supportIntent: projectSingle(
                 supportIntentHead.classify(embedding),
@@ -169,7 +191,8 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
                 labels: TelcoMissingSlot.allCases
             ),
             forwardPassMs: forwardMs,
-            headProjectionMs: elapsed(headStart)
+            headProjectionMs: elapsed(headStart),
+            topicScope: topicScope
         )
 
         logger.info(

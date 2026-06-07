@@ -163,6 +163,15 @@ public struct CallTrace: Equatable {
     public let composerCitedPageID: String?
     public let composerRenderedLinkID: String?
     public let composerConfirmationShown: Bool?
+    /// ADR-029 §6 measurement only: policy-engine ground truth surfaced for the
+    /// phone-flow harness (reuse flag + decision reason). nil off the telco path.
+    public let reuseActiveEvidence: Bool?
+    public let policyReason: String?
+    /// ADR-029 §7 measurement only: the explicit dialogue-state operation (raw
+    /// value) and its audit reason, so `situation_eval` scores the state decision
+    /// directly. nil off the telco composer path.
+    public let stateOperation: String?
+    public let stateOperationReason: String?
 
     public init(
         surface: Surface,
@@ -188,7 +197,11 @@ public struct CallTrace: Equatable {
         composerRoute: String? = nil,
         composerCitedPageID: String? = nil,
         composerRenderedLinkID: String? = nil,
-        composerConfirmationShown: Bool? = nil
+        composerConfirmationShown: Bool? = nil,
+        reuseActiveEvidence: Bool? = nil,
+        policyReason: String? = nil,
+        stateOperation: String? = nil,
+        stateOperationReason: String? = nil
     ) {
         self.surface = surface
         self.retrievalMS = retrievalMS
@@ -214,6 +227,10 @@ public struct CallTrace: Equatable {
         self.composerCitedPageID = composerCitedPageID
         self.composerRenderedLinkID = composerRenderedLinkID
         self.composerConfirmationShown = composerConfirmationShown
+        self.reuseActiveEvidence = reuseActiveEvidence
+        self.policyReason = policyReason
+        self.stateOperation = stateOperation
+        self.stateOperationReason = stateOperationReason
     }
 
     public var totalMS: Int { totalWallMS ?? ((retrievalMS ?? 0) + inferenceMS) }

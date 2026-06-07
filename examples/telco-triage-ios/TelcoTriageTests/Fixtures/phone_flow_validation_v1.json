@@ -1,0 +1,3531 @@
+{
+ "version": 1,
+ "_note": "Phone-flow validation fixture built from the 50 real conversations. Holdout-only; do not train from this file.",
+ "source": "/Users/chintan/Downloads/50_conversations_Liquid AI (1).txt",
+ "n_conversations": 54,
+ "n_turns": 159,
+ "route_counts": {
+  "greeting": 3,
+  "rag_answer": 78,
+  "no_rag_answer": 5,
+  "account_nav": 8,
+  "out_of_scope": 1,
+  "live_agent": 54,
+  "clarify": 4
+ },
+ "confidence_counts": {
+  "high": 122,
+  "medium": 22,
+  "low": 9,
+  "skip": 2
+ },
+ "conversations": [
+  {
+   "account_id": "ACCOUNT_001",
+   "conversation_id": "CHAT_001",
+   "title": "Hi",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Hi",
+     "expected_assistant": "Hello! How can I assist you with Verizon Home Internet today?",
+     "expected_route": "greeting",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Hello"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "greeting user turn; route has no content page",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "I trying to enable my parental controls",
+     "expected_assistant": "To enable Parental Controls, follow these steps: Go to Home > Select Parental Controls > Enroll for $0/mo > Complete the enrollment process > Select Create a Profile > Follow the on-screen instructions to set up profiles and assign devices. Once enrolled, you can manage profiles and set restrictions for each device.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "13",
+     "expected_link_id": "home",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Parental Controls",
+      "Home"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'home' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "The system indicates that the order is awaiting completion.",
+     "expected_assistant": "It looks like I don't have specific information about the order completion process. For this question, I recommend checking our website Verizon Home Internet or contacting support directly.",
+     "expected_route": "no_rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "specific information",
+      "Verizon Home Internet"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "assistant no-answer wording; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_002",
+   "conversation_id": "CHAT_002",
+   "title": "Change password",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Change password",
+     "expected_assistant": "To change your Wi-Fi password: Go to Network > Select Wi-Fi Management > Select Edit Wi-Fi > Change Wi-Fi password > Save changes. Make sure to choose a strong password to enhance your network security.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Where do I find Network?",
+     "expected_assistant": "To find the Network section: Go to the Home Page > Select the Network icon. This will take you to the Network section where you can manage your Wi-Fi settings.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "03.00",
+     "expected_page_section": "03",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn",
+      "navigation_followup",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "What home page?",
+     "expected_assistant": "The Home Page is the main screen of the Verizon Home App where you can access various features and settings related to your Verizon Home Internet service. From there, you can select the Network icon to manage your Wi-Fi settings.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "01.00",
+     "expected_page_section": "01",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Home Page"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn",
+      "navigation_followup",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_003",
+   "conversation_id": "CHAT_003",
+   "title": "can i switch a device onto a different band?",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "can i switch a device onto a different band?",
+     "expected_assistant": "To switch a device to a different band, you can manage your device's connection through the Device Details Page. Here's how you can do it: Go to Devices > Select the device from the Device List > Review the connection information to see the current band (2.4 GHz, 5 GHz, or 6 GHz) > If needed, adjust the connection settings on the device itself to switch bands. Please note that the ability to switch bands may depend on the device's capabilities and the network settings.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "04",
+     "expected_link_id": "tab-devices",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-devices' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "i need to adjust the band on the device and not here in this app?",
+     "expected_assistant": "Yes, to switch a device to a different band, you'll typically need to adjust the settings directly on the device itself, rather than through the Verizon Home App. The app provides information about the current band your device is connected to, but changing the band often requires accessing the device's network settings or Wi-Fi settings.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": []
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How do I switch bands for a Switch 2 device? I\u2019m stuck on the 2.4 band",
+     "expected_assistant": "To switch your Switch 2 device from the 2.4 GHz band to a different band, you'll need to adjust the Wi-Fi settings directly on the device. Here are some general steps you can follow: 1. Access the settings menu on your Switch 2 device. 2. Navigate to the network or Wi-Fi settings. 3. Look for an option to select the Wi-Fi band or network. 4. Choose the 5 GHz or 6 GHz band, if available, and connect to it. Please note that the exact steps may vary depending on the device's interface and capabilities. If your device does not support switching bands, it may be limited to the 2.4 GHz band.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "repair"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "there is no such option. how do i split my bands manually in wifi settings?",
+     "expected_assistant": "To manually split your Wi-Fi bands, you can disable the Self-Organizing Network (SON) feature. This allows you to manage each band separately with its own Wi-Fi name and password. Here's how you can do it: Go to Network > Select Wi-Fi Management > Disable SON > Manage each band separately by assigning different Wi-Fi names and passwords. Disabling SON will require you to manage each network separately, and each will need its own Wi-Fi name and password.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "03.03",
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "repair",
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_004",
+   "conversation_id": "CHAT_004",
+   "title": "Hello I need my bill",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Hello I need my bill",
+     "expected_assistant": "To view and manage your billing information, please use the My Verizon App. You can access it directly through this link: My Verizon.",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "policy",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Send for email",
+     "expected_assistant": "I\u2019m here to help with topics related to Verizon Home Internet. Please try asking a different question.",
+     "expected_route": "out_of_scope",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Verizon Home Internet"
+     ],
+     "must_not_include": [
+      "vzhome://"
+     ],
+     "label_confidence": "high",
+     "label_reason": "assistant out-of-scope wording; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Some one can help me?",
+     "expected_assistant": "If you need further assistance, please Call us for support.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Chat with person",
+     "expected_assistant": "To chat with a live representative, please Call us for support.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_005",
+   "conversation_id": "CHAT_005",
+   "title": "Privacy separator",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Privacy separator",
+     "expected_assistant": "The Privacy separator in the Verizon Home App is part of the Parental Controls feature. It includes toggleable categories to block Google Safe Search and YouTube Restricted Mode, which are determined by Google and YouTube respectively. This section is found beneath the Age group tile on the Filter Content page.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.04",
+     "expected_page_section": "13",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Privacy separator"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Where do I find it",
+     "expected_assistant": "To access the Privacy separator in the Verizon Home App: Go to Parental Controls > Select Filter Content > Review the Privacy separator beneath the Age group tile. This section includes options to block Google Safe Search and YouTube Restricted Mode.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.04",
+     "expected_page_section": "13",
+     "expected_link_id": "parental-controls",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Parental Controls"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'parental-controls' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "navigation_followup",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Where do I find the parental controls",
+     "expected_assistant": "To find Parental Controls in the Verizon Home App: Go to Parental Controls. This section allows you to manage and customize settings for different profiles and devices.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.00",
+     "expected_page_section": "13",
+     "expected_link_id": "parental-controls",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Parental Controls"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'parental-controls' resolved by assistant text",
+     "tags": [
+      "navigation_followup",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Take me to privacy separator",
+     "expected_assistant": "To access the Privacy separator in the Verizon Home App: Go to Parental Controls > Select Filter Content > Review the Privacy separator beneath the Age group tile. This section includes options to block Google Safe Search and YouTube Restricted Mode.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.04",
+     "expected_page_section": "13",
+     "expected_link_id": "parental-controls",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Privacy separator",
+      "Parental Controls"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'parental-controls' resolved by assistant text",
+     "tags": [
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 9,
+     "user_query": "The app isn\u2019t giving me that option",
+     "expected_assistant": "If the app isn't displaying the Privacy separator option, you can report this issue through the Help & feedback page. Go to Help & feedback and provide details about the problem you're experiencing. This will allow Verizon to assist you further.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.04",
+     "expected_page_section": "13",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; policy link has no content page",
+     "tags": [
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 11,
+     "user_query": "I can\u2019t even find parental controls other than creating a profile",
+     "expected_assistant": "If you're unable to find the full Parental Controls options beyond creating a profile, it might be an issue with the app. You can report this through the Help & feedback page. Go to Help & feedback and describe the issue you're facing. This will help Verizon address the problem.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Parental Controls",
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "low",
+     "label_reason": "grounded support answer; policy link has no content page",
+     "tags": [
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 13,
+     "user_query": "WiFi access point settings",
+     "expected_assistant": "To access Wi-Fi access point settings in the Verizon Home App: Go to Network Map. The Network Map displays your primary Wi-Fi Access Point, along with connected devices and their connection types.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "04.01",
+     "expected_page_section": "04",
+     "expected_link_id": "device-network-map",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network Map"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'device-network-map' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 15,
+     "user_query": "Disable privacy separator",
+     "expected_assistant": "To disable the Privacy separator in the Verizon Home App: Go to Parental Controls > Select Filter Content > Toggle off the options under the Privacy separator, such as Google Safe Search and YouTube Restricted Mode. This will disable the privacy settings associated with these features.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.04",
+     "expected_page_section": "13",
+     "expected_link_id": "parental-controls",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Privacy separator",
+      "Parental Controls"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'parental-controls' resolved by assistant text",
+     "tags": [
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_005",
+   "conversation_id": "CHAT_006",
+   "title": "My Bluetooth printer won\u2019t print. Says something about a privacy setting being disabled.",
+   "turns": [
+    {
+     "turn_index": 2,
+     "user_query": "My Bluetooth printer won\u2019t print. Says something about a privacy setting being disabled.",
+     "expected_assistant": "It looks like I don't have specific information about Bluetooth printer privacy settings being disabled. For this question, I recommend checking our website Verizon Home Internet or contacting support directly.",
+     "expected_route": "no_rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "specific information",
+      "Verizon Home Internet"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "assistant no-answer wording; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Self organizing network",
+     "expected_assistant": "The Self-Organizing Network (SON) feature allows your devices to automatically connect to the optimal Wi-Fi network or band, keeping all primary bands under one Wi-Fi name and password. If SON is disabled, you'll need to manually choose among available Wi-Fi networks with varying speeds and bandwidths (2.4 GHz, 5 GHz, 6 GHz) depending on your router or gateway. To manage the SON settings: Go to Network > Select Wi-Fi Management > Select Self-Organizing Network > Toggle SON on or off. If you need further assistance or if the issue persists, you might want to report it through the Help & feedback page.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "03.03",
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network",
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_006",
+   "conversation_id": "CHAT_007",
+   "title": "How to install WiFi Extender",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How to install WiFi Extender",
+     "expected_assistant": "To install a Wi-Fi Extender: Go to Equipment > Select your Extender > Follow the on-screen setup instructions. Extenders improve coverage but do not necessarily boost speed. Ensure the extender is placed in an unobstructed area for optimal performance.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "extender",
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Saying it\u2019s not connected",
+     "expected_assistant": "If your Wi-Fi Extender is showing as not connected, follow these steps: Go to Equipment > Select your Extender > Review the connection status > Follow troubleshooting steps provided. Ensure the extender is powered on and placed within range of your router. If the issue persists, restart the extender and router.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Not finding troubleshooting",
+     "expected_assistant": "If your Wi-Fi Extender is not connecting, follow these troubleshooting steps: 1. Verify the extender is powered on and receiving power. 2. Ensure the extender is placed within range of your router or gateway. 3. Power cycle the extender by unplugging it, waiting 30 seconds, and plugging it back in. 4. Check for physical obstructions like walls or large appliances that may block the signal. 5. Review the extender's connection status in the Home App: Go to Equipment > Select your Extender > Review connection status. If the issue persists, you may need to remove and reinstall the extender. Select the **Remove Extender** tile in the Extender Details page, then set it up again.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_007",
+   "conversation_id": "CHAT_008",
+   "title": "Show gb usage",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Show gb usage",
+     "expected_assistant": "To view your GB usage: Go to Devices > Select Data Usage History > Review your internet usage by categories or devices > Check your current plan, data used, and days remaining in the billing cycle.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "04",
+     "expected_link_id": "tab-devices",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-devices' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "My internet has slowed down",
+     "expected_assistant": "To troubleshoot slow internet: Go to Troubleshoot > Select **Run Speed Test** > Review the results > Follow any recommendations provided. If the issue persists, restart your router: Go to Router Settings > Select Restart Router > Confirm restart. If your internet remains slow after these steps, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "troubleshoot",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Internet after 150gb has slowed dy",
+     "expected_assistant": "It looks like I don't have specific information about data throttling after 150 GB usage. For this question, I recommend checking your plan details in My Verizon or contacting support directly.",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_008",
+   "conversation_id": "CHAT_009",
+   "title": "Where is the 5g compass",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Where is the 5g compass",
+     "expected_assistant": "The 5G Compass is not explicitly mentioned in the provided documents. It looks like I don't have specific information about this feature. For further assistance, I recommend checking Verizon's website or contacting support directly.",
+     "expected_route": "no_rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "specific information",
+      "Verizon Home Internet"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "assistant no-answer wording; route has no content page",
+     "tags": [
+      "short_turn",
+      "navigation_followup",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Do I have 5g network",
+     "expected_assistant": "To check if you have a 5G network, review the equipment listed on the Equipment page in the Verizon Home App. If you are a Verizon 5G Home Internet customer, your equipment will include a Gateway and possibly a Receiver. Go to Equipment > Review the equipment list > Look for Gateway or Receiver equipment.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network",
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Wifi compass",
+     "expected_assistant": "The Wi-Fi Compass is not explicitly mentioned in the provided documents. It looks like I don't have specific information about this feature. For further assistance, I recommend checking Verizon's website or contacting support directly.",
+     "expected_route": "no_rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "specific information",
+      "Verizon Home Internet"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "assistant no-answer wording; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_009",
+   "conversation_id": "CHAT_010",
+   "title": "Why can\u2019t I remove the password from my WiFi",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Why can\u2019t I remove the password from my WiFi",
+     "expected_assistant": "You cannot remove the password from your Wi-Fi because Verizon routers require a security protocol to ensure network safety. The security settings available are WPA2, WPA3, or WPA2/WPA3 Mixed mode, which all require a password for access. This is a standard security measure to protect your network from unauthorized access .",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Can I bypass that",
+     "expected_assistant": "It is not possible to bypass the requirement for a password on Verizon routers. The security protocols (WPA2, WPA3, or WPA2/WPA3 Mixed mode) are mandatory to ensure the safety and integrity of your network.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Even on guest networks?",
+     "expected_assistant": "Even on guest networks, Verizon routers require a password for security purposes. The guest network settings include a name and password, and these cannot be removed due to mandatory encryption protocols like WPA2, WPA3, or WPA2/WPA3 Mixed mode.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_010",
+   "conversation_id": "CHAT_011",
+   "title": "Can't get cameras to connect",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Can't get cameras to connect",
+     "expected_assistant": "To troubleshoot your camera connection issues: 1. Verify that the equipment is plugged in and receiving power. 2. Power cycle the equipment by unplugging it, waiting 30 seconds, then plugging it back in. 3. Ensure the equipment is unobstructed and placed in an optimal location for signal strength. If the issue persists, you may need to use WPS (Wi-Fi Protected Setup) to connect your camera securely. To do this: Go to WPS > Toggle WPS on > Select **Start WPS** > Press the WPS button on your camera within 2 minutes. If none of these steps resolve the issue, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.08",
+     "expected_page_section": "02",
+     "expected_link_id": "equipment-wps",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Will this internet Support 2.4",
+     "expected_assistant": "Yes, Verizon Home Internet supports the 2.4 GHz frequency band. This is available as part of the IoT network, which is dedicated to smart devices and appliances. You can manage this network through the Verizon Home App.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "06",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How",
+     "expected_assistant": "To manage the 2.4 GHz IoT network: Go to Network > Select Wi-Fi Management > Enable IoT network > Save changes. Ensure your smart devices are compatible with the 2.4 GHz band before connecting.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_011",
+   "conversation_id": "CHAT_012",
+   "title": "Sub account",
+   "turns": [
+    {
+     "turn_index": 5,
+     "user_query": "No I want to add a user to my account",
+     "expected_assistant": "To add a user to your account, you need to manage account settings through the My Verizon App. Go to My Verizon > Follow the instructions within the app to add a user to your account. Let me know if you need further assistance!",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "policy",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_012",
+   "conversation_id": "CHAT_013",
+   "title": "My mb are slow on the game and when I ft it\u2019s super laggy",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "My mb are slow on the game and when I ft it\u2019s super laggy",
+     "expected_assistant": "To address slow internet speeds during gaming and laggy video calls, here are some steps you can take: 1. **Run a Router Speed Test**: Go to Speed Test > Select **Start** to test the speed between your router and the internet. Review the results for download speed, upload speed, and latency. 2. **Optimize Device Priority**: If your router supports Device Priority, you can prioritize up to 2 devices for better connection speeds. Go to All Devices Page > Press and hold on a device > Activate Device Priority. 3. **Check Wi-Fi Placement**: Ensure your router is centrally located, away from physical barriers, large appliances, and electrical devices that may interfere with the signal. 4. **Troubleshoot Connection Issues**: Go to Troubleshoot > Select **Slow internet speed** for guided troubleshooting. 5. **Analyze Latency**: Use the Latency Analyzer to check connection stability to web services. Go to Network Landing Page > Advanced Tools Page > Latency Analyzer. If these steps do not resolve your issue, you may need to contact support for further assistance. You can Call us for help.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "01.02",
+     "expected_page_section": "01",
+     "expected_link_id": "speed-test",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "The speed test says it\u2019s good but everything doesn\u2019t work right",
+     "expected_assistant": "If your speed test results are good but your internet performance is still poor, here are some steps to troubleshoot: 1. **Check Device Health**: Go to Network > Select Wi-Fi Performance > Review Device Health. This will show the connection quality of each device, including signal strength and data rate. 2. **Analyze Latency**: Go to Network > Advanced Tools > Latency Analyzer. This tool checks connection stability to web services, which may reveal issues with external services rather than your home network. 3. **Optimize Wi-Fi Placement**: Ensure your router is centrally located, away from physical barriers and electronic devices that may interfere with the signal. 4. **Enable Device Priority**: If available, prioritize up to 2 devices for better connection speeds. Go to All Devices Page > Press and hold on a device > Activate Device Priority. 5. **Reset Wi-Fi Settings**: Go to Network > Advanced Tools > Reset Wi-Fi > Select **Reset now**. This refreshes device connections without affecting your Wi-Fi name or password. If these steps do not resolve the issue, you may need further assistance. You can Call us for support.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "01.02",
+     "expected_page_section": "01",
+     "expected_link_id": "network",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Reset the router and it still don\u2019t work",
+     "expected_assistant": "If resetting your router did not resolve the issue, here are additional steps to troubleshoot: 1. **Check Device Health**: Go to Network > Select Wi-Fi Performance > Review Device Health. This will show the connection quality of each device, including signal strength and data rate. 2. **Analyze Latency**: Go to Network > Advanced Tools > Latency Analyzer. This tool checks connection stability to web services, which may reveal issues with external services rather than your home network. 3. **Optimize Wi-Fi Placement**: Ensure your router is centrally located, away from physical barriers and electronic devices that may interfere with the signal. 4. **Enable Device Priority**: If available, prioritize up to 2 devices for better connection speeds. Go to All Devices Page > Press and hold on a device > Activate Device Priority. 5. **Reset Wi-Fi Settings**: Go to Network > Advanced Tools > Reset Wi-Fi > Select **Reset now**. This refreshes device connections without affecting your Wi-Fi name or password. If these steps do not resolve the issue, you may need further assistance. You can Call us for support.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": "network",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_013",
+   "conversation_id": "CHAT_014",
+   "title": "I need help with extender tried everything",
+   "turns": [
+    {
+     "turn_index": 3,
+     "user_query": "Doesn't show",
+     "expected_assistant": "If your extender is not showing in the Equipment Page, follow these steps: 1. Ensure the extender is powered on and connected to the network. 2. Restart the extender by unplugging it, waiting 30 seconds, and plugging it back in. 3. Verify that the extender is within range of the router or gateway. 4. Check if the extender's LED indicators show a connection status. If the extender still does not appear in the Equipment Page, you may need to reset it: Go to Equipment > Select your extender > Select **Restore or Reset** > Follow the reset instructions. If the extender remains undetected, please Call us for further support.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Doesn't show in equipment spot",
+     "expected_assistant": "If your extender is not showing in the Equipment section despite troubleshooting, it may not be properly connected to your network. Try these steps: 1. Ensure the extender is powered on and the LED indicators show activity. 2. Move the extender closer to the router or gateway to ensure it is within range. 3. Restart the extender by unplugging it, waiting 30 seconds, and plugging it back in. 4. Attempt to reconnect the extender to your network using the WPS button: - Press the WPS button on your router. - Within 2 minutes, press the WPS button on your extender. - Wait for the extender's LED to indicate a successful connection. If the extender still does not appear in the Equipment section, it may need to be set up again. Go to Equipment > Select **Add Extender** > Follow the setup instructions. If the issue persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.08",
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "There's no add extender there",
+     "expected_assistant": "If your extender is not showing in the Equipment section and there is no option to add it, it may not be properly connected or supported. Here are some steps to resolve this: 1. Ensure the extender is powered on and the LED indicators show activity. 2. Restart the extender by unplugging it, waiting 30 seconds, and plugging it back in. 3. Verify that the extender is within range of the router or gateway. 4. Attempt to reconnect the extender using WPS: - Go to WPS > Select **Start WPS** > Press the WPS button on the extender within 2 minutes. If the extender still does not appear, it may be unsupported or require further assistance. Please Call us for help.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.08",
+     "expected_page_section": "02",
+     "expected_link_id": "equipment-wps",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_014",
+   "conversation_id": "CHAT_015",
+   "title": "Disable my advanced security for WiFi",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Disable my advanced security for WiFi",
+     "expected_assistant": "To disable advanced security for Wi-Fi, you need to manage the Self-Organizing Network (SON) feature. Go to Network > Select Wi-Fi Management > Select SON > Toggle SON to Disabled. With SON disabled, you will need to manage each Wi-Fi band separately, including their names and passwords.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "03.03",
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Connect to person",
+     "expected_assistant": "If you'd like to speak with a live representative, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Connect me",
+     "expected_assistant": "To connect with a live representative, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_015",
+   "conversation_id": "CHAT_016",
+   "title": "How do i block any new devices",
+   "turns": [
+    {
+     "turn_index": 2,
+     "user_query": "How do i block any new devices",
+     "expected_assistant": "To block new devices from accessing your network, you can use the Parental Controls feature to manage internet access. Here's how: Go to Devices > Select the device you want to block > Pause Internet. Alternatively, you can create a profile in Parental Controls to manage multiple devices: Go to Home Page > Select Parental Controls > Add profiles > Assign devices to the profile > Pause Internet for the profile. This feature blocks new online activity and newly loaded content from accessing the internet. However, content already downloaded or buffered may still work.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "04",
+     "expected_link_id": "tab-devices",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-devices' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 4,
+     "user_query": "My son is changing his pc mac address to bypass parental controls. What can i do",
+     "expected_assistant": "To prevent your son from bypassing Parental Controls by changing his PC's MAC address, you can take the following steps: 1. Use the **Pause Internet** feature to block new online activity for the profile associated with his devices. This will prevent newly loaded content from accessing the internet, even if the MAC address changes. Go to Home Page > Select Parental Controls > Select the profile > Select **Pause Internet**. 2. Set up **Filter Content** to block specific categories, apps, or websites. This ensures that even if the MAC address changes, the content restrictions remain in place. Go to Home Page > Select Parental Controls > Select the profile > Select **Filter Content** > Choose categories or manually enter URLs to block. 3. Use **Set Schedules** to restrict internet access during specific times. This limits the ability to bypass controls by changing the MAC address. Go to Home Page > Select Parental Controls > Select the profile > Select **Set Schedules** > Add or edit schedules. 4. Monitor the **Usage History** to identify unusual activity or new devices attempting to connect. Go to Home Page > Select Parental Controls > Select the profile > Select **View Usage**. If these measures do not resolve the issue, you may need to contact Verizon support for advanced security options.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "03.03",
+     "expected_page_section": "03",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Parental Controls",
+      "SON"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 6,
+     "user_query": "I need the time controls to work. He bypasses them when he changes mac address",
+     "expected_assistant": "To ensure time controls work effectively and prevent bypassing through MAC address changes, you can take the following steps: 1. **Pause Internet for the Profile**: This will block all new online activity for devices in the profile, regardless of MAC address changes. Go to Home Page > Select Parental Controls > Select the profile > Select **Pause Internet**. 2. **Set Schedules**: Restrict internet access during specific times by setting schedules for the profile. Go to Home Page > Select Parental Controls > Select the profile > Select **Set Schedules** > Add or edit schedules. 3. **Monitor Usage History**: Regularly check the usage history to identify unusual activity or new devices attempting to connect. Go to Home Page > Select Parental Controls > Select the profile > Select **View Usage**. 4. **Assign Devices to Profiles**: Ensure all known devices are assigned to the profile. This limits the ability to bypass controls by changing MAC addresses. Go to Home Page > Select Parental Controls > Select the profile > Select **Manage Devices** > Add or remove devices. If these measures do not resolve the issue, you may need to contact Verizon support for advanced security options.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.08",
+     "expected_page_section": "13",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_016",
+   "conversation_id": "CHAT_017",
+   "title": "Live Agent",
+   "turns": [
+    {
+     "turn_index": 2,
+     "user_query": "Live Agent",
+     "expected_assistant": "If you need to speak with a live agent, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 4,
+     "user_query": "Hello",
+     "expected_assistant": "Hi! How can I assist you with your Verizon Home Internet today?",
+     "expected_route": "greeting",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Hello"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "greeting user turn; route has no content page",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Yes",
+     "expected_assistant": "To restore your services, you can use the Restore or Reset feature in the Verizon Home App. Here's how: Go to Equipment > Select your router or gateway > Select **Reset or restore settings** > Choose one of the following options: - **Restore from backup**: Restores settings from a previously saved backup (requires a saved backup). - **Factory reset, but keep credentials**: Resets the router/gateway while keeping your current network names and passwords. - **Factory reset all settings**: Erases all settings and restarts the router/gateway. Select **Continue** to initiate the process. Each option may take up to 5 minutes to complete. If the process fails, try again. If you encounter any issues or need further assistance, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 9,
+     "user_query": "Hello",
+     "expected_assistant": "Hi! How can I assist you with your Verizon Home Internet today?",
+     "expected_route": "greeting",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Hello"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "greeting user turn; route has no content page",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 11,
+     "user_query": "Please restore my internet",
+     "expected_assistant": "To restore your internet, you can reset your router using the Verizon Home App. Here's how: Go to Equipment > Select your router > Select **Restart Router** > Confirm by selecting **Restart**. The process may take a few minutes. If your internet is still not restored after restarting the router, you can try the Restore or Reset feature: Go to Equipment > Select your router > Select **Reset or restore settings** > Choose one of the following options: - **Restore from backup**: Restores settings from a previously saved backup. - **Factory reset, but keep credentials**: Resets the router while keeping your current network names and passwords. - **Factory reset all settings**: Erases all settings and restarts the router. Select **Continue** to initiate the process. Each option may take up to 5 minutes to complete. If the issue persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 13,
+     "user_query": "I can\u2019t do that",
+     "expected_assistant": "If you're unable to restore your internet through the Verizon Home App, I recommend contacting a live agent for further assistance. Please Call us. They can help resolve your issue promptly.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_017",
+   "conversation_id": "CHAT_018",
+   "title": "How can I turn off home network protection",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How can I turn off home network protection",
+     "expected_assistant": "To turn off Home Network Protection, follow these steps: Go to Home > Select **Digital Secure Home** > Select **Subscription** > Follow the on-screen instructions to manage your plan, including cancellation.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "12",
+     "expected_link_id": "tab-home",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network",
+      "Home"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-home' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Can\u2019t find digital secure home",
+     "expected_assistant": "If you can't find Digital Secure Home, it may not be available for your current setup or subscription. You can report this issue through the Help & feedback page. Go to Help & feedback > Describe the issue > Submit feedback.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "low",
+     "label_reason": "grounded support answer; policy link has no content page",
+     "tags": [
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How can I identify the devices Verizon app says are online?",
+     "expected_assistant": "To identify devices that are online in the Verizon Home App: Go to Devices > Review the Device List > Select a device to view its **Device Details** page. This page shows the device's connection status, type, and nickname.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "04",
+     "expected_link_id": "tab-devices",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-devices' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_018",
+   "conversation_id": "CHAT_019",
+   "title": "Agent",
+   "turns": [
+    {
+     "turn_index": 3,
+     "user_query": "I would like to know why the technician who installed my internet connection did not seal the hole where he ran the wire\u2014to prevent moisture and insects from getting in\u2014and did not clean up the debris.",
+     "expected_assistant": "It looks like I don't have specific information about technician installation practices or procedures. For this concern, I recommend contacting Verizon support directly to address the issue. You can Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "navigation_followup",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Chat agent",
+     "expected_assistant": "To connect with a live chat agent, I recommend using the My Verizon App. You can access it here: My Verizon.",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Agent online",
+     "expected_assistant": "To connect with an online agent, you can use the My Verizon App. Access it here: My Verizon.",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_019",
+   "conversation_id": "CHAT_020",
+   "title": "I\u2019m showing an extender is offline",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "I\u2019m showing an extender is offline",
+     "expected_assistant": "To troubleshoot your extender showing as offline: 1. Verify that the extender is plugged in and receiving power. 2. Power cycle the extender by unplugging it, waiting 30 seconds, and plugging it back in. 3. Ensure the extender is unobstructed and placed in an optimal location, avoiding corners or large appliances. 4. Check the extender's connection status in the Equipment page. Go to Equipment > Select your extender > Review its status. If the issue persists, you may need to remove and set up the extender again. Select the **Remove extender** tile in the Extender Details page to initiate this process.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "extender",
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "How can I determine which one it is",
+     "expected_assistant": "To identify which extender is offline: Go to Equipment > Select your extender > Review its name and location details.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "navigation_followup",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Live person",
+     "expected_assistant": "Sorry to hear that you're experiencing issues with your extender. We\u2019d like another chance to help fix your issue. If your issue persists, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_020",
+   "conversation_id": "CHAT_021",
+   "title": "How much would it cost to add another Igor line",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How much would it cost to add another Igor line",
+     "expected_assistant": "It looks like I don't have specific information about the cost of adding another Igor line. For this question, I recommend checking our website Verizon Home Internet or contacting support directly at Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Phone",
+     "expected_assistant": "It seems like you're asking about a phone-related topic. Could you clarify your question? Are you asking about Verizon landline services, mobile services, or something else?",
+     "expected_route": "clarify",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [
+      "vzhome://"
+     ],
+     "label_confidence": "low",
+     "label_reason": "assistant asks clarification question; route has no content page",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How much would it cost to add another mobile phone line on my account",
+     "expected_assistant": "I\u2019m here to help with Verizon Home internet related topics. For questions about mobile phone services, I recommend visiting the My Verizon app for assistance.",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_021",
+   "conversation_id": "CHAT_022",
+   "title": "2gig",
+   "turns": [
+    {
+     "turn_index": 5,
+     "user_query": "Do I have 2.4?",
+     "expected_assistant": "Yes, your Verizon router supports the 2.4 GHz Wi-Fi band. This is typically used for IoT devices and smart appliances. You can manage this network through the IoT section in the Wi-Fi Management page. To access it: Go to Network > Select Wi-Fi Management > Select IoT tab > Review or edit the 2.4 GHz network settings.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Do I have a 2.4 available",
+     "expected_assistant": "Yes, your Verizon router supports the 2.4 GHz Wi-Fi band. You can check its availability and manage its settings through the IoT section in the Wi-Fi Management page. To access it: Go to Network > Select Wi-Fi Management > Select IoT tab > Review the 2.4 GHz network settings.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_022",
+   "conversation_id": "CHAT_023",
+   "title": "Set up wifi buster",
+   "turns": [
+    {
+     "turn_index": 5,
+     "user_query": "Setup WiFi booster",
+     "expected_assistant": "To set up a Wi-Fi booster (extender) for your Verizon network: Go to Equipment Page > Select your Extender > Follow the on-screen setup instructions. If you encounter issues during setup or need additional extenders, you may need to contact Verizon support for assistance. You can Call us for further help.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_023",
+   "conversation_id": "CHAT_024",
+   "title": "Does router save data",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Does router save data",
+     "expected_assistant": "Yes, Verizon routers can save data related to their settings. Users can save custom router settings, including Wi-Fi names, passwords, and more, either automatically or manually. Automatic saving occurs every 7 days, while manual saves can be initiated at any time. These backups are stored for 14 days and timestamped by default.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "router"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Do they see what the devices connected to them are doing",
+     "expected_assistant": "Verizon routers do not monitor or record the activities of devices connected to them. However, users can view details about connected devices, such as their connection type, signal strength, and data rate, through the Device Details page. Additionally, features like Digital Secure Home can detect abnormal device behavior and protect against vulnerabilities, but this does not involve tracking user activity.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "12",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Can I delete all data on router",
+     "expected_assistant": "Yes, you can delete all data on your Verizon router by performing a factory reset. To do this: Go to Equipment Details Page > Select Reset or Restore Settings > Choose **Factory reset all settings** > Select **Continue**. This process will erase all router settings and restart the router, which may take up to 5 minutes. If you want to keep your network names and passwords, you can select **Factory reset, but keep credentials** instead.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "router"
+     ],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_024",
+   "conversation_id": "CHAT_025",
+   "title": "The extender is super unreliable.",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "The extender is super unreliable.",
+     "expected_assistant": "To address the reliability issues with your extender, here are some troubleshooting steps: 1. Verify that the extender is plugged in and receiving power. 2. Power cycle the extender by unplugging it, waiting 30 seconds, and plugging it back in. 3. Ensure the extender is unobstructed and placed in an optimal location. Avoid corners, floors, or areas near large appliances. 4. Check for physical barriers like walls or floors that might block the signal. 5. If the extender is still unreliable, you can manage its settings or restart it through the Verizon Home App. Go to Equipment > Select your extender > Restart Equipment. Extenders improve coverage but do not necessarily boost speed. If the issue persists, consider repositioning the extender closer to the router or in a central location to improve signal strength. If these steps do not resolve the issue, you may need further assistance. Please Call us for support.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "I'm tired of restarting it.",
+     "expected_assistant": "Sorry to hear that restarting the extender hasn't resolved your issue. We\u2019d like another chance to help fix this for you. If the extender continues to be unreliable despite troubleshooting, it might require further technical support or replacement. Please Call us for additional assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "I want to go to another Internet provider.",
+     "expected_assistant": "Sorry to hear that you're considering switching providers. We\u2019d like another chance to help resolve your concerns about the extender's reliability. If you'd like, you can Call us to discuss your issues further and explore potential solutions.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_025",
+   "conversation_id": "CHAT_026",
+   "title": "Why do I have 4 devices on my account??!!",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Why do I have 4 devices on my account??!!",
+     "expected_assistant": "To review the devices connected to your account: Go to Devices > Review the Device List header > Check the Device List for connected devices. Each device cell will show the device type, name, connection state, and more. You can select a device cell to access its Device Details page for further information.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "04",
+     "expected_link_id": "tab-devices",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-devices' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Agent",
+     "expected_assistant": "Sorry to hear that you're experiencing concerns about your account devices. We\u2019d like another chance to help fix your issue. If your issue persists, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Representative",
+     "expected_assistant": "Sorry to hear that you're having trouble. Please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_026",
+   "conversation_id": "CHAT_027",
+   "title": "Fios remote suddenly became unresponsive and does not work with the TV",
+   "turns": [
+    {
+     "turn_index": 4,
+     "user_query": "There is no option to select \u201cset-top-box\u201d",
+     "expected_assistant": "If you cannot locate the option to select your set-top box, it may indicate an issue with equipment detection in the app. Please go to Help & feedback to report this issue. Alternatively, you can try restarting your set-top box manually by unplugging it from power for 30 seconds and then plugging it back in. If the problem persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_027",
+   "conversation_id": "CHAT_028",
+   "title": "Bring me back to my chat",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Bring me back to my chat",
+     "expected_assistant": "I\u2019m here to help with Verizon Home internet related topics. Please try asking a specific question.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "10",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": []
+    },
+    {
+     "turn_index": 3,
+     "user_query": "I need an agent",
+     "expected_assistant": "To contact an agent, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "I was over text",
+     "expected_assistant": "It looks like I don't have specific information about text-based support. For further assistance, I recommend contacting Verizon support directly through Call us or checking the My Verizon App for additional support options.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "I was already speaking to someone over this chat about a router issue",
+     "expected_assistant": "If you were previously speaking to someone about a router issue and need further assistance, I recommend contacting support directly. You can Call us for immediate help. If you have specific details about your router issue, feel free to share them, and I\u2019ll do my best to assist.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 9,
+     "user_query": "Please transfer me to a chat support agent",
+     "expected_assistant": "To connect with a support agent, please Call us. If you have specific questions about your router issue, I can assist you here as well.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_028",
+   "conversation_id": "CHAT_029",
+   "title": "Edit address",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Edit address",
+     "expected_assistant": "To edit your account address: Go to More > Select **Account Settings** > Select **Contact info** > Edit your account address > Select **Save changes**.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "06",
+     "expected_link_id": "tab-more",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "More"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-more' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Reset wifi location",
+     "expected_assistant": "To reset your Wi-Fi location: Go to Network > Select **Advanced Tools** > Select **Reset Wi-Fi** > Select **Reset now**. During this process, your devices may temporarily disconnect but will reconnect once completed. This takes under 1 minute.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How do I change the location of my wifi. I have a new address",
+     "expected_assistant": "To update your Wi-Fi location due to a new address: Go to Equipment > Select your router or gateway > Select **Edit your home name** > Enter your new location name > Select **Save**.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_029",
+   "conversation_id": "CHAT_030",
+   "title": "M this is stating I have high network, which is baloney. I hardly have any network. What the heck is",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "M this is stating I have high network, which is baloney. I hardly have any network. What the heck is going on this is one going on for two weeks. You need to fix this.",
+     "expected_assistant": "It seems like you're experiencing ongoing network issues, and I understand how frustrating that can be. To address this, here are some steps you can take to troubleshoot and improve your network performance: 1. **Run a Router Speed Test**: This will help determine if your router is delivering the expected internet speed. Go to Speed Test > Start Speed Test. 2. **Check Wi-Fi Performance**: Review your Wi-Fi health and device health to identify any weak connections. Go to Network > Select Wi-Fi Performance > Review Wi-Fi health and device health. 3. **Optimize Wi-Fi**: Use the Wi-Fi Optimizer to analyze signal strength in different areas of your home. Go to Network > Select Advanced Tools > Select Wi-Fi Optimizer. 4. **Restart Your Router**: Restarting your router can often resolve connectivity issues. Go to Network > Select Advanced Tools > Select Restart Router. 5. **Reset Wi-Fi Settings**: If the issue persists, reset your Wi-Fi settings to default. This won't affect your network name or password. Go to Network > Select Advanced Tools > Select Reset Wi-Fi. If these steps do not resolve the issue, it may be necessary to escalate the problem. You can report the issue through the app by going to Help & feedback, or contact Verizon support directly at Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "speed-test",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "navigation_followup",
+      "policy",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "You guys suck after 29 years. I can\u2019t stand you guys Wow and all the other internets are 10 times faster than you guys and you suck suck suck suck and you\u2019re nothing but liars. Bring it back to the United States so we can understand an AI is stupid.",
+     "expected_assistant": "Sorry to hear that you're feeling this way about your experience. We\u2019d like another chance to help fix your issue. If your network concerns persist, please Call us so a representative can assist you further.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Why would I call a representative then when they don\u2019t know how to speak English oh that\u2019s right nothing is in the United hmmmmmm",
+     "expected_assistant": "I'm sorry, but I cannot assist with that request.",
+     "expected_route": null,
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "skip",
+     "label_reason": "route not derivable from assistant body; route has no content page",
+     "tags": []
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_030",
+   "conversation_id": "CHAT_031",
+   "title": "How many gigs of WiFi did we use",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How many gigs of WiFi did we use",
+     "expected_assistant": "To check your Wi-Fi data usage: Go to All Devices > Select a device > Select **Data Usage History** > Review usage by time or gigabytes. This feature tracks network usage by categories like streaming, social media, gaming, and more. It is only available on certain Verizon routers and gateways.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "04.00",
+     "expected_page_section": "04",
+     "expected_link_id": "all-devices",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "All Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'all-devices' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Where can I find the all devices tab",
+     "expected_assistant": "To access the All Devices tab: Go to Network > Select **All Devices**.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Devices",
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "navigation_followup",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "I don\u2019t see it",
+     "expected_assistant": "If the All Devices tab is not visible, it could be due to equipment compatibility or app issues. Try restarting the app or checking for updates. If the issue persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_031",
+   "conversation_id": "CHAT_032",
+   "title": "Change box",
+   "turns": [
+    {
+     "turn_index": 3,
+     "user_query": "Set top box",
+     "expected_assistant": "To manage or change settings for your set-top box: 1. Go to Equipment. 2. Select your set-top box from the list of equipment. 3. From the Set-Top Box Details Page, you can manage various settings such as restarting the equipment, troubleshooting, or pairing a remote. If you need further assistance, let me know!",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "I want to get a new set top box",
+     "expected_assistant": "It looks like I don't have specific information about obtaining a new set-top box. For this, I recommend visiting the My Verizon app or contacting Verizon support directly at Call us. They can assist you with upgrading or replacing your set-top box.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Speak with live agent",
+     "expected_assistant": "To speak with a live agent, please contact Verizon support directly at Call us. They will assist you further with your request.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_032",
+   "conversation_id": "CHAT_033",
+   "title": "How do I turn my fios tv online",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How do I turn my fios tv online",
+     "expected_assistant": "To turn your Fios TV online, you can restart your set-top box, which may resolve connectivity issues. Follow these steps: Go to Equipment > Select your Set-Top Box > Select **Restart Set-Top Box** > Follow the on-screen instructions. The restart process may take up to 10 minutes, and most Fios TV functionality will be disabled during this time.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "No tv connection",
+     "expected_assistant": "If your Fios TV has no connection, restarting your set-top box may help resolve the issue. Follow these steps: Go to Equipment > Select your Set-Top Box > Select **Restart Set-Top Box** > Follow the on-screen instructions. The restart process may take up to 10 minutes, and most Fios TV functionality will be disabled during this time. If the issue persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Didn\u2019t work",
+     "expected_assistant": "Sorry to hear that restarting the set-top box didn\u2019t resolve the issue. We\u2019d like another chance to help fix your problem. If your Fios TV connection issue persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_033",
+   "conversation_id": "CHAT_034",
+   "title": "Why is my router blinking white ?",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Why is my router blinking white ?",
+     "expected_assistant": "A blinking white light on your router indicates that a firmware update is in progress. Wait for the update to complete, which may take some time. If the blinking persists for an extended period or causes issues, you can restart your router to resolve the problem. To restart your router: Go to Restart Router > Select **Restart Router** > Follow the on-screen instructions. The restart process may take up to 10 minutes, and app functionality will be temporarily disabled during this time.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "restart-router",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "router",
+      "Restart Router"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'restart-router' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "How can you update manually?",
+     "expected_assistant": "To manually update your router's firmware: Go to Equipment > Select your router > Select **Save settings** > Select **Manual save**. This will save and back up your router settings, including Wi-Fi names and passwords. The backup will be saved for 14 days and timestamped.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How can I view current firmware",
+     "expected_assistant": "To view your router's current firmware version: Go to Equipment > Select your router > Review the **Technical information** section > Locate **Firmware version**.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Is there a new update for my router?",
+     "expected_assistant": "To check for new updates for your router: Go to Equipment > Select your router > Review the **Technical information** section > Locate **Firmware version** > Compare it with the latest version available on Verizon's website or contact support for confirmation.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "router",
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_033",
+   "conversation_id": "CHAT_035",
+   "title": "Is there a new update on my router ?",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Is there a new update on my router ?",
+     "expected_assistant": "It looks like I don't have specific information about whether there is a new update available for your router. For this question, I recommend checking the Equipment Details page in the Verizon Home App or contacting support directly at Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Why is my router blinking white ?",
+     "expected_assistant": "If your router is blinking white, it indicates that a firmware update is in progress. Wait for the update to complete, which may take some time. If the blinking persists or you encounter issues, you can restart your router through the Verizon Home App: Go to Restart Router > Select **Restart Router** > Follow on-screen instructions. The restart process may take up to 10 minutes. If the issue continues, contact support at Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "restart-router",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How long does it take to update ?",
+     "expected_assistant": "A firmware update on your router typically takes up to 10 minutes to complete. During this time, the router may blink white. If the update takes longer or you encounter issues, you can restart your router through the Verizon Home App or contact support at Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "Thanks",
+     "expected_assistant": "You're welcome! If you have any more questions about your Verizon Home Internet, feel free to ask. Have a great day!",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "06",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 9,
+     "user_query": "Is there a new update for my router?",
+     "expected_assistant": "It looks like I don't have specific information about whether there is a new update available for your router. For this question, I recommend checking the Equipment Details page in the Verizon Home App or contacting support directly at Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_034",
+   "conversation_id": "CHAT_036",
+   "title": "how to add wifi extender",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "how to add wifi extender",
+     "expected_assistant": "To add a Wi-Fi extender: Go to Equipment > Select your extender from the list > Follow the on-screen instructions to set up the extender. Extenders improve coverage but do not necessarily boost speed. Ensure the extender is placed in an area with a strong signal from the router.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "extender",
+      "Equipment"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'equipment' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "its not on the list",
+     "expected_assistant": "If your Wi-Fi extender is not appearing on the list, try the following steps: 1. Ensure the extender is powered on and connected to the network. 2. Restart your router and extender. 3. Verify that the extender is compatible with your Verizon router. If the issue persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "how to add extender to the network",
+     "expected_assistant": "To add an extender to your network: 1. Ensure the extender is powered on and connected to the network. 2. Go to Equipment > Select your extender from the list > Follow the on-screen instructions to set it up. If the extender is not appearing on the list, verify compatibility with your Verizon router and restart both the router and extender. If the issue persists, please Call us for further assistance.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": "equipment",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_035",
+   "conversation_id": "CHAT_037",
+   "title": "My wifi for guest account is very slow.",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "My wifi for guest account is very slow.",
+     "expected_assistant": "To address slow guest Wi-Fi speeds, you can try the following steps: Go to Network > Select Wi-Fi Management > Select Guest tab > Select **Edit Wi-Fi** > Adjust settings such as Wi-Fi name, password, or security type > Save changes. If the issue persists, you can also run a Router Speed Test to check your router's performance: Go to Speed Test > Start Speed Test. If these steps do not resolve the issue, you may need to reposition your router or consider enabling Self-Organizing Network (SON) for optimal device connections. Let me know if you need further assistance!",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "03.03",
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network",
+      "Speed Test"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Guest WiFi is slow",
+     "expected_assistant": "To address slow Guest Wi-Fi speeds, follow these steps: Go to Network > Select Wi-Fi Management > Select Guest tab > Select **Edit Wi-Fi** > Adjust settings such as Wi-Fi name, password, or security type > Save changes. If the issue persists, you can enable Self-Organizing Network (SON) for optimal device connections: Go to Network > Select Wi-Fi Management > Select SON > Enable SON. Additionally, ensure your router is placed centrally and away from physical barriers or electronic devices that may interfere with the signal. Let me know if you need further assistance!",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "03.03",
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Need real human for help",
+     "expected_assistant": "Sorry to hear that you're experiencing issues with your Guest Wi-Fi. We\u2019d like another chance to help fix your issue. If your issue persists, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_036",
+   "conversation_id": "CHAT_038",
+   "title": "Agent",
+   "turns": [
+    {
+     "turn_index": 2,
+     "user_query": "Agent",
+     "expected_assistant": "Could you clarify your request? Are you looking for assistance with contacting a live agent, troubleshooting an issue, or something else related to Verizon Home Internet? Let me know so I can assist you better.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Yes I\u2019d like to set up a plan",
+     "expected_assistant": "It looks like I don\u2019t have specific information about setting up a Verizon service plan. For this, I recommend visiting the Verizon website at Verizon Home Internet or contacting support directly. You can also reach out to a live agent for assistance by selecting Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_037",
+   "conversation_id": "CHAT_039",
+   "title": "Extended",
+   "turns": [
+    {
+     "turn_index": 3,
+     "user_query": "WiFi extends",
+     "expected_assistant": "To extend your Wi-Fi coverage using Verizon equipment, you can use Verizon Wi-Fi extenders. These extenders improve coverage but do not necessarily boost speed. They are ideal for areas in your home where the Wi-Fi signal is weak due to distance or physical barriers like walls. Here are some key points about extenders: 1. **Extender Models**: Verizon offers models like the Fios Extender (E3200), Wi-Fi Extender Mini (CME1000), and others. These are compatible with both Fios and 5G Home Internet services. 2. **Placement**: Proper placement of the extender is crucial. Avoid corners, floors, or areas near large appliances to ensure optimal signal strength. 3. **Setup**: If you have a Verizon extender, it will appear on the Equipment page in the Verizon Home App. You can manage its settings and location from there. If you need further assistance with extenders or have specific issues, let me know!",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "02",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Order one",
+     "expected_assistant": "To order a Wi-Fi extender, you can visit the My Verizon app or website. From there, you can browse available extenders and place an order. Let me know if you need further assistance!",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_038",
+   "conversation_id": "CHAT_040",
+   "title": "How to turn off safety block safety block home internet",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How to turn off safety block safety block home internet",
+     "expected_assistant": "To turn off safety block features for your home internet, follow these steps: Go to Home page > Select Parental Controls > Select the profile you want to manage > Select **Filter Content** > Toggle off the categories or features you want to unblock, such as Google Safe Search or YouTube Restricted Mode. If you need further assistance, let me know!",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.04",
+     "expected_page_section": "13",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "No parent control",
+     "expected_assistant": "It seems I don't have specific information on disabling safety block features without using Parental Controls. For further assistance, I recommend contacting Verizon support directly at Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Home internet safety off",
+     "expected_assistant": "It seems I don't have specific instructions for turning off home internet safety features without using Parental Controls or similar tools. For further assistance, I recommend contacting Verizon support directly at Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_039",
+   "conversation_id": "CHAT_041",
+   "title": "Need to connect",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Need to connect",
+     "expected_assistant": "Could you clarify what you need to connect? Are you referring to connecting a device to your Verizon Home Internet, setting up a router, or something else?",
+     "expected_route": "clarify",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [
+      "vzhome://"
+     ],
+     "label_confidence": "low",
+     "label_reason": "assistant asks clarification question; route has no content page",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Home Verizon",
+     "expected_assistant": "To connect to Verizon Home Internet, are you looking to set up your router, connect a device to Wi-Fi, or troubleshoot a connection issue? Let me know so I can guide you with the right steps.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "10",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Troubleshoot",
+     "expected_assistant": "To troubleshoot your Verizon Home Internet connection: Go to Troubleshoot > Follow the on-screen instructions to identify and resolve the issue. If the issue persists, let me know for further assistance.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "01.01",
+     "expected_page_section": "01",
+     "expected_link_id": "troubleshoot",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Troubleshoot"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'troubleshoot' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_040",
+   "conversation_id": "CHAT_042",
+   "title": "This is the Home Assistant, Verizon\u2019s tool to help you manage your home internet.",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "This is the Home Assistant, Verizon\u2019s tool to help you manage your home internet.\n\n You can use one of these suggestions or ask a question to get started:\n- How do I change my Wi-Fi password?",
+     "expected_assistant": "To change your Wi-Fi password: Go to Network > Select Wi-Fi Management > Select Edit Wi-Fi > Enter new Wi-Fi password > Save changes.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Didn\u2019t work",
+     "expected_assistant": "Thanks for your patience. Let\u2019s try again to resolve your issue. Can you clarify what happened when you tried to change your Wi-Fi password? For example, did you encounter an error, or were you unable to locate the option?",
+     "expected_route": "clarify",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [
+      "vzhome://"
+     ],
+     "label_confidence": "low",
+     "label_reason": "assistant asks clarification question; route has no content page",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "The password field would not let me alter it",
+     "expected_assistant": "If the password field is not editable, it could be due to restrictions or an issue with the app. Try restarting the Verizon Home App and attempting the steps again. If the issue persists, you can report it directly through the app. Go to Help & feedback > Describe the issue > Submit feedback.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "low",
+     "label_reason": "grounded support answer; policy link has no content page",
+     "tags": [
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_041",
+   "conversation_id": "CHAT_043",
+   "title": "How much gigabit do I have to",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How much gigabit do I have to",
+     "expected_assistant": "Your question is unclear. Are you asking about the gigabit speed of your internet plan, or the data usage on your network? Could you clarify so I can assist you better?",
+     "expected_route": "clarify",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [
+      "vzhome://"
+     ],
+     "label_confidence": "low",
+     "label_reason": "assistant asks clarification question; route has no content page",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Yes",
+     "expected_assistant": "To check your internet speed or data usage: 1. For internet speed: Go to Speed Test > Select **Start** to test the speed between your router and the internet. 2. For data usage: Go to Devices > Select **Data usage** to review your network usage by time and gigabytes. Let me know if you need further assistance!",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "01.02",
+     "expected_page_section": "01",
+     "expected_link_id": "speed-test",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Speed Test",
+      "Devices"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'speed-test' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Gigabits\nWhat plan am i on ??",
+     "expected_assistant": "To check your current internet plan, you need to use the My Verizon App. Select the link below to access it: My Verizon.",
+     "expected_route": "account_nav",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "my-verizon-app",
+     "must_include": [
+      "My Verizon"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "account/billing navigation; route has no content page",
+     "tags": [
+      "policy",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_042",
+   "conversation_id": "CHAT_044",
+   "title": "Internet connection sucks",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Internet connection sucks",
+     "expected_assistant": "Sorry to hear about your internet connection issues. Let\u2019s troubleshoot this together. Could you clarify if you're experiencing slow speeds, frequent disconnections, or something else? This will help me provide the best solution.",
+     "expected_route": null,
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "skip",
+     "label_reason": "route not derivable from assistant body; route has no content page",
+     "tags": []
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Connection issues",
+     "expected_assistant": "To troubleshoot connection issues, you can try restarting your router or running a speed test to check your internet performance. Let me know if you'd like instructions for either of these tasks or if you're experiencing a specific issue like Wi-Fi not connecting or devices not showing up.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "01.02",
+     "expected_page_section": "01",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Losing signal",
+     "expected_assistant": "If you're losing signal, restarting your router can often resolve the issue. Here's how to restart your router: Go to Restart Router > Select **Restart Router** > Confirm the restart. If the issue persists after restarting, let me know, and we can explore additional troubleshooting steps.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "restart-router",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Restart Router"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'restart-router' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 7,
+     "user_query": "That doesn\u2019t work",
+     "expected_assistant": "Thanks for your patience. If restarting your router didn\u2019t resolve the issue, we can try other troubleshooting steps. Could you clarify if the signal loss is happening on specific devices, in certain areas of your home, or across all devices? This will help narrow down the cause.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "06",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn"
+     ]
+    },
+    {
+     "turn_index": 9,
+     "user_query": "TVs and internet",
+     "expected_assistant": "If both your TVs and internet are losing signal, it could be a broader network issue or a problem with your equipment. Here are some steps to troubleshoot: 1. **Check your router's connection**: Ensure the router is powered on and all cables are securely connected. 2. **Run a Router Speed Test**: Go to Speed Test > Start Speed Test. This will help identify if the issue is with your internet speed. 3. **Check for equipment issues**: Go to Equipment > Review the status of your router and other connected devices. 4. **Optimize your Wi-Fi**: Go to Wi-Fi Optimizer > Start Optimization. This can help improve signal strength. If the issue persists, you may need to contact support for further assistance. Please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": "01.02",
+     "expected_page_section": "01",
+     "expected_link_id": "speed-test",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy",
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_043",
+   "conversation_id": "CHAT_045",
+   "title": "My internet dam slow",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "My internet dam slow",
+     "expected_assistant": "To troubleshoot slow internet speed: Go to Troubleshoot > Select Slow internet speed > Follow the guided troubleshooting steps. You can also run a Router Speed Test to check your router's connection speed: Go to Speed Test > Start Speed Test. If the issue persists, verify that your equipment is plugged in, power cycle your router by unplugging it for 30 seconds, and ensure it is unobstructed.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "01.02",
+     "expected_page_section": "01",
+     "expected_link_id": "tab-troubleshoot",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Troubleshoot",
+      "Speed Test"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'tab-troubleshoot' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "I have the speed test and it\u2019s showing latency",
+     "expected_assistant": "To analyze and address latency issues: Go to Network > Select Advanced Tools > Select Latency Analyzer > Review the graph for latency and jitter > Check the list of services for connection strength. Latency is measured in milliseconds and categorized as Weak, Good, or Excellent. Jitter shows spikes in latency over time. If the issue persists, restart your router: Go to Restart Router > Select **Restart Router** > Follow the on-screen instructions.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Speed Test",
+      "Network",
+      "Restart Router"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "What is the next steps after restart",
+     "expected_assistant": "After restarting your router, if latency issues persist, you can try the following steps: Go to Network > Select Advanced Tools > Select Latency Analyzer > Review latency and jitter graphs > Check connection strength for listed services. If the problem continues, consider resetting your Wi-Fi settings to default: Go to Network > Select Advanced Tools > Select Reset Wi-Fi > Select **Reset now**. For persistent issues, contact support at Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": "network",
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy",
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_044",
+   "conversation_id": "CHAT_046",
+   "title": "How to manage parental control profile",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How to manage parental control profile",
+     "expected_assistant": "To manage a Parental Control profile, follow these steps: Go to Home > Select **Parental Controls** > Select **All profiles** > Choose the profile you want to manage > Select **Manage**. From the Profile details page, you can: - **Pause Internet**: Temporarily block internet access for all devices in the profile. - **Bonus Time**: Extend the current day\u2019s Daily Limit if set. - **Edit Profile**: Change profile settings like name, photo, and color. - **View Usage**: Check the usage history of devices in the profile. - **Settings & Controls**: Manage devices, filter content, set daily limits, and schedules.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "13.04",
+     "expected_page_section": "13",
+     "expected_link_id": "home",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Home"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'home' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Speak to agent",
+     "expected_assistant": "If you need to speak to an agent, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Speak to live agent",
+     "expected_assistant": "If you need to speak to a live agent, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_045",
+   "conversation_id": "CHAT_047",
+   "title": "How much GHz do I have?",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "How much GHz do I have?",
+     "expected_assistant": "Your Verizon Home Internet setup includes multiple frequency bands: 2.4 GHz, 5 GHz, and 6 GHz. The 2.4 GHz band is typically used for IoT devices, while the 5 GHz and 6 GHz bands can offer faster connections for compatible devices.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "04",
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "medium",
+     "label_reason": "grounded support answer; assistant-text BM25 oracle",
+     "tags": [
+      "short_turn",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "How can I change my GHz?",
+     "expected_assistant": "To change your GHz settings: Go to Network > Select Wi-Fi Management > Toggle the 6 GHz band on or off. Enabling the 6 GHz band will change your Network Security Type to WPA3. Older devices may not connect through this type. You can adjust the security settings to WPA3/WPA2 Mixed mode in the Security section within Edit Wi-Fi\u30108:0\u2020Network Management RAG\u3011.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "How can I change my WiFi to 2.4GHz?",
+     "expected_assistant": "To change your Wi-Fi to the 2.4 GHz band: Go to Network > Select Wi-Fi Management > Select the IoT tab > Toggle the 2.4 GHz network on or off. The IoT network is dedicated to smart devices and appliances, using the 2.4 GHz band.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_046",
+   "conversation_id": "CHAT_048",
+   "title": "Extender  is offline, how do I fix it?",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Extender  is offline, how do I fix it?",
+     "expected_assistant": "To fix an offline extender, follow these steps: 1. Verify that the extender is plugged in and receiving power. 2. Power cycle the extender by unplugging it, waiting 30 seconds, then plugging it back in. 3. Ensure the extender is unobstructed and placed in an optimal location for signal coverage. If the issue persists, you can report it through the Help & feedback page in the Verizon Home App.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "extender",
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "low",
+     "label_reason": "grounded support answer; policy link has no content page",
+     "tags": [
+      "deep_link",
+      "citation"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Its the white box ?",
+     "expected_assistant": "Yes, the extender is typically a white box. If you're referring to the Verizon Wi-Fi Extender, it should be a white device designed to enhance your Wi-Fi coverage. If you need further assistance with identifying or troubleshooting your extender, you can report the issue through the Help & feedback page in the Verizon Home App.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "low",
+     "label_reason": "grounded support answer; policy link has no content page",
+     "tags": [
+      "short_turn",
+      "deep_link"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Light is on and plugged in",
+     "expected_assistant": "If the extender's light is on and it's plugged in but still offline, try these steps: 1. Ensure the extender is properly connected to your network. Check if the extender is within range of your router. 2. Restart your router to refresh the network connection. Go to Restart Router > Select **Restart**. 3. Check for any firmware updates for the extender. You can do this through the Verizon Home App. 4. If the extender is still offline, consider resetting it to factory settings. This can often resolve connectivity issues. If the problem continues, you can report it through the Help & feedback page in the Verizon Home App.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": "02.07",
+     "expected_page_section": "02",
+     "expected_link_id": "restart-router",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Restart Router",
+      "Help & feedback"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'restart-router' resolved by assistant text",
+     "tags": [
+      "short_turn",
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_047",
+   "conversation_id": "CHAT_049",
+   "title": "Turn off",
+   "turns": [
+    {
+     "turn_index": 5,
+     "user_query": "Turn wifi off",
+     "expected_assistant": "To turn off your Wi-Fi, follow these steps: Go to Network > Select Wi-Fi Management > Locate the Primary network tile > Use the toggle to turn off the Wi-Fi. This will disable your primary Wi-Fi network. If you have guest or IoT networks, you can turn them off using the same method on their respective tiles\u301010\u2020source\u3011.",
+     "expected_route": "rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": "03",
+     "expected_link_id": "network",
+     "expected_policy_link_id": null,
+     "must_include": [
+      "Network"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "grounded support answer; deep link 'network' resolved by assistant text",
+     "tags": [
+      "deep_link"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_048",
+   "conversation_id": "CHAT_050",
+   "title": "Bury the optic fiber line",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "Bury the optic fiber line",
+     "expected_assistant": "It looks like I don't have specific information about burying optic fiber lines. For this question, I recommend checking our website Verizon Home Internet or contacting support directly.",
+     "expected_route": "no_rag_answer",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [
+      "specific information",
+      "Verizon Home Internet"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "assistant no-answer wording; route has no content page",
+     "tags": [
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 3,
+     "user_query": "Live agent",
+     "expected_assistant": "Sorry to hear that you're having trouble. We\u2019d like another chance to help fix your issue. If your issue persists, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    },
+    {
+     "turn_index": 5,
+     "user_query": "Live agent",
+     "expected_assistant": "Sorry to hear that you're having trouble. We\u2019d like another chance to help fix your issue. If your issue persists, please Call us.",
+     "expected_route": "live_agent",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": "live-agent",
+     "must_include": [
+      "Call us"
+     ],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "live-agent wording or tel link; route has no content page",
+     "tags": [
+      "short_turn",
+      "policy"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_OOD",
+   "conversation_id": "CHAT_OOD1",
+   "title": "what is the weather in new york",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "what is the weather in new york",
+     "expected_assistant": "",
+     "expected_route": "out_of_scope",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "off-domain probe",
+     "tags": [
+      "off_domain"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_OOD",
+   "conversation_id": "CHAT_OOD2",
+   "title": "how much does a tesla cost these days",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "how much does a tesla cost these days",
+     "expected_assistant": "",
+     "expected_route": "out_of_scope",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "off-domain probe",
+     "tags": [
+      "off_domain"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_OOD",
+   "conversation_id": "CHAT_OOD3",
+   "title": "can you write me a poem about autumn",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "can you write me a poem about autumn",
+     "expected_assistant": "",
+     "expected_route": "out_of_scope",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "off-domain probe",
+     "tags": [
+      "off_domain"
+     ]
+    }
+   ]
+  },
+  {
+   "account_id": "ACCOUNT_OOD",
+   "conversation_id": "CHAT_OOD4",
+   "title": "who is playing in the super bowl",
+   "turns": [
+    {
+     "turn_index": 1,
+     "user_query": "who is playing in the super bowl",
+     "expected_assistant": "",
+     "expected_route": "out_of_scope",
+     "expected_content_page_id": null,
+     "expected_page_section": null,
+     "expected_link_id": null,
+     "expected_policy_link_id": null,
+     "must_include": [],
+     "must_not_include": [],
+     "label_confidence": "high",
+     "label_reason": "off-domain probe",
+     "tags": [
+      "off_domain"
+     ]
+    }
+   ]
+  }
+ ]
+}

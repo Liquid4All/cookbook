@@ -29,11 +29,11 @@ struct TelcoTriageApp: App {
 /// One-stop dependency graph for the app. Constructed once at launch and
 /// threaded through views via `@EnvironmentObject`.
 ///
-/// All on-device: no cloud escalator, no packet builder, no keyword
-/// fallback classifiers. The base LFM2.5-350M GGUF + two LoRA adapters
-/// are required — if any are missing, `AppState.init` traps with a
-/// descriptive message (rather than silently degrading the demo to
-/// heuristics).
+/// All on-device: no cloud escalator and no free-form answer generator
+/// deciding customer policy. Boot fails fast when the base LFM or required
+/// tool adapter is missing; relation, shared understanding, RAG, and composer
+/// status are surfaced through the runtime stack instead of silently swapping
+/// in unrelated heuristics.
 /// Controls what the UI surfaces to the viewer.
 ///
 /// `.customer` — iMessage-clean chat: no trace rows, no confidence
@@ -88,9 +88,9 @@ final class AppState: ObservableObject {
     let supportSignalEngine: SupportSignalEngine
 
     // Intelligence layer. The normal Liquid Telco path is:
-    // telco-shared-clf-v1 semantic control plane → composer dispatcher.
-    // ChatModeRouter remains injectable for legacy/degraded builds and
-    // explicit experiments only.
+    // relation classifier -> shared understanding heads -> blackboard ->
+    // BM25 RAG -> policy engine -> deterministic composer. The older
+    // chat/kb routers remain injectable for explicit engineering probes.
     let chatModeRouter: ChatModeRouter
     let kbExtractor: KBExtractor
     let toolSelector: ToolSelector
@@ -100,25 +100,19 @@ final class AppState: ObservableObject {
     // policy, citation, and answer composition.
     let verizonDispatcher: VerizonChatDispatcher?
 
-    /// ADR-026 semantic control plane. One shared LFM2.5-350M adapter
-    /// forward pass projects the 9 telco classifier heads used by the
-    /// normal customer/demo path.
+    /// Shared support-understanding classifier. One LFM2.5-350M adapter
+    /// forward pass projects the 9 telco heads used by the normal
+    /// customer/demo path.
     let telcoUnderstandingClassifier: TelcoSharedUnderstandingClassifying?
 
-    /// ADR-022 §4.3 Layer 1 — produces a `QueryUnderstanding` vector
-    /// per turn. Picks `SharedBackboneStrategy` when the v2 shared
-    /// adapter + at least one head are bundled, otherwise falls back
-    /// to `CompositeFallbackStrategy` (today's PR #30 path of
-    /// `LFMChatModeRouter` + `VerizonStageAClassifier`).
-    /// `UnavailableStrategy` covers degraded builds where neither
-    /// path is bundled.
+    /// Compatibility understanding vector used by older engineering probes.
+    /// The shipped customer route uses `telcoUnderstandingClassifier` plus
+    /// the dispatcher policy/composer stack above.
     let queryUnderstandingClassifier: QueryUnderstandingClassifying
 
-    /// ADR-024 Phase δ: generative turn-relationship relational strategy.
-    /// `ChatTemplateRelationalStrategy.bundled(backend:)` returns non-nil
-    /// when `telco-relational-v1.gguf` is present (shipped in Phase δ).
-    /// Falls back to `UnavailableRelationalStrategy` in degraded builds
-    /// so every downstream caller can unconditionally call `.classifyFromText`.
+    /// Compatibility relation strategy for the retired pairwise relation
+    /// experiment. The active stateful turn classifier is
+    /// `TelcoTurnRelationV4Strategy` inside the dispatcher path.
     let relationalStrategy: RelationalHeadsStrategy
 
     /// Boot-time load status of the composer RAG path. Surfaced by
@@ -224,13 +218,9 @@ final class AppState: ObservableObject {
     }
 
     /// Constructs the LFM stack. Fails fast with a clear message if the
-    /// base model GGUF or tool-selector adapter GGUF is missing — this
-    /// is a pitch demo, we want to know immediately that the bundle is
-    /// wrong, not silently ship keyword heuristics.
-    ///
-    /// The intent-router adapter is removed from the bundle (2026-04-20).
-    /// ChatModeRouter replaced its gating role; ToolSelector handles
-    /// tool_action queries directly without an intermediate intent step.
+    /// base model GGUF or active tool-selector adapter GGUF is missing.
+    /// Other optional adapters are loaded when present and reported through
+    /// explicit runtime status rather than hidden fallback behavior.
     private static func buildLFMStack(kb: KnowledgeBase) -> LFMStack {
         guard let basePath = TelcoModelBundle.basePath(),
               let toolAdapter = TelcoModelBundle.toolAdapterPath()
@@ -253,12 +243,11 @@ final class AppState: ObservableObject {
         #endif
 
         // Kick the model load off the main thread. The normal Liquid
-        // Telco path uses one shared understanding pass and deterministic
-        // grounded answers, so boot must not pre-warm the old composite
-        // understanding adapters. Loading those LoRAs at startup makes
-        // the customer/demo path look like it depends on chat-mode-router
-        // / Stage A even when it does not. Keep only the tool adapter warm
-        // for explicit tool execution.
+        // Telco composer path is zero-generation, so boot must not
+        // pre-warm the old composite understanding adapters. Loading
+        // those LoRAs at startup makes the customer/demo path look like
+        // it depends on chat-mode-router / Stage A even when it does not.
+        // Keep only the tool adapter warm for explicit tool execution.
         Task.detached(priority: .userInitiated) {
             do {
                 try await backend.loadModel(
@@ -324,7 +313,7 @@ final class AppState: ObservableObject {
         let composerWired = composerCorpus != nil && composerRetriever != nil
         if let cc = composerCorpus, composerWired {
             ragStatus = .live(chunkCount: cc.count, embedDim: 0)
-            AppLog.lfm.info("Liquid Telco dispatcher ready (shared-understanding + composer path, \(cc.count, privacy: .public) RAG units)")
+            AppLog.lfm.info("Liquid Telco dispatcher ready (composer-only path, \(cc.count, privacy: .public) RAG units)")
             verizonDispatcher = VerizonChatDispatcher(
                 stageA: nil,
                 stageB: nil,
@@ -418,14 +407,16 @@ final class AppState: ObservableObject {
             }
         }
 
-        // ADR-024 Phase δ: generative relational strategy. Non-nil when
-        // telco-relational-v1.gguf is present (ships Phase δ). Degrades
-        // gracefully to UnavailableRelationalStrategy so ChatViewModel
-        // can call it unconditionally without guarding on bundle state.
-        let relationalStrategy: RelationalHeadsStrategy = UnavailableRelationalStrategy()
-        AppLog.lfm.info(
-            "relational strategy: Unavailable(composer runtime bypasses relational LoRA)"
-        )
+        let relationalStrategy: RelationalHeadsStrategy
+        if let turnRelationV4 = try? TelcoTurnRelationV4Strategy.bundled(backend: backend) {
+            relationalStrategy = turnRelationV4
+            AppLog.lfm.info("relational strategy ready: telco-turn-relation-v4 classifier")
+        } else {
+            relationalStrategy = UnavailableRelationalStrategy()
+            AppLog.lfm.warning(
+                "relational strategy unavailable: expected \(TelcoModelBundle.turnRelationV4AdapterName, privacy: .public) and \(TelcoModelBundle.turnRelationV4HeadTask, privacy: .public) classifier triplet"
+            )
+        }
 
         return LFMStack(
             backend: backend,

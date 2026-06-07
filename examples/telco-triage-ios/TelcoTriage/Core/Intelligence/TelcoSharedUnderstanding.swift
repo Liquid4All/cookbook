@@ -10,6 +10,16 @@ import Foundation
 public enum TelcoPolicyThreshold {
     public static let hardDecision: Double = 0.70
     public static let piiBlock: Double = 0.80
+    /// Operating threshold for the `telco_topic_scope` off-domain gate. Set to a
+    /// **high-precision 0.97** ("decline only on near-certain off-domain") from the
+    /// deployment-register measurement: terse off-domain ("what's the weather", 0.979)
+    /// overlaps genuine terse in-domain ("No parent control", 0.981) and can't be
+    /// separated, but egregious off-domain ("weather in new york", 0.999; jokes;
+    /// capitals) sits above every gate-reaching must-answer turn (the only over-
+    /// decliners — gigs 0.955 / Fios-TV 0.916 — are below 0.97). Two-factor (also
+    /// requires weak grounding); validated by a full-register zero-regression eval.
+    /// Tradeoff: catches egregious off-domain, misses ultra-terse off-domain.
+    public static let topicScopeOutOfScope: Double = 0.97
 }
 
 /// One shared LFM2.5-350M classifier pass for Telco Triage.
@@ -29,6 +39,9 @@ public struct TelcoSharedUnderstanding: Sendable, Equatable {
     public let piiRisk: TelcoHeadOutcome<TelcoPIIRisk>
     public let transcriptQuality: TelcoHeadOutcome<TelcoTranscriptQuality>
     public let missingSlots: TelcoMultiLabelOutcome<TelcoMissingSlot>
+    /// Off-domain scope signal (ADR-032 frozen-probe pilot). Optional: additive +
+    /// rollback-safe (absent in headless / pre-topic-scope bundle → policy ignores it).
+    public let topicScope: TelcoHeadOutcome<TelcoTopicScope>?
     public let forwardPassMs: Double
     public let headProjectionMs: Double
 
@@ -45,7 +58,8 @@ public struct TelcoSharedUnderstanding: Sendable, Equatable {
         transcriptQuality: TelcoHeadOutcome<TelcoTranscriptQuality>,
         missingSlots: TelcoMultiLabelOutcome<TelcoMissingSlot>,
         forwardPassMs: Double,
-        headProjectionMs: Double
+        headProjectionMs: Double,
+        topicScope: TelcoHeadOutcome<TelcoTopicScope>? = nil
     ) {
         self.supportIntent = supportIntent
         self.issueComplexity = issueComplexity
@@ -58,6 +72,7 @@ public struct TelcoSharedUnderstanding: Sendable, Equatable {
         self.missingSlots = missingSlots
         self.forwardPassMs = forwardPassMs
         self.headProjectionMs = headProjectionMs
+        self.topicScope = topicScope
     }
 
     /// Hard policy: the user either asked for a human, the issue is
@@ -223,4 +238,13 @@ public enum TelcoMissingSlot: String, CaseIterable, Sendable, Equatable {
     case missingLocation = "missing_location"
     case missingAccountAuth = "missing_account_auth"
     case missingContactPreference = "missing_contact_preference"
+}
+
+/// Off-domain scope: is the turn about home-internet at all? (`telco_topic_scope`,
+/// ADR-032 frozen-probe pilot.) `outOfScope` drives the two-factor decline; `greeting`
+/// stays owned by the deterministic prior; `inScope` covers all home-internet asks.
+public enum TelcoTopicScope: String, Sendable, Equatable {
+    case inScope = "in_scope"
+    case outOfScope = "out_of_scope"
+    case greeting
 }

@@ -102,6 +102,24 @@ public struct VerizonDispatchResult: Sendable, Equatable {
     /// drove it on the legacy ColBERT path.
     public let citedRAGUnit: RAGUnit?
 
+    /// ADR-028 blackboard facts from lexical retrieval. Populated on the
+    /// composer path with the ranked top-k `BM25HierarchyRetriever` hits
+    /// that policy considered before selecting `citedRAGUnit`.
+    public let retrievalCandidates: [TelcoRetrievalCandidate]
+
+    /// ADR-029 §6 measurement only: the policy engine's own `reuseActiveEvidence`
+    /// flag and `reason` string, surfaced verbatim so the phone-flow harness can
+    /// score the route decision from ground truth instead of inferring repair
+    /// reuse from page-id continuity. No product behavior depends on these.
+    public let reuseActiveEvidence: Bool
+    public let policyReason: String?
+
+    /// ADR-029 §7: the explicit dialogue-state operation (raw value) and its
+    /// audit reason, serialized onto the harness report so `situation_eval` scores
+    /// the state decision directly instead of inferring it from page continuity.
+    public let stateOperation: String?
+    public let stateOperationReason: String?
+
     public init(
         text: String,
         lane: VerizonLane,
@@ -116,7 +134,12 @@ public struct VerizonDispatchResult: Sendable, Equatable {
         composerRoute: ComposerRoute? = nil,
         requiresConfirmation: Bool? = nil,
         executableToolIntent: ToolIntent? = nil,
-        citedRAGUnit: RAGUnit? = nil
+        citedRAGUnit: RAGUnit? = nil,
+        retrievalCandidates: [TelcoRetrievalCandidate] = [],
+        reuseActiveEvidence: Bool = false,
+        policyReason: String? = nil,
+        stateOperation: String? = nil,
+        stateOperationReason: String? = nil
     ) {
         self.text = text
         self.lane = lane
@@ -132,6 +155,11 @@ public struct VerizonDispatchResult: Sendable, Equatable {
         self.requiresConfirmation = requiresConfirmation
         self.executableToolIntent = executableToolIntent
         self.citedRAGUnit = citedRAGUnit
+        self.retrievalCandidates = retrievalCandidates
+        self.reuseActiveEvidence = reuseActiveEvidence
+        self.policyReason = policyReason
+        self.stateOperation = stateOperation
+        self.stateOperationReason = stateOperationReason
     }
 }
 
@@ -225,7 +253,9 @@ public actor VerizonChatDispatcher {
         query: String,
         retrievalContext: RetrievalContext = .empty,
         telcoUnderstanding: TelcoSharedUnderstanding? = nil,
-        dialogueState: DialogueRepairConversationState = .empty
+        dialogueState: DialogueRepairConversationState = .empty,
+        turnRelation: TelcoTurnRelation? = nil,
+        policyState: TelcoDialogueStateSnapshot = .empty
     ) -> AsyncStream<VerizonDispatchEvent> {
         AsyncStream { continuation in
             Task {
@@ -234,6 +264,8 @@ public actor VerizonChatDispatcher {
                     retrievalContext: retrievalContext,
                     telcoUnderstanding: telcoUnderstanding,
                     dialogueState: dialogueState,
+                    turnRelation: turnRelation,
+                    policyState: policyState,
                     continuation: continuation
                 )
             }
@@ -362,31 +394,30 @@ public actor VerizonChatDispatcher {
         retrievalContext: RetrievalContext,
         telcoUnderstanding: TelcoSharedUnderstanding?,
         dialogueState: DialogueRepairConversationState,
+        turnRelation: TelcoTurnRelation?,
+        policyState: TelcoDialogueStateSnapshot,
         continuation: AsyncStream<VerizonDispatchEvent>.Continuation
     ) async {
         let t0 = CFAbsoluteTimeGetCurrent()
-
-        if let policy = deriveComposerPolicyRoute(query: query, understanding: telcoUnderstanding) {
-            let result = composeTemplateResponse(
-                route: policy.route,
-                query: query,
-                lane: policy.lane,
-                legacyText: policy.legacyText,
-                legacyDeepLink: policy.legacyDeepLink,
-                t0: t0
-            )
-            continuation.yield(.laneSelected(policy.lane))
-            continuation.yield(.response(result))
-            continuation.finish()
-            return
-        }
-
-        let result = await handleRagStepByStepComposer(
+        let effectivePolicyState = Self.effectivePolicyState(
+            provided: policyState,
+            retrievalContext: retrievalContext,
+            dialogueState: dialogueState
+        )
+        let effectiveTurnRelation = Self.effectiveTurnRelation(
+            provided: turnRelation,
             query: query,
-            lane: .ragStepByStep,
+            retrievalContext: retrievalContext,
+            dialogueState: dialogueState,
+            policyState: effectivePolicyState
+        )
+        let result = await runComposerPipeline(
+            query: query,
             retrievalContext: retrievalContext,
             telcoUnderstanding: telcoUnderstanding,
             dialogueState: dialogueState,
+            turnRelation: effectiveTurnRelation,
+            policyState: effectivePolicyState,
             continuation: continuation,
             t0: t0
         )
@@ -394,92 +425,6 @@ public actor VerizonChatDispatcher {
         continuation.yield(.response(result))
         continuation.finish()
     }
-
-    private struct ComposerPolicyRoute: Sendable {
-        let route: ComposerRoute
-        let lane: VerizonLane
-        let legacyText: String
-        let legacyDeepLink: String?
-    }
-
-    /// Closed-set policy lanes that do not need retrieval evidence.
-    /// This is deliberately small: live-agent handoff and greetings are
-    /// intent-exact control states, not knowledge-base questions. All
-    /// support Q&A, action/question separation, and no-answer handling
-    /// stays downstream in retrieval evidence + `deriveComposerRoute`.
-    private func deriveComposerPolicyRoute(
-        query: String,
-        understanding: TelcoSharedUnderstanding?
-    ) -> ComposerPolicyRoute? {
-        let normalized = query
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-
-        if understanding?.isBlocked == true {
-            return ComposerPolicyRoute(
-                route: .outOfScope,
-                lane: .oosRefusal,
-                legacyText: "I'm here to help with home internet support. I can't process sensitive identity or payment details in this demo.",
-                legacyDeepLink: nil
-            )
-        }
-
-        if understanding?.needsClarification == true {
-            return ComposerPolicyRoute(
-                route: .clarify,
-                lane: .clarification,
-                legacyText: "Could you clarify what you're asking about?",
-                legacyDeepLink: nil
-            )
-        }
-
-        if understanding?.requiresHumanHandoff == true {
-            return ComposerPolicyRoute(
-                route: .liveAgent,
-                lane: .liveAgentEscalation,
-                legacyText: "Connecting you to a support agent. Estimated wait: a few minutes.",
-                legacyDeepLink: VerizonLinkResolver.levelOneFallback(for: .liveAgent)
-            )
-        }
-
-        if understanding?.requiresCloudAssist == true {
-            return ComposerPolicyRoute(
-                route: .accountNav,
-                lane: .navOnlyDeeplink,
-                legacyText: "This needs live account or network data. Open the app account area to continue.",
-                legacyDeepLink: VerizonLinkResolver.levelOneFallback(for: .accountOOS)
-            )
-        }
-
-        if ConversationStateRecorder.isLiveAgentRequest(query) {
-            return ComposerPolicyRoute(
-                route: .liveAgent,
-                lane: .liveAgentEscalation,
-                legacyText: "Connecting you to a Verizon support agent. Estimated wait: a few minutes.",
-                legacyDeepLink: VerizonLinkResolver.levelOneFallback(for: .liveAgent)
-            )
-        }
-
-        if Self.greetingQueries.contains(normalized) {
-            return ComposerPolicyRoute(
-                route: .greeting,
-                lane: .greeting,
-                legacyText: "Hi — I'm your home internet assistant. Ask me about your Wi-Fi, router, devices, parental controls, or equipment.",
-                legacyDeepLink: nil
-            )
-        }
-
-        return nil
-    }
-
-    private static let greetingQueries: Set<String> = [
-        "hi",
-        "hello",
-        "hey",
-        "good morning",
-        "good afternoon",
-        "good evening",
-    ]
 
     // MARK: - Lane handlers
     //
@@ -672,11 +617,24 @@ public actor VerizonChatDispatcher {
         t0: CFAbsoluteTime
     ) async -> VerizonDispatchResult {
         if composerPathEnabled {
-            return await handleRagStepByStepComposer(
-                query: query,
-                lane: lane,
+            let policyState = Self.effectivePolicyState(
+                provided: .empty,
                 retrievalContext: retrievalContext,
+                dialogueState: .empty
+            )
+            return await runComposerPipeline(
+                query: query,
+                retrievalContext: retrievalContext,
+                telcoUnderstanding: nil,
                 dialogueState: .empty,
+                turnRelation: Self.effectiveTurnRelation(
+                    provided: nil,
+                    query: query,
+                    retrievalContext: retrievalContext,
+                    dialogueState: .empty,
+                    policyState: policyState
+                ),
+                policyState: policyState,
                 continuation: continuation,
                 t0: t0
             )
@@ -837,12 +795,33 @@ public actor VerizonChatDispatcher {
     ///     surfaces `requiresConfirmation` on the result envelope; the
     ///     ChatViewModel's existing affirmative-recovery flow handles
     ///     the actual tool execution after user confirmation.
-    private func handleRagStepByStepComposer(
+    /// ADR-029 §1 production answer path. Pure, sub-millisecond:
+    ///
+    ///   1. Lexical retrieve via `BM25HierarchyRetriever` (state-conditioned).
+    ///   2. `TelcoPolicyEngine.decide(...)` — the single authoritative route
+    ///      owner — consumes the turn relation, shared understanding, the
+    ///      dialogue-state snapshot, the retrieval candidates, the selected
+    ///      unit, and the tool registry/alias map, and emits one
+    ///      `TelcoPolicyResolution`.
+    ///   3. `AnswerComposer.compose(...)` renders the decided route. The
+    ///      composer never re-derives the route.
+    ///   4. Optional response-only V4 dialogue-repair verbalizer.
+    ///
+    /// Guarantees by construction:
+    ///   * Every rendered `vzhome://` URL is the selected unit's
+    ///     `canonicalURL` (or a safe external fallback).
+    ///   * Confirmation is required iff the policy engine resolved a real
+    ///     executable `ToolIntent` for the unit (guardrail #3).
+    ///   * For non-grounded routes (live-agent, account, clarify, greeting,
+    ///     out-of-scope, no-answer) the cited unit is nil — the route never
+    ///     leaks an unrelated local page into the citation chip.
+    private func runComposerPipeline(
         query: String,
-        lane: VerizonLane,
         retrievalContext: RetrievalContext,
-        telcoUnderstanding: TelcoSharedUnderstanding? = nil,
-        dialogueState: DialogueRepairConversationState = .empty,
+        telcoUnderstanding: TelcoSharedUnderstanding?,
+        dialogueState: DialogueRepairConversationState,
+        turnRelation: TelcoTurnRelation?,
+        policyState: TelcoDialogueStateSnapshot,
         continuation: AsyncStream<VerizonDispatchEvent>.Continuation,
         t0: CFAbsoluteTime
     ) async -> VerizonDispatchResult {
@@ -858,7 +837,7 @@ public actor VerizonChatDispatcher {
             continuation.yield(.fallbackInvoked(reason: "composer dependencies missing"))
             return VerizonDispatchResult(
                 text: "It looks like I don't have specific information about that. You can check [Verizon Home Internet](https://www.verizon.com/home/internet) for more details.",
-                lane: lane,
+                lane: .ragStepByStep,
                 source: .composer,
                 deepLink: nil,
                 totalMs: elapsed(t0),
@@ -872,44 +851,71 @@ public actor VerizonChatDispatcher {
             )
         }
 
-        // ---- Retrieve (BM25 hierarchy, post-4c alias-improved) ----
+        // ---- Retrieve (BM25 hierarchy, state-conditioned) ----
+        // Retrieval runs on every turn — it is sub-millisecond and
+        // side-effect-free — so the policy owner can see evidence
+        // availability before deciding. This unifies what used to be a
+        // pre-retrieval and a post-retrieval policy split (ADR-029 §1).
         continuation.yield(.retrievalStarted)
-        // RetrievalContext carries at most one prior assistant turn
-        // (see ADR-024 / RetrievalContext.swift). Wrap it as a single-
-        // element history snippet so the retriever's history-hint
-        // mechanism (extract_history_page_hints in the Python source)
-        // can mine its deep links.
         let history: [ConversationTurnSnippet] = retrievalContext.priorAssistantText.map {
             [ConversationTurnSnippet(role: "ASSISTANT", body: $0)]
         } ?? []
-
-        // State-conditioned retrieval: the current utterance and the
-        // conversation's active cited page are scored together in the
-        // retriever. This avoids route-level phrase rules for follow-ups
-        // while still allowing high-confidence new-topic evidence to win.
         let retrievalStart = CFAbsoluteTimeGetCurrent()
         let hits = lexicalRetriever.rank(query: query, context: retrievalContext, k: 3)
         let retrievalMs = elapsed(retrievalStart)
         let topUnit = hits.first.flatMap { corpus.unit(forPageID: $0.pageID) }
+        let retrievalCandidates = hits.map {
+            TelcoRetrievalCandidate(pageID: $0.pageID, linkID: $0.linkID, score: $0.score)
+        }
 
-        // ---- Route derivation (ToolRegistry + alias-map gated) ----
+        // ---- Resolve the explicit dialogue-state operation (ADR-029 §7) ----
+        // Computed before the route policy so it is authoritative AND serialized
+        // onto the harness report. Retrieval already ran above (sub-ms,
+        // side-effect-free); the operation's retrieval strategy governs whether
+        // the policy reuses the active task's prior evidence vs the fresh top hit.
         let routePolicyStart = CFAbsoluteTimeGetCurrent()
-        let routeDecision = deriveComposerRoute(
+        let prior = TelcoDeterministicPrior.derive(query: query)
+        let stateResolution = TelcoStateOperationResolver.resolve(
             query: query,
-            evidence: topUnit,
+            relation: turnRelation,
+            prior: prior,
+            state: policyState
+        )
+        let signals = TelcoPolicySignals(
+            query: query,
+            relation: turnRelation,
             understanding: telcoUnderstanding,
+            state: policyState,
+            prior: prior,
+            stateResolution: stateResolution
+        )
+        let decision = TelcoPolicyEngine.decide(
+            signals: signals,
+            candidates: retrievalCandidates,
+            selectedUnit: topUnit,
             toolRegistry: toolRegistry,
             aliasMap: toolAliasMap
         )
         let routePolicyMs = elapsed(routePolicyStart)
 
-        // ---- Compose ----
+        // ---- Resolve composer evidence from the decision ----
+        // Grounded routes render from a RAG unit; a repair continuation
+        // reuses the active task's prior unit so page/link state does not
+        // drift. Non-grounded routes intentionally carry no cited unit.
+        let composerEvidence = evidence(
+            for: decision,
+            topUnit: topUnit,
+            policyState: policyState,
+            corpus: corpus
+        )
+
+        // ---- Compose (renders the decided route) ----
         let composerStart = CFAbsoluteTimeGetCurrent()
         let answer = composer.compose(
             query: query,
-            route: routeDecision.route,
-            evidence: topUnit,
-            requiresConfirmation: routeDecision.requiresConfirmation,
+            route: decision.route,
+            evidence: composerEvidence,
+            requiresConfirmation: decision.requiresConfirmation,
             history: history,
             expectedPolicyLinkID: nil
         )
@@ -921,14 +927,14 @@ public actor VerizonChatDispatcher {
         if let dialogueRepairVerbalizer,
            let act = DialogueRepairActDeriver.derive(
                 query: query,
-                route: routeDecision.route,
-                evidence: topUnit,
+                route: decision.route,
+                evidence: composerEvidence,
                 retrievalContext: retrievalContext,
                 understanding: telcoUnderstanding
            ),
            Self.shouldUseDialogueRepairVerbalizer(
                 act: act,
-                route: routeDecision.route,
+                route: decision.route,
                 retrievalContext: retrievalContext,
                 dialogueState: dialogueState
            ) {
@@ -937,16 +943,16 @@ public actor VerizonChatDispatcher {
                 priorAssistantText: retrievalContext.priorAssistantText,
                 conversationState: dialogueState,
                 understanding: telcoUnderstanding,
-                evidence: topUnit,
-                route: routeDecision.route,
+                evidence: composerEvidence,
+                route: decision.route,
                 act: act,
-                handoff: DialogueRepairActDeriver.handoff(for: routeDecision.route),
-                requiresConfirmation: routeDecision.requiresConfirmation ?? false
+                handoff: DialogueRepairActDeriver.handoff(for: decision.route),
+                requiresConfirmation: decision.requiresConfirmation
             )
             let verbalized = await dialogueRepairVerbalizer.verbalize(verbalizerInput)
             finalText = Self.withRuntimeOwnedConfirmation(
                 verbalized.text,
-                requiresConfirmation: routeDecision.requiresConfirmation
+                requiresConfirmation: decision.requiresConfirmation
             )
             finalSource = .dialogueRepair
             finalComposerMs += verbalized.latencyMs
@@ -956,168 +962,140 @@ public actor VerizonChatDispatcher {
         }
 
         logger.info(
-            "composer route=\(routeDecision.route.wireName, privacy: .public) pid=\(topUnit?.pageID ?? "<none>", privacy: .public) link=\(topUnit?.linkID ?? "<none>", privacy: .public) confirm=\(routeDecision.requiresConfirmation ?? false, privacy: .public) tool=\(routeDecision.executableToolIntent?.toolID ?? "<none>", privacy: .public) fallback=\(answer.usedFallback, privacy: .public) source=\(finalSource.rawValue, privacy: .public)"
+            "policy op=\(decision.stateOperation.rawValue, privacy: .public)/\(stateResolution.retrieval.rawValue, privacy: .public) route=\(decision.route.wireName, privacy: .public) reason=\(decision.reason, privacy: .public) pid=\(composerEvidence?.pageID ?? "<none>", privacy: .public) link=\(composerEvidence?.linkID ?? "<none>", privacy: .public) confirm=\(decision.requiresConfirmation, privacy: .public) tool=\(decision.executableToolIntent?.toolID ?? "<none>", privacy: .public) source=\(finalSource.rawValue, privacy: .public)"
         )
 
-        let deepLink = answer.renderedLinks.first
         return VerizonDispatchResult(
             text: finalText,
-            lane: lane,
+            lane: Self.lane(for: decision.route),
             source: finalSource,
-            deepLink: deepLink,
+            deepLink: answer.renderedLinks.first,
             retrievedChunk: nil,
             kbEntry: nil,
             totalMs: elapsed(t0),
             retrievalMs: retrievalMs,
             routePolicyMs: routePolicyMs,
             composerMs: finalComposerMs,
-            composerRoute: routeDecision.route,
-            requiresConfirmation: routeDecision.requiresConfirmation,
-            executableToolIntent: routeDecision.executableToolIntent,
-            citedRAGUnit: topUnit
+            composerRoute: decision.route,
+            requiresConfirmation: decision.requiresConfirmation,
+            executableToolIntent: decision.executableToolIntent,
+            citedRAGUnit: composerEvidence,
+            retrievalCandidates: retrievalCandidates,
+            reuseActiveEvidence: decision.reuseActiveEvidence,
+            policyReason: decision.reason,
+            stateOperation: decision.stateOperation.rawValue,
+            stateOperationReason: decision.stateOperationReason
         )
     }
 
-    private struct ComposerRouteDecision: Sendable, Equatable {
-        let route: ComposerRoute
-        let requiresConfirmation: Bool?
-        let executableToolIntent: ToolIntent?
+    /// Resolve the RAG unit the composer renders from, given the policy
+    /// decision. Only evidence-bearing routes carry a unit; a repair
+    /// continuation reuses the active task's prior page.
+    private nonisolated func evidence(
+        for decision: TelcoPolicyResolution,
+        topUnit: RAGUnit?,
+        policyState: TelcoDialogueStateSnapshot,
+        corpus: RAGUnitCorpus
+    ) -> RAGUnit? {
+        guard decision.route.requiresEvidence else { return nil }
+        if decision.reuseActiveEvidence,
+           let priorPageID = policyState.priorPageID,
+           let priorUnit = corpus.unit(forPageID: priorPageID) {
+            return priorUnit
+        }
+        return topUnit
     }
 
-    /// Step 5b Pre-flight Fix A wiring. Source of truth for the
-    /// `tool_action` vs `answer_plus_action` vs `rag_answer` split when
-    /// composer is the answer layer. Mirrors
-    /// `scripts/vz/eval/multi_turn_acceptance.py::derive_route` exactly.
-    ///
-    /// Decision tree:
-    ///
-    /// 1. **No evidence** → `noRagAnswer` (no confirmation theatre).
-    /// 2. **Evidence + affordance is `view` / `navigate`** → `ragAnswer`.
-    ///    View-only pages never produce a tool offer, even when their
-    ///    `link_id` aliases to a registered tool. This is what keeps
-    ///    "how do parental controls work?" (landing on 13.00, a view
-    ///    page) on `ragAnswer` rather than `answerPlusAction`.
-    /// 3. **Evidence + alias-resolved tool + `imperativeOnly` AND mood
-    ///    is not actionImperative** → `ragAnswer`. Carves out parental-
-    ///    controls questions from the standard question→answerPlusAction
-    ///    rule.
-    /// 4. **Evidence + alias-resolved tool + mood**:
-    ///     * `actionImperative` → `toolAction` (with `requiresConfirmation`).
-    ///     * `question`         → `answerPlusAction` (one-tap alternative).
-    ///     * `navigateImperative` / `statement` → `ragAnswer`.
-    /// 5. **Evidence + no tool resolvable** → `ragAnswer`.
-    ///
-    /// **The ToolRegistry + ToolAliasMap together are the FINAL arbiter
-    /// for confirmation.** Mood and affordance alone never produce a
-    /// confirmation handshake.
-    private func deriveComposerRoute(
+    /// Bridge older dispatcher callers that only carry `RetrievalContext` into
+    /// the current policy-engine state contract. The live ChatViewModel passes a
+    /// full blackboard snapshot; tests and compatibility callers often only know
+    /// the prior page/link and optional pending tool.
+    private nonisolated static func effectivePolicyState(
+        provided: TelcoDialogueStateSnapshot,
+        retrievalContext: RetrievalContext,
+        dialogueState: DialogueRepairConversationState
+    ) -> TelcoDialogueStateSnapshot {
+        guard provided == .empty else { return provided }
+
+        let priorText = retrievalContext.priorAssistantText?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let hasPriorAssistant = priorText.map { !$0.isEmpty } ?? false
+        let hasState =
+            retrievalContext.priorPageID != nil
+            || retrievalContext.priorLinkID != nil
+            || hasPriorAssistant
+            || dialogueState.pendingTool != nil
+            || dialogueState.pendingConfirmation
+            || dialogueState.frustrationCount > 0
+        guard hasState else { return provided }
+
+        return TelcoDialogueStateSnapshot(
+            hasActiveTask: retrievalContext.priorPageID != nil,
+            priorPageID: retrievalContext.priorPageID,
+            priorLinkID: retrievalContext.priorLinkID,
+            pendingToolID: dialogueState.pendingTool,
+            repairAttemptsOnActiveTask: dialogueState.frustrationCount,
+            frustrationCount: dialogueState.frustrationCount,
+            hasPriorAssistantTurn: hasPriorAssistant,
+            priorRouteWasClarify: false
+        )
+    }
+
+    /// Compatibility relation fallback for callers that have not run the
+    /// relation head but do carry prior-page context. Uses the same multi-turn
+    /// primitives as the production blackboard path: confirmations, repair,
+    /// topic switch, step focus, and short anaphoric follow-ups.
+    private nonisolated static func effectiveTurnRelation(
+        provided: TelcoTurnRelation?,
         query: String,
-        evidence: RAGUnit?,
-        understanding: TelcoSharedUnderstanding?,
-        toolRegistry: ToolRegistry,
-        aliasMap: ToolAliasMap?
-    ) -> ComposerRouteDecision {
-        guard let unit = evidence else {
-            // Retrieval returned nothing — composer's no_rag_answer
-            // path. Per guardrail #2, KeywordKBExtractor is NOT
-            // consulted here.
-            return ComposerRouteDecision(
-                route: .noRagAnswer,
-                requiresConfirmation: nil,
-                executableToolIntent: nil
-            )
+        retrievalContext: RetrievalContext,
+        dialogueState: DialogueRepairConversationState,
+        policyState: TelcoDialogueStateSnapshot
+    ) -> TelcoTurnRelation? {
+        if let provided { return provided }
+
+        if ConversationStateRecorder.isLiveAgentRequest(query) {
+            return .escalationRequest
         }
-        // Affordance gate: view/navigate pages never produce a tool
-        // offer. Keeps view-only landings on rag_answer even when their
-        // link_id aliases to a registered tool.
-        if let affordance = unit.actionAffordance,
-           affordance == "view" || affordance == "navigate" {
-            return ComposerRouteDecision(
-                route: .ragAnswer,
-                requiresConfirmation: false,
-                executableToolIntent: nil
-            )
+        if ConversationStateRecorder.isBareAffirmative(query) {
+            return policyState.pendingToolID == nil ? .ambiguousShortTurn : .confirmationYes
         }
-        // Resolve through the alias map first, then look the tool up
-        // by its canonical tool_id. Fall back to the legacy direct-match
-        // path (link_id == tool_id) when no alias map is wired — this
-        // keeps the dispatcher working in test contexts that don't
-        // bother to construct the map.
-        var tool: Tool?
-        var imperativeOnly = false
-        if let aliasMap, let alias = aliasMap.alias(forLinkID: unit.linkID) {
-            if let intent = ToolIntent(toolID: alias.toolID) {
-                tool = toolRegistry.tool(for: intent)
-                imperativeOnly = alias.imperativeOnly
-            }
-        } else if let intent = ToolIntent(toolID: unit.linkID) {
-            tool = toolRegistry.tool(for: intent)
+        if ConversationStateRecorder.isBareNegative(query) {
+            return policyState.pendingToolID == nil ? .ambiguousShortTurn : .confirmationNo
         }
-        guard let resolvedTool = tool,
-              let resolvedIntent = ToolIntent(toolID: resolvedTool.id) else {
-            return ComposerRouteDecision(
-                route: .ragAnswer,
-                requiresConfirmation: false,
-                executableToolIntent: nil
-            )
+        if ConversationStateRecorder.isDidntWorkContinuation(query) {
+            return .repairFailed
         }
 
-        if understanding?.routingLane.isConfident(.localAnswer) == true {
-            return ComposerRouteDecision(
-                route: .ragAnswer,
-                requiresConfirmation: false,
-                executableToolIntent: nil
-            )
+        let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.contains("can't find") || normalized.contains("cannot find") {
+            return .repairCannotFind
         }
-
-        if understanding?.routingLane.isConfident(.localTool) == true {
-            return ComposerRouteDecision(
-                route: .toolAction,
-                requiresConfirmation: resolvedIntent.requiresConfirmation,
-                executableToolIntent: resolvedIntent
-            )
+        if hasTopicSwitchPrefix(query) {
+            return .topicSwitch
         }
-
-        let mood = inferQueryMood(query)
-
-        // Imperative-only carve-out: shared link_ids (notably "home" on
-        // the 13.xx parental-controls pages) don't get the standard
-        // question→answerPlusAction upgrade. Informational queries
-        // stay informational.
-        if imperativeOnly && mood != .actionImperative {
-            return ComposerRouteDecision(
-                route: .ragAnswer,
-                requiresConfirmation: false,
-                executableToolIntent: nil
-            )
+        if policyState.priorPageID != nil, normalized.hasPrefix("where") {
+            return .stepFocus
         }
+        if policyState.priorPageID != nil || retrievalContext.priorPageID != nil,
+           isShortFollowup(query) {
+            return .ambiguousShortTurn
+        }
+        return nil
+    }
 
-        switch mood {
-        case .actionImperative:
-            return ComposerRouteDecision(
-                route: .toolAction,
-                requiresConfirmation: resolvedIntent.requiresConfirmation,
-                executableToolIntent: resolvedIntent
-            )
-        case .question:
-            guard unit.queryTargetsTaskObjective(query) else {
-                return ComposerRouteDecision(
-                    route: .ragAnswer,
-                    requiresConfirmation: false,
-                    executableToolIntent: nil
-                )
-            }
-            return ComposerRouteDecision(
-                route: .answerPlusAction,
-                requiresConfirmation: resolvedIntent.requiresConfirmation,
-                executableToolIntent: resolvedIntent
-            )
-        case .navigateImperative, .statement:
-            return ComposerRouteDecision(
-                route: .ragAnswer,
-                requiresConfirmation: false,
-                executableToolIntent: nil
-            )
+    /// Map an authoritative route to the legacy `VerizonLane` the trace UI
+    /// and session telemetry consume. The route is the source of truth;
+    /// the lane is a presentation projection.
+    private nonisolated static func lane(for route: ComposerRoute) -> VerizonLane {
+        switch route {
+        case .liveAgent: return .liveAgentEscalation
+        case .accountNav: return .navOnlyDeeplink
+        case .outOfScope: return .oosRefusal
+        case .greeting: return .greeting
+        case .clarify: return .clarification
+        case .noRagAnswer: return .unknownFeature
+        case .ragAnswer, .answerPlusAction, .toolAction: return .ragStepByStep
         }
     }
 

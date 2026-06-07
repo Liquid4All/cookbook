@@ -57,13 +57,10 @@ final class ChatViewModel: ObservableObject {
     /// engineering trace card.
     let understandingClassifier: QueryUnderstandingClassifying
 
-    /// ADR-024 Phase δ — pairwise relational classifier. Runs as a
-    /// second pass after Layer 1, consuming prior-turn text cached by
-    /// `recordTurnSideEffects`. When the `telco-relational-v1.gguf`
-    /// adapter is bundled this is a `ChatTemplateRelationalStrategy`;
-    /// otherwise it degrades to `UnavailableRelationalStrategy`, which
-    /// returns `.none` outcomes so the router stays on the single-turn
-    /// baseline. Always non-nil — no optional chaining needed.
+    /// ADR-028 turn-relation classifier/fallback. On current bundles this
+    /// prefers `telco-turn-relation-v4`; degraded builds return `.none`
+    /// and the blackboard reducer applies deterministic safety fallbacks.
+    /// Always non-nil — no optional chaining needed.
     let relationalStrategy: RelationalHeadsStrategy
 
     /// Latest understanding vector for the current turn. Published so
@@ -77,6 +74,12 @@ final class ChatViewModel: ObservableObject {
     /// pre-classifier clarification recovery + the NBA layer's
     /// counter-based escalation.
     let conversationState: ConversationState
+
+    /// ADR-028 typed blackboard for turn relation, retrieval evidence,
+    /// policy decisions, pending actions, and response audit events.
+    /// `ConversationState` remains the UI/tool-recovery state; this
+    /// reducer-owned state is the architecture-facing control plane.
+    @Published private(set) var dialogueBlackboard: TelcoDialogueBlackboard
 
     /// Latest Stage A + dispatcher result for the current turn. Captured
     /// from the AsyncStream events so the engineering-mode trace UI can
@@ -185,15 +188,15 @@ final class ChatViewModel: ObservableObject {
                     stageA: nil
                 )
             )
-        // ADR-024 Phase δ — default to UnavailableRelationalStrategy when
-        // caller doesn't supply a live strategy (tests, integrations). The
-        // degraded path returns .none for all relational outputs and costs
-        // zero latency; routing falls through to the single-turn baseline.
+        // ADR-028 — default to UnavailableRelationalStrategy when tests or
+        // degraded integrations do not supply the packaged v4 head. The
+        // blackboard reducer then applies deterministic fallback labels.
         self.relationalStrategy = relationalStrategy ?? UnavailableRelationalStrategy()
         // ADR-023 Phase 2 — default to a fresh ConversationState so the
         // session starts clean. Tests that want to pre-seed state (e.g.
         // simulate a pending clarification) inject their own instance.
         self.conversationState = conversationState ?? ConversationState()
+        self.dialogueBlackboard = TelcoDialogueBlackboard()
         self.useSimulatorFastGroundedQA = useSimulatorFastGroundedQA
         self.welcomeGreetingProvider = welcomeGreetingProvider
         seedWelcomeMessage()
@@ -247,6 +250,7 @@ final class ChatViewModel: ObservableObject {
         expandedTraceMessageIDs.removeAll()
         expandedTelcoUnderstandingMessageIDs.removeAll()
         conversationState.reset()
+        dialogueBlackboard = TelcoDialogueBlackboard()
         seedWelcomeMessage()
     }
 
@@ -332,6 +336,16 @@ final class ChatViewModel: ObservableObject {
         // whole flow.
         if let pendingConfirmation = conversationState.pendingToolConfirmation,
            ConversationStateRecorder.isBareAffirmative(query) {
+            let priorUserText = previousUserTurnText()
+            let (turnRelation, _) = await classifyTelcoTurnRelation(
+                query,
+                priorUserText: priorUserText
+            )
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.reduce(
+                dialogueBlackboard,
+                userTurn: query,
+                observedRelation: turnRelation
+            )
             guard let tool = toolRegistry.tool(id: pendingConfirmation.toolID) else {
                 AppLog.intelligence.error(
                     "pending-tool-confirmation missing registered tool: \(pendingConfirmation.toolID, privacy: .public)"
@@ -352,6 +366,59 @@ final class ChatViewModel: ObservableObject {
                 tool: tool,
                 decision: pendingConfirmation,
                 triggerQuery: query
+            )
+            return
+        }
+
+        if conversationState.pendingToolConfirmation != nil,
+           ConversationStateRecorder.isBareNegative(query) {
+            let priorUserText = previousUserTurnText()
+            let (turnRelation, turnRelationMS) = await classifyTelcoTurnRelation(
+                query,
+                priorUserText: priorUserText
+            )
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.reduce(
+                dialogueBlackboard,
+                userTurn: query,
+                observedRelation: turnRelation
+            )
+            conversationState.clearPendingToolConfirmation()
+
+            let activePageID = dialogueBlackboard.priorPageID
+            let activeLinkID = dialogueBlackboard.priorLinkID
+            let text = "Okay, I won't do that."
+            let message = ChatMessage(
+                role: .assistant,
+                text: text,
+                routing: RoutingSummary(
+                    path: .toolCall,
+                    toolIntent: nil,
+                    containsPII: containsPII
+                ),
+                latencyMS: turnRelationMS,
+                trace: CallTrace(
+                    surface: .tool,
+                    inferenceMS: turnRelationMS,
+                    inputTokens: 0,
+                    outputTokens: 0,
+                    extraction: extraction
+                )
+            )
+            messages.append(message)
+            sessionStats.recordLatency(turnRelationMS)
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.recordResponse(
+                text,
+                on: dialogueBlackboard
+            )
+            recordTurnSideEffects(
+                query: query,
+                lane: .toolAction,
+                toolDecision: nil,
+                pendingIntent: nil,
+                missingSlots: [],
+                assistantText: text,
+                citedPageID: activePageID,
+                citedLinkID: activeLinkID
             )
             return
         }
@@ -433,7 +500,38 @@ final class ChatViewModel: ObservableObject {
         // QueryUnderstandingClassifier, chat-mode-router, Stage A LoRAs,
         // relational LoRA, and Stage B.
         if let dispatcher = verizonDispatcher {
-            let (telcoUnderstanding, telcoUnderstandingMS) = await classifyTelcoTurn(query)
+            let priorUserText = previousUserTurnText()
+            // ADR-029 §5 selective probing. An explicit, unambiguous request for
+            // a human is a hard, safe policy decision on its own — neither the
+            // turn-relation head nor the shared classifier can change it — so
+            // both forwards are skipped on these control turns. This is
+            // correctness-neutral: `TelcoPolicyEngine` escalates on the same
+            // deterministic prior. (The relation head additionally self-gates on
+            // turns with no prior dialogue state; see
+            // `TelcoTurnRelationV4Strategy.classifyFromText`.)
+            let hardControlTurn = TelcoDeterministicPrior.derive(query: query).explicitHumanRequest
+            let turnRelation: TelcoTurnRelation?
+            let turnRelationMS: Int
+            let telcoUnderstanding: TelcoSharedUnderstanding?
+            let telcoUnderstandingMS: Int
+            if hardControlTurn {
+                turnRelation = nil
+                turnRelationMS = 0
+                telcoUnderstanding = nil
+                telcoUnderstandingMS = 0
+            } else {
+                (turnRelation, turnRelationMS) = await classifyTelcoTurnRelation(
+                    query,
+                    priorUserText: priorUserText
+                )
+                (telcoUnderstanding, telcoUnderstandingMS) = await classifyTelcoTurn(query)
+            }
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.reduce(
+                dialogueBlackboard,
+                userTurn: query,
+                observedRelation: turnRelation,
+                understanding: telcoUnderstanding
+            )
             AppLog.intelligence.info("composer runtime path: telco shared understanding + deterministic composer")
             lastUnderstanding = nil
             routingStage = .searching
@@ -450,8 +548,9 @@ final class ChatViewModel: ObservableObject {
                 dispatcher: dispatcher,
                 understanding: nil,
                 telcoUnderstanding: telcoUnderstanding,
-                preDispatchMS: telcoUnderstandingMS,
-                retrievalContext: composerRetrievalContext(),
+                preDispatchMS: telcoUnderstandingMS + turnRelationMS,
+                telcoUnderstandingMS: telcoUnderstandingMS,
+                retrievalContext: dialogueBlackboard.retrievalContext,
                 composerOnly: true
             )
             return
@@ -501,17 +600,15 @@ final class ChatViewModel: ObservableObject {
         // (`[USER_PRIOR]` sentinel). Pull it from `messages` — the
         // current message is the last one (appended before this call),
         // so the prior user message is the second-to-last user role entry.
-        let priorUserText: String? = messages
-            .dropLast()
-            .last(where: { $0.role == .user })
-            .map { $0.text }
+        let priorUserText = previousUserTurnText()
 
         let relationalOutcomes: RelationalOutcomes
         do {
             relationalOutcomes = try await relationalStrategy.classifyFromText(
                 currentUserQuery: query,
                 priorAssistantText: conversationState.priorAssistantText,
-                priorUserText: priorUserText
+                priorUserText: priorUserText,
+                runtimeState: relationalRuntimeState()
             )
         } catch {
             // Relational pass failure must never block the main turn.
@@ -696,19 +793,6 @@ final class ChatViewModel: ObservableObject {
         )
     }
 
-    private func composerRetrievalContext() -> RetrievalContext {
-        let priorText = conversationState.priorAssistantText?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let priorText, !priorText.isEmpty else {
-            return .empty
-        }
-        return RetrievalContext(
-            priorAssistantText: priorText,
-            priorPageID: conversationState.priorPageID,
-            priorLinkID: conversationState.priorLinkID
-        )
-    }
-
     private func dialogueRepairState() -> DialogueRepairConversationState {
         let priorText = conversationState.priorAssistantText?
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -719,6 +803,51 @@ final class ChatViewModel: ObservableObject {
             pendingTool: conversationState.pendingToolConfirmation?.toolID,
             frustrationCount: conversationState.didntWorkCount,
             pendingConfirmation: conversationState.pendingToolConfirmation != nil
+        )
+    }
+
+    /// Compact, deterministic view of the dialogue blackboard for the
+    /// authoritative `TelcoPolicyEngine`. Built *after* this turn's relation
+    /// has been reduced into the blackboard, so the remediation counters
+    /// already reflect the current turn (a `repair_failed` /
+    /// `repair_cannot_find` turn has already incremented its task's attempt
+    /// count by the time the engine sees the snapshot).
+    private func makePolicyStateSnapshot() -> TelcoDialogueStateSnapshot {
+        let activeTask = dialogueBlackboard.activeTaskID
+        let repairAttempts = activeTask
+            .map { dialogueBlackboard.failedAttemptCountByTask[$0] ?? 0 }
+            ?? dialogueBlackboard.frustrationCount
+        return TelcoDialogueStateSnapshot(
+            hasActiveTask: dialogueBlackboard.priorPageID != nil,
+            priorPageID: dialogueBlackboard.priorPageID,
+            priorLinkID: dialogueBlackboard.priorLinkID,
+            pendingToolID: dialogueBlackboard.pendingToolConfirmation?.toolID,
+            repairAttemptsOnActiveTask: repairAttempts,
+            frustrationCount: dialogueBlackboard.frustrationCount,
+            hasPriorAssistantTurn: dialogueBlackboard.lastAssistantSummary != nil,
+            // ADR-029 §7: the prior turn's recorded route. Lets the state-operation
+            // resolver treat a short reply to our own clarification as a
+            // `clarification_answer` (grounds) rather than a fresh
+            // `ambiguous_short_turn` (re-asks).
+            priorRouteWasClarify: dialogueBlackboard.lastPolicyDecision?.route == .clarify
+        )
+    }
+
+    private func relationalRuntimeState() -> RelationalRuntimeState {
+        let pendingClarification = conversationState.pendingClarification.map { pending in
+            let slots = pending.missingSlots.map(\.rawValue).sorted()
+            return slots.isEmpty ? pending.source.rawValue : slots.joined(separator: ",")
+        }
+        let pendingTool = dialogueBlackboard.pendingToolConfirmation?.toolID
+            ?? conversationState.pendingToolConfirmation?.toolID
+        return RelationalRuntimeState(
+            priorRoute: conversationState.priorLane?.wireName,
+            priorPageID: dialogueBlackboard.priorPageID ?? conversationState.priorPageID,
+            priorLinkID: dialogueBlackboard.priorLinkID ?? conversationState.priorLinkID,
+            pendingTool: pendingTool,
+            pendingConfirmation: pendingTool != nil,
+            pendingClarification: pendingClarification,
+            frustrationCount: max(dialogueBlackboard.frustrationCount, conversationState.didntWorkCount)
         )
     }
 
@@ -774,6 +903,44 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    private func classifyTelcoTurnRelation(
+        _ query: String,
+        priorUserText: String?
+    ) async -> (TelcoTurnRelation?, Int) {
+        do {
+            let outcomes = try await relationalStrategy.classifyFromText(
+                currentUserQuery: query,
+                priorAssistantText: dialogueBlackboard.lastAssistantSummary,
+                priorUserText: priorUserText,
+                runtimeState: relationalRuntimeState()
+            )
+            guard let relation = outcomes.telcoTurnRelation else {
+                return (nil, Int(outcomes.runtimeMs.rounded()))
+            }
+            AppLog.intelligence.info(
+                "turn-relation: \(relation.value.rawValue, privacy: .public) conf=\(String(format: "%.2f", relation.confidence), privacy: .public) \(String(format: "%.0f", outcomes.runtimeMs), privacy: .public)ms"
+            )
+            return (relation.value, Int(outcomes.runtimeMs.rounded()))
+        } catch {
+            AppLog.intelligence.error(
+                "turn-relation failed: \(error.localizedDescription, privacy: .public) — blackboard fallback will classify"
+            )
+            return (nil, 0)
+        }
+    }
+
+    private func previousUserTurnText() -> String? {
+        messages
+            .dropLast()
+            .last(where: { $0.role == .user })
+            .map { $0.text }
+    }
+
+    private static func blackboardSummaryMatches(_ summary: String?, _ text: String) -> Bool {
+        let expected = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(240))
+        return summary == expected
+    }
+
     /// Verizon RAG dispatch — Stage A (probe-validated heads) →
     /// VerizonRagRouter → branches (Stage B for ragStepByStep, templates
     /// for the refusal / nav / live-agent lanes, KeywordKBExtractor for
@@ -792,6 +959,7 @@ final class ChatViewModel: ObservableObject {
         understanding: QueryUnderstanding? = nil,
         telcoUnderstanding: TelcoSharedUnderstanding? = nil,
         preDispatchMS: Int = 0,
+        telcoUnderstandingMS: Int? = nil,
         prebuiltStageA: VerizonStageADecision? = nil,
         prebuiltLane: VerizonLane? = nil,
         retrievalContext: RetrievalContext = .empty,
@@ -820,7 +988,9 @@ final class ChatViewModel: ObservableObject {
                     query: query,
                     retrievalContext: retrievalContext,
                     telcoUnderstanding: telcoUnderstanding,
-                    dialogueState: dialogueRepairState()
+                    dialogueState: dialogueRepairState(),
+                    turnRelation: dialogueBlackboard.lastTurnRelation,
+                    policyState: makePolicyStateSnapshot()
                 )
             } else if let prebuiltStageA, let prebuiltLane {
                 return dispatcher.dispatch(
@@ -929,7 +1099,7 @@ final class ChatViewModel: ObservableObject {
                     extraction: extraction,
                     understanding: understanding,
                     telcoUnderstanding: telcoUnderstanding,
-                    telcoUnderstandingMS: preDispatchMS > 0 ? preDispatchMS : nil,
+                    telcoUnderstandingMS: telcoUnderstandingMS ?? (preDispatchMS > 0 ? preDispatchMS : nil),
                     routePolicyMS: routePolicyMS,
                     composerMS: composerMS,
                     totalWallMS: totalWallMS,
@@ -940,7 +1110,11 @@ final class ChatViewModel: ObservableObject {
                     composerRoute: finalResult.composerRoute?.wireName,
                     composerCitedPageID: finalResult.citedRAGUnit?.pageID,
                     composerRenderedLinkID: finalResult.citedRAGUnit?.linkID,
-                    composerConfirmationShown: finalResult.requiresConfirmation
+                    composerConfirmationShown: finalResult.requiresConfirmation,
+                    reuseActiveEvidence: finalResult.reuseActiveEvidence,
+                    policyReason: finalResult.policyReason,
+                    stateOperation: finalResult.stateOperation,
+                    stateOperationReason: finalResult.stateOperationReason
                 )
             )
             let composerToolDecision = composerExecutableToolDecision(
@@ -950,6 +1124,11 @@ final class ChatViewModel: ObservableObject {
             if finalResult.composerRoute == .toolAction {
                 message.toolDecision = composerToolDecision
             }
+            recordDialogueBlackboardDispatch(
+                result: finalResult,
+                assistantText: message.text,
+                pendingToolConfirmation: composerToolDecision
+            )
             // Compound RAG + tool — attach a "Want me to do this?" card
             // when the Verizon lane carries content (RAG/unknown/clarification)
             // and the user's query is an unambiguous imperative.
@@ -1000,6 +1179,49 @@ final class ChatViewModel: ObservableObject {
             error: error,
             mode: modePrediction.mode,
             containsPII: containsPII
+        )
+    }
+
+    private func recordDialogueBlackboardDispatch(
+        result: VerizonDispatchResult,
+        assistantText: String,
+        pendingToolConfirmation: ToolDecision?
+    ) {
+        let citedUnit = result.citedRAGUnit
+        let policyDecision = result.composerRoute.map {
+            TelcoPolicyDecision(
+                route: $0,
+                requiresConfirmation: result.requiresConfirmation ?? false,
+                handoff: $0 == .liveAgent ? "live_agent" : nil
+            )
+        }
+
+        dialogueBlackboard = TelcoDialogueBlackboardReducer.recordRetrievalAndPolicy(
+            on: dialogueBlackboard,
+            retrievalCandidates: result.retrievalCandidates,
+            selectedPageID: citedUnit?.pageID,
+            selectedLinkID: citedUnit?.linkID,
+            selectedTitle: citedUnit?.displayLabel,
+            policyDecision: policyDecision
+        )
+
+        if let pendingToolConfirmation,
+           pendingToolConfirmation.requiresConfirmation {
+            let pending = TelcoPendingTool(
+                toolID: pendingToolConfirmation.toolID,
+                intent: pendingToolConfirmation.intent,
+                pageID: citedUnit?.pageID,
+                linkID: citedUnit?.linkID
+            )
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.setPendingTool(
+                pending,
+                on: dialogueBlackboard
+            )
+        }
+
+        dialogueBlackboard = TelcoDialogueBlackboardReducer.recordResponse(
+            assistantText,
+            on: dialogueBlackboard
         )
     }
 
@@ -1807,6 +2029,30 @@ final class ChatViewModel: ObservableObject {
         // turns all clear it so the next turn doesn't anchor to a
         // stale page.
         conversationState.recordPriorPage(pageID: citedPageID, linkID: citedLinkID)
+
+        let blackboardPendingDecision = pendingToolConfirmation
+            ?? ((toolDecision?.isCompoundAttachment == false) ? toolDecision : nil)
+        if let decision = blackboardPendingDecision,
+           decision.requiresConfirmation,
+           dialogueBlackboard.pendingToolConfirmation?.toolID != decision.toolID {
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.setPendingTool(
+                TelcoPendingTool(
+                    toolID: decision.toolID,
+                    intent: decision.intent,
+                    pageID: citedPageID,
+                    linkID: citedLinkID
+                ),
+                on: dialogueBlackboard
+            )
+        }
+
+        if let assistantText,
+           !Self.blackboardSummaryMatches(dialogueBlackboard.lastAssistantSummary, assistantText) {
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.recordResponse(
+                assistantText,
+                on: dialogueBlackboard
+            )
+        }
     }
 
     // MARK: - Tool confirmation (invoked from ToolDecisionCard)
@@ -1843,6 +2089,9 @@ final class ChatViewModel: ObservableObject {
         // ADR-023 Phase 2 — user dismissed the proposal; clear pending
         // so a follow-up "yes" doesn't resurrect it.
         conversationState.clearPendingToolConfirmation()
+        dialogueBlackboard = TelcoDialogueBlackboardReducer.recordToolCancelled(
+            on: dialogueBlackboard
+        )
     }
 
     /// Execute a confirmed tool decision. This is the single side-effect
@@ -1887,6 +2136,9 @@ final class ChatViewModel: ObservableObject {
             sessionStats.recordToolExecution(
                 toolID: tool.id,
                 status: outcome.toolResult.status
+            )
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.recordToolExecuted(
+                on: dialogueBlackboard
             )
 
             if let triggerQuery {

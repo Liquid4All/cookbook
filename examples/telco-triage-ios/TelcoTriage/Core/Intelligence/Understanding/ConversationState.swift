@@ -560,6 +560,17 @@ public enum ConversationStateRecorder {
         ) != nil
     }
 
+    /// True when the user message is a bare negative/cancel response.
+    /// Used only when a pending confirmation exists; otherwise it is an
+    /// ambiguous short turn and must not trigger side effects.
+    public static func isBareNegative(_ message: String) -> Bool {
+        let normalized = normalize(message)
+        return bareNegativePatterns.firstMatch(
+            in: normalized,
+            range: NSRange(normalized.startIndex..., in: normalized)
+        ) != nil
+    }
+
     // MARK: - Private
 
     private static func normalize(_ message: String) -> String {
@@ -580,6 +591,11 @@ public enum ConversationStateRecorder {
           | (?:chat\s+(?:with\s+)?(?:a\s+)?(?:agent|rep|person|human))
           | (?:talk\s+(?:to\s+|with\s+)(?:a\s+)?(?:agent|rep|person|human|real\s+person))
           | (?:speak\s+(?:to\s+|with\s+)(?:a\s+)?(?:agent|rep|person|human|real\s+person))
+          | (?:connect\s+(?:me|to\s+(?:a\s+)?(?:agent|rep|person|human|real\s+person)))
+          | (?:need\s+(?:a\s+)?(?:real\s+)?(?:agent|rep|person|human|representative)(?:\s+(?:for|to)\s+help)?)
+          | (?:live\s+person)
+          | (?:(?:some\s+one|someone|somebody|anyone)\s+(?:can\s+)?help(?:\s+me)?)
+          | (?:can\s+(?:some\s+one|someone|somebody|anyone)\s+help(?:\s+me)?)
           | (?:transfer\s+me)
           | (?:get\s+me\s+(?:a\s+)?(?:agent|rep|person|human))
           | (?:real\s+person)
@@ -620,6 +636,18 @@ public enum ConversationStateRecorder {
             yes|yeah|yep|yup|sure|ok|okay|k|fine
           | (?:go\s+ahead)|(?:do\s+it)|(?:please\s+do)
           | (?:sounds\s+good)|(?:that\s+works)
+        )\s*[.!]?\s*$
+        """#,
+        options: [.allowCommentsAndWhitespace, .caseInsensitive]
+    )
+
+    // swiftlint:disable:next force_try
+    private static let bareNegativePatterns: NSRegularExpression = try! NSRegularExpression(
+        pattern: #"""
+        ^\s*(?:
+            no|nope|nah|cancel|stop
+          | (?:do\s+not)|don[''’]?t|dont
+          | (?:never\s+mind)|(?:no\s+thanks)|(?:no\s+thank\s+you)
         )\s*[.!]?\s*$
         """#,
         options: [.allowCommentsAndWhitespace, .caseInsensitive]

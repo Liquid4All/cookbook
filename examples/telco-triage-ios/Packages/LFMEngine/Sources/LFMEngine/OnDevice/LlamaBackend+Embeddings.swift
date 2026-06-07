@@ -5,6 +5,57 @@ import os.log
 import llama
 #endif
 
+/// Pooling of per-token hidden states into a single sequence vector.
+///
+/// LFM2.5's final layer is a depthwise conv (kernel-3 receptive field), so
+/// last-token pooling reads only ~3 tokens and silently drops classification
+/// quality on terse inputs. Mean pooling over all token positions is the
+/// correct choice for LFM2.5 classifier heads (see liquid-models-architecture
+/// §3/§16) and is the single source of truth for both the telco shared-clf
+/// heads and the telco-turn-relation head — never reimplement it inline.
+///
+/// Defined here (rather than its own file) so it always compiles in the same
+/// translation unit as its only caller, `meanPooledEmbedding`.
+public enum EmbeddingPooling {
+
+    /// Mean-pool a row-major `[numTokens × hiddenDim]` hidden-state matrix into
+    /// one `hiddenDim` vector. Validates the buffer length against
+    /// `numTokens × hiddenDim` before indexing, so a malformed backend result
+    /// throws a typed error instead of trapping on an out-of-bounds access.
+    public static func mean(
+        _ raw: (embeddings: [Float], numTokens: Int, hiddenDim: Int)
+    ) throws -> [Float] {
+        guard raw.numTokens > 0, raw.hiddenDim > 0 else {
+            throw LFMEngineError.inferenceFailed(
+                "meanPool: empty embedding (numTokens=\(raw.numTokens), hiddenDim=\(raw.hiddenDim))"
+            )
+        }
+        let expected = raw.numTokens * raw.hiddenDim
+        guard raw.embeddings.count == expected else {
+            throw LFMEngineError.inferenceFailed(
+                "meanPool: buffer length \(raw.embeddings.count) != numTokens×hiddenDim (\(expected))"
+            )
+        }
+
+        var pooled = [Float](repeating: 0, count: raw.hiddenDim)
+        // Bounds are guaranteed by the guard above, so the unchecked buffer
+        // access is safe and avoids per-element bounds checks in the hot loop.
+        raw.embeddings.withUnsafeBufferPointer { buf in
+            for token in 0..<raw.numTokens {
+                let offset = token * raw.hiddenDim
+                for dim in 0..<raw.hiddenDim {
+                    pooled[dim] += buf[offset + dim]
+                }
+            }
+        }
+        let inverseCount = 1 / Float(raw.numTokens)
+        for dim in 0..<raw.hiddenDim {
+            pooled[dim] *= inverseCount
+        }
+        return pooled
+    }
+}
+
 extension LlamaBackend {
 
     /// Extract the last-token hidden state from the backbone after a
@@ -165,5 +216,20 @@ extension LlamaBackend {
         #else
         throw LFMEngineError.inferenceFailed("llama.cpp not available on this platform")
         #endif
+    }
+
+    /// Convenience: run a prompt-only forward pass and **mean-pool** all token
+    /// hidden states into one vector — the correct pooling for LFM2.5 classifier
+    /// heads (the final layer is conv, so last-token reads only ~3 tokens). Both
+    /// the telco shared-clf and telco-turn-relation heads use this so their
+    /// runtime pooling matches the mean pooling used at training time. The buffer
+    /// length is validated by `EmbeddingPooling.mean`, which throws (rather than
+    /// trapping) on a malformed result.
+    public func meanPooledEmbedding(
+        prompt: String,
+        clearCache: Bool = true
+    ) throws -> [Float] {
+        let raw = try allTokenEmbeddings(prompt: prompt, clearCache: clearCache)
+        return try EmbeddingPooling.mean(raw)
     }
 }

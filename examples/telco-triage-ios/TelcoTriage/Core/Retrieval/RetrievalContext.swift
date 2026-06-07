@@ -33,8 +33,8 @@ public struct RetrievalContext: Sendable, Equatable {
     /// `page_id` of the RAG unit cited on the most recent assistant
     /// turn (e.g. `"03.00"`). When set, the dispatcher's short-followup
     /// override may force the new turn's evidence back to this page —
-    /// see `VerizonChatDispatcher.handleRagStepByStepComposer` for the
-    /// gating rule. Mirrors the Python harness's
+    /// see `VerizonChatDispatcher.runComposerPipeline` and
+    /// `TelcoPolicyEngine` for the gating rule. Mirrors the Python harness's
     /// `ConversationState.prior_page_id` so the Step 5b acceptance gates
     /// hold byte-for-byte against the iOS dispatcher.
     ///

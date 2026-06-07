@@ -1,0 +1,37 @@
+{
+  "num_classes": 12,
+  "hidden_dim": 1024,
+  "weight_file": "telco-turn-relation_classifier_weights.bin",
+  "bias_file": "telco-turn-relation_classifier_bias.bin",
+  "id2label": {
+    "0": "independent_new_task",
+    "1": "continuation_same_task",
+    "2": "continuation_same_section",
+    "3": "step_focus",
+    "4": "clarification_answer",
+    "5": "confirmation_yes",
+    "6": "confirmation_no",
+    "7": "repair_cannot_find",
+    "8": "repair_failed",
+    "9": "topic_switch",
+    "10": "escalation_request",
+    "11": "ambiguous_short_turn"
+  },
+  "label2id": {
+    "independent_new_task": 0,
+    "continuation_same_task": 1,
+    "continuation_same_section": 2,
+    "step_focus": 3,
+    "clarification_answer": 4,
+    "confirmation_yes": 5,
+    "confirmation_no": 6,
+    "repair_cannot_find": 7,
+    "repair_failed": 8,
+    "topic_switch": 9,
+    "escalation_request": 10,
+    "ambiguous_short_turn": 11
+  },
+  "task": "telco_turn_relation",
+  "pooling": "mean",
+  "format": "float32_row_major"
+}

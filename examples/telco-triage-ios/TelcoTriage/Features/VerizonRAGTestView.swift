@@ -13,7 +13,7 @@
 // .engineering. Hidden from customer-facing surfaces.
 
 // NOTE: no `import LFMEngine` — the LFMEngine sources are compiled
-// directly into the VerizonSupportPOC app target (see project.pbxproj),
+// directly into the TelcoTriage app target (see project.pbxproj),
 // so `LlamaBackend`, `LlamaChatMessage`, and `GenerationParams` are
 // already in this module's namespace.
 import SwiftUI

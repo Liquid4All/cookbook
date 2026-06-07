@@ -98,4 +98,31 @@ public struct RAGUnit: Codable, Sendable, Equatable {
         }
         return tokens
     }
+
+    /// Fraction of the query's content tokens that appear in this unit's
+    /// "aboutness" fields (title, task id, citation label, aliases, steps,
+    /// section). A length-normalised `[0, 1]` lexical-coverage measure.
+    ///
+    /// Used by `TelcoPolicyEngine` as the corroboration veto for the
+    /// out-of-scope scope-risk signal (ADR-029 §3): a unit that lexically
+    /// covers a majority of the query's content words is a real local answer
+    /// and overrides the scope decline. Body prose is intentionally excluded —
+    /// a term mentioned in passing in the body does not make the page *about*
+    /// the query, and including it would let tangential pages spuriously clear
+    /// the veto.
+    ///
+    /// This is **not** a universal grounding floor: measured holdout
+    /// distributions show many genuine terse support turns with coverage well
+    /// below 0.5, so the policy engine only consults it in conjunction with the
+    /// out-of-scope lexicon, never as a blanket gate.
+    public func groundingCoverage(forQuery query: String) -> Double {
+        let qTokens = Set(BM25Tokenizer.tokenize(query))
+        guard !qTokens.isEmpty else { return 0.0 }
+        var bag = taskObjectiveTokens
+        for step in steps {
+            for token in BM25Tokenizer.tokenize(step) { bag.insert(token) }
+        }
+        for token in BM25Tokenizer.tokenize(section) { bag.insert(token) }
+        return Double(qTokens.intersection(bag).count) / Double(qTokens.count)
+    }
 }

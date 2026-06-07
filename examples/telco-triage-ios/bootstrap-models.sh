@@ -22,6 +22,7 @@ DST_RESOURCES="$SCRIPT_DIR/TelcoTriage/Resources"
 REQUIRED_MODELS=(
   "lfm25-350m-base-Q4_K_M.gguf"
   "telco-shared-clf-v1.gguf"
+  "telco-turn-relation-v4.gguf"
   "telco-tool-selector-v3.gguf"
   "telco-dialogue-repair-v4.gguf"
 )
@@ -42,6 +43,14 @@ TELCO_HEADS=(
   "telco-pii-risk"
   "telco-transcript-quality"
   "telco-slot-completeness"
+)
+
+TURN_RELATION_HEADS=(
+  "telco-turn-relation"
+)
+
+OPTIONAL_TELCO_HEADS=(
+  "telco-topic-scope"
 )
 
 if [[ ! -d "$SRC" ]]; then
@@ -66,18 +75,8 @@ copy_required() {
   echo "copied $label"
 }
 
-echo "Using Telco Triage pack: $SRC"
-echo ""
-
-for name in "${REQUIRED_MODELS[@]}"; do
-  copy_required "$SRC/$name" "$DST_MODELS/$name" "$name"
-done
-
-for name in "${REQUIRED_JSON[@]}"; do
-  copy_required "$SRC/$name" "$DST_RESOURCES/$name" "$name"
-done
-
-for head in "${TELCO_HEADS[@]}"; do
+copy_classifier_triplet() {
+  local head="$1"
   copy_required \
     "$SRC/${head}_classifier_weights.bin" \
     "$DST_RESOURCES/${head}_classifier_weights.bin" \
@@ -90,6 +89,44 @@ for head in "${TELCO_HEADS[@]}"; do
     "$SRC/${head}_classifier_meta.json" \
     "$DST_RESOURCES/${head}_classifier_meta.json" \
     "${head}_classifier_meta.json"
+}
+
+copy_optional_classifier_triplet() {
+  local head="$1"
+  local weights="$SRC/${head}_classifier_weights.bin"
+  local bias="$SRC/${head}_classifier_bias.bin"
+  local meta="$SRC/${head}_classifier_meta.json"
+  if [[ -f "$weights" && -f "$bias" && -f "$meta" ]]; then
+    cp "$weights" "$DST_RESOURCES/${head}_classifier_weights.bin"
+    cp "$bias" "$DST_RESOURCES/${head}_classifier_bias.bin"
+    cp "$meta" "$DST_RESOURCES/${head}_classifier_meta.json"
+    echo "copied optional ${head}_classifier_{weights,bias,meta}"
+  else
+    echo "skipped optional ${head}_classifier_{weights,bias,meta}"
+  fi
+}
+
+echo "Using Telco Triage pack: $SRC"
+echo ""
+
+for name in "${REQUIRED_MODELS[@]}"; do
+  copy_required "$SRC/$name" "$DST_MODELS/$name" "$name"
+done
+
+for name in "${REQUIRED_JSON[@]}"; do
+  copy_required "$SRC/$name" "$DST_RESOURCES/$name" "$name"
+done
+
+for head in "${TELCO_HEADS[@]}"; do
+  copy_classifier_triplet "$head"
+done
+
+for head in "${TURN_RELATION_HEADS[@]}"; do
+  copy_classifier_triplet "$head"
+done
+
+for head in "${OPTIONAL_TELCO_HEADS[@]}"; do
+  copy_optional_classifier_triplet "$head"
 done
 
 echo ""
