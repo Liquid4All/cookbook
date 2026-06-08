@@ -135,13 +135,20 @@ public struct TelcoStateResolution: Sendable, Equatable {
 ///    valid only when a tool confirmation is actually pending — a bare "yes" with
 ///    no pending tool must never execute or confirm.
 /// 8. Topic switch — clear context, retrieve fresh.
-/// 9. Ambiguous short turn — by relation label *or* a structural ≤2 content-token
+/// 9. Contextual action request ("can you do it for me?") — not a search
+///    query. With a pending tool it confirms that tool; with a valid active
+///    task, carry it over (reuse) so the policy can resolve the active tool;
+///    otherwise ask what "it" refers to.
+/// 10. Contextual generic help ("can you help me?") — not a search query. With
+///    a valid active task, carry it over (reuse); otherwise ask for the missing
+///    detail rather than grounding the Help & feedback page.
+/// 11. Ambiguous short turn — by relation label *or* a structural ≤2 content-token
 ///    signal (the same length doctrine the situation overlay uses). With a valid
 ///    active task, carry it over (reuse); otherwise ask for the missing detail
 ///    rather than grounding a fresh page on two words.
-/// 10. Continuation / step-focus — stay on the active task with prior bias, or
+/// 12. Continuation / step-focus — stay on the active task with prior bias, or
 ///     retrieve fresh if there is no active task.
-/// 11. Independent new task (or no relation) — retrieve fresh.
+/// 13. Independent new task (or no relation) — retrieve fresh.
 public enum TelcoStateOperationResolver {
     /// Content-token count at or below which a turn is treated as structurally
     /// ambiguous. Mirrors `situation_eval.classify_situation`'s `ntok <= 2` rule
@@ -240,7 +247,49 @@ public enum TelcoStateOperationResolver {
             )
         }
 
-        // 9. Ambiguous short turn — relation label or structural ≤2-token signal.
+        // 9. Contextual action request — "can you do it for me" is a pronoun
+        //    act over the active task, not a fresh RAG query. The policy layer
+        //    still performs the ToolRegistry gate, so this cannot manufacture a
+        //    tool for pages that do not have one.
+        if ConversationStateRecorder.isContextualActionRequest(query) {
+            if state.pendingToolID != nil {
+                return .init(
+                    operation: .confirmationYes,
+                    retrieval: state.hasActiveTask ? .priorBias : .fresh,
+                    reason: "contextual_action_confirmation"
+                )
+            }
+            if state.hasActiveTask {
+                return .init(
+                    operation: .reuseActiveEvidence,
+                    retrieval: .reusePrior,
+                    reason: "contextual_action_carryover"
+                )
+            }
+            return .init(
+                operation: .askClarification,
+                retrieval: .none,
+                reason: "contextual_action_no_state"
+            )
+        }
+
+        // 10. Generic help with no object — dialogue act, not a Help & feedback
+        //    page search. Carry the active task if one exists; otherwise ask what
+        //    the user wants help with. This is deliberately separate from the
+        //    structural short-turn rule because "can you help me" is four
+        //    whitespace tokens but semantically under-specified.
+        if ConversationStateRecorder.isGenericHelpRequest(query) {
+            if state.hasActiveTask {
+                return .init(
+                    operation: .reuseActiveEvidence,
+                    retrieval: .reusePrior,
+                    reason: "generic_help_carryover"
+                )
+            }
+            return .init(operation: .askClarification, retrieval: .none, reason: "generic_help_no_state")
+        }
+
+        // 11. Ambiguous short turn — relation label or structural ≤2-token signal.
         if relation == .ambiguousShortTurn || isStructurallyShort(query) {
             if state.hasActiveTask {
                 return .init(
@@ -250,7 +299,7 @@ public enum TelcoStateOperationResolver {
             return .init(operation: .askClarification, retrieval: .none, reason: "ambiguous_no_state")
         }
 
-        // 10. Continuation / step-focus — stay on task with prior bias, else fresh.
+        // 12. Continuation / step-focus — stay on task with prior bias, else fresh.
         switch relation {
         case .continuationSameTask, .continuationSameSection:
             return state.hasActiveTask
@@ -269,7 +318,7 @@ public enum TelcoStateOperationResolver {
             break
         }
 
-        // 11. Independent new task, or no relation available.
+        // 13. Independent new task, or no relation available.
         return .init(operation: .updateNewTask, retrieval: .fresh, reason: "independent_new_task")
     }
 

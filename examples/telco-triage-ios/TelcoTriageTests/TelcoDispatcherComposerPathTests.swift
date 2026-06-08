@@ -345,7 +345,7 @@ final class TelcoDispatcherComposerPathTests: XCTestCase {
         XCTAssertEqual(seenInput?.conversationState.priorPageID, "02.07")
     }
 
-    func test_dialogueRepairV4KeepsToolConfirmationOwnedByDispatcher() async {
+    func test_dialogueRepairV4CannotPromotePendingToolWithoutExplicitAction() async {
         let verbalizer = StubDialogueRepairVerbalizer(text: "I can try restarting the router from here.")
         let understanding = makeTelcoUnderstanding(
             routingLane: .localTool,
@@ -372,12 +372,12 @@ final class TelcoDispatcherComposerPathTests: XCTestCase {
         )
 
         XCTAssertEqual(result.source, .dialogueRepair)
-        XCTAssertEqual(result.composerRoute, .toolAction)
-        XCTAssertEqual(result.requiresConfirmation, true)
-        XCTAssertEqual(result.executableToolIntent, .restartRouter)
-        XCTAssertTrue(
+        XCTAssertEqual(result.composerRoute, .ragAnswer)
+        XCTAssertEqual(result.requiresConfirmation, false)
+        XCTAssertNil(result.executableToolIntent)
+        XCTAssertFalse(
             result.text.contains("Reply 'yes' to confirm."),
-            "Swift owns the confirmation clause even when V4 verbalizes the repair text"
+            "Pending tool state must not promote a repair turn into a tool confirmation"
         )
     }
 

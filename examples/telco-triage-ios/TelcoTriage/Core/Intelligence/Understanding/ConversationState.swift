@@ -548,6 +548,31 @@ public enum ConversationStateRecorder {
         ) != nil
     }
 
+    /// True when the user asks for generic help with the current task,
+    /// without naming a new support object. Standalone, these turns are
+    /// under-specified ("Can you help me?"); with an active task they
+    /// continue that task. Explicit person-seeking variants remain
+    /// live-agent requests via `isLiveAgentRequest`.
+    public static func isGenericHelpRequest(_ message: String) -> Bool {
+        let normalized = normalize(message)
+        return genericHelpPatterns.firstMatch(
+            in: normalized,
+            range: NSRange(normalized.startIndex..., in: normalized)
+        ) != nil
+    }
+
+    /// True when the user asks the assistant to perform the active task using
+    /// a pronoun ("it"/"this"/"that") rather than naming a new task. These
+    /// turns are only meaningful with dialogue state; the policy layer still
+    /// requires a registered tool before routing to execution.
+    public static func isContextualActionRequest(_ message: String) -> Bool {
+        let normalized = normalize(message)
+        return contextualActionPatterns.firstMatch(
+            in: normalized,
+            range: NSRange(normalized.startIndex..., in: normalized)
+        ) != nil
+    }
+
     /// True when the user message is a bare affirmative ("yes", "yep",
     /// "go ahead", "do it"). Used by the pending-clarification path to
     /// recognise "yes" as "confirm the previous proposal" rather than
@@ -623,6 +648,46 @@ public enum ConversationStateRecorder {
         )\b
         """#,
         options: [.allowCommentsAndWhitespace]
+    )
+
+    /// Generic help requests that contain no new object ("router",
+    /// "Wi-Fi", "password", etc.). These are dialogue acts, not search
+    /// queries. Do not add "someone/agent/person" here; those belong
+    /// to the live-agent lexicon above.
+    // swiftlint:disable:next force_try
+    private static let genericHelpPatterns: NSRegularExpression = try! NSRegularExpression(
+        pattern: #"""
+        ^\s*(?:
+            (?:(?:can|could|would|will)\s+you\s+)?(?:please\s+)?help(?:\s+me)?
+                (?:\s+(?:with\s+)?(?:this|that|it|the\s+steps?))?
+          | (?:i\s+)?need\s+(?:some\s+)?help
+                (?:\s+(?:with\s+)?(?:this|that|it|the\s+steps?))?
+          | (?:(?:can|could|would|will)\s+you\s+)?(?:please\s+)?
+                (?:(?:walk\s+me\s+through)|(?:guide\s+me))
+                (?:\s+(?:this|that|it|the\s+steps?))?
+          | (?:what\s+now|now\s+what)
+        )\s*[?.!]?\s*$
+        """#,
+        options: [.allowCommentsAndWhitespace, .caseInsensitive]
+    )
+
+    /// Pronoun-based requests to perform the active task. Excludes "how do I
+    /// do it" / "tell me how to do it" because those are informational, not
+    /// execution requests.
+    // swiftlint:disable:next force_try
+    private static let contextualActionPatterns: NSRegularExpression = try! NSRegularExpression(
+        pattern: #"""
+        ^\s*(?:
+            (?:(?:can|could|would|will)\s+you\s+)?
+                (?:(?:do|perform|handle|run|start|take\s+care\s+of)\s+(?:it|this|that))
+                (?:\s+for\s+me)?
+          | (?:please\s+)?(?:do|perform|handle|run|start)\s+(?:it|this|that)
+                (?:\s+for\s+me)?
+          | (?:please\s+)?(?:take\s+care\s+of)\s+(?:it|this|that)
+                (?:\s+for\s+me)?
+        )\s*[?.!]?\s*$
+        """#,
+        options: [.allowCommentsAndWhitespace, .caseInsensitive]
     )
 
     /// Bare affirmatives. Tight on purpose — "yes please send it" is

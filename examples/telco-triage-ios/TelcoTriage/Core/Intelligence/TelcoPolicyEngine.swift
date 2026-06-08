@@ -198,14 +198,45 @@ public enum TelcoPolicyEngine {
             // Ambiguous continuation of an active task → reuse its evidence
             // rather than re-retrieving on an under-specified turn.
             if state.hasActiveTask {
+                if ConversationStateRecorder.isContextualActionRequest(signals.query),
+                   let intent = registeredToolIntent(
+                       forLinkID: state.priorLinkID,
+                       toolRegistry: toolRegistry,
+                       aliasMap: aliasMap
+                   ) {
+                    return activeToolActionResolution(
+                        intent: intent,
+                        reuseActiveEvidence: true,
+                        reason: "contextual_action_request"
+                    )
+                }
                 return reuseEvidenceResolution(reason: "reuse_active_evidence")
             }
             // Defensive: the resolver only emits this with an active task; fall
             // through to grounding if state drifted.
 
+        case .confirmationYes:
+            // Typed confirmation should normally be recovered by ChatViewModel
+            // before the composer pipeline. If it reaches the policy owner, the
+            // same ToolRegistry gate still applies and prevents accidental tool
+            // manufacture.
+            guard let pendingToolID = state.pendingToolID else { break }
+            if let intent = registeredToolIntent(
+                forToolOrLinkID: pendingToolID,
+                toolRegistry: toolRegistry,
+                aliasMap: aliasMap
+            ) {
+                return activeToolActionResolution(
+                    intent: intent,
+                    reuseActiveEvidence: state.hasActiveTask,
+                    reason: "confirmation_yes"
+                )
+            }
+            break
+
         case .carryoverActiveTask, .retrieveWithPriorBias, .retrieveFresh,
              .updateNewTask, .clearContextTopicSwitch, .clarificationAnswer,
-             .confirmationYes, .confirmationNo:
+             .confirmationNo:
             // Grounding operations — the retrieval strategy already shaped the
             // evidence upstream; fall through to the greeting / soft-head /
             // scope / grounded rungs below.
@@ -225,6 +256,9 @@ public enum TelcoPolicyEngine {
         // of these back to a hard preempt once the corresponding head is
         // recalibrated (ADR-029 §6 / ADR-028 retrain).
         if !hasGroundableAnswer, let understanding {
+            if understanding.routingLane.isConfident(.blocked) {
+                return .terminal(.outOfScope, handoff: nil, reason: "head_blocked_no_grounding")
+            }
             if understanding.supportIntent.isConfident(.agentHandoff)
                 || understanding.routingLane.isConfident(.humanEscalation)
                 || understanding.issueComplexity.isConfident(.humanRequired)
@@ -312,6 +346,21 @@ public enum TelcoPolicyEngine {
         )
     }
 
+    private static func activeToolActionResolution(
+        intent: ToolIntent,
+        reuseActiveEvidence: Bool,
+        reason: String
+    ) -> TelcoPolicyResolution {
+        TelcoPolicyResolution(
+            route: .toolAction,
+            requiresConfirmation: intent.requiresConfirmation,
+            executableToolIntent: intent,
+            handoff: nil,
+            reuseActiveEvidence: reuseActiveEvidence,
+            reason: reason
+        )
+    }
+
     /// Whether the selected unit lexically covers enough of the query's content
     /// tokens to count as a real local answer. This is the corroboration veto
     /// for the out-of-scope scope-risk signal (Tier C.5) — it is consulted
@@ -352,36 +401,35 @@ public enum TelcoPolicyEngine {
 
         // Resolve the registered tool behind this unit (alias-map first, then
         // the legacy direct link_id == tool_id path for unmapped contexts).
-        var tool: Tool?
-        var imperativeOnly = false
-        if let aliasMap, let alias = aliasMap.alias(forLinkID: unit.linkID) {
-            if let intent = ToolIntent(toolID: alias.toolID) {
-                tool = toolRegistry.tool(for: intent)
-                imperativeOnly = alias.imperativeOnly
-            }
-        } else if let intent = ToolIntent(toolID: unit.linkID) {
-            tool = toolRegistry.tool(for: intent)
-        }
-        guard let resolvedTool = tool,
-              let resolvedIntent = ToolIntent(toolID: resolvedTool.id) else {
+        guard let resolvedIntent = registeredToolIntent(
+            forLinkID: unit.linkID,
+            toolRegistry: toolRegistry,
+            aliasMap: aliasMap
+        ) else {
             // No executable capability → grounded answer only.
             return .grounded(.ragAnswer)
+        }
+        let imperativeOnly = aliasMap?.alias(forLinkID: unit.linkID)?.imperativeOnly == true
+
+        if ConversationStateRecorder.isContextualActionRequest(query), state.hasActiveTask {
+            return .tool(.toolAction, intent: resolvedIntent)
         }
 
         let mood = inferQueryMood(query)
 
         // Gated head evidence (ADR-029 §2). A confident `local_answer` suppresses
         // the action offer. A confident `local_tool` forces the tool action, but
-        // only when corroborated — either the turn's structural mood expresses
-        // action intent, or there is an active tool flow on this task (a pending
-        // confirmation already in play). An action lane on a fresh passive
-        // statement ("connection issues") is a head false positive and must not
-        // manufacture a side-effecting tool offer.
+        // only when the CURRENT turn's structural mood expresses action intent.
+        // A pending confirmation is handled by the explicit `confirmationYes`
+        // state operation above; it is not action intent for unrelated follow-up
+        // questions. An action lane on a fresh passive statement ("connection
+        // issues") is a head false positive and must not manufacture a
+        // side-effecting tool offer.
         if understanding?.routingLane.isConfident(.localAnswer) == true {
             return .grounded(.ragAnswer)
         }
         if understanding?.routingLane.isConfident(.localTool) == true,
-           mood == .actionImperative || state.pendingToolID != nil {
+           mood == .actionImperative {
             return .tool(.toolAction, intent: resolvedIntent)
         }
 
@@ -402,6 +450,39 @@ public enum TelcoPolicyEngine {
         case .navigateImperative, .statement:
             return .grounded(.ragAnswer)
         }
+    }
+
+    private static func registeredToolIntent(
+        forLinkID linkID: String?,
+        toolRegistry: ToolRegistry,
+        aliasMap: ToolAliasMap?
+    ) -> ToolIntent? {
+        let intent: ToolIntent?
+        if let alias = aliasMap?.alias(forLinkID: linkID) {
+            intent = ToolIntent(toolID: alias.toolID)
+        } else if let linkID {
+            intent = ToolIntent(toolID: linkID)
+        } else {
+            intent = nil
+        }
+        guard let resolved = intent,
+              toolRegistry.tool(for: resolved) != nil else {
+            return nil
+        }
+        return resolved
+    }
+
+    private static func registeredToolIntent(
+        forToolOrLinkID id: String?,
+        toolRegistry: ToolRegistry,
+        aliasMap: ToolAliasMap?
+    ) -> ToolIntent? {
+        if let id,
+           let direct = ToolIntent(toolID: id),
+           toolRegistry.tool(for: direct) != nil {
+            return direct
+        }
+        return registeredToolIntent(forLinkID: id, toolRegistry: toolRegistry, aliasMap: aliasMap)
     }
 }
 

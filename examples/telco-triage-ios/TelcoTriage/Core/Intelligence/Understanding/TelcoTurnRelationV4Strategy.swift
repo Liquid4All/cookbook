@@ -184,6 +184,12 @@ public final class TelcoTurnRelationV4Strategy: RelationalHeadsStrategy, @unchec
         if ConversationStateRecorder.isLiveAgentRequest(query) {
             return .escalationRequest
         }
+        if ConversationStateRecorder.isContextualActionRequest(query) {
+            return runtimeState.pendingConfirmation ? .confirmationYes : .ambiguousShortTurn
+        }
+        if ConversationStateRecorder.isGenericHelpRequest(query) {
+            return .ambiguousShortTurn
+        }
         if ConversationStateRecorder.isBareAffirmative(query) {
             return runtimeState.pendingConfirmation ? .confirmationYes : .ambiguousShortTurn
         }
