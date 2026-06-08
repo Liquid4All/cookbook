@@ -97,10 +97,14 @@ public struct TelcoSharedUnderstanding: Sendable, Equatable {
             cloudRequirements.hasConfidentActiveLabel()
     }
 
-    /// Hard policy: the turn should not go through local RAG/composer.
+    /// Hard policy: payment/identity data must not go through local RAG/composer.
+    ///
+    /// `routing_lane=blocked` is intentionally not included here. ADR-032 keeps
+    /// non-PII routing-lane deflections corroboration-gated until deployment-
+    /// register precision earns HARD trust; the policy engine handles that
+    /// softer signal only when no local evidence grounds the turn.
     public var isBlocked: Bool {
-        routingLane.isConfident(.blocked) ||
-            piiRisk.isConfident(.containsPaymentIdentityData, minimum: TelcoPolicyThreshold.piiBlock)
+        piiRisk.isConfident(.containsPaymentIdentityData, minimum: TelcoPolicyThreshold.piiBlock)
     }
 
     /// Low-quality voice/partial transcript signal. This asks for

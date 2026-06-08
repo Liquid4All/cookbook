@@ -851,28 +851,10 @@ public actor TelcoChatDispatcher {
             )
         }
 
-        // ---- Retrieve (BM25 hierarchy, state-conditioned) ----
-        // Retrieval runs on every turn — it is sub-millisecond and
-        // side-effect-free — so the policy owner can see evidence
-        // availability before deciding. This unifies what used to be a
-        // pre-retrieval and a post-retrieval policy split (ADR-029 §1).
-        continuation.yield(.retrievalStarted)
-        let history: [ConversationTurnSnippet] = retrievalContext.priorAssistantText.map {
-            [ConversationTurnSnippet(role: "ASSISTANT", body: $0)]
-        } ?? []
-        let retrievalStart = CFAbsoluteTimeGetCurrent()
-        let hits = lexicalRetriever.rank(query: query, context: retrievalContext, k: 3)
-        let retrievalMs = elapsed(retrievalStart)
-        let topUnit = hits.first.flatMap { corpus.unit(forPageID: $0.pageID) }
-        let retrievalCandidates = hits.map {
-            TelcoRetrievalCandidate(pageID: $0.pageID, linkID: $0.linkID, score: $0.score)
-        }
-
         // ---- Resolve the explicit dialogue-state operation (ADR-029 §7) ----
-        // Computed before the route policy so it is authoritative AND serialized
-        // onto the harness report. Retrieval already ran above (sub-ms,
-        // side-effect-free); the operation's retrieval strategy governs whether
-        // the policy reuses the active task's prior evidence vs the fresh top hit.
+        // Computed before retrieval so the data-access layer obeys the state
+        // decision: fresh turns do not inherit stale page/link bias, step-focus
+        // turns do, and ambiguous/repair turns can reuse the active evidence.
         let routePolicyStart = CFAbsoluteTimeGetCurrent()
         let prior = TelcoDeterministicPrior.derive(query: query)
         let stateResolution = TelcoStateOperationResolver.resolve(
@@ -881,6 +863,27 @@ public actor TelcoChatDispatcher {
             prior: prior,
             state: policyState
         )
+
+        // ---- Retrieve (BM25 hierarchy, operation-conditioned) ----
+        // Retrieval is still cheap and side-effect-free, but the context it sees
+        // is now selected by the explicit state operation rather than by whatever
+        // happened to be cached from the prior assistant turn.
+        continuation.yield(.retrievalStarted)
+        let effectiveRetrievalContext = retrievalContextForStrategy(
+            stateResolution.retrieval,
+            original: retrievalContext
+        )
+        let history: [ConversationTurnSnippet] = effectiveRetrievalContext.priorAssistantText.map {
+            [ConversationTurnSnippet(role: "ASSISTANT", body: $0)]
+        } ?? []
+        let retrievalStart = CFAbsoluteTimeGetCurrent()
+        let hits = lexicalRetriever.rank(query: query, context: effectiveRetrievalContext, k: 3)
+        let retrievalMs = elapsed(retrievalStart)
+        let topUnit = hits.first.flatMap { corpus.unit(forPageID: $0.pageID) }
+        let retrievalCandidates = hits.map {
+            TelcoRetrievalCandidate(pageID: $0.pageID, linkID: $0.linkID, score: $0.score)
+        }
+
         let signals = TelcoPolicySignals(
             query: query,
             relation: turnRelation,
@@ -1006,6 +1009,18 @@ public actor TelcoChatDispatcher {
         return topUnit
     }
 
+    private nonisolated func retrievalContextForStrategy(
+        _ strategy: TelcoRetrievalStrategy,
+        original: RetrievalContext
+    ) -> RetrievalContext {
+        switch strategy {
+        case .fresh, .none:
+            return .empty
+        case .priorBias, .reusePrior:
+            return original
+        }
+    }
+
     /// Bridge older dispatcher callers that only carry `RetrievalContext` into
     /// the current policy-engine state contract. The live ChatViewModel passes a
     /// full blackboard snapshot; tests and compatibility callers often only know
@@ -1057,6 +1072,12 @@ public actor TelcoChatDispatcher {
         if ConversationStateRecorder.isLiveAgentRequest(query) {
             return .escalationRequest
         }
+        if ConversationStateRecorder.isContextualActionRequest(query) {
+            return policyState.pendingToolID == nil ? .ambiguousShortTurn : .confirmationYes
+        }
+        if ConversationStateRecorder.isGenericHelpRequest(query) {
+            return .ambiguousShortTurn
+        }
         if ConversationStateRecorder.isBareAffirmative(query) {
             return policyState.pendingToolID == nil ? .ambiguousShortTurn : .confirmationYes
         }
@@ -1068,7 +1089,14 @@ public actor TelcoChatDispatcher {
         }
 
         let normalized = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if normalized.contains("can't find") || normalized.contains("cannot find") {
+        if normalized.contains("can't find")
+            || normalized.contains("cant find")
+            || normalized.contains("cannot find")
+            || normalized.contains("can not find")
+            || normalized.contains("couldn't find")
+            || normalized.contains("couldnt find")
+            || normalized.contains("unable to find")
+            || normalized.contains("not able to find") {
             return .repairCannotFind
         }
         if hasTopicSwitchPrefix(query) {

@@ -335,7 +335,8 @@ final class ChatViewModel: ObservableObject {
         // friction — missing the clarification entirely costs the
         // whole flow.
         if let pendingConfirmation = conversationState.pendingToolConfirmation,
-           ConversationStateRecorder.isBareAffirmative(query) {
+           (ConversationStateRecorder.isBareAffirmative(query)
+            || ConversationStateRecorder.isContextualActionRequest(query)) {
             let priorUserText = previousUserTurnText()
             let (turnRelation, _) = await classifyTelcoTurnRelation(
                 query,
@@ -422,6 +423,8 @@ final class ChatViewModel: ObservableObject {
             )
             return
         }
+
+        clearPendingToolConfirmationIfSuperseded(by: query)
 
         if let pending = conversationState.pendingClarification,
            let recovery = tryFulfillPendingClarification(
@@ -1223,6 +1226,26 @@ final class ChatViewModel: ObservableObject {
             assistantText,
             on: dialogueBlackboard
         )
+    }
+
+    private func clearPendingToolConfirmationIfSuperseded(by query: String) {
+        guard conversationState.pendingToolConfirmation != nil
+            || dialogueBlackboard.pendingToolConfirmation != nil else {
+            return
+        }
+        if ConversationStateRecorder.isBareAffirmative(query)
+            || ConversationStateRecorder.isBareNegative(query)
+            || ConversationStateRecorder.isContextualActionRequest(query) {
+            return
+        }
+        AppLog.intelligence.info("pending-tool-confirmation cleared (superseded by new turn)")
+        conversationState.clearPendingToolConfirmation()
+        if dialogueBlackboard.pendingToolConfirmation != nil {
+            dialogueBlackboard = TelcoDialogueBlackboardReducer.recordToolCancelled(
+                on: dialogueBlackboard,
+                reasonCode: "superseded_by_new_turn"
+            )
+        }
     }
 
     private func runGroundedQA(

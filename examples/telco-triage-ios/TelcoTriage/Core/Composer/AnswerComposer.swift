@@ -99,6 +99,7 @@ public struct DeterministicAnswerComposer: AnswerComposing {
                     hasStepChain = true
                 } else {
                     text = renderGroundedSummaryAnswer(
+                        query: query,
                         unit: unit,
                         route: route
                     )
@@ -239,14 +240,20 @@ private func customerFacingTaskPhrase(_ task: String) -> String {
 /// while preserving the hard guarantee that every visible claim is
 /// extracted from the selected `RAGUnit`.
 private func renderGroundedSummaryAnswer(
+    query: String,
     unit: RAGUnit,
     route: ComposerRoute
 ) -> String {
     let label = unit.displayLabel
     let link = renderLink(label: label, url: unit.canonicalURL)
-    let lead = leadSentence(from: unit)
+    let lead = leadSentence(from: unit, query: query)
         ?? "This section covers \(humanizedLabel(label))."
-    let facts = sourceOrderedFactSentences(from: unit, excluding: lead, limit: 4)
+    let facts: [String]
+    if prefersRankedSummary(for: query) {
+        facts = rankedFactSentences(from: unit, query: query, excluding: lead, limit: 4)
+    } else {
+        facts = sourceOrderedFactSentences(from: unit, excluding: lead, limit: 4)
+    }
 
     var sections: [String] = [lead]
     if !facts.isEmpty {
@@ -266,17 +273,40 @@ private func renderGroundedSummaryAnswer(
     return sections.joined(separator: "\n\n")
 }
 
-private func leadSentence(from unit: RAGUnit) -> String? {
+private func leadSentence(from unit: RAGUnit, query: String) -> String? {
     let sentences = sourceSentences(from: unit.body)
-    let titleTokens = Set(BM25Tokenizer.tokenize(unit.title))
-    let labelTokens = Set(BM25Tokenizer.tokenize(unit.displayLabel))
-    let objectiveTokens = titleTokens.union(labelTokens)
+        .filter { !isLowValueSummarySentence($0) }
+    guard !sentences.isEmpty else { return nil }
 
-    for sentence in sentences.prefix(5) {
-        let sentenceTokens = Set(BM25Tokenizer.tokenize(sentence))
-        if !sentenceTokens.intersection(objectiveTokens).isEmpty {
-            return sentence
+    guard prefersRankedSummary(for: query) else {
+        let objectiveTokens = Set(BM25Tokenizer.tokenize(unit.title))
+            .union(BM25Tokenizer.tokenize(unit.displayLabel))
+        for sentence in sentences.prefix(5) {
+            let sentenceTokens = Set(BM25Tokenizer.tokenize(sentence))
+            if !sentenceTokens.intersection(objectiveTokens).isEmpty {
+                return sentence
+            }
         }
+        return sentences.first
+    }
+
+    let queryTokens = summaryFocusTokens(for: query)
+    let objectiveTokens = summaryObjectiveTokens(for: unit)
+    if let match = rankedSentenceMatches(
+        sentences: sentences,
+        queryTokens: queryTokens,
+        objectiveTokens: objectiveTokens,
+        excluding: nil
+    ).first(where: { $0.queryOverlap > 0 }) {
+        return match.sentence
+    }
+    if let match = rankedSentenceMatches(
+        sentences: sentences,
+        queryTokens: queryTokens,
+        objectiveTokens: objectiveTokens,
+        excluding: nil
+    ).first(where: { $0.objectiveOverlap > 0 }) {
+        return match.sentence
     }
     return sentences.first
 }
@@ -287,6 +317,7 @@ private func sourceOrderedFactSentences(
     limit: Int
 ) -> [String] {
     let sentences = sourceSentences(from: unit.body)
+        .filter { !isLowValueSummarySentence($0) }
     guard let leadIndex = sentences.firstIndex(of: lead) else {
         return Array(sentences.filter { $0 != lead }.prefix(limit))
     }
@@ -295,6 +326,136 @@ private func sourceOrderedFactSentences(
         return Array(afterLead.prefix(limit))
     }
     return Array(sentences.filter { $0 != lead }.prefix(limit))
+}
+
+private func rankedFactSentences(
+    from unit: RAGUnit,
+    query: String,
+    excluding lead: String,
+    limit: Int
+) -> [String] {
+    let sentences = sourceSentences(from: unit.body)
+        .filter { $0 != lead && !isLowValueSummarySentence($0) }
+    guard !sentences.isEmpty else { return [] }
+
+    let matches = rankedSentenceMatches(
+        sentences: sentences,
+        queryTokens: summaryFocusTokens(for: query),
+        objectiveTokens: summaryObjectiveTokens(for: unit),
+        excluding: lead
+    )
+    let relevant = matches
+        .filter { $0.queryOverlap > 0 || $0.objectiveOverlap > 0 || $0.supportCue }
+        .prefix(limit)
+        .map(\.sentence)
+    if !relevant.isEmpty {
+        return Array(relevant)
+    }
+    return Array(sentences.prefix(limit))
+}
+
+private func prefersRankedSummary(for query: String) -> Bool {
+    let lower = query.lowercased()
+    let tokens = Set(BM25Tokenizer.tokenize(query))
+    let diagnosticTokens: Set<String> = [
+        "why", "slow", "sluggish", "lag", "laggy", "weak", "poor", "bad",
+        "issue", "issues", "problem", "problems", "trouble", "troubleshoot",
+        "dropping", "disconnecting", "buffering",
+    ]
+    return !tokens.intersection(diagnosticTokens).isEmpty ||
+        lower.contains("not working")
+}
+
+private struct SummarySentenceMatch {
+    let sentence: String
+    let score: Double
+    let queryOverlap: Int
+    let objectiveOverlap: Int
+    let supportCue: Bool
+}
+
+private func rankedSentenceMatches(
+    sentences: [String],
+    queryTokens: Set<String>,
+    objectiveTokens: Set<String>,
+    excluding: String?
+) -> [SummarySentenceMatch] {
+    sentences.enumerated().compactMap { index, sentence in
+        guard sentence != excluding else { return nil }
+        let sentenceTokens = Set(BM25Tokenizer.tokenize(sentence))
+        let queryOverlap = sentenceTokens.intersection(queryTokens).count
+        let objectiveOverlap = sentenceTokens.intersection(objectiveTokens).count
+        let supportCue = hasSupportCue(sentence)
+        var score = Double(queryOverlap * 4 + objectiveOverlap)
+        if supportCue { score += 1.5 }
+        score -= Double(index) * 0.01
+        return SummarySentenceMatch(
+            sentence: sentence,
+            score: score,
+            queryOverlap: queryOverlap,
+            objectiveOverlap: objectiveOverlap,
+            supportCue: supportCue
+        )
+    }
+    .sorted {
+        if $0.score != $1.score { return $0.score > $1.score }
+        return $0.sentence < $1.sentence
+    }
+}
+
+private func summaryObjectiveTokens(for unit: RAGUnit) -> Set<String> {
+    var tokens = Set(BM25Tokenizer.tokenize(unit.title))
+    for token in BM25Tokenizer.tokenize(unit.displayLabel) { tokens.insert(token) }
+    if let taskID = unit.taskID {
+        for token in BM25Tokenizer.tokenize(taskID) { tokens.insert(token) }
+    }
+    for alias in unit.aliases {
+        for token in BM25Tokenizer.tokenize(alias) { tokens.insert(token) }
+    }
+    return expandWifiTokens(tokens)
+}
+
+private func summaryFocusTokens(for query: String) -> Set<String> {
+    var tokens = Set(BM25Tokenizer.tokenize(query))
+    let lower = query.lowercased()
+    if lower.contains("slow") || lower.contains("sluggish") || lower.contains("lag") {
+        tokens.formUnion([
+            "speed", "performance", "coverage", "reliability", "weak", "fair",
+            "recommended", "action", "repair", "restart", "reset", "optimize",
+            "optimization", "son", "band", "6", "ghz",
+        ])
+    }
+    if lower.contains("why") {
+        tokens.formUnion(["score", "summary", "coverage", "reliability"])
+    }
+    return expandWifiTokens(tokens)
+}
+
+private func expandWifiTokens(_ tokens: Set<String>) -> Set<String> {
+    var expanded = tokens
+    if tokens.contains("wifi") || tokens.contains("wi") || tokens.contains("fi") {
+        expanded.formUnion(["wifi", "wi", "fi", "network", "wireless"])
+    }
+    return expanded
+}
+
+private func isLowValueSummarySentence(_ sentence: String) -> Bool {
+    let normalized = sentence
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+        .lowercased()
+    return normalized == "this page updates hourly" ||
+        normalized == "level 1" ||
+        normalized.hasPrefix("deep link:")
+}
+
+private func hasSupportCue(_ sentence: String) -> Bool {
+    let tokens = Set(BM25Tokenizer.tokenize(sentence))
+    let cues: Set<String> = [
+        "recommended", "action", "improve", "speed", "coverage", "reliability",
+        "weak", "fair", "repair", "restart", "reset", "optimize", "optimization",
+        "connectivity", "issue",
+    ]
+    return !tokens.intersection(cues).isEmpty
 }
 
 private func sourceSentences(from body: String) -> [String] {

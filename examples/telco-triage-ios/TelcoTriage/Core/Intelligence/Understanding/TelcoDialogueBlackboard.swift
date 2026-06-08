@@ -191,7 +191,8 @@ public enum TelcoDialogueBlackboardReducer {
         next.lastRetrievalCandidates = retrievalCandidates
         next.lastPolicyDecision = policyDecision ?? next.lastPolicyDecision
 
-        let relation = observedRelation ?? fallbackRelation(for: userTurn, blackboard: blackboard)
+        let rawRelation = observedRelation ?? fallbackRelation(for: userTurn, blackboard: blackboard)
+        let relation = normalizeRelation(rawRelation, for: userTurn)
         next.lastTurnRelation = relation
         next.auditTrail.append(event(next, .userTurn, "chat", "record_user_turn", now))
         if observedRelation == nil {
@@ -357,6 +358,12 @@ public enum TelcoDialogueBlackboardReducer {
         if ConversationStateRecorder.isDidntWorkContinuation(userTurn) {
             return .repairFailed
         }
+        if ConversationStateRecorder.isContextualActionRequest(userTurn) {
+            return blackboard.pendingToolConfirmation == nil ? .ambiguousShortTurn : .confirmationYes
+        }
+        if ConversationStateRecorder.isGenericHelpRequest(userTurn) {
+            return .ambiguousShortTurn
+        }
         if normalized.contains("can't find") || normalized.contains("cannot find") {
             return .repairCannotFind
         }
@@ -367,6 +374,19 @@ public enum TelcoDialogueBlackboardReducer {
             return .topicSwitch
         }
         return .independentNewTask
+    }
+
+    private static func normalizeRelation(
+        _ relation: TelcoTurnRelation,
+        for userTurn: String
+    ) -> TelcoTurnRelation {
+        if ConversationStateRecorder.isGenericHelpRequest(userTurn) {
+            return .ambiguousShortTurn
+        }
+        if ConversationStateRecorder.isContextualActionRequest(userTurn) {
+            return .ambiguousShortTurn
+        }
+        return relation
     }
 
     private static func clearActiveState(_ blackboard: inout TelcoDialogueBlackboard) {
