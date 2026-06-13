@@ -1,0 +1,144 @@
+name: Release LocalCowork
+
+on:
+  push:
+    tags:
+      - "localcowork-v*"
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: examples/localcowork
+
+jobs:
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-14
+          - target: x86_64-apple-darwin
+            runner: macos-14
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: examples/localcowork/src-tauri
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli
+
+      - name: Install all dependencies
+        run: |
+          # Root workspace (includes @tauri-apps/api, zustand, react, etc.)
+          npm install
+          # TypeScript MCP servers
+          for dir in mcp-servers/filesystem mcp-servers/calendar mcp-servers/email mcp-servers/task mcp-servers/data mcp-servers/audit mcp-servers/clipboard mcp-servers/system; do
+            if [ -f "$dir/package.json" ]; then
+              (cd "$dir" && npm install)
+            fi
+          done
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Tauri app
+        run: cargo tauri build --target ${{ matrix.target }}
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p release-artifacts
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.dmg" -exec cp {} release-artifacts/ \;
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.app.tar.gz" -exec cp {} release-artifacts/ \;
+          find src-tauri/target/${{ matrix.target }}/release/bundle -name "*.app.tar.gz.sig" -exec cp {} release-artifacts/ \;
+          ls -lh release-artifacts/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: localcowork-${{ matrix.target }}
+          path: examples/localcowork/release-artifacts/*
+
+  create-release:
+    needs: build-macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#localcowork-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: |
+          shasum -a 256 * > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "LocalCowork v${{ steps.version.outputs.version }}"
+          body: |
+            ## LocalCowork v${{ steps.version.outputs.version }}
+
+            On-device AI agent powered by LFM2-24B-A2B from Liquid AI.
+            Runs entirely on-device — no cloud, no data leaving your machine.
+
+            ### Requirements
+            - Apple Silicon Mac (M1 Pro or later) with 16+ GB unified memory
+            - macOS 12 (Monterey) or later
+
+            ### Install via Homebrew
+            ```bash
+            brew tap pierretokns/localcowork
+            brew install --cask localcowork
+            ```
+
+            ### Model download (~14 GB)
+            ```bash
+            pip3 install huggingface-hub
+            huggingface-cli download LiquidAI/LFM2-24B-A2B-GGUF \
+              LFM2-24B-A2B-Q4_K_M.gguf --local-dir ~/Models
+            ```
+
+            ### Checksums
+            ```
+            $(cat artifacts/checksums.txt)
+            ```
+
+            ---
+            Community package of [Liquid AI's open-source project](https://github.com/Liquid4All/cookbook/tree/main/examples/localcowork) (MIT license).
+          files: artifacts/*
+          draft: false
+          prerelease: false
