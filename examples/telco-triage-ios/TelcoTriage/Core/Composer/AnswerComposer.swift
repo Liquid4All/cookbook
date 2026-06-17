@@ -90,7 +90,13 @@ public struct DeterministicAnswerComposer: AnswerComposing {
                 let label = unit.displayLabel
                 let url = unit.canonicalURL
                 let intro = introForRoute(route, task: task)
-                if let focused = renderFocusedStepAnswer(query: query, unit: unit, route: route) {
+                if let fieldLookup = renderFieldLookupAnswer(
+                    query: query,
+                    unit: unit,
+                    route: route
+                ) {
+                    text = fieldLookup
+                } else if let focused = renderFocusedStepAnswer(query: query, unit: unit, route: route) {
                     text = focused
                     hasStepChain = true
                 } else if !unit.steps.isEmpty {
@@ -273,6 +279,73 @@ private func renderGroundedSummaryAnswer(
     return sections.joined(separator: "\n\n")
 }
 
+private enum FieldLookupKind {
+    case networkName
+    case wifiPassword
+}
+
+private func renderFieldLookupAnswer(
+    query: String,
+    unit: RAGUnit,
+    route: ComposerRoute
+) -> String? {
+    guard route == .ragAnswer,
+          let kind = fieldLookupKind(for: query) else {
+        return nil
+    }
+
+    let body = decodeSourceText(unit.body)
+    let label = unit.displayLabel
+    let link = renderLink(label: label, url: unit.canonicalURL)
+    let cta = "Open \(label) for the exact screen: \(link)."
+
+    switch kind {
+    case .networkName:
+        guard body.localizedCaseInsensitiveContains("Network Name") else { return nil }
+        return [
+            "I can't see the actual SSID value here. In the app, your SSID is shown as the Network Name in Wi-Fi Management.",
+            """
+            Key details:
+            - Use the Primary tab for your main home Wi-Fi network.
+            - Guest and IoT have their own tabs if you need those network names.
+            - On each network tile, the header displays the Network Name.
+            """,
+            cta,
+        ].joined(separator: "\n\n")
+    case .wifiPassword:
+        guard body.localizedCaseInsensitiveContains("Wi-Fi password") ||
+            body.localizedCaseInsensitiveContains("WiFi password") else {
+            return nil
+        }
+        return [
+            "I can't see the actual Wi-Fi password value here. In the app, the password is on the Wi-Fi Management tile for the selected network.",
+            """
+            Key details:
+            - Choose Primary, Guest, or IoT.
+            - The Wi-Fi password appears beneath the tile header.
+            - It is hidden by default; select Show to temporarily reveal it.
+            """,
+            cta,
+        ].joined(separator: "\n\n")
+    }
+}
+
+private func fieldLookupKind(for query: String) -> FieldLookupKind? {
+    guard isFieldLookupQuestion(query) else { return nil }
+    let lower = query.lowercased()
+    let tokens = Set(BM25Tokenizer.tokenize(query))
+    if tokens.contains("password") {
+        return .wifiPassword
+    }
+    if tokens.contains("ssid") ||
+        lower.contains("network name") ||
+        lower.contains("wifi name") ||
+        lower.contains("wi-fi name") {
+        return .networkName
+    }
+    return nil
+}
+
 private func leadSentence(from unit: RAGUnit, query: String) -> String? {
     let sentences = sourceSentences(from: unit.body)
         .filter { !isLowValueSummarySentence($0) }
@@ -362,7 +435,14 @@ private func prefersRankedSummary(for query: String) -> Bool {
         "issue", "issues", "problem", "problems", "trouble", "troubleshoot",
         "dropping", "disconnecting", "buffering",
     ]
+    let identityTokens: Set<String> = [
+        "ssid", "password", "credential", "credentials",
+    ]
     return !tokens.intersection(diagnosticTokens).isEmpty ||
+        !tokens.intersection(identityTokens).isEmpty ||
+        lower.contains("network name") ||
+        lower.contains("wifi name") ||
+        lower.contains("wi-fi name") ||
         lower.contains("not working")
 }
 
@@ -428,6 +508,15 @@ private func summaryFocusTokens(for query: String) -> Set<String> {
     if lower.contains("why") {
         tokens.formUnion(["score", "summary", "coverage", "reliability"])
     }
+    if lower.contains("ssid") ||
+        lower.contains("network name") ||
+        lower.contains("wifi name") ||
+        lower.contains("wi-fi name") {
+        tokens.formUnion(["network", "name", "primary", "guest", "iot", "shown", "displayed"])
+    }
+    if lower.contains("password") {
+        tokens.formUnion(["password", "show", "hidden", "primary", "guest", "iot"])
+    }
     return expandWifiTokens(tokens)
 }
 
@@ -435,6 +524,9 @@ private func expandWifiTokens(_ tokens: Set<String>) -> Set<String> {
     var expanded = tokens
     if tokens.contains("wifi") || tokens.contains("wi") || tokens.contains("fi") {
         expanded.formUnion(["wifi", "wi", "fi", "network", "wireless"])
+    }
+    if tokens.contains("ssid") {
+        expanded.formUnion(["ssid", "network", "name", "wifi", "wi", "fi", "wireless"])
     }
     return expanded
 }

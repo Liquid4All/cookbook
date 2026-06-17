@@ -190,6 +190,14 @@ public enum TelcoStateOperationResolver {
             )
         }
 
+        // Field/value lookups are complete fresh questions even when a prior
+        // task is active. Without this guard, relation heads can misread
+        // "Where is my network SSID?" as repair/step-focus over the previous
+        // answer.
+        if isFieldLookupQuestion(query) {
+            return .init(operation: .updateNewTask, retrieval: .fresh, reason: "field_lookup")
+        }
+
         // 4. Repair — reuse the active task's evidence (or ask if nothing to reuse).
         if relation == .repairFailed {
             return repairResolution(state: state, reason: "repair_failed", op: .repairFailed)

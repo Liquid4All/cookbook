@@ -210,12 +210,6 @@ public final class StageBGenerator: StageBGenerating, @unchecked Sendable {
         query: String,
         retrievedChunk: ColBERTChunk?
     ) async throws -> StageBResponse {
-        do {
-            try await backend.setAdapter(path: adapterPath, scale: 1.0)
-        } catch {
-            throw StageBError.backendFailure(underlying: error)
-        }
-
         // Pick the system prompt based on whether we have a retrieved
         // chunk. Grounded path is the production chat flow (ADR §11.3);
         // ungrounded path is the engineering probe view that exercises
@@ -231,11 +225,12 @@ public final class StageBGenerator: StageBGenerating, @unchecked Sendable {
 
         let (text, tokens, timing): (String, Int, LlamaBackend.GenerationTiming)
         do {
-            (text, tokens, timing) = try await backend.generate(
+            (text, tokens, timing) = try await backend.generateWithAdapter(
                 messages: [
                     LlamaChatMessage(role: "system", content: systemPrompt),
                     LlamaChatMessage(role: "user", content: query),
                 ],
+                adapterPath: adapterPath,
                 maxTokens: 160,
                 temperature: 0,
                 stopSequences: [],

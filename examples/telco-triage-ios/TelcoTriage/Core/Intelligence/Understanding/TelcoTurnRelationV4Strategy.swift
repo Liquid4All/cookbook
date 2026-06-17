@@ -103,8 +103,11 @@ public final class TelcoTurnRelationV4Strategy: RelationalHeadsStrategy, @unchec
 
         let prediction: ClassifierHead.Prediction
         do {
-            try await backend.setAdapter(path: adapterPath, scale: 1.0)
-            let pooled = try await backend.meanPooledEmbedding(prompt: text, clearCache: true)
+            let pooled = try await backend.meanPooledEmbeddingWithAdapter(
+                prompt: text,
+                adapterPath: adapterPath,
+                clearCache: true
+            )
             prediction = head.classify(pooled)
         } catch {
             throw TelcoTurnRelationV4Error.backendFailure(underlying: error)
@@ -183,6 +186,9 @@ public final class TelcoTurnRelationV4Strategy: RelationalHeadsStrategy, @unchec
     ) -> TelcoTurnRelation? {
         if ConversationStateRecorder.isLiveAgentRequest(query) {
             return .escalationRequest
+        }
+        if isFieldLookupQuestion(query) {
+            return .independentNewTask
         }
         if ConversationStateRecorder.isContextualActionRequest(query) {
             return runtimeState.pendingConfirmation ? .confirmationYes : .ambiguousShortTurn
@@ -269,14 +275,7 @@ public final class TelcoTurnRelationV4Strategy: RelationalHeadsStrategy, @unchec
     }
 
     private static func isCannotFindRepair(_ text: String) -> Bool {
-        let q = normalized(text)
-        return q.contains("cannot find")
-            || q.contains("can't find")
-            || q.contains("cant find")
-            || q.contains("couldn't find")
-            || q.contains("couldnt find")
-            || q.contains("not able to find")
-            || q.contains("there is no such")
+        isCannotFindRepairFollowup(text)
     }
 
     private static func isStepFocus(_ text: String) -> Bool {

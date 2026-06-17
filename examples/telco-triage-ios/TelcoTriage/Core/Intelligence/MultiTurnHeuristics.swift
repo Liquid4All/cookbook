@@ -99,6 +99,61 @@ public func isShortFollowup(_ text: String, maxContentTokens: Int = 2) -> Bool {
     return false
 }
 
+/// True when the user is saying they cannot locate an element from prior
+/// guidance. Callers still gate this on active dialogue state before treating it
+/// as a repair turn; without state, the same words can be a fresh support issue.
+public func isCannotFindRepairFollowup(_ text: String) -> Bool {
+    let lower = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    return lower.contains("cannot find")
+        || lower.contains("can't find")
+        || lower.contains("cant find")
+        || lower.contains("couldn't find")
+        || lower.contains("couldnt find")
+        || lower.contains("not able to find")
+        || lower.contains("unable to find")
+        || lower.contains("cannot locate")
+        || lower.contains("can't locate")
+        || lower.contains("cant locate")
+        || lower.contains("don't see")
+        || lower.contains("do not see")
+        || lower.contains("not seeing")
+        || lower.contains("there is no such")
+}
+
+/// True when a turn asks for a local value/field such as the Wi-Fi SSID,
+/// Wi-Fi name, Network Name, or password. These are complete fresh questions,
+/// even after an active prior answer; they must not be collapsed into
+/// step-focus ("where is that button?") or repair ("I can't find it") state.
+public func isFieldLookupQuestion(_ text: String) -> Bool {
+    let lower = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard !lower.isEmpty else { return false }
+    let tokens = Set(MultiTurnHeuristicsTokenizer.contentTokens(lower))
+    let mutationTokens: Set<String> = [
+        "change", "edit", "reset", "set", "rename", "update", "alter",
+        "create", "enable", "disable", "turn", "fix", "repair",
+    ]
+    guard tokens.intersection(mutationTokens).isEmpty else { return false }
+
+    let asksForIdentity = tokens.contains("ssid") ||
+        lower.contains("network name") ||
+        lower.contains("wifi name") ||
+        lower.contains("wi-fi name") ||
+        tokens.contains("password")
+    guard asksForIdentity else { return false }
+
+    let lookupCue = lower.hasPrefix("what") ||
+        lower.hasPrefix("where") ||
+        lower.hasPrefix("show") ||
+        lower.hasPrefix("find") ||
+        lower.hasPrefix("tell") ||
+        lower.contains("what is") ||
+        lower.contains("where is") ||
+        lower.contains("show me") ||
+        lower.contains("find my")
+
+    return lookupCue || tokens.contains("ssid")
+}
+
 // MARK: - Cross-section topic shift
 
 /// True when the new page is in a different top-level section (first two

@@ -241,15 +241,13 @@ public final class SharedBackboneStrategy: UnderstandingStrategy, @unchecked Sen
     public func run(query: String) async throws -> QueryUnderstanding {
         // One adapter swap, one forward pass — the entire architectural
         // point of v2. Adapter cache makes the swap ~1 ms after first hit.
-        do {
-            try await backend.setAdapter(path: adapterPath, scale: 1.0)
-        } catch {
-            throw QueryUnderstandingError.backendFailure(underlying: error)
-        }
-
         let hidden: [Float]
         do {
-            hidden = try await backend.embeddings(prompt: query, clearCache: true)
+            hidden = try await backend.embeddingsWithAdapter(
+                prompt: query,
+                adapterPath: adapterPath,
+                clearCache: true
+            )
         } catch {
             throw QueryUnderstandingError.backendFailure(underlying: error)
         }

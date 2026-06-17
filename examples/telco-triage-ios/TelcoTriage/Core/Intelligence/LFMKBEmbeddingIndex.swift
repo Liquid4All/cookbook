@@ -105,11 +105,6 @@ actor LFMKBEmbeddingIndex {
 
         AppLog.intelligence.info("Building KB embedding index for \(kb.count) entries (no bundle/cache match, hash=\(hash.prefix(8), privacy: .public))")
 
-        // Encode under the shared classifier adapter — see
-        // `encoderAdapterPath` doc for why. Falls back to base model
-        // if the shared adapter isn't available (older builds).
-        await applyEncoderAdapter()
-
         var built: [IndexedEntry] = []
         let startedAt = Date()
         for entry in kb {
@@ -136,7 +131,6 @@ actor LFMKBEmbeddingIndex {
     func search(query: String, topK: Int = 1, threshold: Double = 0.40) async throws -> [Match] {
         guard built else { return [] }
 
-        await applyEncoderAdapter()
         let queryVec = try await encodeLastToken(text: query)
 
         // Cosine on unit-norm vectors == dot product. Iterate the small
@@ -154,17 +148,6 @@ actor LFMKBEmbeddingIndex {
     }
 
     // MARK: - Encoding
-
-    /// Set the encoder adapter (or detach if `encoderAdapterPath` is
-    /// nil). Same path used at index build time and at query time so
-    /// both sides of the cosine live in the same hidden-state space.
-    private func applyEncoderAdapter() async {
-        if let path = encoderAdapterPath {
-            try? await backend.setAdapter(path: path, scale: 1.0)
-        } else {
-            await backend.removeAdapter()
-        }
-    }
 
     /// Last-token hidden state of the input under the encoder adapter,
     /// L2-normalized. We use last-token (not mean-pool) because:
@@ -184,7 +167,11 @@ actor LFMKBEmbeddingIndex {
     ///
     /// Returns a `[Float]` of length `hiddenDim` (1024 for LFM2.5-350M).
     private func encodeLastToken(text: String) async throws -> [Float] {
-        let raw = try await backend.embeddings(prompt: text, clearCache: true)
+        let raw = try await backend.embeddingsWithAdapter(
+            prompt: text,
+            adapterPath: encoderAdapterPath ?? "",
+            clearCache: true
+        )
         let dim = raw.count
         guard dim > 0 else {
             throw LFMEngineError.invalidPromptFormat("embedding output empty")

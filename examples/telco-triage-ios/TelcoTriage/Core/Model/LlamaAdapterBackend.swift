@@ -26,11 +26,6 @@ public struct LlamaAdapterBackend: AdapterInferenceBackend {
         maxTokens: Int,
         stopSequences: [String]
     ) async throws -> String {
-        if adapterPath.isEmpty {
-            await backend.removeAdapter()
-        } else {
-            try await backend.setAdapter(path: adapterPath, scale: 1.0)
-        }
         // Translate POC-facing chat messages to the LFMEngine type and
         // route through the chat-template path. This is the ONLY correct
         // entrypoint for LoRA adapters trained via leap-finetune, which
@@ -38,8 +33,9 @@ public struct LlamaAdapterBackend: AdapterInferenceBackend {
         let engineMessages = messages.map { m in
             LlamaChatMessage(role: m.role.rawValue, content: m.content)
         }
-        let (text, _, _) = try await backend.generate(
+        let (text, _, _) = try await backend.generateWithAdapter(
             messages: engineMessages,
+            adapterPath: adapterPath,
             maxTokens: maxTokens,
             temperature: 0,
             stopSequences: stopSequences,
@@ -55,13 +51,9 @@ public struct LlamaAdapterBackend: AdapterInferenceBackend {
         maxTokens: Int,
         stopSequences: [String]
     ) async throws -> String {
-        if adapterPath.isEmpty {
-            await backend.removeAdapter()
-        } else {
-            try await backend.setAdapter(path: adapterPath, scale: 1.0)
-        }
-        let (text, _, _) = try await backend.generate(
+        let (text, _, _) = try await backend.generateWithAdapter(
             prompt: prompt,
+            adapterPath: adapterPath,
             maxTokens: maxTokens,
             temperature: 0,
             stopSequences: stopSequences,
@@ -432,5 +424,84 @@ public enum TelcoModelBundle {
             }
         }
         return true
+    }
+}
+
+/// Actor-isolated compound operations for the shared llama backend.
+///
+/// `LlamaBackend` is an actor, so each individual C call is serialized.
+/// The app-level invariant is stronger: selecting an adapter and running the
+/// following forward pass must be atomic. If callers await `setAdapter(...)`
+/// and then await `embeddings(...)` / `generate(...)` separately, another task
+/// can legally interleave and swap the global adapter in between.
+extension LlamaBackend {
+    public func generateWithAdapter(
+        messages: [LlamaChatMessage],
+        adapterPath: String,
+        maxTokens: Int,
+        temperature: Float = 0.0,
+        stopSequences: [String] = [],
+        clearCache: Bool = true,
+        outputMode: GenerationParams.OutputMode = .text,
+        grammar: String? = nil
+    ) throws -> (text: String, tokenCount: Int, timing: LlamaBackend.GenerationTiming) {
+        try activateAdapter(path: adapterPath)
+        return try generate(
+            messages: messages,
+            maxTokens: maxTokens,
+            temperature: temperature,
+            stopSequences: stopSequences,
+            clearCache: clearCache,
+            outputMode: outputMode,
+            grammar: grammar
+        )
+    }
+
+    public func generateWithAdapter(
+        prompt: String,
+        adapterPath: String,
+        maxTokens: Int,
+        temperature: Float = 0.0,
+        stopSequences: [String] = [],
+        clearCache: Bool = true,
+        outputMode: GenerationParams.OutputMode = .text,
+        grammar: String? = nil
+    ) throws -> (text: String, tokenCount: Int, timing: LlamaBackend.GenerationTiming) {
+        try activateAdapter(path: adapterPath)
+        return try generate(
+            prompt: prompt,
+            maxTokens: maxTokens,
+            temperature: temperature,
+            stopSequences: stopSequences,
+            clearCache: clearCache,
+            outputMode: outputMode,
+            grammar: grammar
+        )
+    }
+
+    public func embeddingsWithAdapter(
+        prompt: String,
+        adapterPath: String,
+        clearCache: Bool = true
+    ) throws -> [Float] {
+        try activateAdapter(path: adapterPath)
+        return try embeddings(prompt: prompt, clearCache: clearCache)
+    }
+
+    public func meanPooledEmbeddingWithAdapter(
+        prompt: String,
+        adapterPath: String,
+        clearCache: Bool = true
+    ) throws -> [Float] {
+        try activateAdapter(path: adapterPath)
+        return try meanPooledEmbedding(prompt: prompt, clearCache: clearCache)
+    }
+
+    private func activateAdapter(path: String) throws {
+        if path.isEmpty {
+            removeAdapter()
+        } else {
+            try setAdapter(path: path, scale: 1.0)
+        }
     }
 }

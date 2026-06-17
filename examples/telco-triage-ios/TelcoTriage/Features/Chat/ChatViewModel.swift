@@ -1124,13 +1124,17 @@ final class ChatViewModel: ObservableObject {
                 from: finalResult,
                 extraction: extraction
             )
+            let pendingToolForState = preservedPendingToolConfirmation(
+                for: finalResult,
+                newToolDecision: composerToolDecision
+            )
             if finalResult.composerRoute == .toolAction {
                 message.toolDecision = composerToolDecision
             }
             recordDialogueBlackboardDispatch(
                 result: finalResult,
                 assistantText: message.text,
-                pendingToolConfirmation: composerToolDecision
+                pendingToolConfirmation: pendingToolForState
             )
             // Compound RAG + tool — attach a "Want me to do this?" card
             // when the Telco lane carries content (RAG/unknown/clarification)
@@ -1154,7 +1158,7 @@ final class ChatViewModel: ObservableObject {
                 query: query,
                 lane: resolvedLane,
                 toolDecision: message.toolDecision,
-                pendingToolConfirmation: composerToolDecision,
+                pendingToolConfirmation: pendingToolForState,
                 pendingIntent: nil,
                 missingSlots: [],
                 assistantText: message.text,
@@ -1209,7 +1213,8 @@ final class ChatViewModel: ObservableObject {
         )
 
         if let pendingToolConfirmation,
-           pendingToolConfirmation.requiresConfirmation {
+           pendingToolConfirmation.requiresConfirmation,
+           dialogueBlackboard.pendingToolConfirmation?.toolID != pendingToolConfirmation.toolID {
             let pending = TelcoPendingTool(
                 toolID: pendingToolConfirmation.toolID,
                 intent: pendingToolConfirmation.intent,
@@ -1235,7 +1240,9 @@ final class ChatViewModel: ObservableObject {
         }
         if ConversationStateRecorder.isBareAffirmative(query)
             || ConversationStateRecorder.isBareNegative(query)
-            || ConversationStateRecorder.isContextualActionRequest(query) {
+            || ConversationStateRecorder.isContextualActionRequest(query)
+            || ConversationStateRecorder.isGenericHelpRequest(query)
+            || isShortFollowup(query) {
             return
         }
         AppLog.intelligence.info("pending-tool-confirmation cleared (superseded by new turn)")
@@ -1245,6 +1252,36 @@ final class ChatViewModel: ObservableObject {
                 on: dialogueBlackboard,
                 reasonCode: "superseded_by_new_turn"
             )
+        }
+    }
+
+    private func preservedPendingToolConfirmation(
+        for result: TelcoDispatchResult,
+        newToolDecision: ToolDecision?
+    ) -> ToolDecision? {
+        if let newToolDecision {
+            return newToolDecision
+        }
+        guard let pending = conversationState.pendingToolConfirmation,
+              resultPreservesPendingTool(result) else {
+            return nil
+        }
+        return pending
+    }
+
+    private func resultPreservesPendingTool(_ result: TelcoDispatchResult) -> Bool {
+        guard let operation = result.stateOperation.flatMap(TelcoStateOperation.init(rawValue:)) else {
+            return false
+        }
+        switch operation {
+        case .reuseActiveEvidence,
+             .retrieveWithPriorBias,
+             .carryoverActiveTask,
+             .repairCannotFind,
+             .repairFailed:
+            return true
+        default:
+            return false
         }
     }
 

@@ -151,13 +151,19 @@ public final class TelcoStageAClassifier: TelcoStageAClassifying, @unchecked Sen
 
         do {
             // ---- topic_gate ----
-            try await backend.setAdapter(path: topicGateAdapterPath, scale: 1.0)
-            let topicEmbedding = try await backend.embeddings(prompt: query, clearCache: true)
+            let topicEmbedding = try await backend.embeddingsWithAdapter(
+                prompt: query,
+                adapterPath: topicGateAdapterPath,
+                clearCache: true
+            )
             topicResult = topicGateHead.classify(topicEmbedding)
 
             // ---- refusal_flags ----
-            try await backend.setAdapter(path: refusalFlagsAdapterPath, scale: 1.0)
-            let refusalEmbedding = try await backend.embeddings(prompt: query, clearCache: true)
+            let refusalEmbedding = try await backend.embeddingsWithAdapter(
+                prompt: query,
+                adapterPath: refusalFlagsAdapterPath,
+                clearCache: true
+            )
             refusalResult = refusalFlagsHead.classifyMultiLabel(refusalEmbedding)
         } catch {
             throw TelcoStageAError.backendFailure(underlying: error)

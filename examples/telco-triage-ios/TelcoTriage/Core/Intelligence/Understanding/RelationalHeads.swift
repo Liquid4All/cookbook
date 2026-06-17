@@ -611,12 +611,12 @@ public final class ChatTemplateRelationalStrategy: RelationalHeadsStrategy, @unc
         // from other calls doesn't leak into this classification.
         let generated: String
         do {
-            try await backend.setAdapter(path: adapterPath, scale: 1.0)
             generated = try await Self.runWithTimeout(
                 ms: Self.generateTimeoutMs
             ) {
-                let (text, _, _) = try await self.backend.generate(
+                let (text, _, _) = try await self.backend.generateWithAdapter(
                     messages: messages,
+                    adapterPath: self.adapterPath,
                     maxTokens: 20,
                     temperature: 0,
                     stopSequences: ["\n", "<|im_end|>"],

@@ -346,6 +346,9 @@ public enum TelcoDialogueBlackboardReducer {
         blackboard: TelcoDialogueBlackboard
     ) -> TelcoTurnRelation {
         let normalized = userTurn.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if isFieldLookupQuestion(userTurn) {
+            return .independentNewTask
+        }
         if isBareAffirmative(normalized) {
             return blackboard.pendingToolConfirmation == nil ? .ambiguousShortTurn : .confirmationYes
         }
@@ -380,6 +383,9 @@ public enum TelcoDialogueBlackboardReducer {
         _ relation: TelcoTurnRelation,
         for userTurn: String
     ) -> TelcoTurnRelation {
+        if isFieldLookupQuestion(userTurn) {
+            return .independentNewTask
+        }
         if ConversationStateRecorder.isGenericHelpRequest(userTurn) {
             return .ambiguousShortTurn
         }

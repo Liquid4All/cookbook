@@ -53,8 +53,11 @@ public final class ClassifierBackedBridge: @unchecked Sendable {
     /// hidden state (dominated by template tokens), causing every input
     /// to classify identically.
     func embedQuery(_ query: String, adapterPath: String) async throws -> [Float] {
-        try await backend.setAdapter(path: adapterPath, scale: 1.0)
-        return try await backend.embeddings(prompt: query, clearCache: true)
+        try await backend.embeddingsWithAdapter(
+            prompt: query,
+            adapterPath: adapterPath,
+            clearCache: true
+        )
     }
 }
 

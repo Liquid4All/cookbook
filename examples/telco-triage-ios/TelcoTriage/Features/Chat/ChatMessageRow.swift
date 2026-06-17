@@ -394,6 +394,7 @@ private struct ComposerSummaryAnswerView: View {
                 .font(brand.bodyFont)
                 .foregroundStyle(brand.textPrimary)
                 .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
 
             if !presentation.details.isEmpty {

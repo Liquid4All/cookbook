@@ -1072,6 +1072,9 @@ public actor TelcoChatDispatcher {
         if ConversationStateRecorder.isLiveAgentRequest(query) {
             return .escalationRequest
         }
+        if isFieldLookupQuestion(query) {
+            return .independentNewTask
+        }
         if ConversationStateRecorder.isContextualActionRequest(query) {
             return policyState.pendingToolID == nil ? .ambiguousShortTurn : .confirmationYes
         }

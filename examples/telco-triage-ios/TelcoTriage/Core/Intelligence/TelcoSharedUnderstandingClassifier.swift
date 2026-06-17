@@ -129,12 +129,15 @@ public final class TelcoSharedUnderstandingClassifier: TelcoSharedUnderstandingC
         let t0 = CFAbsoluteTimeGetCurrent()
         let embedding: [Float]
         do {
-            try await backend.setAdapter(path: sharedAdapterPath, scale: 1.0)
             // Mean-pool all token hidden states to match the head training
             // contract (train_shared_multi_head.py mean-pools; LFM2.5's final
             // layer is conv, so last-token reads only ~3 tokens). Validated
             // pooling lives in EmbeddingPooling.mean.
-            embedding = try await backend.meanPooledEmbedding(prompt: query, clearCache: true)
+            embedding = try await backend.meanPooledEmbeddingWithAdapter(
+                prompt: query,
+                adapterPath: sharedAdapterPath,
+                clearCache: true
+            )
         } catch {
             throw TelcoSharedUnderstandingError.backendFailure(underlying: error)
         }
