@@ -1,0 +1,10 @@
+methane_plume_status: Exact methane plume assessment from the rendered image using one of present, absent, or uncertain.
+plume_confidence: Confidence in the plume assessment using one of low, medium, or high.
+plume_extent: Approximate visible plume extent in the methane product using one of none, small, medium, or large.
+plume_location: Approximate visible plume location in the image using one of top_left, top_right, center, bottom_left, bottom_right, or unknown.
+lookalike_risk: Most likely non-methane visual explanation using one of steam, dust, cloud_shadow, surface_artifact, sensor_artifact, albedo_confuser, none, or unknown.
+visual_evidence_summary: One short image-only sentence describing the visible evidence without source metadata or operational recommendations.
+observation_timestamp_utc: Observation timestamp shown in the observation context panel as ISO-8601 UTC, or unknown when unavailable.
+source_context: Supplied source type shown in the observation context panel using one of well_pad, compressor_station, pipeline_corridor, processing_facility, landfill, mine, agriculture, unknown, or not_applicable.
+source_alignment_assessment: Whether visible plume evidence aligns with supplied source context using one of aligned, source_context_unavailable, no_visible_plume, or unknown.
+review_priority: Human review priority for the observation using one of low, medium, or high.

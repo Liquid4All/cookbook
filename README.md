@@ -101,6 +101,7 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
 | Satellite VLM Fine-Tuning | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
+| Methane Plume Extraction | Fine-tune LFM2.5-VL-1.6B to turn O&G methane observation images plus a fixed schema into auditable JSON records | [Code](./examples/methane-plume-extraction/README.md) |
 | Wildfire Prevention | Build a wildfire risk detection system using LFM2.5-VL-450M and Sentinel-2 satellite imagery, with fine-tuning and on-device inference | [Code](./examples/wildfire-prevention/README.md) |
 | **Audio-Language Models** | | |
 | LFM2.5-Audio Fine-Tuning | Fine-tune LFM2.5-Audio-1.5B on the OHF-Voice dataset to map speech directly to Home Assistant function calls, with on-device GGUF inference | [Code](./examples/voice-assistant/README.md) |
