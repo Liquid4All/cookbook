@@ -23,6 +23,28 @@ final class TelcoDispatcherComposerPathTests: XCTestCase {
         toolRegistry = ToolRegistry.demoDefault(customerContext: CustomerContext())
     }
 
+    func test_slowInternetUsesCuratedDiagnosticEvidence() async {
+        let result = await dispatch(query: "My internet is slow")
+
+        XCTAssertEqual(result.composerRoute, .ragAnswer)
+        XCTAssertEqual(result.citedRAGUnit?.pageID, "03.05")
+        XCTAssertTrue(result.text.contains("Start with Wi-Fi Performance"))
+        XCTAssertTrue(result.text.contains("overall Wi-Fi health or one connected device"))
+        XCTAssertTrue(result.text.contains("Recommended actions"))
+        XCTAssertFalse(result.text.contains("This page updates hourly"))
+        XCTAssertFalse(result.text.contains("At the top of the page"))
+    }
+
+    func test_getConnectedDevicesAnswersTheTaskBeforePageAnatomy() async {
+        let result = await dispatch(query: "Get connected devices")
+
+        XCTAssertEqual(result.composerRoute, .ragAnswer)
+        XCTAssertEqual(result.citedRAGUnit?.pageID, "04.00")
+        XCTAssertTrue(result.text.contains("Open Devices to see the devices currently connected"))
+        XCTAssertTrue(result.text.contains("Online, Offline, Weak signal, or Paused"))
+        XCTAssertFalse(result.text.contains("within the header, there are three buttons"))
+    }
+
     // MARK: - tool_action: real tool exists
 
     func test_restart_router_routes_to_toolAction_with_confirmation() async {

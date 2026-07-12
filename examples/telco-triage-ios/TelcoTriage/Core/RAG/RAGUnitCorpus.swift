@@ -9,14 +9,13 @@ import os.log
 ///
 /// * what `telcohome://` URLs the composer is allowed to render,
 /// * citation labels + steps per page,
-/// * link_id → page_id index used by the BM25HierarchyRetriever
-///   history-hint mechanism,
+/// * response-ready summaries/facts, when the ingestion pipeline supplied them,
+/// * link_id → page_id index used by the BM25HierarchyRetriever history hints,
 /// * the universe of "valid" deep links for grading / debug assertions.
 ///
-/// **No body content is exposed** for free generation. The composer
-/// only uses `citationLabel`, `canonicalURL`, `steps`. The retriever
-/// reads `title`, `aliases`, `steps`, `body` for BM25 indexing only —
-/// never rendered into a response.
+/// Raw body content remains available for retrieval and legacy corpus fallback.
+/// New or updated units should provide `answerSummary` / `answerFacts` so the
+/// composer renders reviewable evidence instead of mining arbitrary page prose.
 public final class RAGUnitCorpus: Sendable {
     public enum LoadError: Error, CustomStringConvertible, Equatable {
         case bundleResourceMissing(name: String, ext: String)

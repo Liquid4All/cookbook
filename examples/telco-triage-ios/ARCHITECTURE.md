@@ -173,11 +173,20 @@ Each RAG unit is a product-facing support unit with fields such as:
 - `link_id`
 - `canonical_url`
 - `action_affordance`
+- `availability`
+- `answer_summary`
+- `answer_facts`
 
 `RAGUnitCorpus` loads the corpus once at startup. `BM25HierarchyRetriever`
 performs lexical and alias-aware ranking. This was chosen for the curated,
 closed-domain support corpus because exact support-page naming and action
 aliases matter more than broad semantic similarity.
+
+Retrieval and presentation are separate contracts. Titles, aliases, steps,
+hierarchy, and source body determine candidate ordering. The deterministic
+composer prefers the source-approved `answer_summary` and `answer_facts` so a
+correct page hit becomes a direct customer answer instead of raw page anatomy.
+Changing response wording therefore does not silently change retrieval order.
 
 Relevant files:
 

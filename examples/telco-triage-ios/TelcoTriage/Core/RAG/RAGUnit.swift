@@ -36,6 +36,9 @@ public struct RAGUnit: Codable, Sendable, Equatable {
     public let sourceDoc: String
     public let citationLabel: String?
     public let actionAffordance: String?
+    public let availability: String?
+    public let answerSummary: String?
+    public let answerFacts: [String]?
 
     enum CodingKeys: String, CodingKey {
         case pageID = "page_id"
@@ -52,6 +55,9 @@ public struct RAGUnit: Codable, Sendable, Equatable {
         case sourceDoc = "source_doc"
         case citationLabel = "citation_label"
         case actionAffordance = "action_affordance"
+        case availability
+        case answerSummary = "answer_summary"
+        case answerFacts = "answer_facts"
     }
 
     /// The `telcohome://...` URL with the optional `?launchPoint=…` query
@@ -68,6 +74,11 @@ public struct RAGUnit: Codable, Sendable, Equatable {
     public var displayLabel: String {
         if let label = citationLabel, !label.isEmpty { return label }
         return title
+    }
+
+    /// Source-approved facts that are safe for the answer composer to render.
+    public var responseFacts: [String] {
+        answerFacts ?? []
     }
 
     /// Does the query refer to this unit's task objective, as opposed

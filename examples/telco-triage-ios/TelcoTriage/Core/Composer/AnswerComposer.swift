@@ -10,8 +10,8 @@ import Foundation
 /// The composer trusts its inputs unconditionally:
 ///
 /// * `evidence` — the canonical RAG unit (picked by the retriever or
-///   by the test oracle). The composer never re-ranks and never opens
-///   `body` for new claims.
+///   by the test oracle). Response-ready summary/fact fields are preferred;
+///   raw `body` extraction is a legacy compatibility fallback.
 /// * `route` — already decided by the dispatcher
 ///   (`TelcoChatDispatcher.deriveRoute`) using the ToolRegistry
 ///   gate (guardrail #3). The composer never re-routes.
@@ -252,10 +252,15 @@ private func renderGroundedSummaryAnswer(
 ) -> String {
     let label = unit.displayLabel
     let link = renderLink(label: label, url: unit.canonicalURL)
-    let lead = leadSentence(from: unit, query: query)
+    let curatedSummary = unit.answerSummary?
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    let lead = (curatedSummary?.isEmpty == false ? curatedSummary : nil)
+        ?? leadSentence(from: unit, query: query)
         ?? "This section covers \(humanizedLabel(label))."
     let facts: [String]
-    if prefersRankedSummary(for: query) {
+    if !unit.responseFacts.isEmpty {
+        facts = Array(unit.responseFacts.prefix(3))
+    } else if prefersRankedSummary(for: query) {
         facts = rankedFactSentences(from: unit, query: query, excluding: lead, limit: 4)
     } else {
         facts = sourceOrderedFactSentences(from: unit, excluding: lead, limit: 4)

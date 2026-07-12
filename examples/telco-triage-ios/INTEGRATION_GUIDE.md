@@ -316,7 +316,23 @@ body
 link_id
 canonical_url
 action_affordance
+availability
+answer_summary
+answer_facts
 ```
+
+The fields have separate jobs:
+
+- `title`, `aliases`, `steps`, hierarchy, and `body` support retrieval.
+- `answer_summary` and `answer_facts` are source-approved response evidence.
+- `canonical_url` and `link_id` control navigation and tool resolution.
+- `availability` records applicability constraints the policy layer may check.
+
+Do not copy a long support page into the response and expect the composer to
+discover the answer. For high-volume customer tasks, provide a direct summary
+and no more than three facts that are explicitly supported by the source. Keep
+retrieval aliases coherent: one unit should not collect unrelated phrases just
+to win a benchmark.
 
 Good aliases matter. Include real user phrasing such as:
 
@@ -328,6 +344,10 @@ Good aliases matter. Include real user phrasing such as:
 "pause internet"
 "connected devices"
 ```
+
+After any corpus change, test both retrieval and the rendered answer. At a
+minimum, assert the expected page ID, direct answer text, citation/deep link,
+and absence of unrelated page-navigation prose.
 
 ## What Not To Do
 

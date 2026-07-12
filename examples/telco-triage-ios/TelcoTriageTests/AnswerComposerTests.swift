@@ -373,6 +373,8 @@ enum TestUnitFixture {
         aliases: [String] = [],
         steps: [String] = [],
         body: String = "",
+        answerSummary: String? = nil,
+        answerFacts: [String]? = nil,
         affordance: String = "view"
     ) -> RAGUnit {
         RAGUnit(
@@ -389,7 +391,10 @@ enum TestUnitFixture {
             body: body,
             sourceDoc: "synthetic.docx",
             citationLabel: citation ?? title,
-            actionAffordance: affordance
+            actionAffordance: affordance,
+            availability: nil,
+            answerSummary: answerSummary,
+            answerFacts: answerFacts
         )
     }
 }
