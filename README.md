@@ -113,7 +113,7 @@ Production and open-source applications that support LFM models as an inference 
 |------|-------------|------|
 | DeepCamera | Open-source AI camera system for local vision intelligence with facial recognition, person re-ID, and edge deployment on Jetson and Raspberry Pi | [Code](https://github.com/SharpAI/DeepCamera) |
 | Osaurus | Native macOS AI harness for managing agents, memory, tools, and identity locally, with support for LFM models via MLX on Apple Silicon | [Code](https://github.com/osaurus-ai/osaurus) |
-| SelfLink   | Native macOS privacy-first journaling app | [Website](https://apps.apple.com/us/app/selflink/id6781692492) |
+| SelfLink   | Native iOS privacy-first journaling app | [Website](https://www.realityplay.io/selflink) |
 
 ## 🌟 Community Projects
 
