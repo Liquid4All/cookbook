@@ -1,0 +1,17 @@
+{"text":"I cannot sign in after changing my password and the reset email never arrives.","labels":["account","technical"]}
+{"text":"My card was charged twice for the same monthly subscription.","labels":["billing"]}
+{"text":"The tracking page says delivered, but the package is not at my address.","labels":["shipping"]}
+{"text":"The desktop application closes whenever I upload a large file.","labels":["technical"]}
+{"text":"Please update the email address associated with my profile.","labels":["account"]}
+{"text":"I was billed after cancelling during the free trial.","labels":["billing"]}
+{"text":"My replacement order has not shipped after eight business days.","labels":["shipping"]}
+{"text":"Two-factor authentication rejects every code from my authenticator app.","labels":["account","technical"]}
+{"text":"The invoice total does not match the items in my order.","labels":["billing"]}
+{"text":"The mobile app shows a blank screen when I open order history.","labels":["technical"]}
+{"text":"I entered the wrong delivery address and need to change it.","labels":["shipping","account"]}
+{"text":"Where can I download a receipt for last month's payment?","labels":["billing"]}
+{"text":"The courier returned my order to the sender without contacting me.","labels":["shipping"]}
+{"text":"My profile was locked after too many login attempts.","labels":["account"]}
+{"text":"Notifications stopped working after the latest software update.","labels":["technical"]}
+{"text":"I need a refund because the expedited shipment arrived late.","labels":["billing","shipping"]}
+

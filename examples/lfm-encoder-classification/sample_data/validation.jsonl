@@ -1,0 +1,7 @@
+{"text":"I forgot my password and no longer have access to my old phone number.","labels":["account"]}
+{"text":"The annual plan was charged at the wrong price.","labels":["billing"]}
+{"text":"Tracking has not updated since the parcel left the warehouse.","labels":["shipping"]}
+{"text":"The application freezes when I try to export a report.","labels":["technical"]}
+{"text":"A failed payment is still showing on my invoice.","labels":["billing","technical"]}
+{"text":"I need to change the delivery address saved in my profile.","labels":["account","shipping"]}
+

@@ -98,6 +98,8 @@ Colab notebooks and Python scripts for customizing LFM models with your own data
 | **Continued Pre-Training (CPT)** | | |
 | CPT for Translation | Adapt models to specific languages or translation domains using domain data | [Notebook](./finetuning/notebooks/cpt_translation_with_unsloth.ipynb) |
 | CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
+| **Encoder Models** | | |
+| LFM Encoder Classification | Fine-tune LFM2.5-Encoder for custom long-document multi-label classification | [Code](./examples/lfm-encoder-classification/) |
 | **Vision-Language Models** | | |
 | VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
 | Satellite VLM Fine-Tuning | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |

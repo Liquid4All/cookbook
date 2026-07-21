@@ -1,0 +1,31 @@
+model:
+  id: LiquidAI/LFM2.5-Encoder-350M
+
+dataset:
+  source:
+    type: json
+    data_files:
+      train: sample_data/train.jsonl
+      validation: sample_data/validation.jsonl
+      test: sample_data/test.jsonl
+  text_column: text
+  labels_column: labels
+  labels:
+    - account
+    - billing
+    - shipping
+    - technical
+
+training:
+  output_dir: local/classifier
+  max_length: 512
+  epochs: 3
+  learning_rate: 2.0e-5
+  weight_decay: 0.0
+  warmup_ratio: 0.1
+  train_batch_size: 1
+  eval_batch_size: 1
+  gradient_accumulation_steps: 8
+  gradient_checkpointing: false
+  precision: fp32
+  seed: 42

@@ -1,0 +1,7 @@
+{"text":"Someone changed the email address on my account without permission.","labels":["account"]}
+{"text":"I received an unexpected renewal charge this morning.","labels":["billing"]}
+{"text":"The package arrived damaged and part of the order is missing.","labels":["shipping"]}
+{"text":"The website returns an error whenever I submit the form.","labels":["technical"]}
+{"text":"I was charged for express delivery but the order is still in the warehouse.","labels":["billing","shipping"]}
+{"text":"I cannot access the account settings because the page will not load.","labels":["account","technical"]}
+

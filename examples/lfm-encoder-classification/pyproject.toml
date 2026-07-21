@@ -1,0 +1,38 @@
+[project]
+name = "lfm-encoder-classification"
+version = "0.1.0"
+description = "Fine-tune LFM2.5-Encoder for long-document multi-label classification"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate>=1.2,<2",
+    "datasets>=3.2,<5",
+    "huggingface-hub>=0.27,<2",
+    "numpy>=1.26,<3",
+    "python-dotenv>=1.0,<2",
+    "pyyaml>=6.0,<7",
+    "scikit-learn>=1.6,<2",
+    "torch>=2.5,<3",
+    "transformers>=4.55,<5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9",
+    "ruff>=0.9,<1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
