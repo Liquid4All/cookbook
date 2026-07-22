@@ -13,7 +13,7 @@ dependencies = [
     "pyyaml>=6.0,<7",
     "scikit-learn>=1.6,<2",
     "torch>=2.5,<3",
-    "transformers>=4.55,<5",
+    "transformers>=5,<6",
 ]
 
 [dependency-groups]

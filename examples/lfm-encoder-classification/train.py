@@ -282,12 +282,7 @@ class DocumentClassifier(PreTrainedModel):
         self.backbone = backbone or AutoModel.from_config(config, trust_remote_code=True)
         self.dropout = nn.Dropout(float(getattr(config, "classifier_dropout", 0.1) or 0.1))
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
-        nn.init.normal_(
-            self.classifier.weight,
-            mean=0.0,
-            std=float(getattr(config, "initializer_range", 0.02)),
-        )
-        nn.init.zeros_(self.classifier.bias)
+        self.post_init()
 
     @classmethod
     def from_base(
@@ -462,14 +457,13 @@ def main() -> None:
         model=model,
         args=TrainingArguments(
             output_dir=output,
-            overwrite_output_dir=True,
             num_train_epochs=epochs,
             per_device_train_batch_size=int(training.get("train_batch_size", 1)),
             per_device_eval_batch_size=int(training.get("eval_batch_size", 1)),
             gradient_accumulation_steps=accumulation,
             learning_rate=float(training.get("learning_rate", 2e-5)),
             weight_decay=float(training.get("weight_decay", 0.0)),
-            warmup_ratio=float(training.get("warmup_ratio", 0.1)),
+            warmup_steps=float(training.get("warmup_ratio", 0.1)),
             eval_strategy="epoch",
             save_strategy="epoch",
             save_total_limit=1,
