@@ -228,11 +228,11 @@ metrics expose poor performance on rare categories.
 
 As a reference, the 350M model with the included ECtHR configuration reached **0.8060 validation
 micro-F1** after per-label threshold tuning. On the held-out test split it reached **0.7913
-micro-F1**, **0.7062 macro-F1**, and **0.8400 micro average precision**; test micro-F1 at the fixed
-`0.5` threshold was **0.7815**. The run used an 8,192-token context, a `3e-5` learning rate, three
-epochs, and seed 42. These results are from one seed. The example includes the reproducible
-configuration, while legal documents and trained checkpoints remain in their original sources or
-generated output directories.
+micro-F1**, **0.7062 macro-F1**, and **0.8400 micro average precision**, using thresholds selected
+on validation. The run used an 8,192-token context, a `3e-5` learning rate, three epochs, and seed
+42. These results are from one seed. The example includes the reproducible configuration, while
+legal documents and trained checkpoints remain in their original sources or generated output
+directories.
 
 ## Optional: keep the model download local
 
