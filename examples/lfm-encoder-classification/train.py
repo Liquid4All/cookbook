@@ -369,6 +369,7 @@ def main() -> None:
         return compute_metrics(logits, prediction.label_ids, labels)
 
     model = load_base_model(model_ref, labels, local_only)
+    model.accepts_loss_kwargs = False
     checkpointing = bool(training.get("gradient_checkpointing", False))
     if checkpointing:
         model.gradient_checkpointing_enable()
