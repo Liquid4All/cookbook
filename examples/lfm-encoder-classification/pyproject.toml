@@ -13,7 +13,7 @@ dependencies = [
     "pyyaml>=6.0,<7",
     "scikit-learn>=1.6,<2",
     "torch>=2.5,<3",
-    "transformers>=5,<6",
+    "transformers",
 ]
 
 [dependency-groups]
@@ -23,6 +23,9 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+transformers = { git = "https://github.com/EdoardoMosca/transformers.git", rev = "7da74464fcb36c44e07efad6e374ac23fbedbafa" }
 
 [tool.ruff]
 line-length = 100

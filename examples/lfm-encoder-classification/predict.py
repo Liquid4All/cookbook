@@ -7,9 +7,9 @@ import json
 from pathlib import Path
 
 import torch
-from transformers import AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from train import DocumentClassifier, load_config, model_reference, project_path
+from train import load_config, project_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,7 +24,6 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
-    model_ref, local_only = model_reference(config)
     checkpoint = project_path(config["training"].get("output_dir", "local/classifier"))
     labels = tuple(config["dataset"]["labels"])
     text = args.text if args.text is not None else args.file.expanduser().read_text()
@@ -32,10 +31,9 @@ def main() -> None:
     metadata = json.loads((checkpoint / "run_metadata.json").read_text())
     thresholds = json.loads((checkpoint / "thresholds.json").read_text())["thresholds"]
     tokenizer = AutoTokenizer.from_pretrained(checkpoint, local_files_only=True)
-    model = DocumentClassifier.load_checkpoint(
+    model = AutoModelForSequenceClassification.from_pretrained(
         checkpoint,
-        model_ref,
-        local_files_only=local_only,
+        local_files_only=True,
     ).eval()
     if torch.cuda.is_available():
         device = torch.device("cuda")

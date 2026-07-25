@@ -21,16 +21,16 @@ format. Point the configuration at your own data to train a classifier for your 
 ```mermaid
 flowchart LR
     A[Document] --> B[LFM2.5 bidirectional encoder]
-    B --> C[Mean pooling]
+    B --> C[Last non-padding token]
     C --> D[Linear classification head]
     D --> E[Probability for each label]
 ```
 
 LFM2.5-Encoder is pretrained using masked language modeling. This tutorial keeps its bidirectional
-backbone, leaves the masked-token prediction head unused, mean-pools the contextual token
-representations, and trains one linear output per label. Mean pooling is a task-specific choice in
-this tutorial. The model returns every label score in one forward pass—there is no text generation
-or output parsing.
+backbone, replaces the masked-token prediction head with Transformers'
+`Lfm2BidirectionalForSequenceClassification` head, and trains one output per label. The native head
+classifies from the final non-padding token's bidirectional representation. The model returns every
+label score in one forward pass—there is no text generation or output parsing.
 
 The workflow uses two executable scripts:
 
@@ -48,8 +48,10 @@ cd cookbook/examples/lfm-encoder-classification
 uv sync
 ```
 
-On the first run, Transformers downloads the model weights, tokenizer, configuration, and custom
-model code from Hugging Face. Authentication is only needed when the model repository requires it:
+This example temporarily pins the Transformers integration branch being tested. Once the integration
+lands upstream, the dependency can return to a released Transformers version. On the first run,
+Transformers downloads the model weights, tokenizer, and configuration from Hugging Face.
+Authentication is only needed when the model repository requires it:
 
 ```bash
 cp .env.example .env
@@ -164,8 +166,8 @@ uv run train.py --config config.yaml
 
 1. Load and validate the YAML configuration and dataset.
 2. Define multi-label metrics and validation-only threshold tuning.
-3. Keep the pretrained encoder backbone, leave its masked-token prediction head unused, and add
-   mean pooling plus a linear classifier.
+3. Load the pretrained encoder weights into Transformers' native
+   `AutoModelForSequenceClassification` implementation.
 4. Tokenize, fine-tune, select the best validation checkpoint, and save the result.
 
 Training uses binary cross-entropy with logits. The best checkpoint is selected using validation
@@ -225,14 +227,6 @@ GPU.
 The tutorial reports micro and macro precision, recall, F1, average precision, exact-match accuracy,
 hamming loss, and per-label metrics. Micro metrics summarize all decisions; macro and per-label
 metrics expose poor performance on rare categories.
-
-As a reference, the 350M model with the included ECtHR configuration reached **0.8060 validation
-micro-F1** after per-label threshold tuning. On the held-out test split it reached **0.7913
-micro-F1**, **0.7062 macro-F1**, and **0.8400 micro average precision**, using thresholds selected
-on validation. The run used an 8,192-token context, a `3e-5` learning rate, three epochs, and seed
-42. These results are from one seed. The example includes the reproducible configuration, while
-legal documents and trained checkpoints remain in their original sources or generated output
-directories.
 
 ## Optional: keep the model download local
 

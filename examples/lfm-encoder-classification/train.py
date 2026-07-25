@@ -24,19 +24,14 @@ from sklearn.metrics import (
     hamming_loss,
     precision_recall_fscore_support,
 )
-from torch import nn
 from transformers import (
-    AutoConfig,
-    AutoModel,
-    AutoModelForMaskedLM,
+    AutoModelForSequenceClassification,
     AutoTokenizer,
     EvalPrediction,
-    PretrainedConfig,
+    Lfm2BidirectionalConfig,
     Trainer,
     TrainingArguments,
 )
-from transformers.modeling_outputs import SequenceClassifierOutput
-from transformers.modeling_utils import PreTrainedModel
 
 ROOT = Path(__file__).resolve().parent
 
@@ -258,114 +253,42 @@ def tune_thresholds(
 # 3. Model ------------------------------------------------------------------
 
 
-def _extract_backbone(masked_lm: nn.Module) -> nn.Module:
-    backbone = getattr(masked_lm, "base_model", None)
-    if backbone is not None and backbone is not masked_lm:
-        return backbone
-    for name in ("model", "encoder", "backbone"):
-        candidate = getattr(masked_lm, name, None)
-        if candidate is not None and candidate is not masked_lm:
-            return candidate
-    raise TypeError("Could not locate the encoder backbone in the masked-LM checkpoint.")
+def load_base_model(
+    model_ref: str,
+    labels: tuple[str, ...],
+    local_files_only: bool,
+) -> torch.nn.Module:
+    """Load the masked-LM checkpoint with Transformers' native classification head.
 
-
-class DocumentClassifier(PreTrainedModel):
-    """LFM encoder + padding-aware mean pooling + multi-label linear head."""
-
-    config_class = PretrainedConfig
-    base_model_prefix = "backbone"
-    supports_gradient_checkpointing = True
-    accepts_loss_kwargs = False
-
-    def __init__(self, config: PretrainedConfig, backbone: nn.Module | None = None) -> None:
-        super().__init__(config)
-        self.backbone = backbone or AutoModel.from_config(config, trust_remote_code=True)
-        self.dropout = nn.Dropout(float(getattr(config, "classifier_dropout", 0.1) or 0.1))
-        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
-        self.post_init()
-
-    @classmethod
-    def from_base(
-        cls,
-        model_ref: str,
-        labels: tuple[str, ...],
-        local_files_only: bool,
-    ) -> DocumentClassifier:
-        config = AutoConfig.from_pretrained(
-            model_ref,
-            trust_remote_code=True,
-            local_files_only=local_files_only,
-        )
-        config.num_labels = len(labels)
-        config.id2label = dict(enumerate(labels))
-        config.label2id = {label: index for index, label in enumerate(labels)}
-        config.problem_type = "multi_label_classification"
-        config.architectures = [cls.__name__]
-        if hasattr(config, "use_cache"):
-            config.use_cache = False
-        masked_lm = AutoModelForMaskedLM.from_pretrained(
-            model_ref,
-            config=config,
-            trust_remote_code=True,
-            local_files_only=local_files_only,
-            low_cpu_mem_usage=True,
-        )
-        return cls(config, backbone=_extract_backbone(masked_lm))
-
-    @classmethod
-    def load_checkpoint(
-        cls,
-        checkpoint: str | Path,
-        model_ref: str,
-        local_files_only: bool,
-    ) -> DocumentClassifier:
-        classifier_config = AutoConfig.from_pretrained(
-            checkpoint,
-            trust_remote_code=True,
-            local_files_only=True,
-        )
-        base_config = AutoConfig.from_pretrained(
-            model_ref,
-            trust_remote_code=True,
-            local_files_only=local_files_only,
-        )
-        if hasattr(base_config, "use_cache"):
-            base_config.use_cache = False
-        empty_mlm = AutoModelForMaskedLM.from_config(base_config, trust_remote_code=True)
-        return cls.from_pretrained(
-            checkpoint,
-            config=classifier_config,
-            backbone=_extract_backbone(empty_mlm),
-            local_files_only=True,
-            low_cpu_mem_usage=True,
-        )
-
-    def forward(
-        self,
-        input_ids: torch.LongTensor | None = None,
-        attention_mask: torch.Tensor | None = None,
-        labels: torch.Tensor | None = None,
-        **kwargs: Any,
-    ) -> SequenceClassifierOutput:
-        outputs = self.backbone(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            return_dict=True,
-            **({"use_cache": False} if hasattr(self.config, "use_cache") else {}),
-        )
-        hidden = outputs.last_hidden_state
-        if attention_mask is None:
-            pooled = hidden.mean(dim=1)
-        else:
-            mask = attention_mask.unsqueeze(-1).to(hidden.dtype)
-            pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp_min(1.0)
-        logits = self.classifier(self.dropout(pooled))
-        loss = (
-            nn.functional.binary_cross_entropy_with_logits(logits, labels.float())
-            if labels is not None
-            else None
-        )
-        return SequenceClassifierOutput(loss=loss, logits=logits)
+    The published encoder checkpoints still identify themselves as ``lfm2``. Constructing the
+    bidirectional config explicitly keeps this example working until their Hub configs are updated
+    to ``lfm2_bidirectional``.
+    """
+    config = Lfm2BidirectionalConfig.from_pretrained(
+        model_ref,
+        local_files_only=local_files_only,
+    )
+    legacy_checkpoint = config.model_type != Lfm2BidirectionalConfig.model_type
+    config.model_type = Lfm2BidirectionalConfig.model_type
+    if legacy_checkpoint and hasattr(config, "auto_map"):
+        del config.auto_map
+    config.num_labels = len(labels)
+    config.id2label = dict(enumerate(labels))
+    config.label2id = {label: index for index, label in enumerate(labels)}
+    config.problem_type = "multi_label_classification"
+    config.architectures = ["Lfm2BidirectionalForSequenceClassification"]
+    config.use_cache = False
+    model = AutoModelForSequenceClassification.from_pretrained(
+        model_ref,
+        config=config,
+        local_files_only=local_files_only,
+        low_cpu_mem_usage=True,
+        key_mapping={r"^lfm2\.": "model."} if legacy_checkpoint else None,
+    )
+    if legacy_checkpoint:
+        # The input-only compatibility mapping must not be reversed when Trainer saves a checkpoint.
+        model._weight_conversions = None
+    return model
 
 
 # 4. Training ---------------------------------------------------------------
@@ -404,7 +327,6 @@ def main() -> None:
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_ref,
-        trust_remote_code=True,
         local_files_only=local_only,
     )
     text_column = config["dataset"].get("text_column", "text")
@@ -446,10 +368,10 @@ def main() -> None:
         )
         return compute_metrics(logits, prediction.label_ids, labels)
 
-    model = DocumentClassifier.from_base(model_ref, labels, local_only)
+    model = load_base_model(model_ref, labels, local_only)
     checkpointing = bool(training.get("gradient_checkpointing", False))
     if checkpointing:
-        model.backbone.gradient_checkpointing_enable()
+        model.gradient_checkpointing_enable()
     elif max_length > 4096:
         print("Tip: enable gradient_checkpointing if long-context training runs out of memory.")
 
