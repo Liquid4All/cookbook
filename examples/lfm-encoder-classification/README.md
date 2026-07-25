@@ -48,10 +48,8 @@ cd cookbook/examples/lfm-encoder-classification
 uv sync
 ```
 
-This example temporarily pins the Transformers integration branch being tested. Once the integration
-lands upstream, the dependency can return to a released Transformers version. On the first run,
-Transformers downloads the model weights, tokenizer, and configuration from Hugging Face.
-Authentication is only needed when the model repository requires it:
+On the first run, Transformers downloads the model weights, tokenizer, and configuration from
+Hugging Face. Authentication is only needed when the model repository requires it:
 
 ```bash
 cp .env.example .env
@@ -227,6 +225,14 @@ GPU.
 The tutorial reports micro and macro precision, recall, F1, average precision, exact-match accuracy,
 hamming loss, and per-label metrics. Micro metrics summarize all decisions; macro and per-label
 metrics expose poor performance on rare categories.
+
+As a reference, the 350M model with the included ECtHR configuration reached **0.7957 validation
+micro-F1** after per-label threshold tuning. On the held-out test split it reached **0.7740
+micro-F1**, **0.6886 macro-F1**, and **0.8381 micro average precision**, using thresholds selected
+on validation. The run used an 8,192-token context, a `3e-5` learning rate, three epochs, and seed
+42. These results are from one seed. The example includes the reproducible configuration, while
+legal documents and trained checkpoints remain in their original sources or generated output
+directories.
 
 ## Optional: keep the model download local
 
