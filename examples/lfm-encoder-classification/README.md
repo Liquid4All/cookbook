@@ -9,6 +9,9 @@ Fine-tune
 or [`LiquidAI/LFM2.5-Encoder-350M`](https://huggingface.co/LiquidAI/LFM2.5-Encoder-350M)
 to classify long documents into one or more categories.
 
+Read the [LFM2.5 Encoders announcement](https://www.liquid.ai/blog/lfm2-5-encoders) for more
+information about the model family.
+
 This example gives you a reusable pipeline for multi-label classification: point a YAML file at
 your data, fine-tune the bidirectional encoder, tune decision thresholds on validation data, and
 evaluate once on a held-out test split.
@@ -49,12 +52,15 @@ uv sync
 ```
 
 On the first run, Transformers downloads the model weights, tokenizer, configuration, and custom
-model code from Hugging Face. Authentication is only needed when the model repository requires it:
+model code from the public Hugging Face repository. Authentication is not required, but logging in
+is recommended for higher rate limits and faster downloads:
 
 ```bash
-cp .env.example .env
-# Add your HF_TOKEN to .env if authentication is required.
+uv run hf auth login
 ```
+
+Transformers automatically uses the saved Hugging Face credentials. In CI, provide `HF_TOKEN`
+through your CI system's secret environment instead.
 
 ## 1. Prepare your data
 

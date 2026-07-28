@@ -9,7 +9,6 @@ dependencies = [
     "datasets>=3.2,<5",
     "huggingface-hub>=0.27,<2",
     "numpy>=1.26,<3",
-    "python-dotenv>=1.0,<2",
     "pyyaml>=6.0,<7",
     "scikit-learn>=1.6,<2",
     "torch>=2.5,<3",

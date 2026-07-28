@@ -17,7 +17,6 @@ import numpy as np
 import torch
 import yaml
 from datasets import load_dataset
-from dotenv import load_dotenv
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
@@ -384,7 +383,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    load_dotenv(ROOT / ".env")
     config = load_config(args.config)
     labels = tuple(config["dataset"]["labels"])
     model_ref, local_only = model_reference(config)
