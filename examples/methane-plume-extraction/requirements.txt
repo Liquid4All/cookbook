@@ -1,0 +1,12 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pillow>=10.0
+pydantic>=2.8
+pyyaml>=6.0
+torch>=2.4
+torchvision>=0.19
+transformers>=5.0.0
+accelerate>=1.0
+huggingface_hub>=0.33
+hf_xet>=1.1
+mlx-vlm>=0.5.0; platform_system == "Darwin" and platform_machine == "arm64"
