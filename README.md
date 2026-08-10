@@ -85,27 +85,40 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 
 ## 🎯 Fine-Tuning Examples
 
-Colab notebooks and Python scripts for customizing LFM models with your own data.
+We recommend fine-tuning LFM2.5 for your specific use case to achieve the best results. Below you'll find Colab notebooks and Python scripts for customizing LFM models with your own data.
 
-| Name | Description | Link |
-|------|-------------|------|
-| **Supervised Fine-Tuning (SFT)** | | |
-| SFT with Unsloth | Memory-efficient SFT using Unsloth with LoRA for 2x faster training | [Notebook](./finetuning/notebooks/sft_with_unsloth.ipynb) |
-| SFT with TRL | Supervised fine-tuning using Hugging Face TRL library with parameter-efficient LoRA | [Notebook](./finetuning/notebooks/sft_with_trl.ipynb) |
-| **Reinforcement Learning** | | |
-| GRPO with Unsloth | Train reasoning models using Group Relative Policy Optimization for verifiable tasks | [Notebook](./finetuning/notebooks/grpo_with_unsloth.ipynb) |
-| GRPO with TRL | Train reasoning models using Group Relative Policy Optimization with rule-based rewards | [Notebook](./finetuning/notebooks/grpo_for_verifiable_tasks.ipynb) |
-| **Continued Pre-Training (CPT)** | | |
-| CPT for Translation | Adapt models to specific languages or translation domains using domain data | [Notebook](./finetuning/notebooks/cpt_translation_with_unsloth.ipynb) |
-| CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
-| **Encoder Models** | | |
-| LFM Encoder Classification | Fine-tune LFM2.5-Encoder for custom long-document multi-label classification | [Code](./examples/lfm-encoder-classification/) |
-| **Vision-Language Models** | | |
-| VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
-| Satellite VLM Fine-Tuning | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
-| Wildfire Prevention | Build a wildfire risk detection system using LFM2.5-VL-450M and Sentinel-2 satellite imagery, with fine-tuning and on-device inference | [Code](./examples/wildfire-prevention/README.md) |
-| **Audio-Language Models** | | |
-| LFM2.5-Audio Fine-Tuning | Fine-tune LFM2.5-Audio-1.5B on the OHF-Voice dataset to map speech directly to Home Assistant function calls, with on-device GGUF inference | [Code](./examples/voice-assistant/README.md) |
+### Text Models
+
+| Fine-Tuning Technique | Fine-Tuning Framework | Description | Link |
+|-----------------------|-----------------------|-------------|------|
+| Continued Pre-Training (CPT) for text completion | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb)) |
+| Continued Pre-Training (CPT) for translation | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Adapt models to specific languages or translation domains using domain data | [Notebook](./finetuning/notebooks/cpt_translation_with_unsloth.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/cpt_translation_with_unsloth.ipynb)) |
+| Supervised Fine-Tuning (SFT) | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Memory-efficient SFT using Unsloth with LoRA for 2x faster training | [Notebook](./finetuning/notebooks/sft_with_unsloth.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_with_unsloth.ipynb)) |
+| Supervised Fine-Tuning (SFT) | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Supervised fine-tuning using Hugging Face TRL library with parameter-efficient LoRA | [Notebook](./finetuning/notebooks/sft_with_trl.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_with_trl.ipynb)) |
+| Direct Preference Optimization (DPO) | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Align models with human preferences using direct preference optimization with LoRA | [Notebook](./finetuning/notebooks/dpo_with_trl.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/dpo_with_trl.ipynb)) |
+| Group Relative Policy Optimization (GRPO) | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Train reasoning models using Group Relative Policy Optimization with rule-based rewards | [Notebook](./finetuning/notebooks/grpo_for_verifiable_tasks.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/grpo_for_verifiable_tasks.ipynb)) |
+| Group Relative Policy Optimization (GRPO) | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Train reasoning models using Group Relative Policy Optimization for verifiable tasks | [Notebook](./finetuning/notebooks/grpo_with_unsloth.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/grpo_with_unsloth.ipynb)) |
+
+### Vision Models
+
+| Fine-Tuning Technique | Fine-Tuning Framework | Description | Link |
+|-----------------------|-----------------------|-------------|------|
+| Supervised Fine-Tuning (SFT) | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_for_vision_language_model.ipynb)) |
+| Supervised Fine-Tuning (SFT) | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Supervised fine-tuning for LFM2.5-VL models using TRL with parameter-efficient LoRA | [Notebook](./finetuning/notebooks/sft_for_vision_language_model_with_trl.ipynb) ([![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_for_vision_language_model_with_trl.ipynb)) |
+| Satellite VLM Fine-Tuning | [leap-finetune](https://github.com/Liquid4All/leap-finetune/) | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
+| Wildfire Prevention | [leap-finetune](https://github.com/Liquid4All/leap-finetune/) | Build a wildfire risk detection system using LFM2.5-VL-450M and Sentinel-2 satellite imagery, with fine-tuning and on-device inference | [Code](./examples/wildfire-prevention/README.md) |
+
+### Audio Models
+
+| Fine-Tuning Technique | Fine-Tuning Framework | Description | Link |
+|-----------------------|-----------------------|-------------|------|
+| LFM2.5-Audio Fine-Tuning | [liquid-audio](https://pypi.org/project/liquid-audio/) | Fine-tune LFM2.5-Audio-1.5B on the OHF-Voice dataset to map speech directly to Home Assistant function calls, with on-device GGUF inference | [Code](./examples/voice-assistant/README.md) |
+
+### Encoder Models
+
+| Fine-Tuning Technique | Fine-Tuning Framework | Description | Link |
+|-----------------------|-----------------------|-------------|------|
+| Document Classification | [HF Transformers](https://github.com/huggingface/transformers) | Fine-tune LFM2.5-Encoder for custom long-document multi-label classification | [Code](./examples/lfm-encoder-classification/) |
 
 ## Third-Party Apps Powered by LFM
 
