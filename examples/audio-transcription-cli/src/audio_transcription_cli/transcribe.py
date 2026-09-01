@@ -18,13 +18,20 @@ def main(
     log_partial_transcripts: str = None,
     typewriter_effect: bool = False,
     typewriter_speed: float = None,
+    quantization: str = None,
 ):
     """Test real-time transcription functionality."""
     config = Config()
 
+    # Override quantization if provided
+    if quantization is not None:
+        config.quantization = quantization
+
     # Ensure llama.cpp builds are available
     try:
-        model_downloader = ModelDownloader(target_dir=config.base_dir)
+        model_downloader = ModelDownloader(
+            target_dir=config.base_dir, quantization=config.quantization
+        )
         model_downloader.download()
     except Exception as e:
         print(f"⚠️  Warning: Failed to auto-download llama.cpp builds: {e}")
@@ -102,6 +109,12 @@ def cli():
         default=0.01,
         help="Speed of typewriter effect in seconds per character (default: 0.01)",
     )
+    parser.add_argument(
+        "--quantization",
+        choices=["Q8_0", "F16"],
+        default=None,
+        help="Quantization variant of the model to use (default: Q8_0)",
+    )
     args = parser.parse_args()
 
     main(
@@ -111,6 +124,7 @@ def cli():
         args.log_partial_transcripts,
         args.typewriter,
         args.typewriter_speed,
+        args.quantization,
     )
 
 

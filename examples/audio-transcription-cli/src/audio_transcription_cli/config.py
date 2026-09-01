@@ -16,6 +16,12 @@ class Config(BaseSettings):
         description="Base directory containing model files",
     )
 
+    # Quantization variant of the model files. The LFM2-Audio-1.5B-GGUF repo
+    # ships "Q8_0" (default, ~1.2GB) and "F16" (full precision, ~2.3GB).
+    quantization: str = Field(
+        default="Q8_0", description="Quantization variant of the model files"
+    )
+
     # Model files.
     # By default, we use the LFM2-Audio-1.5B-Q8_0.gguf model.
     model_filename: str = Field(
