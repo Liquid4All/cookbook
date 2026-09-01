@@ -143,11 +143,11 @@ To improve the transcription, we can use a text cleaning model to clean the text
 For example, we can use
 
 - LFM2.5-Audio-1.5B for audio to text extraction
-- LFM2-350M for text cleaning
+- LFM2.5-350M for text cleaning
 
-### What is LFM2-350M?
+### What is LFM2.5-350M?
 
-LFM2-350M is a small text-to-text model that can be used for tasks like text cleaning. To achieve optimal performance for your particular use case, you need to optimize your system and user prompts.
+[LFM2.5-350M](https://huggingface.co/LiquidAI/LFM2.5-350M) is a small text-to-text model that can be used for tasks like text cleaning. To achieve optimal performance for your particular use case, you need to optimize your system and user prompts.
 
 One way to do so is by using the Leap Worbench, a no-code tool that we are developing at Liquid AI for tasks like this.
 
