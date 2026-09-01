@@ -1,12 +1,12 @@
-# Audio-to-text transcription in real-time with LFM2-Audio-1.5B
+# Audio-to-text transcription in real-time with LFM2.5-Audio-1.5B
 
 [![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
 ## What's inside?
 
-This example demonstrates how to use the LFM2-Audio-1.5B model with llama.cpp to transcribe audio files locally in real-time.
+This example demonstrates how to use the LFM2.5-Audio-1.5B model with llama.cpp to transcribe audio files locally in real-time.
 
-When you combine the efficiency of llama.cpp with the power of a small audio model like [LFM2-Audio-1.5B](https://huggingface.co/LiquidAI/LFM2-Audio-1.5B), you can build real-time applications that can run on
+When you combine the efficiency of llama.cpp with the power of a small audio model like [LFM2.5-Audio-1.5B](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B), you can build real-time applications that can run on
 
 - smartphones
 - self-driving cars
@@ -56,6 +56,19 @@ Intelligent audio assistants on the edge are possible, and this repository is ju
     ```
     By passing the `--play-audio` flag, you will hear the audio in the background during transcription.
 
+    The model is downloaded automatically on first run. Use `--quantization` to
+    trade accuracy for size and speed:
+
+    ```sh
+    uv run transcribe --audio './audio-samples/barackobamafederalplaza.mp3' --quantization Q4_0
+    ```
+
+    | Quantization | Total size on disk |
+    | --- | --- |
+    | `Q4_0` | ~1.1 GB |
+    | `Q8_0` (default) | ~1.8 GB |
+    | `F16` | ~3.3 GB |
+
 
 ## Understanding the architecture
 
@@ -63,7 +76,7 @@ This example is a 100% local audio-to-text transcription CLI, that runs on your 
 
 ![](./media/diagram.gif)
 
-The Python code downloads the necessary llama.cpp builds for your platform automatically, so you don't need to worry about it. Audio support in llama.cpp is still quite experimental, and not fully integrated on the main branch of the llama.cpp project. Because of this, the Liquid AI team has released specialized llama.cpp builds that support the LFM2-Audio-1.5B model, that you will need to run this CLI.
+The Python code downloads the necessary llama.cpp builds for your platform automatically, so you don't need to worry about it. Audio support in llama.cpp is still quite experimental, and not fully integrated on the main branch of the llama.cpp project. Because of this, the Liquid AI team has released specialized llama.cpp builds that support the LFM2.5-Audio-1.5B model, that you will need to run this CLI.
 
 > [!NOTE]
 > **Supported Platforms**
@@ -80,15 +93,16 @@ The Python code downloads the necessary llama.cpp builds for your platform autom
 
 [llama.cpp](https://github.com/ggerganov/llama.cpp) is a super fast and lightweight open-source inference engine for Language Models. It is written in C++ and can be used to run LLMs on your local machine. For example, our Python CLI used llama.cpp under the hood to deliver fast transcriptions, instead of using either `PyTorch` or the higher-level `transformers` library.
 
-In the [examples.sh](https://github.com/Liquid4All/cookbook/blob/main/examples/audio-transcription-cli/examples.sh) script you will find 3 examples on how to run inference with LFM2-Audio-1.5 for 3 common use cases:
+In the [examples.sh](https://github.com/Liquid4All/cookbook/blob/main/examples/audio-transcription-cli/examples.sh) script you will find 3 examples on how to run inference with LFM2.5-Audio-1.5B for 3 common use cases:
 
 - Audio to text transcription. This is essentially what our Python CLI does under the hood:
     ```sh
     # Audio to Speech Recognition (ASR)   
-    ./llama-lfm2-audio \
-        -m $CKPT/LFM2-Audio-1.5B-Q8_0.gguf \
-        --mmproj $CKPT/mmproj-audioencoder-LFM2-Audio-1.5B-Q8_0.gguf \
-        -mv $CKPT/audiodecoder-LFM2-Audio-1.5B-Q8_0.gguf \
+    ./llama-liquid-audio-cli \
+        -m $CKPT/LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -mm $CKPT/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -mv $CKPT/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        --tts-speaker-file $CKPT/tokenizer-LFM2.5-Audio-1.5B-Q8_0.gguf \
         -sys "Perform ASR." \
         --audio $INPUT_WAV
     ```
@@ -96,23 +110,25 @@ In the [examples.sh](https://github.com/Liquid4All/cookbook/blob/main/examples/a
 - Text to speech.
     ```sh
     # Text To Speech (TTS)
-    ./llama-lfm2-audio \
-        -m $CKPT/LFM2-Audio-1.5B-Q8_0.gguf \
-        --mmproj $CKPT/mmproj-audioencoder-LFM2-Audio-1.5B-Q8_0.gguf \
-        -mv $CKPT/audiodecoder-LFM2-Audio-1.5B-Q8_0.gguf \
-        -sys "Perform TTS." \
+    ./llama-liquid-audio-cli \
+        -m $CKPT/LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -mm $CKPT/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -mv $CKPT/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        --tts-speaker-file $CKPT/tokenizer-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -sys "Perform TTS. Use the US male voice." \
         -p "My name is Pau Labarta Bajo and I love AI" \
         --output $OUTPUT_WAV
     ```
 
-- Text to speech with voice instructions
+- Text to speech with a different voice. The supported voices are `US male`,
+  `UK male`, `US female` and `UK female`.
     ```sh
-    ./llama-lfm2-audio \
-        -m $CKPT/LFM2-Audio-1.5B-Q8_0.gguf \
-        --mmproj $CKPT/mmproj-audioencoder-LFM2-Audio-1.5B-Q8_0.gguf \
-        -mv $CKPT/audiodecoder-LFM2-Audio-1.5B-Q8_0.gguf \
-        -sys "Perform TTS.
-        Use the following voice: A male speaker delivers a very expressive and animated speech, with a low-pitch voice and a slightly close-sounding tone. The recording carries a slight background noise." \
+    ./llama-liquid-audio-cli \
+        -m $CKPT/LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -mm $CKPT/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -mv $CKPT/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        --tts-speaker-file $CKPT/tokenizer-LFM2.5-Audio-1.5B-Q8_0.gguf \
+        -sys "Perform TTS. Use the UK female voice." \
         -p "What is your name man?" \
         --output $OUTPUT_WAV
     ```
@@ -126,7 +142,7 @@ To improve the transcription, we can use a text cleaning model to clean the text
 
 For example, we can use
 
-- LFM2-Audio-1.5B for audio to text extraction
+- LFM2.5-Audio-1.5B for audio to text extraction
 - LFM2-350M for text cleaning
 
 ### What is LFM2-350M?

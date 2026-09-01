@@ -12,30 +12,15 @@ class Config(BaseSettings):
 
     # Directoy where model files and llama.cpp will be downloaded to
     base_dir: Path = Field(
-        default=Path(os.getcwd()) / "LFM2-Audio-1.5B-GGUF",
+        default=Path(os.getcwd()) / "LFM2.5-Audio-1.5B-GGUF",
         description="Base directory containing model files",
     )
 
-    # Model files.
-    # By default, we use the LFM2-Audio-1.5B-Q8_0.gguf model.
-    model_filename: str = Field(
-        default="LFM2-Audio-1.5B-Q8_0.gguf", description="Main model file"
-    )
-    mmproj_filename: str = Field(
-        default="mmproj-audioencoder-LFM2-Audio-1.5B-Q8_0.gguf",
-        description="Audio encoder projection file",
-    )
-    audiodecoder_filename: str = Field(
-        default="audiodecoder-LFM2-Audio-1.5B-Q8_0.gguf",
-        description="Audio decoder file",
-    )
-
-    # Binary settings
-    runner_platform: str = Field(
-        default="macos-arm64", description="Platform for binary runners"
-    )
-    llama_binary_name: str = Field(
-        default="llama-lfm2-audio", description="Name of the llama binary"
+    # Quantization variant of the model files. The LFM2.5-Audio-1.5B-GGUF repo
+    # ships "Q4_0" (~1.1GB), "Q8_0" (default, ~1.8GB) and "F16" (~3.3GB),
+    # sizes being the total across the four GGUF files each variant needs.
+    quantization: str = Field(
+        default="Q8_0", description="Quantization variant of the model files"
     )
 
     # Audio settings
@@ -93,78 +78,6 @@ class Config(BaseSettings):
         case_sensitive = False
 
     @property
-    def model_path(self) -> Path:
-        """Get full path to model file."""
-        return self.base_dir / self.model_filename
-
-    @property
-    def mmproj_path(self) -> Path:
-        """Get full path to mmproj file."""
-        return self.base_dir / self.mmproj_filename
-
-    @property
-    def audiodecoder_path(self) -> Path:
-        """Get full path to audiodecoder file."""
-        return self.base_dir / self.audiodecoder_filename
-
-    @property
-    def llama_binary_path(self) -> Path:
-        """Get full path to llama binary."""
-        return (
-            self.base_dir
-            / "runners"
-            / self.runner_platform
-            / "bin"
-            / self.llama_binary_name
-        )
-
-    @property
     def text_cleaner_model_path(self) -> Path:
         """Get full path to text cleaning model file."""
         return self.base_dir / self.text_cleaner_model_filename
-
-    # def validate_paths(self) -> bool:
-    #     """
-    #     Validate that all required files exist.
-
-    #     Returns:
-    #         True if all paths are valid, False otherwise
-    #     """
-    #     required_paths = [
-    #         self.model_path,
-    #         self.mmproj_path,
-    #         self.audiodecoder_path,
-    #         self.llama_binary_path,
-    #     ]
-
-    #     for path in required_paths:
-    #         if not path.exists():
-    #             breakpoint()
-    #             print(f"Missing required file: {path}")
-    #             return False
-
-    #     return True
-
-    def get_model_command(self, audio_file_path: str) -> list[str]:
-        """
-        Get command line arguments for llama-lfm2-audio.
-
-        Args:
-            audio_file_path: Path to input audio file
-
-        Returns:
-            List of command arguments
-        """
-        return [
-            str(self.llama_binary_path),
-            "-m",
-            str(self.model_path),
-            "--mmproj",
-            str(self.mmproj_path),
-            "-mv",
-            str(self.audiodecoder_path),
-            "-sys",
-            self.asr_prompt,
-            "--audio",
-            audio_file_path,
-        ]

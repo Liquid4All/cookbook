@@ -15,7 +15,7 @@ wheels/
 .ruff_cache
 *.csv
 *.mp3
-LFM2-Audio-1.5B-GGUF/
+LFM2.5-Audio-1.5B-GGUF/
 *.wav
 *.env.local
 OpenEnv
