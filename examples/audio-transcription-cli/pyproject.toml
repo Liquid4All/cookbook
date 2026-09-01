@@ -8,7 +8,6 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "pyaudio>=0.2.11",
     "numpy>=1.24.0",
     "soundfile>=0.12.1",
     "scipy>=1.10.0",
