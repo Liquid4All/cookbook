@@ -115,20 +115,20 @@ In the [examples.sh](https://github.com/Liquid4All/cookbook/blob/main/examples/a
         -mm $CKPT/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
         -mv $CKPT/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
         --tts-speaker-file $CKPT/tokenizer-LFM2.5-Audio-1.5B-Q8_0.gguf \
-        -sys "Perform TTS." \
+        -sys "Perform TTS. Use the US male voice." \
         -p "My name is Pau Labarta Bajo and I love AI" \
         --output $OUTPUT_WAV
     ```
 
-- Text to speech with voice instructions
+- Text to speech with a different voice. The supported voices are `US male`,
+  `UK male`, `US female` and `UK female`.
     ```sh
     ./llama-liquid-audio-cli \
         -m $CKPT/LFM2.5-Audio-1.5B-Q8_0.gguf \
         -mm $CKPT/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
         -mv $CKPT/vocoder-LFM2.5-Audio-1.5B-Q8_0.gguf \
         --tts-speaker-file $CKPT/tokenizer-LFM2.5-Audio-1.5B-Q8_0.gguf \
-        -sys "Perform TTS.
-        Use the following voice: A male speaker delivers a very expressive and animated speech, with a low-pitch voice and a slightly close-sounding tone. The recording carries a slight background noise." \
+        -sys "Perform TTS. Use the UK female voice." \
         -p "What is your name man?" \
         --output $OUTPUT_WAV
     ```
