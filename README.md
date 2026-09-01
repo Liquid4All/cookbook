@@ -35,7 +35,7 @@ Python and CLI applications for running LFM models on your laptop or desktop mac
 | Name | Description | Link |
 |------|-------------|------|
 | Invoice Parser | Extract structured data from invoice images using LFM2-VL-3B | [Code](./examples/invoice-parser/README.md) |
-| Audio Transcription CLI | Real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [Code](./examples/audio-transcription-cli/) |
+| Audio Transcription CLI | Real-time audio-to-text transcription using LFM2.5-Audio-1.5B with llama.cpp | [Code](./examples/audio-transcription-cli/) |
 | Flight Search Assistant | Find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling | [Code](./examples/flight-search-assistant/README.md) |
 | Audio Car Cockpit | Voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B with LFM2-1.2B-Tool | [Code](./examples/audio-car-cockpit/README.md) |
 | LocalCowork | On-device AI agent for file ops, security scanning, OCR, and more, powered by LFM2-24B-A2B | [Code](./examples/localcowork/README.md) |
