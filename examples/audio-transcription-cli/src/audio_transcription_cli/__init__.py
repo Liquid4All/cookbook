@@ -1,4 +1,4 @@
-"""Real-time audio-to-speech recognition using LFM2-Audio-1.5B."""
+"""Real-time audio-to-speech recognition using LFM2.5-Audio-1.5B."""
 
 from .audio_preprocessing import save_raw_audio_as_wav
 from .config import Config

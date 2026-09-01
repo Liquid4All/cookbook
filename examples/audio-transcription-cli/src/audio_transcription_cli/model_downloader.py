@@ -15,8 +15,20 @@ from .platform_utils import get_platform_info
 class ModelDownloader:
     """Downloader for Liquid AI Audio models and llama.cpp builds necessary to use them"""
 
-    REPO_URL = "https://huggingface.co/LiquidAI/LFM2-Audio-1.5B-GGUF"
+    REPO_URL = "https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B-GGUF"
     SUPPORTED_PLATFORMS = ["android-arm64", "macos-arm64", "ubuntu-arm64", "ubuntu-x64"]
+
+    MODEL_NAME = "LFM2.5-Audio-1.5B"
+    RUNNER_NAME = "llama-liquid-audio"
+
+    # Each model variant ships as four GGUF files that share a naming scheme:
+    # "{prefix}{MODEL_NAME}-{quantization}.gguf". Roles map to filename prefixes.
+    FILE_PREFIXES = {
+        "model": "",
+        "mmproj": "mmproj-",
+        "vocoder": "vocoder-",
+        "tokenizer": "tokenizer-",
+    }
 
     def __init__(self, target_dir: str, quantization: str = "Q8_0"):
         self.target_dir = target_dir
@@ -26,35 +38,48 @@ class ModelDownloader:
         if self.platform not in self.SUPPORTED_PLATFORMS:
             raise ValueError(f"Unsupported platform: {self.platform}")
 
-        self.model_filename = f"LFM2-Audio-1.5B-{quantization}.gguf"
-        self.mmproj_filename = (
-            f"mmproj-audioencoder-LFM2-Audio-1.5B-{quantization}.gguf"
-        )
-        self.audiodecoder_filename = f"audiodecoder-LFM2-Audio-1.5B-{quantization}.gguf"
-        self.llama_binary_name = "llama-lfm2-audio"
+        self.llama_binary_name = f"{self.RUNNER_NAME}-cli"
         self.asr_prompt = "Perform ASR."
 
         self._warm_up_llama_cpp()
 
     @property
     def llama_cpp_binary_dir(self) -> Path:
-        """Return the path to the llama-lfm2-audio binary for the current platform."""
-        return Path(self.target_dir) / "runners" / self.platform / f"lfm2-audio-{self.platform}"
+        """Return the path to the runner binaries for the current platform."""
+        return (
+            Path(self.target_dir)
+            / "runners"
+            / self.platform
+            / f"{self.RUNNER_NAME}-{self.platform}"
+        )
+
+    def gguf_path(self, role: str) -> Path:
+        """Return the path to the GGUF file for the given role and quantization."""
+        prefix = self.FILE_PREFIXES[role]
+        return (
+            Path(self.target_dir)
+            / f"{prefix}{self.MODEL_NAME}-{self.quantization}.gguf"
+        )
 
     @property
     def model_path(self) -> Path:
         """Return the path to the main model file."""
-        return Path(self.target_dir) / self.model_filename
-    
+        return self.gguf_path("model")
+
     @property
     def mmproj_path(self) -> Path:
-        """Return the path to the mmproj file."""
-        return Path(self.target_dir) / self.mmproj_filename
-    
+        """Return the path to the multimodal projector file."""
+        return self.gguf_path("mmproj")
+
     @property
-    def audiodecoder_path(self) -> Path:
-        """Return the path to the audiodecoder file."""
-        return Path(self.target_dir) / self.audiodecoder_filename
+    def vocoder_path(self) -> Path:
+        """Return the path to the vocoder file."""
+        return self.gguf_path("vocoder")
+
+    @property
+    def tokenizer_path(self) -> Path:
+        """Return the path to the speaker tokenizer file."""
+        return self.gguf_path("tokenizer")
     
     def download(self) -> bool:
         """
@@ -102,7 +127,7 @@ class ModelDownloader:
 
     def get_model_command(self, audio_file_path: str) -> list[str]:
         """
-        Get command line arguments for llama-lfm2-audio.
+        Get command line arguments for llama-liquid-audio-cli.
 
         Args:
             audio_file_path: Path to input audio file
@@ -114,10 +139,12 @@ class ModelDownloader:
             str(self.llama_cpp_binary_dir / self.llama_binary_name),
             "-m",
             str(self.model_path),
-            "--mmproj",
+            "-mm",
             str(self.mmproj_path),
             "-mv",
-            str(self.audiodecoder_path),
+            str(self.vocoder_path),
+            "--tts-speaker-file",
+            str(self.tokenizer_path),
             "-sys",
             self.asr_prompt,
             "--audio",
@@ -126,14 +153,8 @@ class ModelDownloader:
     
     def _validate_existing_download(self) -> bool:
         """Check if the target directory contains a valid download."""
-        target_path = Path(self.target_dir)
-
         # Check for model files
-        model_files = [
-            target_path / self.model_filename,
-            target_path / self.mmproj_filename,
-            target_path / self.audiodecoder_filename,
-        ]
+        model_files = [self.gguf_path(role) for role in self.FILE_PREFIXES]
 
         for model_file in model_files:
             if not model_file.exists():
@@ -181,14 +202,16 @@ class ModelDownloader:
     def _extract_llama_cpp_binaries(self) -> bool:
         """Extract the platform-specific llama.cpp binaries from zip file."""
         try:
-            zip_filename = f"lfm2-audio-{self.platform}.zip"
-            zip_path = Path(self.target_dir) / 'runners' / self.platform / zip_filename
-            
+            zip_filename = f"{self.RUNNER_NAME}-{self.platform}.zip"
+            zip_path = Path(self.target_dir) / 'runners' / zip_filename
+
             if not zip_path.exists():
                 print(f"❌ Platform zip file not found: {zip_path}")
-                available_zips = list(Path(self.target_dir).glob("llama.cpp-*.zip"))
+                available_zips = list(
+                    (Path(self.target_dir) / "runners").glob(f"{self.RUNNER_NAME}-*.zip")
+                )
                 print(
-                    f"💡 Available platforms: {[z.stem.replace('llama.cpp-', '') for z in available_zips]}"
+                    f"💡 Available platforms: {[z.stem.replace(f'{self.RUNNER_NAME}-', '') for z in available_zips]}"
                 )
                 return False
 

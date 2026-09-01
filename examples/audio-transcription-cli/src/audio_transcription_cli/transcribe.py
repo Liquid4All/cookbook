@@ -111,7 +111,7 @@ def cli():
     )
     parser.add_argument(
         "--quantization",
-        choices=["Q8_0", "F16"],
+        choices=["Q4_0", "Q8_0", "F16"],
         default=None,
         help="Quantization variant of the model to use (default: Q8_0)",
     )

@@ -1,4 +1,4 @@
-"""Model wrapper for llama-lfm2-audio binary integration."""
+"""Model wrapper for llama-liquid-audio-cli binary integration."""
 
 import os
 import subprocess
@@ -10,7 +10,11 @@ from .config import Config
 from .model_downloader import ModelDownloader
 
 class LFM2AudioWrapper:
-    """Wrapper for llama-lfm2-audio binary."""
+    """Wrapper for llama-liquid-audio-cli binary."""
+
+    # The runner streams the transcript while generating, then prints performance
+    # counters, then repeats the final text after this delimiter.
+    GENERATED_TEXT_MARKER = "=== GENERATED TEXT ==="
 
     def __init__(self, model_downloader: ModelDownloader,  config: Config):
         """
@@ -91,8 +95,13 @@ class LFM2AudioWrapper:
         except Exception:
             output_str = str(output)
 
-        # The model output may contain various information
-        # We need to extract just the transcription
+        # Prefer the delimited final block: everything after the last marker is
+        # the complete transcript, free of the streamed copy and perf counters.
+        if self.GENERATED_TEXT_MARKER in output_str:
+            final_block = output_str.rsplit(self.GENERATED_TEXT_MARKER, 1)[1]
+            return self._clean_transcription(final_block)
+
+        # Fall back to filtering line-by-line if the marker is missing.
         lines = output_str.strip().split("\n")
 
         # Look for the actual transcription in the output
