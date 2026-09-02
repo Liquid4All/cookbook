@@ -13,6 +13,9 @@ Configs that ship in this repo:
   in the README snippets.
 - configs/finetuned-f16.yaml, configs/finetuned-q4.yaml: same fine-tune at
   other quants for sweep comparisons.
+- configs/finetuned-local-q8.yaml: eval a locally quantized GGUF from disk
+  via the `model_dir` config field.
+- configs/finetuned-r32-q8.yaml: eval a rank-32 LoRA run's GGUF from disk.
 
 Usage:
     uv run python scripts/eval.py --config configs/baseline.yaml
@@ -56,6 +59,7 @@ class EvalConfig:
     max_new_tokens: int = 64
     temperature: float = 0.0
     port: int = 8080
+    model_dir: str | None = None
 
     @classmethod
     def from_yaml(cls, path: Path) -> EvalConfig:
@@ -298,7 +302,9 @@ def main() -> None:
     handle = None
     try:
         handle = boot_model_server(
-            cfg.model_repo, cfg.quant, cfg.port, verbose=args.verbose_server
+            cfg.model_repo, cfg.quant, cfg.port,
+            verbose=args.verbose_server,
+            model_dir=Path(cfg.model_dir) if cfg.model_dir else None,
         )
 
         client = OpenAI(base_url=f"http://127.0.0.1:{cfg.port}/v1", api_key="dummy")

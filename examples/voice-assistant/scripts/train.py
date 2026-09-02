@@ -11,8 +11,11 @@ Loss and val-loss stream to stdout (visible in Modal logs). W&B integration is
 deferred until public liquid-audio adds tracker args to its Trainer; see
 `.scratch/wandb-integration/issues/01-tracker-args.md`.
 
-Run locally on a single GPU:
+Run locally on a single GPU (full fine-tune, needs ~16 GB VRAM):
     uv run --group finetune python scripts/train.py --data data/ohf_voice/train
+
+Run locally with LoRA (fits ~7.5 GB VRAM, e.g. RTX 5050):
+    uv run --group finetune python scripts/train.py --data data/ohf_voice/train --lora-rank 16
 
 Run on Modal with an A100-80GB:
     HF_TOKEN=hf_... uv run --group finetune python scripts/train.py --modal
@@ -51,12 +54,29 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+import torch
 from dotenv import load_dotenv
 
 from liquid_audio.data.dataloader import LFM2DataLoader
 from liquid_audio.trainer import Trainer
 
 load_dotenv()
+
+
+def _apply_lora(model: torch.nn.Module, rank: int, scaling: float) -> int:
+    """Replace Linear layers in the LFM backbone with LoRA, freeze everything else."""
+    from liquid_audio.moshi.modules.lora import replace_all_linear_with_lora
+
+    replace_all_linear_with_lora(model.lfm, rank=rank, scaling=scaling)
+    model.lfm.gradient_checkpointing_enable()
+
+    for name, param in model.named_parameters():
+        param.requires_grad = "lora_" in name
+
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    print(f"Trainable LoRA params: {trainable:,} ({trainable / total * 100:.2f}% of {total:,} total)")
+    return trainable
 
 
 def run_training(
@@ -71,6 +91,8 @@ def run_training(
     output_dir: str,
     val_split_ratio: float = 0.0,
     seed: int = 42,
+    lora_rank: int = 0,
+    lora_scaling: float = 2.0,
 ) -> None:
     dataset_path = Path(data)
     if not dataset_path.exists():
@@ -108,6 +130,41 @@ def run_training(
         val_interval=100,
         output_dir=output_dir,
     )
+
+    if lora_rank > 0:
+        raw_model = trainer.accelerator.unwrap_model(trainer.model)
+        _apply_lora(raw_model, rank=lora_rank, scaling=lora_scaling)
+
+        lora_params = [p for p in raw_model.parameters() if p.requires_grad]
+        optimizer = torch.optim.AdamW(
+            lora_params,
+            lr=lr,
+            betas=(0.9, 0.95),
+            eps=1e-8,
+            weight_decay=0.1,
+            fused=True,
+        )
+        warmup_sched = torch.optim.lr_scheduler.LinearLR(
+            optimizer=optimizer,
+            start_factor=1e-8,
+            end_factor=1.0,
+            total_iters=warmup_steps,
+        )
+        cosine_sched = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=optimizer,
+            T_max=max(1, max_steps - warmup_steps),
+            eta_min=lr * 0.1,
+        )
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer=optimizer,
+            schedulers=[warmup_sched, cosine_sched],
+            milestones=[warmup_steps],
+        )
+        trainer.model, trainer.optimizer, trainer.scheduler = trainer.accelerator.prepare(
+            raw_model, optimizer, scheduler
+        )
+        trainer.optimizer.zero_grad()
+
     trainer.train()
 
 
@@ -150,6 +207,8 @@ def run_on_modal(args: argparse.Namespace) -> None:
             output_dir=f"/checkpoints/{args.run_id}",
             val_split_ratio=args.val_split_ratio,
             seed=args.seed,
+            lora_rank=args.lora_rank,
+            lora_scaling=args.lora_scaling,
         )
 
     with app.run():
@@ -175,6 +234,20 @@ def parse_args() -> argparse.Namespace:
             "to a timestamped id so re-runs never collide with each other's "
             "checkpoint_N directories."
         ),
+    )
+
+    # LoRA arguments
+    parser.add_argument(
+        "--lora-rank",
+        type=int,
+        default=0,
+        help="LoRA rank (0 = disable LoRA, do full fine-tune). (default: 0)",
+    )
+    parser.add_argument(
+        "--lora-scaling",
+        type=float,
+        default=2.0,
+        help="LoRA scaling factor. (default: 2.0)",
     )
 
     # Train/val split (val is carved from the train split, NOT from the held-out test set)
@@ -230,4 +303,6 @@ if __name__ == "__main__":
             output_dir=f"{args.output_dir}/{args.run_id}",
             val_split_ratio=args.val_split_ratio,
             seed=args.seed,
+            lora_rank=args.lora_rank,
+            lora_scaling=args.lora_scaling,
         )
