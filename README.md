@@ -162,6 +162,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | LFM Podcast Studio | Turn any PDF into a two-host podcast episode locally using LFM2.5-Audio TTS via llama.cpp | [Code](https://github.com/nikhilprasanth/LFM-Podcast-Studio) |
 | GalamseyWatch | Two-layer agentic Earth observation over Sentinel-2 imagery for illegal mining detection in Ghana, powered by LFM2.5-VL-450M and LFM2-2.6B | [Code](https://github.com/samadon1/GalamseyWatch) |
 | Liquid Lens | Detects water anomalies in orbit by combining fast spectral filtering with conditional LFM2.5-VL visual insights on the SimSat orbital simulator | [Code](https://github.com/LiquidLensSystems/water-vlm) |
+| Scrivano | Fine-tuned LFM2.5-350M for Italian document key-info extraction, with a fully local desktop app to use it | [Code](https://github.com/andreagemelli/scrivano) |
 
 ## 🕐 Technical Deep Dives
 
