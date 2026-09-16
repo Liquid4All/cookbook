@@ -22,6 +22,7 @@
 - [Browser Apps](#-browser-apps)
 - [Mobile Apps](#-mobile-apps) (Android / iOS)
 - [Fine-Tuning Examples](#-fine-tuning-examples)
+- [Guides](#-guides)
 - [Third-Party Apps Powered by LFM](#third-party-apps-powered-by-lfm)
 - [Community Projects](#-community-projects)
 - [Technical Deep Dives](#-technical-deep-dives)
@@ -108,6 +109,15 @@ We recommend fine-tuning LFM2.5 for your specific use case to achieve the best r
 | LFM2.5-Audio Fine-Tuning | [liquid-audio](https://pypi.org/project/liquid-audio/) | Fine-tune LFM2.5-Audio-1.5B on the OHF-Voice dataset to map speech directly to Home Assistant function calls, with on-device GGUF inference | [Code](./examples/voice-assistant/README.md) |
 | **Encoder Models** | | | |
 | Document Classification | [HF Transformers](https://github.com/huggingface/transformers) | Fine-tune LFM2.5-Encoder for custom long-document multi-label classification | [Code](./examples/lfm-encoder-classification/) |
+
+## 📓 Guides
+
+Notebooks walking through the capabilities of specific LFM models with Hugging Face Transformers.
+
+| Name | Description | Link |
+|------|-------------|------|
+| Vision Capabilities | Image description, visual question answering, multi-image comparison, text reading, object localization, and tool calling with LFM2.5-VL | [Notebook](./guides/lfm25_vl_image_understanding.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/guides/lfm25_vl_image_understanding.ipynb) |
+| Longevity Models | Interpret clinical, DNA methylation, transcriptomic, proteomic, and genetic aging data with LFM2-1.2B-Longevity and LFM2-2.6B-Longevity | [Notebook](./guides/lfm2_longevity.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/guides/lfm2_longevity.ipynb) |
 
 ## Third-Party Apps Powered by LFM
 
