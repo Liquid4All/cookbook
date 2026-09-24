@@ -64,7 +64,7 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
 
 def check_build_tools() -> None:
     for tool in ("git", "cmake", "c++"):
-        if subprocess.run(["which", tool], capture_output=True).returncode != 0:
+        if shutil.which(tool) is None:
             print(f"Missing required tool: {tool}", file=sys.stderr)
             if tool in ("cmake", "c++"):
                 print(

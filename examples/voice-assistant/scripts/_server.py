@@ -79,27 +79,29 @@ def _extract_runner_zip(snapshot_dir: Path, plat: str) -> Path:
     return binary
 
 
-def download_artifacts(model_repo: str, quant: str) -> tuple[Path, Path, Path, Path, Path]:
-    """Snapshot-download the GGUF repo, unzip the runner, locate the four GGUFs.
-
-    Pulls only the files needed for this run (the four GGUFs at the chosen
-    quant plus the runner zip for the current platform) to keep first-run
-    footprint near 3 GB instead of 15 GB.
+def download_artifacts(model_repo: str, quant: str, model_dir: Path | None = None) -> tuple[Path, Path, Path, Path, Path]:
+    """Resolve GGUFs from a local dir or snapshot-download from HF.
 
     Returns: (server_binary, model_gguf, mmproj_gguf, vocoder_gguf, tokenizer_gguf).
     """
     plat = detect_platform()
     model_stem = model_repo.split("/")[-1].removesuffix("-GGUF")
-    allow_patterns = [
-        f"{model_stem}-{quant}.gguf",
-        f"mmproj-{model_stem}-{quant}.gguf",
-        f"vocoder-{model_stem}-{quant}.gguf",
-        f"tokenizer-{model_stem}-{quant}.gguf",
-        f"runners/llama-liquid-audio-{plat}.zip",
-    ]
-    print(f"Downloading {model_repo} (quant={quant}, platform={plat}) ...", flush=True)
-    snapshot_dir = Path(snapshot_download(repo_id=model_repo, allow_patterns=allow_patterns))
-    binary = _extract_runner_zip(snapshot_dir, plat)
+
+    if model_dir is not None:
+        snapshot_dir = model_dir.resolve()
+        print(f"Using local GGUFs from {snapshot_dir} ...", flush=True)
+        binary = _extract_runner_zip(snapshot_dir, plat)
+    else:
+        allow_patterns = [
+            f"{model_stem}-{quant}.gguf",
+            f"mmproj-{model_stem}-{quant}.gguf",
+            f"vocoder-{model_stem}-{quant}.gguf",
+            f"tokenizer-{model_stem}-{quant}.gguf",
+            f"runners/llama-liquid-audio-{plat}.zip",
+        ]
+        print(f"Downloading {model_repo} (quant={quant}, platform={plat}) ...", flush=True)
+        snapshot_dir = Path(snapshot_download(repo_id=model_repo, allow_patterns=allow_patterns))
+        binary = _extract_runner_zip(snapshot_dir, plat)
 
     model_path = snapshot_dir / f"{model_stem}-{quant}.gguf"
     mmproj_path = snapshot_dir / f"mmproj-{model_stem}-{quant}.gguf"
@@ -171,13 +173,14 @@ def boot_model_server(
     quant: str,
     port: int,
     verbose: bool = False,
+    model_dir: Path | None = None,
 ) -> ServerHandle:
-    """Download artifacts, start the server subprocess, wait until healthy.
+    """Download artifacts (or use local model_dir), start server, wait until healthy.
 
     Caller is responsible for stopping the returned handle (typically in a
     try/finally).
     """
-    binary, model, mmproj, vocoder, tokenizer = download_artifacts(model_repo, quant)
+    binary, model, mmproj, vocoder, tokenizer = download_artifacts(model_repo, quant, model_dir)
     proc = _start_subprocess(binary, model, mmproj, vocoder, tokenizer, port, verbose)
     _wait_for_health(port)
     print(f"  server ready on :{port}\n", flush=True)
