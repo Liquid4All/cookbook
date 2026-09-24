@@ -34,6 +34,11 @@ pub(crate) fn data_dir() -> std::path::PathBuf {
         .join(".localcowork")
 }
 
+/// Returns the cache directory for the app (embedding indexes, etc.).
+pub(crate) fn cache_dir() -> std::path::PathBuf {
+    data_dir().join("cache")
+}
+
 /// Initialize the tracing subscriber — writes structured logs to the app data directory.
 ///
 /// On each app startup:

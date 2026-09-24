@@ -188,15 +188,17 @@ pub async fn orchestrate_dual_model(
 
     tracing::info!(step_count = plan.steps.len(), "orchestrator: plan created");
 
-    // ── Build tool embedding index ──────────────────────────────────────
+    // ── Build tool embedding index (with cache) ───────────────────────────
     let tool_pairs: Vec<(String, String)> = {
         let mcp = mcp_state.lock().await;
         mcp.registry.tool_name_description_pairs()
     };
 
-    let tool_index = match ToolEmbeddingIndex::build(
+    let cache_dir = crate::cache_dir();
+    let tool_index = match ToolEmbeddingIndex::build_with_cache(
         router.current_base_url(),
         &tool_pairs,
+        Some(&cache_dir),
     )
     .await
     {
@@ -212,7 +214,7 @@ pub async fn orchestrate_dual_model(
         }
     };
 
-    tracing::info!(tool_count = tool_index.len(), "orchestrator: tool index built");
+    tracing::info!(tool_count = tool_index.len(), "orchestrator: tool index ready");
 
     // ── Plan validation gate (Improvement I4) ─────────────────────────
     {
