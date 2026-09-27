@@ -1,0 +1,51 @@
+export const CONFIG = {
+  STARTING_LIVES: 3,
+  RESPAWN_MS: 900,
+  INVULNERABLE_MS: 1200,
+  LANE_COUNT: 3,
+  LOOK_AHEAD_ROWS: 5,
+  INITIAL_SCROLL_SPEED: 180,
+  SPEED_INCREMENT: 0.15,
+  SPEED_INTERVAL_MS: 3000,
+  MAX_SCROLL_SPEED: 680,
+  INITIAL_SPAWN_INTERVAL_MS: 560,
+  MIN_SPAWN_INTERVAL_MS: 240,
+  INITIAL_TICK_MS: 500,
+  MIN_TICK_MS: 200,
+  TICK_SPEEDUP_INTERVAL_MS: 10000,
+  TITLE: "Road Decider",
+  DEFAULT_LIQUID_MODEL: "LiquidAI/LFM2.5-S1",
+  JEV_MODEL: "typesafe/jev-1.13",
+  CANVAS_WIDTH: 1040,
+  CANVAS_HEIGHT: 700,
+  ROAD_WIDTH: 288,
+  ROAD_HEIGHT: 560,
+  LANE_WIDTH: 96,
+  CAR_SIZE: 42,
+  ITEM_SIZE: 30,
+};
+
+export const COLORS = {
+  PAPER: "#07070d",
+  INK: "#f7f7ff",
+  PURPLE: "#6C4FE0",
+  LILAC: "#CD82F0",
+  INDIGO: "#6366F1",
+  SKY: "#A4BDFF",
+  POSIE: "#FF6E6E",
+  DANDELION: "#ffd84d",
+  FOREST: "#35946A",
+  NEUTRAL_50: "#11121d",
+  NEUTRAL_100: "#1a1b2b",
+  NEUTRAL_200: "#31334b",
+  NEUTRAL_500: "#8588a8",
+  NEUTRAL_700: "#c9cbed",
+  NEUTRAL_900: "#f7f7ff",
+};
+
+export const LANES = ["left", "center", "right"];
+
+export const MODES = {
+  AI: "ai",
+  HUMAN: "human",
+};

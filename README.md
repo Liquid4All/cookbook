@@ -55,6 +55,7 @@ Zero-install applications running LFM models directly in the browser via WebGPU 
 | Live Video Captioning | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2-VL-WebGPU) |
 | Chain-of-Thought Reasoning | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Code](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU/tree/main) \| [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
 | Hand & Voice Racer | Browser driving game controlled by hand gestures (MediaPipe) and voice commands (LFM2.5-Audio-1.5B), running fully local | [Code](./examples/hand-voice-racer/README.md) |
+| Road Decider | Pixel-art survival racer where Liquid's System One decision model dodges traffic against Jev or a human player | [Code](./examples/decision-racer/README.md) |
 | LEAP Voice Assistant | On-device voice assistant running in the browser via WebAssembly using the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/leap-ui-demo/web) |
 
 ## 📱 Mobile Apps

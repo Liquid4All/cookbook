@@ -1,0 +1,204 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 100%;
+  min-height: 100%;
+  background: #07070d;
+  color: #f7f7ff;
+  font-family: "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+}
+
+body {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+}
+
+.shell {
+  position: relative;
+  width: min(calc(100vw - 24px), 1160px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-title {
+  margin: 0;
+  padding: 18px 0 12px;
+  font: 700 clamp(24px, 4.5vw, 42px) "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  color: #f7f7ff;
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+canvas {
+  width: 100%;
+  max-width: 1040px;
+  image-rendering: pixelated;
+  background: #07070d;
+}
+
+.confidence-row {
+  display: flex;
+  width: 100%;
+  max-width: 1040px;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+
+.confidence-slot {
+  flex: 1;
+  min-height: 36px;
+  font: 700 21px "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  color: #8588a8;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.confidence-slot .conf-label {
+  white-space: nowrap;
+}
+
+.confidence-slot .conf-bar-bg {
+  flex: 1;
+  height: 15px;
+  background: #1a1b2b;
+  border: 1px solid #31334b;
+  position: relative;
+}
+
+.confidence-slot .conf-bar-fill {
+  height: 100%;
+  transition: width 0.15s ease-out;
+}
+
+.confidence-slot .conf-lanes {
+  display: flex;
+  width: 100%;
+  gap: 14px;
+  font-size: 20px;
+}
+
+.confidence-slot .conf-lanes span.active {
+  color: #f7f7ff;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 7, 13, 0.62);
+  text-align: center;
+  z-index: 5;
+}
+
+.hidden {
+  display: none;
+}
+
+
+.subtitle,
+.hint,
+.fineprint,
+.status-line {
+  color: #8588a8;
+  font-family: "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.mode-grid,
+.button-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.mode-grid {
+  flex-direction: row;
+  justify-content: center;
+}
+
+button {
+  min-height: 44px;
+  border: 2px solid #f7f7ff;
+  border-radius: 0;
+  background: #11121d;
+  color: #f7f7ff;
+  cursor: pointer;
+  font: 700 14px "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  padding: 12px 22px;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 #6C4FE0;
+}
+
+button:hover,
+button:focus-visible {
+  background: #1a1b2b;
+  outline: none;
+}
+
+.panel {
+  width: min(92vw, 560px);
+  border: 2px solid #f7f7ff;
+  border-radius: 0;
+  background: #11121d;
+  padding: 28px;
+  box-shadow: 8px 8px 0 #6C4FE0;
+}
+
+.panel h1 {
+  margin: 0 0 16px;
+  font-family: "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.55;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  text-align: left;
+}
+
+input {
+  width: 100%;
+  border: 1.5px solid #D4D4D4;
+  border-radius: 0;
+  background: #1a1b2b;
+  color: #f7f7ff;
+  font: inherit;
+  padding: 11px 12px;
+}
+
+code {
+  color: #6C4FE0;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+  text-align: left;
+}
+
+.result-card {
+  border: 1px solid #31334b;
+  border-radius: 0;
+  padding: 14px;
+  background: #1a1b2b;
+  font-size: 13px;
+  line-height: 1.8;
+}
