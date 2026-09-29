@@ -22,11 +22,9 @@ You need the following to run this example:
 - Node.js 18+
 - A Liquid API key
 
-> **No sign-up required.** During the initial release, d1 is available without authentication. You can call `https://api.liquid.ai/decisions/v1/systemone` directly with no `Authorization` header or API key. The demo's proxy still expects a key in `.env`, but the underlying API does not require one.
-
 To get a Liquid API key:
 
-1. Go to [console.liquid.ai](https://console.liquid.ai)
+1. Go to [console.liquid.ai](https://console.liquid.ai). If you don't have an account yet, register and join an organization.
 2. Navigate to **Dashboard > API Keys**
 3. Create a new key and copy it
 
@@ -53,7 +51,7 @@ Optionally, to enable the Jev vs d1 mode, you also need an [OpenRouter](https://
     npm run dev
     ```
 
-4. Open [http://localhost:5173](http://localhost:5173) and start a race.
+4. Open `localhost` and start a race.
 
 If a key is missing, the start screen tells you which one, and the modes that need it are disabled.
 
