@@ -22,6 +22,8 @@ You need the following to run this example:
 - Node.js 18+
 - A Liquid API key
 
+> **No sign-up required.** During the initial release, d1 is available without authentication. You can call `https://api.liquid.ai/decisions/v1/systemone` directly with no `Authorization` header or API key. The demo's proxy still expects a key in `.env`, but the underlying API does not require one.
+
 To get a Liquid API key:
 
 1. Go to [console.liquid.ai](https://console.liquid.ai)
@@ -42,7 +44,7 @@ Optionally, to enable the Jev vs d1 mode, you also need an [OpenRouter](https://
 2. Create a `.env` file with your API keys
     ```sh
     cp .env.example .env
-    # Edit .env: add LIQUID_API_KEY, and optionally JEV_API_KEY
+    # Edit .env: add LIQUID_API_KEY, and optionally OPENROUTER_API_KEY
     ```
 
 3. Install dependencies and start the dev server
@@ -65,9 +67,9 @@ By default, d1 runs through the Liquid API and Jev runs through OpenRouter. Each
 | `LIQUID_API_KEY` | | API key for d1. Required. |
 | `LIQUID_MODEL_NAME` | `d1:free` | d1 model name. |
 | `LIQUID_BASE_URL` | `https://api.liquid.ai` | API that serves d1: `https://api.liquid.ai` or `https://openrouter.ai`. |
-| `JEV_API_KEY` | | OpenRouter API key. Required for Jev vs d1 mode. |
-| `JEV_MODEL_NAME` | `typesafe/jev-1.13` | Jev model name. |
-| `JEV_BASE_URL` | `https://openrouter.ai` | API that serves Jev. |
+| `OPENROUTER_API_KEY` | | OpenRouter API key. Required for Jev vs d1 mode. |
+| `OPENROUTER_MODEL_NAME` | `typesafe/jev-1.13` | Jev model name. |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai` | API that serves Jev. |
 
 The proxy picks the right endpoint path for each base URL, so you only set the host. For example, to run d1 through OpenRouter:
 

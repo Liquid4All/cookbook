@@ -47,13 +47,13 @@ export const COLORS = {
 // <ENV_PREFIX>_API_KEY, and <ENV_PREFIX>_BASE_URL.
 export const RACERS = {
   d1: { envPrefix: "LIQUID", model: "d1:free", baseUrl: "https://api.liquid.ai" },
-  jev: { envPrefix: "JEV", model: "typesafe/jev-1.13", baseUrl: "https://openrouter.ai" },
+  jev: { envPrefix: "OPENROUTER", model: "typesafe/jev-1.13", baseUrl: "https://openrouter.ai" },
 };
 
 // The decision endpoint path differs per API, so it is picked from the base URL's host.
 export const DECISION_PATHS = {
   "openrouter.ai": "/api/alpha/decisions",
-  default: "/v1/systemone",
+  default: "/decisions/v1/systemone",
 };
 
 export const LANES = ["left", "center", "right"];

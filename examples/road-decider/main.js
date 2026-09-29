@@ -43,7 +43,7 @@ async function loadServerConfig() {
       modeAiButton.disabled = true;
     } else if (!racers.jev?.ready) {
       modeAiButton.disabled = true;
-      modeAiButton.title = "Add JEV_API_KEY to .env to enable this mode";
+      modeAiButton.title = "Add OPENROUTER_API_KEY to .env to enable this mode";
     }
   } catch {
     setupNotice.textContent = "Could not reach the dev server API. Start the demo with npm run dev.";

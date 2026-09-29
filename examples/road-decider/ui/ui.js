@@ -15,13 +15,10 @@ function drawRacerHud(ctx, { car, labelX }) {
   ctx.fillStyle = COLORS.NEUTRAL_500;
   ctx.font = "21px 'Press Start 2P', 'Courier New', monospace";
   ctx.fillText("LIVES", labelX, 82);
-  // start the dots after the label so they never overlap it
-  const dotsX = labelX + ctx.measureText("LIVES").width + 24;
+  const heartsX = labelX + ctx.measureText("LIVES").width + 24;
   for (let i = 0; i < car.maxLives; i += 1) {
-    ctx.beginPath();
-    ctx.arc(dotsX + i * 30, 74, 10, 0, Math.PI * 2);
-    ctx.fillStyle = i < car.lives ? car.color : COLORS.NEUTRAL_200;
-    ctx.fill();
+    ctx.fillStyle = i < car.lives ? COLORS.POSIE : COLORS.NEUTRAL_200;
+    drawHeart(ctx, heartsX + i * 30, 74, 20);
   }
 }
 
@@ -62,6 +59,21 @@ function confidenceHtml(car) {
       <div class="conf-lanes">${lanes}</div>
     </div>
   `;
+}
+
+function drawHeart(ctx, cx, cy, size) {
+  const w = size;
+  const h = size;
+  const y = cy - h * 0.45;
+  const top = h * 0.3;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, y + top);
+  ctx.bezierCurveTo(cx, y, cx - w / 2, y, cx - w / 2, y + top);
+  ctx.bezierCurveTo(cx - w / 2, y + h * 0.7, cx, y + h * 0.85, cx, y + h);
+  ctx.bezierCurveTo(cx, y + h * 0.85, cx + w / 2, y + h * 0.7, cx + w / 2, y + top);
+  ctx.bezierCurveTo(cx + w / 2, y, cx, y, cx, y + top);
+  ctx.fill();
 }
 
 function escapeHtml(text) {
