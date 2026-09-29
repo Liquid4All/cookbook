@@ -1,0 +1,206 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-width: 100%;
+  min-height: 100%;
+  background: #07070d;
+  color: #f7f7ff;
+  font-family: "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+}
+
+body {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  overflow: hidden;
+}
+
+.shell {
+  position: relative;
+  width: min(calc(100vw - 24px), 1160px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-title {
+  margin: 0;
+  padding: 18px 0 12px;
+  font: 700 clamp(24px, 4.5vw, 42px) "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  color: #f7f7ff;
+  text-align: center;
+  letter-spacing: 3px;
+}
+
+canvas {
+  width: 100%;
+  max-width: 1040px;
+  image-rendering: pixelated;
+  background: #07070d;
+}
+
+.confidence-row {
+  display: flex;
+  width: 100%;
+  max-width: 1040px;
+  padding: 8px 0 4px;
+}
+
+/* Match the road panels on the 1040px canvas: x 68-452 and 588-972. */
+.confidence-slot {
+  flex: none;
+  width: 36.923%;
+  min-height: 36px;
+  font: 700 14px "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  color: #8588a8;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#confidence-left {
+  margin-left: 6.538%;
+}
+
+#confidence-right {
+  margin-left: 13.077%;
+}
+
+.confidence-slot .conf-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.confidence-slot .conf-label {
+  white-space: nowrap;
+}
+
+.confidence-slot .conf-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: #1a1b2b;
+  border: 1px solid #31334b;
+}
+
+.confidence-slot .conf-bar-fill {
+  height: 100%;
+  transition: width 0.15s ease-out;
+}
+
+.confidence-slot .conf-lanes {
+  display: flex;
+  gap: 14px;
+}
+
+.confidence-slot .conf-lanes span.active {
+  color: #f7f7ff;
+}
+
+.confidence-slot .conf-error {
+  color: #FF6E6E;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  background: rgba(7, 7, 13, 0.62);
+  text-align: center;
+  z-index: 5;
+}
+
+.hidden {
+  display: none;
+}
+
+.mode-grid,
+.button-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.mode-grid {
+  flex-direction: row;
+  justify-content: center;
+}
+
+button {
+  min-height: 44px;
+  border: 2px solid #f7f7ff;
+  border-radius: 0;
+  background: #11121d;
+  color: #f7f7ff;
+  cursor: pointer;
+  font: 700 14px "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  padding: 12px 22px;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 #6C4FE0;
+}
+
+button:hover,
+button:focus-visible {
+  background: #1a1b2b;
+  outline: none;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.setup-notice {
+  max-width: 560px;
+  margin: 18px auto 0;
+  color: #FF6E6E;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.setup-notice:empty {
+  display: none;
+}
+
+.panel {
+  width: min(92vw, 560px);
+  border: 2px solid #f7f7ff;
+  background: #11121d;
+  padding: 28px;
+  box-shadow: 8px 8px 0 #6C4FE0;
+}
+
+.panel h1 {
+  margin: 0 0 16px;
+  font-family: "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.55;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+  text-align: left;
+}
+
+.result-card {
+  border: 1px solid #31334b;
+  padding: 14px;
+  background: #1a1b2b;
+  font-size: 13px;
+  line-height: 1.8;
+}

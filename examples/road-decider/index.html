@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Road Decider</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <h1 class="game-title">Road Decider</h1>
+      <canvas id="game" width="1040" height="700" aria-label="Road Decider game canvas"></canvas>
+      <div class="confidence-row">
+        <div id="confidence-left" class="confidence-slot"></div>
+        <div id="confidence-right" class="confidence-slot"></div>
+      </div>
+
+      <section id="start-screen" class="overlay">
+        <div class="mode-grid">
+          <button id="mode-human" type="button">You vs d1</button>
+          <button id="mode-ai" type="button">Jev vs d1</button>
+        </div>
+        <p id="setup-notice" class="setup-notice" role="status"></p>
+      </section>
+
+      <section id="results-screen" class="overlay hidden">
+        <div class="panel results">
+          <h1 id="winner-title">Race Complete</h1>
+          <div id="results-grid" class="results-grid"></div>
+          <div class="button-row">
+            <button id="race-again" type="button">Race Again</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
