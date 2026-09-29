@@ -255,7 +255,7 @@ localCoWork/
 | [`docs/PRD.md`](docs/PRD.md) | Full product requirements |
 | [`docs/mcp-tool-registry.yaml`](docs/mcp-tool-registry.yaml) | Machine-readable definitions for all 75 tools |
 | [`docs/model-analysis/`](docs/model-analysis/) | Benchmark study: 8 models, 67 tools, failure taxonomy |
-| [`docs/demo/lfm2-24b-demo.md`](docs/demo/lfm2-24b-demo.md) | Demo workflows with exact prompts and expected tool calls |
+| [`docs/model-analysis/ollama-demo-prompts.md`](docs/model-analysis/ollama-demo-prompts.md) | Curated demo prompts with expected tool calls for LFM2-24B-A2B |
 | [`docs/architecture-decisions/`](docs/architecture-decisions/) | ADRs for orchestrator, pre-filter, sampling, etc. |
 | [`docs/patterns/`](docs/patterns/) | Implementation patterns (MCP servers, HITL, error handling) |
 
