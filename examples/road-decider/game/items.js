@@ -1,8 +1,9 @@
-import { CONFIG } from "./config.js";
+import { CONFIG } from "../config.js";
 
-export const OBSTACLE_TYPES = ["traffic-car", "traffic-truck", "traffic-van", "traffic-bus"];
+const OBSTACLE_TYPES = ["traffic-car", "traffic-truck", "traffic-van", "traffic-bus"];
 
-export function mulberry32(seed) {
+// Small seeded random number generator, so both roads get the same traffic.
+function mulberry32(seed) {
   return function random() {
     seed |= 0;
     seed = (seed + 0x6d2b79f5) | 0;
@@ -23,11 +24,11 @@ export function createSpawnPattern(seed, count = 280) {
     if (isCluster) {
       const openLane = Math.floor(random() * CONFIG.LANE_COUNT);
       for (let lane = 0; lane < CONFIG.LANE_COUNT; lane += 1) {
-        if (lane !== openLane && random() < 0.7) wave.push({ lane, type: createItemType(random) });
+        if (lane !== openLane && random() < 0.7) wave.push({ lane, type: randomType(random) });
       }
     } else {
       const lane = Math.floor(random() * CONFIG.LANE_COUNT);
-      wave.push({ lane, type: createItemType(random) });
+      wave.push({ lane, type: randomType(random) });
     }
 
     if (pattern.length > 0) {
@@ -40,6 +41,11 @@ export function createSpawnPattern(seed, count = 280) {
   return pattern;
 }
 
+function randomType(random) {
+  return OBSTACLE_TYPES[Math.floor(random() * OBSTACLE_TYPES.length)];
+}
+
+// Make sure a car in any open lane of the previous wave can reach an open lane in this one.
 function ensureEscapePath(wave, prevWave) {
   if (wave.length === 0) return;
   const prevBlocked = new Set(prevWave.map((e) => e.lane));
@@ -50,8 +56,9 @@ function ensureEscapePath(wave, prevWave) {
     return;
   }
 
-  const prevClear = [0, 1, 2].filter((l) => !prevBlocked.has(l));
-  const currClear = [0, 1, 2].filter((l) => !currBlocked.has(l));
+  const lanes = [...Array(CONFIG.LANE_COUNT).keys()];
+  const prevClear = lanes.filter((l) => !prevBlocked.has(l));
+  const currClear = lanes.filter((l) => !currBlocked.has(l));
 
   const reachable = currClear.some((cl) =>
     prevClear.some((pl) => Math.abs(cl - pl) <= 1),
@@ -59,7 +66,7 @@ function ensureEscapePath(wave, prevWave) {
 
   if (!reachable) {
     for (const pl of prevClear) {
-      for (const target of [pl, Math.max(0, pl - 1), Math.min(2, pl + 1)]) {
+      for (const target of [pl, Math.max(0, pl - 1), Math.min(CONFIG.LANE_COUNT - 1, pl + 1)]) {
         const idx = wave.findIndex((e) => e.lane === target);
         if (idx !== -1) {
           wave.splice(idx, 1);
@@ -68,12 +75,4 @@ function ensureEscapePath(wave, prevWave) {
       }
     }
   }
-}
-
-function createItemType(random) {
-  return OBSTACLE_TYPES[Math.floor(random() * OBSTACLE_TYPES.length)];
-}
-
-export function isObstacle(type) {
-  return OBSTACLE_TYPES.includes(type);
 }

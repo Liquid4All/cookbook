@@ -1,18 +1,16 @@
-import { requestDecision, buildState, getHeuristicDecision } from "./ai.js";
+import { requestDecision, buildState } from "../ai/ai.js";
 import { Car } from "./car.js";
-import { COLORS, CONFIG, MODES } from "./config.js";
+import { COLORS, CONFIG, MODES } from "../config.js";
 import { Road } from "./road.js";
-import { drawCar, drawItem } from "./sprites.js";
-import { drawHud } from "./ui.js";
+import { drawCar, drawItem } from "../ui/sprites.js";
+import { drawHud } from "../ui/ui.js";
 
 export class Game {
-  constructor({ canvas, input, onComplete, liquidModel, jevModel }) {
+  constructor({ canvas, input, onComplete }) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.input = input;
     this.onComplete = onComplete;
-    this.liquidModel = liquidModel || CONFIG.DEFAULT_LIQUID_MODEL;
-    this.jevModel = jevModel || CONFIG.JEV_MODEL;
     this.animationId = null;
     this.lastTime = 0;
   }
@@ -26,19 +24,16 @@ export class Game {
     this.speedFactor = 1;
     this.ended = false;
 
-    this.roads = [
-      new Road({ x: 116, y: 92, seed }),
-      new Road({ x: 636, y: 92, seed }),
-    ];
+    this.roads = CONFIG.ROAD_X.map((x) => new Road({ x, y: CONFIG.ROAD_Y, seed }));
 
     this.cars = mode === MODES.HUMAN
       ? [
-          new Car({ name: "LFM2.5-S1", driver: this.liquidModel, side: "left", controller: "ai", color: COLORS.PURPLE, mascot: null }),
-          new Car({ name: "You", driver: "", side: "right", controller: "human", color: COLORS.SKY, mascot: null }),
+          new Car({ name: "d1", racer: "d1", controller: "ai", color: COLORS.PURPLE, mascot: null }),
+          new Car({ name: "You", controller: "human", color: COLORS.SKY, mascot: null }),
         ]
       : [
-          new Car({ name: "LFM2.5-S1", driver: this.liquidModel, side: "left", controller: "ai", color: COLORS.PURPLE, mascot: null }),
-          new Car({ name: "Jev", driver: this.jevModel, side: "right", controller: "ai", color: COLORS.NEUTRAL_700, mascot: "flame" }),
+          new Car({ name: "d1", racer: "d1", controller: "ai", color: COLORS.PURPLE, mascot: null }),
+          new Car({ name: "Jev", racer: "jev", controller: "ai", color: COLORS.NEUTRAL_700, mascot: "flame" }),
         ];
 
     this.lastTime = performance.now();
@@ -54,7 +49,7 @@ export class Game {
     const deltaMs = Math.min(50, time - this.lastTime);
     this.lastTime = time;
     this.update(deltaMs);
-    this.render(time);
+    this.render();
 
     if (!this.ended) {
       this.animationId = requestAnimationFrame((nextTime) => this.loop(nextTime));
@@ -65,7 +60,7 @@ export class Game {
     this.elapsedMs += deltaMs;
     const speedStep = Math.floor(this.elapsedMs / CONFIG.SPEED_INTERVAL_MS);
     if (speedStep !== this.lastSpeedStep) {
-      this.speedFactor = Math.min(2.9, 1 + speedStep * CONFIG.SPEED_INCREMENT);
+      this.speedFactor = Math.min(CONFIG.MAX_SPEED_FACTOR, 1 + speedStep * CONFIG.SPEED_INCREMENT);
       this.lastSpeedStep = speedStep;
     }
 
@@ -79,10 +74,10 @@ export class Game {
       const car = this.cars[index];
       const road = this.roads[index];
       const frozen = car.crashed;
-      const boostFactor = car.boostTimer > 0 ? 1.12 : 1;
-      const slowFactor = car.slowTimer > 0 ? 0.55 + 0.45 * (1 - car.slowTimer / 1200) : 1;
-      road.update(deltaMs, this.speedFactor * boostFactor * slowFactor, frozen);
-      car.update(deltaMs, road, false);
+      // Ease back up to full speed after a respawn.
+      const slowFactor = car.slowTimer > 0 ? 0.55 + 0.45 * (1 - car.slowTimer / CONFIG.RESPAWN_SLOW_MS) : 1;
+      road.update(deltaMs, this.speedFactor * slowFactor, frozen);
+      car.update(deltaMs, road);
       this.maybeRequestDecision(car, road);
       car.checkCollisions(road);
     }
@@ -102,22 +97,16 @@ export class Game {
     car.nextDecisionAt = this.elapsedMs + tickMs;
     car.pendingDecision = true;
 
-    const provider = car.name === "Jev" ? "jev" : "liquid";
-    const model = provider === "jev" ? this.jevModel : this.liquidModel;
-    requestDecision({
-      provider,
-      model,
-      state: buildState(car, road),
-    })
-      .then((decision) => car.applyDecision(decision))
-      .catch((error) => {
-        console.warn(`${car.name} decision failed`, error);
-        car.applyDecision(getHeuristicDecision(car, road));
-        car.recordDecisionError(error?.message);
+    requestDecision({ racer: car.racer, state: buildState(car, road) })
+      .then((decision) => {
+        car.applyDecision(decision);
+        car.lastError = null;
       })
-      .finally(() => {
-        car.pendingDecision = false;
-      });
+      .catch((error) => {
+        car.lastError = error.message;
+        console.warn(`${car.name} decision failed`, error);
+      })
+      .finally(() => { car.pendingDecision = false; });
   }
 
   checkRaceEnd() {
@@ -130,13 +119,8 @@ export class Game {
   getOutcome() {
     const racers = this.cars.map((car, index) => ({ car, road: this.roads[index] }));
     const [left, right] = racers;
-    let winner = left;
-
-    if (left.car.eliminated !== right.car.eliminated) {
-      winner = left.car.eliminated ? right : left;
-    }
-
     const tied = left.car.eliminated === right.car.eliminated;
+    const winner = left.car.eliminated ? right : left;
 
     return {
       title: tied ? "Photo finish!" : winner.car.name === "You" ? "You win!" : `${winner.car.name} wins!`,
@@ -144,10 +128,19 @@ export class Game {
     };
   }
 
-  render(time) {
+  // Draw the empty roads shown behind the start screen.
+  renderIdle() {
+    this.ctx.fillStyle = COLORS.PAPER;
+    this.ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+    for (const x of CONFIG.ROAD_X) {
+      this.drawRoad(new Road({ x, y: CONFIG.ROAD_Y, seed: 0 }));
+    }
+  }
+
+  render() {
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
-    drawBackdrop(ctx, time);
+    ctx.fillStyle = COLORS.PAPER;
+    ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 
     for (let index = 0; index < this.roads.length; index += 1) {
       const road = this.roads[index];
@@ -155,9 +148,9 @@ export class Game {
       this.drawRoad(road);
       ctx.save();
       ctx.beginPath();
-      ctx.rect(road.x - 48, road.y, road.width + 96, road.height);
+      ctx.rect(road.x - CONFIG.SHOULDER_WIDTH, road.y, road.width + 2 * CONFIG.SHOULDER_WIDTH, road.height);
       ctx.clip();
-      this.drawItems(road, time);
+      this.drawItems(road);
       drawCar(ctx, road.laneCenter(car.laneIndex), road.y + car.y, car);
       ctx.restore();
       if (car.crashed) this.drawCrashLabel(road, car);
@@ -170,20 +163,16 @@ export class Game {
     ctx.lineTo(CONFIG.CANVAS_WIDTH / 2, 680);
     ctx.stroke();
 
-    drawHud(ctx, {
-      elapsedMs: this.elapsedMs,
-      roads: this.roads,
-      racers: [
-        { car: this.cars[0], road: this.roads[0], labelX: 80 },
-        { car: this.cars[1], road: this.roads[1], labelX: 600 },
-      ],
-    });
+    drawHud(ctx, [
+      { car: this.cars[0], labelX: 80 },
+      { car: this.cars[1], labelX: 600 },
+    ]);
   }
 
   drawRoad(road) {
     const ctx = this.ctx;
     ctx.fillStyle = COLORS.NEUTRAL_100;
-    ctx.fillRect(road.x - 48, road.y, road.width + 96, road.height);
+    ctx.fillRect(road.x - CONFIG.SHOULDER_WIDTH, road.y, road.width + 2 * CONFIG.SHOULDER_WIDTH, road.height);
     ctx.fillStyle = COLORS.NEUTRAL_50;
     ctx.fillRect(road.x, road.y, road.width, road.height);
     ctx.strokeStyle = COLORS.INK;
@@ -204,10 +193,10 @@ export class Game {
     }
   }
 
-  drawItems(road, time) {
+  drawItems(road) {
     for (const item of road.items) {
       if (item.collected) continue;
-      drawItem(this.ctx, road.laneCenter(item.lane), road.y + item.y, item.type, time / 60);
+      drawItem(this.ctx, road.laneCenter(item.lane), road.y + item.y, item.type);
     }
   }
 
@@ -222,9 +211,4 @@ export class Game {
     this.ctx.textAlign = "center";
     this.ctx.fillText(car.eliminated ? "Out of lives" : "Life lost", road.x + road.width / 2, road.y + 268);
   }
-}
-
-function drawBackdrop(ctx) {
-  ctx.fillStyle = COLORS.PAPER;
-  ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 }

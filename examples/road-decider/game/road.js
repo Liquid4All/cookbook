@@ -1,4 +1,4 @@
-import { CONFIG, LANES } from "./config.js";
+import { CONFIG, LANES } from "../config.js";
 import { createSpawnPattern } from "./items.js";
 
 export class Road {
@@ -8,7 +8,6 @@ export class Road {
     this.width = CONFIG.ROAD_WIDTH;
     this.height = CONFIG.ROAD_HEIGHT;
     this.scrollSpeed = CONFIG.INITIAL_SCROLL_SPEED;
-    this.distanceTravelled = 0;
     this.items = [];
     this.pattern = createSpawnPattern(seed);
     this.patternIndex = 0;
@@ -22,7 +21,6 @@ export class Road {
 
     const deltaSeconds = deltaMs / 1000;
     this.lineOffset = (this.lineOffset + this.scrollSpeed * deltaSeconds) % 64;
-    this.distanceTravelled += this.scrollSpeed * deltaSeconds * 0.55;
 
     for (const item of this.items) {
       item.y += this.scrollSpeed * deltaSeconds;
@@ -46,7 +44,6 @@ export class Road {
     this.patternIndex += 1;
     for (const entry of wave) {
       this.items.push({
-        id: `${this.patternIndex}-${entry.lane}-${entry.type}`,
         lane: entry.lane,
         type: entry.type,
         y: -CONFIG.ITEM_SIZE - 8,
@@ -60,7 +57,7 @@ export class Road {
   }
 
   getLookAhead(carY, rows = CONFIG.LOOK_AHEAD_ROWS) {
-    const rowHeight = 108;
+    const rowHeight = CONFIG.LOOK_AHEAD_ROW_HEIGHT;
     const lookAhead = Object.fromEntries(LANES.map((lane) => [lane, Array(rows).fill(null)]));
 
     for (const item of this.items) {

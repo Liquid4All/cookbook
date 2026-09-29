@@ -47,19 +47,33 @@ canvas {
   display: flex;
   width: 100%;
   max-width: 1040px;
-  gap: 8px;
   padding: 8px 0 4px;
 }
 
+/* Match the road panels on the 1040px canvas: x 68-452 and 588-972. */
 .confidence-slot {
-  flex: 1;
+  flex: none;
+  width: 36.923%;
   min-height: 36px;
-  font: 700 21px "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
+  font: 700 14px "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
   color: #8588a8;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#confidence-left {
+  margin-left: 6.538%;
+}
+
+#confidence-right {
+  margin-left: 13.077%;
+}
+
+.confidence-slot .conf-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .confidence-slot .conf-label {
@@ -67,11 +81,10 @@ canvas {
 }
 
 .confidence-slot .conf-bar-bg {
-  flex: 1;
-  height: 15px;
+  width: 100%;
+  height: 10px;
   background: #1a1b2b;
   border: 1px solid #31334b;
-  position: relative;
 }
 
 .confidence-slot .conf-bar-fill {
@@ -81,13 +94,17 @@ canvas {
 
 .confidence-slot .conf-lanes {
   display: flex;
-  width: 100%;
   gap: 14px;
-  font-size: 20px;
 }
 
 .confidence-slot .conf-lanes span.active {
   color: #f7f7ff;
+}
+
+.confidence-slot .conf-error {
+  color: #FF6E6E;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .overlay {
@@ -95,6 +112,7 @@ canvas {
   inset: 0;
   display: grid;
   place-items: center;
+  align-content: center;
   background: rgba(7, 7, 13, 0.62);
   text-align: center;
   z-index: 5;
@@ -102,17 +120,6 @@ canvas {
 
 .hidden {
   display: none;
-}
-
-
-.subtitle,
-.hint,
-.fineprint,
-.status-line {
-  color: #8588a8;
-  font-family: "Press Start 2P", "Silkscreen", "Pixelify Sans", "Courier New", monospace;
-  font-size: 11px;
-  line-height: 1.7;
 }
 
 .mode-grid,
@@ -148,10 +155,27 @@ button:focus-visible {
   outline: none;
 }
 
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.setup-notice {
+  max-width: 560px;
+  margin: 18px auto 0;
+  color: #FF6E6E;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.setup-notice:empty {
+  display: none;
+}
+
 .panel {
   width: min(92vw, 560px);
   border: 2px solid #f7f7ff;
-  border-radius: 0;
   background: #11121d;
   padding: 28px;
   box-shadow: 8px 8px 0 #6C4FE0;
@@ -165,27 +189,6 @@ button:focus-visible {
   line-height: 1.55;
 }
 
-label {
-  display: grid;
-  gap: 8px;
-  margin-top: 18px;
-  text-align: left;
-}
-
-input {
-  width: 100%;
-  border: 1.5px solid #D4D4D4;
-  border-radius: 0;
-  background: #1a1b2b;
-  color: #f7f7ff;
-  font: inherit;
-  padding: 11px 12px;
-}
-
-code {
-  color: #6C4FE0;
-}
-
 .results-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -196,7 +199,6 @@ code {
 
 .result-card {
   border: 1px solid #31334b;
-  border-radius: 0;
   padding: 14px;
   background: #1a1b2b;
   font-size: 13px;
