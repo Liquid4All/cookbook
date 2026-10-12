@@ -1,0 +1,11 @@
+name: finetuned-local-q8
+model_repo: 5ch4um1/LFM2.5-Audio-1.5B-OHF-Voice-GGUF
+model_dir: outputs/gguf
+quant: Q8_0
+
+system_prompt: "Perform ASR."
+
+samples_per_function: 10
+max_new_tokens: 64
+temperature: 0.0
+port: 8080

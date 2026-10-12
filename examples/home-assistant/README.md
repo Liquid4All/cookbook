@@ -253,6 +253,8 @@ uv run --group finetune python finetune/prepare_data.py \
 
 Fine-tuning adapts the base model to our specific task. Instead of retraining all weights from scratch, we use LoRA (Low-Rank Adaptation): a technique that injects a small set of trainable weight matrices on top of the frozen base model. This keeps GPU memory usage low and training fast, while still producing meaningful accuracy gains on the target task.
 
+### Option A: Cloud training (Modal)
+
 Training runs on [Modal](https://modal.com) (a serverless GPU cloud) via [leap-finetune](https://github.com/Liquid4All/leap-finetune), Liquid AI's open source fine-tuning tool. LoRA fine-tuning requires a GPU (a CPU would take hours or days), and Modal's serverless model makes it cost-effective: you spin up an H100, pay only for the minutes it runs, download the checkpoint when it's done, and everything else happens on your local machine.
 
 ```mermaid
@@ -316,6 +318,51 @@ uv run python benchmark/run.py \
 ```
 
 You can find the checkpoint at [Paulescu/home-assistant-LFM2-350-GGUF](https://huggingface.co/Paulescu/home-assistant-LFM2.5-350M-GGUF)
+
+### Option B: Local GPU training
+
+If you have a local GPU with 7.5+ GB VRAM (e.g. an RTX 5050), you can fine-tune directly on your own machine using the same LoRA approach used in the [voice-assistant example](../voice-assistant). This avoids cloud costs and keeps data completely local.
+
+1. **Preprocess the data.** Convert the synthetic dataset to the LFM2 text format:
+
+   ```bash
+   uv run --group finetune python finetune/prepare_data.py \
+       --input benchmark/datasets/sft_data.jsonl
+   ```
+
+2. **Run LoRA training.** Adapt the voice-assistant's `scripts/train.py` or use `leap-finetune` directly on your local GPU:
+
+   ```bash
+   uv run --group finetune python ../voice-assistant/scripts/train.py \
+       --data finetune/output/data \
+       --lora-rank 16 \
+       --batch-size 2 \
+       --max-steps 5000
+   ```
+
+3. **Merge and export.** After training, merge the LoRA weights back into the base model and convert to GGUF:
+
+   ```bash
+   uv run --group finetune python ../voice-assistant/scripts/merge_lora_checkpoint.py \
+       --checkpoint outputs/ohf_voice/<run-id>/final/model.safetensors \
+       --output outputs/merged \
+       --lora-rank 16
+
+   uv run --group finetune python finetune/export.py \
+       --lora-path outputs/merged \
+       --output-path outputs/gguf \
+       --quant-type q8_0
+   ```
+
+4. **Evaluate.** Point `benchmark/run.py` at your local GGUF:
+
+   ```bash
+   uv run python benchmark/run.py \
+       --hf-repo <your-hf-username>/home-assistant-LFM2-350M-GGUF \
+       --hf-file LFM2-350M-q8_0.gguf
+   ```
+
+The same LoRA mechanics apply regardless of model size — adjust `--lora-rank` and `--batch-size` to fit your GPU memory.
 
 ### Results
 
