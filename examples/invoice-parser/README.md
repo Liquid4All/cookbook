@@ -172,7 +172,7 @@ Results are then printed on console. The model correctly extracts all 4 out of 4
 
 The model works perfectly out-of-the-box on our sample of invoices. However, depending on your specific invoice formats and layouts, you may encounter cases where the extraction is not accurate enough.
 
-In those cases, you can fine-tune the model on your own dataset to improve accuracy. Check out the [fine-tuning notebook for Vision Language Models](../../finetuning/notebooks/sft_for_vision_language_model.ipynb) to learn how.
+In those cases, you can fine-tune the model on your own dataset to improve accuracy. Check out the [fine-tuning notebook for Vision Language Models](../../finetuning/notebooks/sft_for_vision_language_model_with_unsloth.ipynb) to learn how.
 
 
 ## Need help?
