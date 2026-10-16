@@ -31,7 +31,7 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 
 **Tier 1 — Desktop-class (13-27 GB VRAM):**
 
-| Model | HuggingFace ID | Ollama Tag | Runtime | Quantization |
+| Model | Hugging Face ID | Ollama Tag | Runtime | Quantization |
 |-------|---------------|-----------|---------|-------------|
 | LFM2-24B-A2B | `LiquidAI/LFM2-24B-A2B-GGUF` | N/A | llama-server | Q4_K_M (GGUF) |
 | Mistral-Small-24B | `mistralai/Mistral-Small-24B-Instruct-2501` | `mistral-small:24b` | Ollama | Q4_K_M |
@@ -41,7 +41,7 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 
 **Tier 2 — Small model class (2-4 GB VRAM):**
 
-| Model | HuggingFace ID | Ollama Tag | Runtime | Quantization |
+| Model | Hugging Face ID | Ollama Tag | Runtime | Quantization |
 |-------|---------------|-----------|---------|-------------|
 | Llama 3.2 3B | `meta-llama/Llama-3.2-3B-Instruct` | `llama3.2:3b` | Ollama | Q4_K_M |
 | Phi-4-mini | `microsoft/phi-4-mini` | `phi4-mini` | Ollama | Q4_K_M |
@@ -49,7 +49,7 @@ The comparison is relevant for anyone deploying local AI agents on consumer hard
 
 **Dropped from greedy re-run:**
 
-| Model | HuggingFace ID | Ollama Tag | Reason |
+| Model | Hugging Face ID | Ollama Tag | Reason |
 |-------|---------------|-----------|--------|
 | Qwen3 32B | `Qwen/Qwen3-32B` | `qwen3:32b` | Only had partial run (40/100 tests), extreme latency (~28s/query) |
 | Qwen3-30B-A3B (original) | `Qwen/Qwen3-30B-A3B` | `qwen3:30b-a3b` | Replaced by Instruct-2507 variant |

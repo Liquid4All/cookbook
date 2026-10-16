@@ -20,10 +20,10 @@ console = Console()
 
 def load_model(model: str, hf_model_file: str = None) -> Llama:
     """
-    Load a Llama model from either a local GGUF file or a HuggingFace repository.
+    Load a Llama model from either a local GGUF file or a Hugging Face repository.
 
     Args:
-        model: Either a local path to a GGUF file, or a HuggingFace repository ID
+        model: Either a local path to a GGUF file, or a Hugging Face repository ID
         hf_model_file: If provided, treats 'model' as a HF repo ID and downloads this specific GGUF file
 
     Returns:
@@ -33,12 +33,12 @@ def load_model(model: str, hf_model_file: str = None) -> Llama:
         # Load from local path
         model = load_model("path/to/model.gguf")
 
-        # Load from HuggingFace
+        # Load from Hugging Face
         model = load_model("TheBloke/Llama-2-7B-GGUF", hf_model_file="llama-2-7b.Q4_K_M.gguf")
     """
     if hf_model_file:
-        # Download from HuggingFace
-        console.print(f"[cyan]Downloading[/cyan] [yellow]{hf_model_file}[/yellow] from HuggingFace repository: [blue]{model}[/blue]")
+        # Download from Hugging Face
+        console.print(f"[cyan]Downloading[/cyan] [yellow]{hf_model_file}[/yellow] from Hugging Face repository: [blue]{model}[/blue]")
         model_path = hf_hub_download(
             repo_id=model,
             filename=hf_model_file,
@@ -173,13 +173,13 @@ if __name__ == "__main__":
         "--model",
         type=str,
         default="LiquidAI/LFM2-2.6B-Transcript-GGUF",
-        help="Path to local GGUF model file, or HuggingFace repository ID (e.g., 'LiquidAI/LFM2-2.6B-Transcript-GGUF')"
+        help="Path to local GGUF model file, or Hugging Face repository ID (e.g., 'LiquidAI/LFM2-2.6B-Transcript-GGUF')"
     )
     parser.add_argument(
         "--hf-model-file",
         type=str,
         default="LFM2-2.6B-Transcript-Q4_0.gguf",
-        help="If using HuggingFace, specify the GGUF filename within the repo (e.g., 'llama-2-7b.Q4_K_M.gguf')"
+        help="If using Hugging Face, specify the GGUF filename within the repo (e.g., 'llama-2-7b.Q4_K_M.gguf')"
     )
     parser.add_argument(
         "--transcript-file",

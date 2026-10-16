@@ -223,7 +223,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--model", default=None,
-        help="Model name (Anthropic model ID or HuggingFace/GGUF path for local)",
+        help="Model name (Anthropic model ID or Hugging Face/GGUF path for local)",
     )
     parser.add_argument(
         "--task", default=None,

@@ -242,7 +242,7 @@ public enum MultimodalInput: Sendable {
 
 /// Configuration for the on-device vision-language model.
 public struct VisionModelConfig: Sendable {
-    /// HuggingFace model ID (e.g., "mlx-community/LFM2-VL-450M-5bit").
+    /// Hugging Face model ID (e.g., "mlx-community/LFM2-VL-450M-5bit").
     public let modelID: String
     /// Maximum tokens to generate from image+text input.
     public let maxTokens: Int

@@ -84,7 +84,7 @@ if [ -f "$MAIN_PATH" ]; then
 else
     echo "❌ Main model not found: $MAIN_PATH"
     echo ""
-    echo "   Download LFM2-24B-A2B from HuggingFace:"
+    echo "   Download LFM2-24B-A2B from Hugging Face:"
     echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
     echo ""
     echo "   pip install huggingface-hub"

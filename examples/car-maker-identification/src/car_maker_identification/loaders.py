@@ -20,7 +20,7 @@ def load_dataset(
     Loads a dataset from the Hugging Face dataset hub with Modal volume caching.
     
     Args:
-        dataset_name: Name of the dataset on HuggingFace
+        dataset_name: Name of the dataset on Hugging Face
         splits: List of dataset splits to load
         n_samples: Number of samples to select (optional)
         seed: Random seed for shuffling
@@ -43,14 +43,14 @@ def load_dataset(
                 print(f"✅ Successfully loaded {len(dataset)} samples from cache")
             except Exception as e:
                 print(f"❌ Failed to load from cache: {e}")
-                print(f"📚 Downloading dataset {dataset_name}, split={split} from HuggingFace...")
+                print(f"📚 Downloading dataset {dataset_name}, split={split} from Hugging Face...")
                 dataset = datasets.load_dataset(dataset_name, split=split, num_proc=1)
                 
                 # Save to cache
                 print(f"💾 Caching dataset to {split_cache_path}...")
                 dataset.save_to_disk(str(split_cache_path))
         else:
-            print(f"📚 Downloading dataset {dataset_name}, split={split} from HuggingFace...")
+            print(f"📚 Downloading dataset {dataset_name}, split={split} from Hugging Face...")
             dataset = datasets.load_dataset(dataset_name, split=split, num_proc=1)
             
             # Save to cache
@@ -114,7 +114,7 @@ def load_model_and_processor(
     Loads a model and processor from the Hugging Face model hub with Modal volume caching.
     
     Args:
-        model_id: HuggingFace model identifier 
+        model_id: Hugging Face model identifier 
         cache_dir: Directory to cache models (Modal volume mount point)
     """
     # Create cache directory structure
@@ -161,12 +161,12 @@ def load_model_and_processor(
             
         except Exception as e:
             print(f"❌ Failed to load from cache: {e}")
-            print(f"📚 Downloading model {model_id} from HuggingFace...")
+            print(f"📚 Downloading model {model_id} from Hugging Face...")
             
             # Download and cache
             processor, model = _download_and_cache_model(model_id, hf_token, processor_cache_path, model_weights_cache_path)
     else:
-        print(f"📚 Downloading model {model_id} from HuggingFace...")
+        print(f"📚 Downloading model {model_id} from Hugging Face...")
         
         # Download and cache
         processor, model = _download_and_cache_model(model_id, hf_token, processor_cache_path, model_weights_cache_path)

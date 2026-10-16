@@ -213,7 +213,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--model", default=None,
-        help="Model name or HuggingFace/GGUF path (auto-starts llama-server)",
+        help="Model name or Hugging Face/GGUF path (auto-starts llama-server)",
     )
     parser.add_argument(
         "--task", default=None,

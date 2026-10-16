@@ -129,7 +129,7 @@ def main() -> None:
     save_jsonl(train, OUTPUT_DIR / "train.jsonl")
     save_jsonl(eval_, OUTPUT_DIR / "eval.jsonl")
 
-    print(f"\nUploading to HuggingFace Hub as '{REPO_ID_LFM2}'...")
+    print(f"\nUploading to Hugging Face Hub as '{REPO_ID_LFM2}'...")
     ds = DatasetDict(
         {
             "train": Dataset.from_list(train),

@@ -46,7 +46,7 @@ function MacInstructions(): React.JSX.Element {
             target="_blank"
             rel="noopener noreferrer"
           >
-            HuggingFace
+            Hugging Face
           </a>
         </span>
       </div>
@@ -154,7 +154,7 @@ export function LlamaServerSetupGuide({
               target="_blank"
               rel="noopener noreferrer"
             >
-              HuggingFace
+              Hugging Face
             </a>
             , then run{" "}
             <code className="install-code-inline">./scripts/start-model.sh</code>

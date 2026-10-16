@@ -133,6 +133,6 @@ cat data/sent_emails.log     # follow-up email log
 | Environment variable    | Default                      | Description                        |
 |-------------------------|------------------------------|------------------------------------|
 | `MIA_LOCAL_BASE_URL`    | `http://localhost:8080/v1`   | llama.cpp server URL               |
-| `MIA_LOCAL_MODEL`       | `local`                      | Model name or HuggingFace path     |
+| `MIA_LOCAL_MODEL`       | `local`                      | Model name or Hugging Face path     |
 | `MIA_LOCAL_CTX_SIZE`    | `32768`                      | Context window size                |
 | `MIA_LOCAL_GPU_LAYERS`  | `99`                         | GPU layers to offload (0 = CPU)    |

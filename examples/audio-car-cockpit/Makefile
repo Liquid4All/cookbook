@@ -64,7 +64,7 @@ LFM2.5-Audio-1.5B-GGUF:  ## Download audio model
 		--local-dir ./LFM2.5-Audio-1.5B-GGUF \
 		--include '*Q8_0*'
 
-LFM2-1.2B-Tool-GGUF:  ## Pre-download tool calling model to HuggingFace cache
+LFM2-1.2B-Tool-GGUF:  ## Pre-download tool calling model to Hugging Face cache
 	@# Downloads to ~/.cache/huggingface/hub/ so llama-server finds it without a network call
 	$(UV) run --with "huggingface_hub" python hf_download.py "LiquidAI/LFM2-1.2B-Tool-GGUF" \
 		--include '*Q8_0*'

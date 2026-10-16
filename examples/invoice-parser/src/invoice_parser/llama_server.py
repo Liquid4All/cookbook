@@ -18,7 +18,7 @@ def start_llama_server(
     """Start llama-server as a subprocess.
 
     Args:
-        model_id: HuggingFace model ID to load
+        model_id: Hugging Face model ID to load
         port: Port to run the server on
         verbose: If True, show server output; otherwise suppress it
 

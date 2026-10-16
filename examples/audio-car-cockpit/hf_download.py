@@ -1,4 +1,4 @@
-"""HuggingFace downloader with IPv4 forced.
+"""Hugging Face downloader with IPv4 forced.
 
 Drop-in replacement for 'hf download' that patches socket to use IPv4 only,
 working around WSL2 environments where IPv6 is advertised but not routable
@@ -7,7 +7,7 @@ working around WSL2 environments where IPv6 is advertised but not routable
 Usage:
     python hf_download.py <repo_id> [--local-dir DIR] [--include PATTERN...]
 
-When --local-dir is omitted, downloads to the default HuggingFace cache
+When --local-dir is omitted, downloads to the default Hugging Face cache
 (~/.cache/huggingface/hub/), which llama-server's -hf flag checks before
 attempting a network download.
 """

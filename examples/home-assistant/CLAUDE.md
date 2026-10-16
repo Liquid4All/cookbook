@@ -3,7 +3,7 @@
 ## Project overview
 
 Fine-tuning pipeline for a local home assistant powered by LFM models running via llama.cpp.
-The pipeline covers: proof-of-concept app, benchmark, synthetic data generation, LoRA fine-tuning on Modal, and GGUF export/push to HuggingFace.
+The pipeline covers: proof-of-concept app, benchmark, synthetic data generation, LoRA fine-tuning on Modal, and GGUF export/push to Hugging Face.
 
 All commands are run from the `home-assistant/` directory unless stated otherwise.
 
@@ -17,7 +17,7 @@ All commands are run from the `home-assistant/` directory unless stated otherwis
 | `benchmark/datasets/generate.py` | Generates synthetic SFT data via GPT-4o-mini |
 | `benchmark/datasets/sft_data_<timestamp>/` | Generated SFT data folder: `data.jsonl` + `config.yaml` (gitignored) |
 | `finetune/prepare_data.py` | Converts OpenAI format to LFM2 text format, uploads to HF |
-| `finetune/export.py` | Merges LoRA adapter, converts to GGUF, pushes to HuggingFace |
+| `finetune/export.py` | Merges LoRA adapter, converts to GGUF, pushes to Hugging Face |
 | `finetune/configs/LFM2-350M.yaml` | Training config for LFM2-350M |
 | `FINETUNE-FINDINGS.md` | Detailed results from every fine-tuning run |
 
@@ -35,7 +35,7 @@ Build column format in results.md: `<hash> (D Mon YYYY)`, date taken from the `l
 ## Benchmark
 
 ```bash
-# Run against a HuggingFace-hosted GGUF
+# Run against a Hugging Face-hosted GGUF
 uv run python benchmark/run.py \
     --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
     --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf \
@@ -164,7 +164,7 @@ uv run modal volume ls leap-finetune
 uv run modal volume get leap-finetune /outputs/home-assistant-350M ../finetune/output/350M-lora
 ```
 
-### Step 4: Merge, convert to GGUF, and push to HuggingFace
+### Step 4: Merge, convert to GGUF, and push to Hugging Face
 
 ```bash
 uv run --group export python finetune/export.py \
@@ -197,7 +197,7 @@ uv run python benchmark/run.py \
 
 The agent in `app/agent.py` has an `_extract_lfm2_tool_calls()` fallback that parses these text-format tool calls from the `content` field when `tool_calls` is null. This is needed because llama-server returns LFM2 tool calls as plain text content, not structured tool_calls.
 
-## HuggingFace repos (Paulescu account)
+## Hugging Face repos (Paulescu account)
 
 | Repo | Contents |
 |------|---------|

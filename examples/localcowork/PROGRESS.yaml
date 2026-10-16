@@ -1486,7 +1486,7 @@ sessions:
     date: "2026-02-13"
     focus: "Onboarding UX overhaul — fix broken Model step (404, missing guidance)"
     completed:
-      - "fix: Removed broken GGUF download (hardcoded HuggingFace URL returning 404)"
+      - "fix: Removed broken GGUF download (hardcoded Hugging Face URL returning 404)"
       - "feat: Replaced GGUF option with 'Lightweight Fallback' card — pulls qwen3:30b-a3b via Ollama (~4 GB)"
       - "feat: OllamaInstallGuide — platform-specific install instructions (macOS: brew, Linux: curl, Windows: download)"
       - "feat: LocalModelGuide — llama.cpp serving guidance with interpolated model path for Browse Files users"

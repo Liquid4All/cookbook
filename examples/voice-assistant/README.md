@@ -226,7 +226,7 @@ push an intermediate safetensors HF repo.
 
 To run the fine-tuned checkpoint inside `llama-liquid-audio-server` (the
 thing `scripts/eval.py` uses in Step 4) we have to convert it to GGUF and
-publish the resulting file set to HuggingFace.
+publish the resulting file set to Hugging Face.
 
 ### Drain checkpoint
 
@@ -275,7 +275,7 @@ one place.
 The snippet above publishes Q8_0. To publish other quants alongside, rerun
 with `--quant F16` and `--quant Q4_0`. Each invocation adds its own file set
 (`*-F16.gguf`, `*-Q4_0.gguf`, etc.) to the same target repo; the runners and
-the unchanged vocoder/tokenizer are deduped by HuggingFace's content
+the unchanged vocoder/tokenizer are deduped by Hugging Face's content
 addressing. See Step 4 for the size/accuracy tradeoff.
 
 ## Step 4: Evaluate the fine-tuned model

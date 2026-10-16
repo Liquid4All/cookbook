@@ -12,7 +12,7 @@ Usage:
         --lora-path finetune/output/350M-lora \\
         --output-path finetune/output/350M-merged
 
-    # Merge + convert to GGUF + push to HuggingFace
+    # Merge + convert to GGUF + push to Hugging Face
     uv run --group export python finetune/export.py \\
         --lora-path finetune/output/350M-lora \\
         --output-path finetune/output/350M-merged \\
@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Merge LoRA adapter into base model.")
     parser.add_argument("--lora-path", required=True, type=Path, help="Path to the LoRA adapter directory.")
     parser.add_argument("--output-path", required=True, type=Path, help="Path to save the merged model.")
-    parser.add_argument("--push-to-hub", action="store_true", help="Convert merged model to GGUF and push to HuggingFace.")
+    parser.add_argument("--push-to-hub", action="store_true", help="Convert merged model to GGUF and push to Hugging Face.")
     parser.add_argument("--quant-type", type=str, default="q8_0", help="GGUF quantization type (default: q8_0).")
     return parser.parse_args()
 
@@ -108,7 +108,7 @@ def push_to_hub(output_path: Path, quant_type: str, lora_path: Path | None = Non
     repo_id = f"{hf_username}/{repo_name}"
     api = HfApi()
     api.create_repo(repo_id=repo_id, repo_type="model", exist_ok=True, private=False)
-    print(f"HuggingFace repo: https://huggingface.co/{repo_id}")
+    print(f"Hugging Face repo: https://huggingface.co/{repo_id}")
 
     # Step 4: upload GGUF file
     print(f"Uploading {gguf_filename} to {repo_id}...")

@@ -10,7 +10,7 @@ def create_batches(dataset: datasets.Dataset, config: EvaluationConfig) -> List[
     Create batches of images and labels from dataset.
     
     Args:
-        dataset: HuggingFace dataset
+        dataset: Hugging Face dataset
         config: Evaluation configuration containing batch_size, column names and label mapping
     
     Returns:

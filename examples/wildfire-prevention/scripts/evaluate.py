@@ -114,13 +114,13 @@ def main() -> None:
         "--backend",
         required=True,
         choices=["anthropic", "local", "hf"],
-        help="Inference backend: 'anthropic' (Opus API), 'local' (llama-server GGUF), 'hf' (HuggingFace safetensors checkpoint).",
+        help="Inference backend: 'anthropic' (Opus API), 'local' (llama-server GGUF), 'hf' (Hugging Face safetensors checkpoint).",
     )
     parser.add_argument(
         "--model",
         metavar="REPO",
         default="",
-        help="HuggingFace repo ID (required for --backend local, e.g. LiquidAI/LFM2.5-VL-450M-GGUF).",
+        help="Hugging Face repo ID (required for --backend local, e.g. LiquidAI/LFM2.5-VL-450M-GGUF).",
     )
     parser.add_argument(
         "--quant",
@@ -222,7 +222,7 @@ def main() -> None:
     if args.backend == "anthropic":
         predict = anthropic_backend()
     elif args.backend == "hf":
-        print(f"Loading HuggingFace checkpoint from {args.model} ...")
+        print(f"Loading Hugging Face checkpoint from {args.model} ...")
         predict = transformers_backend(args.model)
         print("Model loaded.")
     else:

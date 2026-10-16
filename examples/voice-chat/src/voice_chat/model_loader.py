@@ -11,7 +11,7 @@ class ModelLoader:
         Initialize the ModelLoader.
         
         Args:
-            repo_id: HuggingFace repository ID for the model
+            repo_id: Hugging Face repository ID for the model
         """
         self.repo_id = repo_id
         self.processor = None

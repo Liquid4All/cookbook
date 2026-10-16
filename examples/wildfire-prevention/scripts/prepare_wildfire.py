@@ -1,6 +1,6 @@
 """Convert the Paulescu/wildfire-prevention HF dataset to leap-finetune VLM SFT format.
 
-Downloads the dataset from HuggingFace Hub and writes wildfire_train.jsonl
+Downloads the dataset from Hugging Face Hub and writes wildfire_train.jsonl
 and wildfire_test.jsonl in the leap-finetune messages format. Images are
 already in the snapshot and do not need to be copied.
 
@@ -72,7 +72,7 @@ def main() -> None:
         "--dataset",
         default=DEFAULT_DATASET,
         metavar="REPO",
-        help=f"HuggingFace dataset repo (default: {DEFAULT_DATASET}).",
+        help=f"Hugging Face dataset repo (default: {DEFAULT_DATASET}).",
     )
     parser.add_argument(
         "--output",

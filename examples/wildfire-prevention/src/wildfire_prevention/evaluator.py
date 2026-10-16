@@ -58,7 +58,7 @@ def anthropic_backend() -> PredictFn:
 
 
 def transformers_backend(model_path: str) -> PredictFn:
-    """Return a predict function that loads a HuggingFace safetensors checkpoint.
+    """Return a predict function that loads a Hugging Face safetensors checkpoint.
 
     Used to evaluate fine-tuned checkpoints that have not been converted to GGUF.
     Requires: transformers, torch, Pillow (already in the project dependencies).

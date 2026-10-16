@@ -1,4 +1,4 @@
-"""Push a fine-tuned GGUF model pair to a HuggingFace model repository.
+"""Push a fine-tuned GGUF model pair to a Hugging Face model repository.
 
 Uploads the backbone GGUF and mmproj GGUF produced by quantize.py, along with
 a model card, so end users can reproduce eval results without fine-tuning.
@@ -120,7 +120,7 @@ def make_model_card(backbone_name: str, mmproj_name: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Push a fine-tuned GGUF model pair to HuggingFace."
+        description="Push a fine-tuned GGUF model pair to Hugging Face."
     )
     parser.add_argument(
         "--backbone",
@@ -138,7 +138,7 @@ def main() -> None:
         "--repo",
         required=True,
         metavar="REPO_ID",
-        help="HuggingFace model repo to create/push to (e.g. Paulescu/LFM2.5-VL-450M-wildfire-GGUF).",
+        help="Hugging Face model repo to create/push to (e.g. Paulescu/LFM2.5-VL-450M-wildfire-GGUF).",
     )
     parser.add_argument(
         "--private",

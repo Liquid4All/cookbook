@@ -1,5 +1,5 @@
 """Quantize a fine-tuned LFM2.5-Audio checkpoint and publish the resulting
-GGUF set to a HuggingFace model repo so `scripts/eval.py` (or any other
+GGUF set to a Hugging Face model repo so `scripts/eval.py` (or any other
 llama-liquid-audio-server consumer) can load it.
 
 Pipeline:

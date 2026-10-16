@@ -1,4 +1,4 @@
-"""Push a local generate_samples.py run directory to a HuggingFace dataset repo.
+"""Push a local generate_samples.py run directory to a Hugging Face dataset repo.
 
 Usage:
     uv run scripts/push_dataset_to_hf.py --run-dir data/20260421_195018 --hf-dataset Paulescu/wildfire-prediction
@@ -14,7 +14,7 @@ DEFAULT_HF_DATASET = "Paulescu/wildfire-prediction"
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Push a local run directory to a HuggingFace dataset repo."
+        description="Push a local run directory to a Hugging Face dataset repo."
     )
     parser.add_argument(
         "--run-dir",
@@ -26,7 +26,7 @@ def main() -> None:
         "--hf-dataset",
         default=DEFAULT_HF_DATASET,
         metavar="REPO",
-        help=f"HuggingFace dataset repo to push to (default: {DEFAULT_HF_DATASET}).",
+        help=f"Hugging Face dataset repo to push to (default: {DEFAULT_HF_DATASET}).",
     )
     args = parser.parse_args()
 

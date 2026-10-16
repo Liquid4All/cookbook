@@ -79,7 +79,7 @@ logger = logging.getLogger(__name__)
 
 # --- Constants ----------------------------------------------------------------
 
-# LFM2.5-1.2B-Instruct from HuggingFace — best-in-class tool calling at 1.2B
+# LFM2.5-1.2B-Instruct from Hugging Face — best-in-class tool calling at 1.2B
 DEFAULT_BASE_MODEL = "LiquidAI/LFM2.5-1.2B-Instruct"
 
 # Maximum sequence length for training. Tool calls are short (~400 tokens avg),
@@ -105,7 +105,7 @@ def parse_args() -> argparse.Namespace:
         "--base-model",
         type=str,
         default=DEFAULT_BASE_MODEL,
-        help="HuggingFace model name or local path to base model",
+        help="Hugging Face model name or local path to base model",
     )
     parser.add_argument(
         "--data-dir",
@@ -144,7 +144,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_jsonl_dataset(filepath: str) -> Dataset:
-    """Load a JSONL file into a HuggingFace Dataset."""
+    """Load a JSONL file into a Hugging Face Dataset."""
     records: list[dict[str, Any]] = []
     with open(filepath, "r") as f:
         for line in f:

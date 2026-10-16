@@ -83,7 +83,7 @@ The assistant supports [llama.cpp](https://github.com/ggerganov/llama.cpp) as a 
 
 Pass `--backend local` and `--model` to select the model. The llama-server is started and stopped automatically.
 
-**From a HuggingFace repo** (downloaded and cached on first run):
+**From a Hugging Face repo** (downloaded and cached on first run):
 
 ```bash
 uv run lca --backend local --model LiquidAI/LFM2-24B-A2B-GGUF:Q4_0
@@ -129,7 +129,7 @@ All settings are controlled via environment variables (or a `.env` file):
 | `LCA_LOCAL_GPU_LAYERS` | `99` | Number of layers to offload to GPU |
 | `LCA_MAX_TOKENS` | `8192` | Max tokens per response |
 | `LCA_WORKING_DIR` | `.` | Working directory for bash commands |
-| `HF_TOKEN` | — | HuggingFace token (required for gated models) |
+| `HF_TOKEN` | — | Hugging Face token (required for gated models) |
 
 CLI flags override env vars:
 

@@ -19,7 +19,7 @@ BANNER = """
 
 
 @click.command()
-@click.option("--model", default=None, help="Model name or HuggingFace/GGUF path")
+@click.option("--model", default=None, help="Model name or Hugging Face/GGUF path")
 @click.option("-p", "--prompt", default=None, help="Run a single prompt non-interactively and exit")
 def main(model: str | None, prompt: str | None) -> None:
     config = load_config()

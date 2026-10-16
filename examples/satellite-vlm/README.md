@@ -41,7 +41,7 @@ Fine-tune [LiquidAI/LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-45
 
 All heavy computation runs in the cloud. The only things that run locally are the `prepare_vrsbench.py` launcher and the `leap-finetune` CLI, both of which just submit jobs and stream logs.
 
-1. **Data prep (Modal CPU container):** `prepare_vrsbench.py --modal` spins up a Modal container, downloads VRSBench (~12 GB) from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `satellite-vlm`.
+1. **Data prep (Modal CPU container):** `prepare_vrsbench.py --modal` spins up a Modal container, downloads VRSBench (~12 GB) from Hugging Face, converts it to JSONL, and writes everything to a Modal volume named `satellite-vlm`.
 2. **Training (Modal H100):** `leap-finetune` submits a training job that reads data from the same volume, fine-tunes the model, and saves checkpoints back to the volume.
 3. **Retrieval (local):** you pull the checkpoints from the volume to your local machine with `modal volume get`.
 
@@ -49,7 +49,7 @@ All heavy computation runs in the cloud. The only things that run locally are th
 sequenceDiagram
     participant Local as Local Computer
     participant DataPrep as Modal: Data Prep (CPU)
-    participant HF as HuggingFace Hub
+    participant HF as Hugging Face Hub
     participant Vol as Modal Volume: satellite-vlm
     participant Train as Modal: Training (H100)
 
@@ -69,7 +69,7 @@ sequenceDiagram
 
 ## Data Preparation
 
-`prepare_vrsbench.py` downloads VRSBench from HuggingFace and converts it to the JSONL format required by leap-finetune.
+`prepare_vrsbench.py` downloads VRSBench from Hugging Face and converts it to the JSONL format required by leap-finetune.
 
 **Modal (recommended):** runs entirely in the cloud, writes directly to the `satellite-vlm` Modal volume:
 

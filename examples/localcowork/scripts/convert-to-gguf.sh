@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Convert fine-tuned HuggingFace model to GGUF for llama-server deployment.
+# Convert fine-tuned Hugging Face model to GGUF for llama-server deployment.
 #
 # Usage (on H100):
 #   ./convert-to-gguf.sh /home/ubuntu/localcowork-finetune/output/best

@@ -115,7 +115,7 @@ def main() -> None:
         "--checkpoint",
         required=True,
         metavar="PATH",
-        help="Path to the HuggingFace checkpoint directory.",
+        help="Path to the Hugging Face checkpoint directory.",
     )
     parser.add_argument(
         "--output",

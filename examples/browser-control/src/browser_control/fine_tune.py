@@ -297,7 +297,7 @@ def fine_tune(config: FineTuningConfig) -> None:
     trainer.save_model(output_dir)
 
     if config.push_to_hf:
-        print("Pushing model to HuggingFace Hub")
+        print("Pushing model to Hugging Face Hub")
         if config.use_peft:
             print("Note: Pushing LoRA adapters only (~5-10MB vs ~350MB full model)")
         trainer.push_to_hub()

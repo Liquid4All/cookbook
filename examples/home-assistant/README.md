@@ -242,7 +242,7 @@ uv run python benchmark/datasets/generate.py --count 500 --output benchmark/data
 
 Output goes to `benchmark/datasets/sft_data.jsonl` (gitignored). After generation the script prints a rejection breakdown and a coverage matrix so you can see exactly how many examples ended up in each taxonomy cell.
 
-Before moving to fine-tuning, convert the dataset to the LFM2 text format the tokenizer expects (the raw file uses OpenAI's `tool_calls` format, which is different) and push it to HuggingFace as a dataset so Modal can pull it during training.
+Before moving to fine-tuning, convert the dataset to the LFM2 text format the tokenizer expects (the raw file uses OpenAI's `tool_calls` format, which is different) and push it to Hugging Face as a dataset so Modal can pull it during training.
 
 ```bash
 uv run --group finetune python finetune/prepare_data.py \
@@ -260,7 +260,7 @@ sequenceDiagram
     participant Local as Local machine
     participant Modal as Modal (H100)
     participant Volume as Modal Volume
-    participant HF as HuggingFace Hub
+    participant HF as Hugging Face Hub
 
     Local->>Modal: submit training job (leap-finetune config.yaml)
     Modal->>Modal: SFT + LoRA on H100
@@ -274,7 +274,7 @@ sequenceDiagram
 
 ### Steps
 
-1. **One-time setup.** Clone and install `leap-finetune`, then authenticate with HuggingFace and Modal.
+1. **One-time setup.** Clone and install `leap-finetune`, then authenticate with Hugging Face and Modal.
 
    ```bash
    git clone https://github.com/Liquid4All/leap-finetune
@@ -297,7 +297,7 @@ sequenceDiagram
    uv run modal volume get leap-finetune /outputs/home-assistant-350M ../finetune/output/350M-lora
    ```
 
-4. **Export.** Merges the LoRA adapter into the base model, converts to GGUF, and pushes to HuggingFace. The script prints the exact `--hf-repo` and `--hf-file` flags to use in the next step.
+4. **Export.** Merges the LoRA adapter into the base model, converts to GGUF, and pushes to Hugging Face. The script prints the exact `--hf-repo` and `--hf-file` flags to use in the next step.
 
    ```bash
    uv run --group export python finetune/export.py \
@@ -363,7 +363,7 @@ The fine-tuned GGUF is already registered in `app/server.py` as `LFM2-350M fine-
    open http://localhost:5173
    ```
 
-3. Select **LFM2-350M fine-tuned Q8_0** from the model dropdown. The app downloads the model from HuggingFace and starts `llama-server` automatically.
+3. Select **LFM2-350M fine-tuned Q8_0** from the model dropdown. The app downloads the model from Hugging Face and starts `llama-server` automatically.
 
 If you pushed your own fine-tuned model in Step 4, register it by adding an entry to `LOCAL_MODELS` in `app/server.py`:
 

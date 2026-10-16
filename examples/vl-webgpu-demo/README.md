@@ -103,7 +103,7 @@ After running `npm run build`, you'll have a production-ready bundle in the `dis
 
 This static website can be deployed to any static hosting service, such as:
 
-- **HuggingFace Space** (for demo purposes only). It automatically uses the Dockerfile at the root of the directory. You can see it in action [here](https://huggingface.co/spaces/LiquidAI/LFM2.5-VL-1.6B-WebGPU).
+- **Hugging Face Space** (for demo purposes only). It automatically uses the Dockerfile at the root of the directory. You can see it in action [here](https://huggingface.co/spaces/LiquidAI/LFM2.5-VL-1.6B-WebGPU).
 
 - **Platform as a Service (PaaS)**
   - Vercel
@@ -128,7 +128,7 @@ This static website can be deployed to any static hosting service, such as:
 **Code organization**: The application follows a modular architecture with separation of concerns:
 
 - **Entry point** (`index.html` → `main.js`): Initializes the app, sets up event listeners, coordinates between modules
-- **Configuration** (`config.js`): Model definitions, HuggingFace URLs, quantization options
+- **Configuration** (`config.js`): Model definitions, Hugging Face URLs, quantization options
 - **Inference pipeline** (`infer.js` → `webgpu-inference.js` → `vl-model.js`):
   - Routes inference requests
   - Manages model lifecycle and state

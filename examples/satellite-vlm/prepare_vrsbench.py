@@ -1,7 +1,7 @@
 """
 VRSBench -> leap-finetune VLM SFT format converter.
 
-Downloads VRSBench from HuggingFace and converts to JSONL files
+Downloads VRSBench from Hugging Face and converts to JSONL files
 compatible with leap-finetune's vlm_sft training type.
 
 Tasks (auto-detected from [tag] prefixes in the data):
@@ -50,7 +50,7 @@ CAPTIONING_PROMPT = "Describe this satellite image in detail."
 # ---------------------------------------------------------------------------
 
 def download_vrsbench(data_dir: str) -> Path:
-    """Download VRSBench from HuggingFace Hub."""
+    """Download VRSBench from Hugging Face Hub."""
     data_path = Path(data_dir)
     data_path.mkdir(parents=True, exist_ok=True)
 

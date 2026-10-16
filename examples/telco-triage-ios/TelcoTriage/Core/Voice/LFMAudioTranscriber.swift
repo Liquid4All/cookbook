@@ -28,7 +28,7 @@ import os.log
 public final class LFMAudioTranscriber: VoiceTranscriber {
     // MARK: - Constants
 
-    /// HuggingFace repo hosting the LEAP bundle manifest + GGUFs.
+    /// Hugging Face repo hosting the LEAP bundle manifest + GGUFs.
     /// `Leap.load(model:quantization:)` does NOT resolve this model — the
     /// LEAP registry's `/api/edge-sdk/model-manifest` endpoint returns
     /// "Manifest does not exist" for every LFM2.5-family slug as of SDK

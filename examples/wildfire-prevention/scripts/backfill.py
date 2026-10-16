@@ -167,7 +167,7 @@ def main() -> None:
         "--model",
         metavar="REPO",
         default="",
-        help="HuggingFace repo ID (required for --backend local).",
+        help="Hugging Face repo ID (required for --backend local).",
     )
     parser.add_argument(
         "--quant",

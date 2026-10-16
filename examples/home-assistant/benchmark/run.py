@@ -381,7 +381,7 @@ if __name__ == "__main__":
         choices=["local", "openai"],
         help="Backend to use: 'local' (llama-server) or 'openai' (gpt-4o-mini). Default: local.",
     )
-    parser.add_argument("--hf-repo", default=None, help="HuggingFace repo ID for the GGUF model")
+    parser.add_argument("--hf-repo", default=None, help="Hugging Face repo ID for the GGUF model")
     parser.add_argument("--hf-file", default=None, help="GGUF filename within the repo")
     parser.add_argument("--local-file", default=None, help="Path to a local GGUF file to serve with llama-server")
     parser.add_argument(

@@ -447,13 +447,13 @@ Prepare the dataset and push it to a Modal volume:
 uv run scripts/prepare_wildfire.py --dataset Paulescu/wildfire-prevention --modal
 ```
 
-The `--modal` flag spins up a Modal container, downloads the dataset from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job in the next step.
+The `--modal` flag spins up a Modal container, downloads the dataset from Hugging Face, converts it to JSONL, and writes everything to a Modal volume named `wildfire-prevention`. The volume is then used directly by the training job in the next step.
 
 ```mermaid
 sequenceDiagram
     participant User as Local machine
     participant Modal
-    participant HF as HuggingFace Hub
+    participant HF as Hugging Face Hub
     participant Vol as Modal volume<br/>wildfire-prevention
 
     User->>Modal: prepare_wildfire.py --modal
@@ -516,7 +516,7 @@ cd leap-finetune && uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
 sequenceDiagram
     participant User as Local machine
     participant Modal
-    participant HF as HuggingFace Hub
+    participant HF as Hugging Face Hub
     participant Vol as Modal volume<br/>wildfire-prevention
     participant Space as HF Space<br/>(training dashboard)
 
@@ -558,7 +558,7 @@ uv run scripts/quantize.py \
 
 To use a different quantization level for the backbone, pass `--quant Q4_K_M` (or `Q4_0`, `Q5_K_M`, `Q6_K`, `F16`). The mmproj is always F16 regardless of `--quant`.
 
-### Step 7. (Optional) Push the GGUF pair to HuggingFace
+### Step 7. (Optional) Push the GGUF pair to Hugging Face
 
 
 ```bash

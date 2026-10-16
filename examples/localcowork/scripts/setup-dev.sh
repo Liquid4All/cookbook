@@ -194,7 +194,7 @@ if [ -f "$MODELS_DIR/$MAIN_MODEL" ]; then
 else
     echo "❌ LFM2-24B-A2B not found — this is the primary production model"
     echo ""
-    echo "   Download from HuggingFace:"
+    echo "   Download from Hugging Face:"
     echo "   https://huggingface.co/LiquidAI/LFM2-24B-A2B-GGUF"
     echo ""
     echo "   pip install huggingface-hub"
