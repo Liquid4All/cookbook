@@ -2,7 +2,7 @@
 
 Fine-tune [LiquidAI/LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-450M) on satellite imagery tasks using
 
-- [leap-finetune](https://github.com/Liquid4All/leap-finetune/): Liquid AI's fine-tuning framework for LFM models.
+- [liquid-finetune](https://github.com/Liquid4All/liquid-finetune/): Liquid AI's fine-tuning framework for LFM models.
 - [Modal](https://modal.com): serverless GPU cloud for running data prep and training without managing infrastructure.
 - [VRSBench](https://huggingface.co/datasets/xiang709/VRSBench) dataset (NeurIPS 2024) which supports three tasks:
     - **VQA**: answer questions about satellite images (123K QA pairs)
@@ -27,22 +27,22 @@ Fine-tune [LiquidAI/LFM2.5-VL-450M](https://huggingface.co/LiquidAI/LFM2.5-VL-45
     uv run python prepare_vrsbench.py --task all --modal
     ```
 
-3. **Clone leap-finetune and kick off fine-tuning** on an H100, checkpoints saved to the `satellite-vlm` Modal volume:
+3. **Clone liquid-finetune and kick off fine-tuning** on an H100, checkpoints saved to the `satellite-vlm` Modal volume:
 
     ```bash
-    git clone https://github.com/Liquid4All/leap-finetune/
-    cd leap-finetune
+    git clone https://github.com/Liquid4All/liquid-finetune/
+    cd liquid-finetune
     uv sync
-    uv run leap-finetune ../configs/vrsbench_multitask_modal.yaml
+    uv run liquid-finetune ../configs/vrsbench_multitask_modal.yaml
     ```
 
 
 ## How It Works
 
-All heavy computation runs in the cloud. The only things that run locally are the `prepare_vrsbench.py` launcher and the `leap-finetune` CLI, both of which just submit jobs and stream logs.
+All heavy computation runs in the cloud. The only things that run locally are the `prepare_vrsbench.py` launcher and the `liquid-finetune` CLI, both of which just submit jobs and stream logs.
 
 1. **Data prep (Modal CPU container):** `prepare_vrsbench.py --modal` spins up a Modal container, downloads VRSBench (~12 GB) from HuggingFace, converts it to JSONL, and writes everything to a Modal volume named `satellite-vlm`.
-2. **Training (Modal H100):** `leap-finetune` submits a training job that reads data from the same volume, fine-tunes the model, and saves checkpoints back to the volume.
+2. **Training (Modal H100):** `liquid-finetune` submits a training job that reads data from the same volume, fine-tunes the model, and saves checkpoints back to the volume.
 3. **Retrieval (local):** you pull the checkpoints from the volume to your local machine with `modal volume get`.
 
 ```mermaid
@@ -58,7 +58,7 @@ sequenceDiagram
     HF-->>DataPrep: raw images + annotations
     DataPrep->>Vol: write images + JSONL files
 
-    Local->>Train: uv run leap-finetune vrsbench_multitask_modal.yaml
+    Local->>Train: uv run liquid-finetune vrsbench_multitask_modal.yaml
     Train->>Vol: read training data
     Vol-->>Train: images + JSONL
     Train->>Vol: save model checkpoints
@@ -69,7 +69,7 @@ sequenceDiagram
 
 ## Data Preparation
 
-`prepare_vrsbench.py` downloads VRSBench from HuggingFace and converts it to the JSONL format required by leap-finetune.
+`prepare_vrsbench.py` downloads VRSBench from HuggingFace and converts it to the JSONL format required by liquid-finetune.
 
 **Modal (recommended):** runs entirely in the cloud, writes directly to the `satellite-vlm` Modal volume:
 
@@ -86,9 +86,9 @@ Output files (written to `./data/` locally, or to the Modal volume with `--modal
 
 ## Training
 
-Run from the `leap-finetune` root (cloned in the Quickstart):
+Run from the `liquid-finetune` root (cloned in the Quickstart):
 
-    uv run leap-finetune ../configs/vrsbench_multitask_modal.yaml
+    uv run liquid-finetune ../configs/vrsbench_multitask_modal.yaml
 
 The job runs on an H100, streams logs to your terminal, and saves checkpoints to the `satellite-vlm` Modal volume under `/satellite-vlm/outputs/`.
 

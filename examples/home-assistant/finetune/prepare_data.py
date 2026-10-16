@@ -55,7 +55,7 @@ def convert_messages(messages: list[dict]) -> list[dict]:
     for msg in messages:
         converted = convert_assistant_message(msg)
         result.append(converted)
-        # leap-finetune requires a role='tool' response after every tool call
+        # liquid-finetune requires a role='tool' response after every tool call
         if converted.get("role") == "assistant" and "<|tool_call_start|>" in (converted.get("content") or ""):
             result.append({"role": "tool", "content": "OK"})
     return result

@@ -134,7 +134,7 @@ extension LlamaBackend {
     /// Convenience: extract embeddings from chat messages by first
     /// applying the model's chat template, then running the embedding
     /// forward pass. Use this path when the classifier was trained on
-    /// chat-template-wrapped inputs (all leap-finetune classifiers).
+    /// chat-template-wrapped inputs (all liquid-finetune classifiers).
     public func embeddings(
         messages: [LlamaChatMessage],
         clearCache: Bool = true

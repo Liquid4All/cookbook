@@ -28,7 +28,7 @@ public struct LlamaAdapterBackend: AdapterInferenceBackend {
     ) async throws -> String {
         // Translate POC-facing chat messages to the LFMEngine type and
         // route through the chat-template path. This is the ONLY correct
-        // entrypoint for LoRA adapters trained via leap-finetune, which
+        // entrypoint for LoRA adapters trained via liquid-finetune, which
         // applies the model's chat template at training time.
         let engineMessages = messages.map { m in
             LlamaChatMessage(role: m.role.rawValue, content: m.content)

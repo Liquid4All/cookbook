@@ -126,8 +126,8 @@ multipliers on top of the auto-derived weights, for nudging specific dimensions 
 ### One-time setup
 
 ```bash
-git clone https://github.com/Liquid4All/leap-finetune
-cd leap-finetune && uv sync && cd -
+git clone https://github.com/Liquid4All/liquid-finetune
+cd liquid-finetune && uv sync && cd -
 
 huggingface-cli login
 modal setup
@@ -146,22 +146,22 @@ uv run --group finetune python finetune/prepare_data.py \
 
 HF dataset produced: `Paulescu/home-assistant-sft`
 
-### Step 2: Train on Modal (run from `leap-finetune/` subdirectory)
+### Step 2: Train on Modal (run from `liquid-finetune/` subdirectory)
 
 ```bash
-cd leap-finetune
+cd liquid-finetune
 
 # LFM2-350M (5 epochs, batch 4, ~$1.50)
-uv run leap-finetune ../finetune/configs/LFM2-350M.yaml
+uv run liquid-finetune ../finetune/configs/LFM2-350M.yaml
 ```
 
-### Step 3: Download checkpoints (run from `leap-finetune/` subdirectory)
+### Step 3: Download checkpoints (run from `liquid-finetune/` subdirectory)
 
 ```bash
 # Check actual volume paths first
-uv run modal volume ls leap-finetune
+uv run modal volume ls liquid-finetune
 
-uv run modal volume get leap-finetune /outputs/home-assistant-350M ../finetune/output/350M-lora
+uv run modal volume get liquid-finetune /outputs/home-assistant-350M ../finetune/output/350M-lora
 ```
 
 ### Step 4: Merge, convert to GGUF, and push to HuggingFace

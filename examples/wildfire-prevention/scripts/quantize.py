@@ -14,12 +14,12 @@ Prerequisites (cannot be automated):
 
 Usage:
     uv run scripts/quantize.py \\
-        --checkpoint ./leap-finetune/outputs/<run>/<checkpoint> \\
+        --checkpoint ./liquid-finetune/outputs/<run>/<checkpoint> \\
         --output ./outputs/lfm2.5-vl-wildfire-Q8_0.gguf
 
     # Different quantization level
     uv run scripts/quantize.py \\
-        --checkpoint ./leap-finetune/outputs/<run>/<checkpoint> \\
+        --checkpoint ./liquid-finetune/outputs/<run>/<checkpoint> \\
         --output ./outputs/lfm2.5-vl-wildfire-Q4_K_M.gguf \\
         --quant Q4_K_M
 """

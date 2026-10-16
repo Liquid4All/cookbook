@@ -20,9 +20,9 @@ peft_config:
   use_peft: true
 
 modal:
-  app_name: "leap-finetune"
+  app_name: "liquid-finetune"
   gpu: "H100:1"
   timeout: 7200
-  output_volume: "leap-finetune"
+  output_volume: "liquid-finetune"
   output_dir: "/outputs"
   detach: false

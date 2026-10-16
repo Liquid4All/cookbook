@@ -46,7 +46,7 @@ export const COLORS = {
 // Each racer's defaults. Override them in .env with <ENV_PREFIX>_MODEL_NAME,
 // <ENV_PREFIX>_API_KEY, and <ENV_PREFIX>_BASE_URL.
 export const RACERS = {
-  d1: { envPrefix: "LIQUID", model: "d1:free", baseUrl: "https://api.liquid.ai" },
+  d1: { envPrefix: "LIQUID", model: "d1", baseUrl: "https://api.liquid.ai" },
   jev: { envPrefix: "OPENROUTER", model: "typesafe/jev-1.13", baseUrl: "https://openrouter.ai" },
 };
 

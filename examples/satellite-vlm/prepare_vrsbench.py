@@ -1,8 +1,8 @@
 """
-VRSBench -> leap-finetune VLM SFT format converter.
+VRSBench -> liquid-finetune VLM SFT format converter.
 
 Downloads VRSBench from HuggingFace and converts to JSONL files
-compatible with leap-finetune's vlm_sft training type.
+compatible with liquid-finetune's vlm_sft training type.
 
 Tasks (auto-detected from [tag] prefixes in the data):
   - vqa:        85K visual question answering samples
@@ -112,7 +112,7 @@ def download_vrsbench(data_dir: str) -> Path:
 # ---------------------------------------------------------------------------
 
 def make_vlm_message(image_filename: str, user_text: str, assistant_text: str) -> dict:
-    """Create a single VLM SFT training sample in leap-finetune format."""
+    """Create a single VLM SFT training sample in liquid-finetune format."""
     return {
         "messages": [
             {
@@ -269,7 +269,7 @@ def convert_eval_captioning(data: list[dict]) -> list[dict]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert VRSBench to leap-finetune VLM SFT format"
+        description="Convert VRSBench to liquid-finetune VLM SFT format"
     )
     parser.add_argument(
         "--task",
@@ -384,7 +384,7 @@ def main():
             print(f"  {t}: {len(samples):,} training samples")
     print(f"  Total: {total_train:,} training samples")
     print(f"\nRun training:")
-    print(f"  uv run leap-finetune cookbook/satellite-vlm/configs/vrsbench_multitask.yaml")
+    print(f"  uv run liquid-finetune cookbook/satellite-vlm/configs/vrsbench_multitask.yaml")
 
 
 def _run_on_modal(args: argparse.Namespace) -> None:
@@ -428,7 +428,7 @@ def _run_on_modal(args: argparse.Namespace) -> None:
             prepare.remote(args.task, args.limit, args.skip_download)
 
     print(f"\nData ready in Modal volume '{MODAL_VOLUME_NAME}'.")
-    print(f"Next step: uv run leap-finetune cookbook/examples/satellite-vlm/configs/vrsbench_multitask_modal.yaml")
+    print(f"Next step: uv run liquid-finetune cookbook/examples/satellite-vlm/configs/vrsbench_multitask_modal.yaml")
 
 
 if __name__ == "__main__":

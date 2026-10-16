@@ -342,7 +342,7 @@ For each `(location, spatial tile, timestamp)` triple, `generate_samples.py` doe
           ...
     ```
 
-9. Optionally packages the run in [leap-finetune](https://github.com/LiquidAI/leap-finetune) VLM SFT format and pushes `train.jsonl` and `test.jsonl` to Hugging Face Hub (`--hf-dataset`).
+9. Optionally packages the run in [liquid-finetune](https://github.com/Liquid4All/liquid-finetune) VLM SFT format and pushes `train.jsonl` and `test.jsonl` to Hugging Face Hub (`--hf-dataset`).
 
 To validate a run:
 
@@ -419,21 +419,21 @@ Evaluated on 22 locations ([Paulescu/wildfire-prevention](https://huggingface.co
 
 ## 5. Fine-tuning
 
-We use [leap-finetune](https://github.com/Liquid4All/leap-finetune) to fine-tune `LFM2.5-VL-450M` on the Opus-labeled dataset via Modal's serverless H100 infrastructure.
+We use [liquid-finetune](https://github.com/Liquid4All/liquid-finetune) to fine-tune `LFM2.5-VL-450M` on the Opus-labeled dataset via Modal's serverless H100 infrastructure.
 
-### Step 1. Install leap-finetune
+### Step 1. Install liquid-finetune
 
-Let's clone [leap-finetune](https://github.com/Liquid4All/leap-finetune) inside this project directory and install its dependencies:
+Let's clone [liquid-finetune](https://github.com/Liquid4All/liquid-finetune) inside this project directory and install its dependencies:
 
 ```bash
-git clone https://github.com/LiquidAI/leap-finetune.git
-cd leap-finetune && uv sync && cd ..
+git clone https://github.com/Liquid4All/liquid-finetune.git
+cd liquid-finetune && uv sync && cd ..
 ```
 
-Authenticate with Hugging Face (necessary if you plan to pull or push private datasets or models) and Modal, so leap-fine tune can run the workload on Modal's serverless GPU platform.
+Authenticate with Hugging Face (necessary if you plan to pull or push private datasets or models) and Modal, so Liquid Finetune can run the workload on Modal's serverless GPU platform.
 
 ```bash
-cd leap-finetune
+cd liquid-finetune
 uv run huggingface-cli login   # needed to pull the model and dataset
 uv run python -m modal setup   # needed to launch the training job
 cd ..
@@ -465,7 +465,7 @@ sequenceDiagram
 
 ### Step 3. Prepare the configuration file
 
-This YAML file is the only file you need to pass to leap-finetune. You can find plenty of examples for different tasks in the [leap-finetune repository](https://github.com/Liquid4All/leap-finetune/tree/main/job_configs).
+This YAML file is the only file you need to pass to liquid-finetune. You can find plenty of examples for different tasks in the [liquid-finetune repository](https://github.com/Liquid4All/liquid-finetune/tree/main/job_configs).
 
 This is what ours looks like:
 
@@ -501,7 +501,7 @@ Two important observations:
 
 - **Full fine-tuning, not LoRA (`use_peft: false`):** we update both the multimodal projector and the full language model backbone. Satellite imagery is severely underrepresented in standard VLM pretraining data, so the projector needs to genuinely re-learn how to map multispectral patches into meaningful tokens. At 450M parameters, full fine-tuning fits on a single H100 without the memory pressure that motivates LoRA on larger models.
 
-- **Modal section:** the `modal` block tells leap-finetune to run the training job on Modal's serverless GPU platform rather than locally. It specifies the GPU type (`H100:1`), a timeout, and the Modal volume where the prepared dataset lives and where checkpoints are written.
+- **Modal section:** the `modal` block tells liquid-finetune to run the training job on Modal's serverless GPU platform rather than locally. It specifies the GPU type (`H100:1`), a timeout, and the Modal volume where the prepared dataset lives and where checkpoints are written.
 
 
 ### Step 4. Kick off the fine-tuning
@@ -509,7 +509,7 @@ Two important observations:
 Once the configuration YAML file is ready, fine-tuning is as easy as running:
 
 ```bash
-cd leap-finetune && uv run leap-finetune ../configs/wildfire_finetune_modal.yaml
+cd liquid-finetune && uv run liquid-finetune ../configs/wildfire_finetune_modal.yaml
 ```
 
 ```mermaid
@@ -520,7 +520,7 @@ sequenceDiagram
     participant Vol as Modal volume<br/>wildfire-prevention
     participant Space as HF Space<br/>(training dashboard)
 
-    User->>Modal: leap-finetune wildfire_finetune_modal.yaml
+    User->>Modal: liquid-finetune wildfire_finetune_modal.yaml
     Modal->>HF: download base model (LFM2.5-VL-450M)
     HF-->>Modal: model weights
     Modal->>Vol: read wildfire_train.jsonl + images

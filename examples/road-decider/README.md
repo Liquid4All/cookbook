@@ -63,7 +63,7 @@ By default, d1 runs through the Liquid API and Jev runs through OpenRouter. Each
 | Variable | Default | Description |
 |---|---|---|
 | `LIQUID_API_KEY` | | API key for d1. Required. |
-| `LIQUID_MODEL_NAME` | `d1:free` | d1 model name. |
+| `LIQUID_MODEL_NAME` | `d1` | d1 model name. |
 | `LIQUID_BASE_URL` | `https://api.liquid.ai` | API that serves d1: `https://api.liquid.ai` or `https://openrouter.ai`. |
 | `OPENROUTER_API_KEY` | | OpenRouter API key. Required for Jev vs d1 mode. |
 | `OPENROUTER_MODEL_NAME` | `typesafe/jev-1.13` | Jev model name. |

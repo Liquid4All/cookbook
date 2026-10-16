@@ -1,7 +1,7 @@
-"""Convert the Paulescu/wildfire-prevention HF dataset to leap-finetune VLM SFT format.
+"""Convert the Paulescu/wildfire-prevention HF dataset to liquid-finetune VLM SFT format.
 
 Downloads the dataset from HuggingFace Hub and writes wildfire_train.jsonl
-and wildfire_test.jsonl in the leap-finetune messages format. Images are
+and wildfire_test.jsonl in the liquid-finetune messages format. Images are
 already in the snapshot and do not need to be copied.
 
 The output directory will contain:
@@ -9,7 +9,7 @@ The output directory will contain:
     wildfire_test.jsonl     -- evaluation samples (messages format)
 
 The images/ directory lives inside the HF snapshot (resolved automatically by
-huggingface_hub.snapshot_download). The leap-finetune config must set
+huggingface_hub.snapshot_download). The liquid-finetune config must set
 image_root to <output_dir>/images/.
 
 Usage:
@@ -40,7 +40,7 @@ MODAL_OUTPUT_DIR = f"{MODAL_MOUNT_POINT}/data/wildfire"
 
 
 def make_vlm_row(rgb_name: str, swir_name: str, output: str) -> dict[str, object]:
-    """Build one leap-finetune VLM SFT row from image filenames and model output."""
+    """Build one liquid-finetune VLM SFT row from image filenames and model output."""
     return {
         "messages": [
             {
@@ -66,7 +66,7 @@ def write_jsonl(rows: list[dict[str, object]], path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Convert wildfire-prevention HF dataset to leap-finetune JSONL format."
+        description="Convert wildfire-prevention HF dataset to liquid-finetune JSONL format."
     )
     parser.add_argument(
         "--dataset",
@@ -134,7 +134,7 @@ def main() -> None:
         write_jsonl(rows, output_dir / f"wildfire_{split_name}.jsonl")
 
     print(f"\nDone. Set image_root to: {images_dir}")
-    print(f"Training config: uv run leap-finetune configs/wildfire_finetune.yaml")
+    print(f"Training config: uv run liquid-finetune configs/wildfire_finetune.yaml")
 
 
 def _run_on_modal(args: argparse.Namespace) -> None:
@@ -177,7 +177,7 @@ def _run_on_modal(args: argparse.Namespace) -> None:
 
     print(f"\nData ready in Modal volume '{MODAL_VOLUME_NAME}' at {MODAL_OUTPUT_DIR}.")
     print(f"Set image_root to: {MODAL_OUTPUT_DIR}/images/")
-    print(f"Next step: uv run leap-finetune configs/wildfire_finetune_modal.yaml")
+    print(f"Next step: uv run liquid-finetune configs/wildfire_finetune_modal.yaml")
 
 
 if __name__ == "__main__":

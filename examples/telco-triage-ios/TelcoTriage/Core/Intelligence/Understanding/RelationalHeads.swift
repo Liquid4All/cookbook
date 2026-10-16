@@ -477,7 +477,7 @@ public struct UnavailableRelationalStrategy: RelationalHeadsStrategy {
 /// a pure-generative classification pass for `turn_relationship`.
 ///
 /// **Training recap** (γ-1):
-///   - Generative SFT on LFM2.5-350M-Base via leap-finetune HIGH_R_LORA
+///   - Generative SFT on LFM2.5-350M-Base via liquid-finetune HIGH_R_LORA
 ///   - Training format: 2-turn chat-template with sentinel-separated user
 ///     message (`[USER_PRIOR]` / `[ASSISTANT_PRIOR]` / `[USER]`) and a
 ///     single class-label as the assistant reply

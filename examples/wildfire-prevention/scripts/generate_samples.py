@@ -13,7 +13,7 @@ before the cutoff go to train/, the rest go to test/. This prevents near-
 duplicate images (Sentinel-2 revisits every 5 days) from leaking across splits.
 
 When --hf-dataset is passed the run directory is also pushed to Hugging Face Hub
-as a dataset in leap-finetune VLM SFT format with train.jsonl and test.jsonl.
+as a dataset in liquid-finetune VLM SFT format with train.jsonl and test.jsonl.
 
 Usage:
     uv run scripts/generate_samples.py \\
@@ -197,7 +197,7 @@ def push_to_hf(
     rgb_path and swir_path are relative to the repo root (e.g. images/foo_rgb.png).
     output is the JSON-serialised model annotation.
 
-    To convert this dataset to leap-finetune JSONL format, run prepare_wildfire.py.
+    To convert this dataset to liquid-finetune JSONL format, run prepare_wildfire.py.
 
     Auth is handled via the HF_TOKEN environment variable.
     """

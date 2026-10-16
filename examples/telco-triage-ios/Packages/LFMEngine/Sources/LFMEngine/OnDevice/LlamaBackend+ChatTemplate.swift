@@ -61,7 +61,7 @@ extension LlamaBackend {
     /// (Final newline + open `assistant` turn is controlled by
     /// `addAssistantMarker`.)
     ///
-    /// Why this matters: `leap-finetune` wraps every training example in the
+    /// Why this matters: `liquid-finetune` wraps every training example in the
     /// GGUF's chat template before tokenizing. If the iOS runtime tokenizes
     /// the raw user-message string (no special tokens), the LoRA adapter sees
     /// an out-of-distribution input, its weight deltas misalign, and inference
@@ -177,7 +177,7 @@ extension LlamaBackend {
     ///
     /// Convenience that pairs `applyChatTemplate(_:)` with the existing
     /// `generate(prompt:...)` path — the ONLY correct way to call a LoRA
-    /// adapter that was trained via leap-finetune, which applies this exact
+    /// adapter that was trained via liquid-finetune, which applies this exact
     /// template at training time.
     ///
     /// Propagates the same parameters as `generate(prompt:...)` (see that

@@ -40,10 +40,10 @@ public struct AdapterChatMessage: Sendable, Hashable {
 /// ## Two inference entrypoints — pick by training regime
 ///
 ///  - `generate(messages:...)` — **REQUIRED** path for any LoRA adapter
-///    trained via `leap-finetune`. The concrete backend applies the
+///    trained via `liquid-finetune`. The concrete backend applies the
 ///    model's baked-in chat template (for LFM2.5:
 ///    `<|im_start|>user\n...<|im_end|>\n<|im_start|>assistant\n`)
-///    before tokenization. `leap-finetune` applies this exact template
+///    before tokenization. `liquid-finetune` applies this exact template
 ///    at training time, so feeding a LoRA a raw, un-templated prompt
 ///    is an out-of-distribution input that causes the adapter to
 ///    collapse to a trivial output (session-049 field bug: every query

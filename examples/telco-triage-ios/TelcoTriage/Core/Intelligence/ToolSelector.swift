@@ -76,7 +76,7 @@ public struct LFMToolSelector: ToolSelector {
         let start = Date()
         let userPrompt = Self.buildPrompt(query: query)
 
-        // This LoRA was trained via leap-finetune with ChatML wrapping,
+        // This LoRA was trained via liquid-finetune with ChatML wrapping,
         // so we MUST dispatch through the chat-template path. See
         // AdapterInferenceBackend.swift.
         let raw: String

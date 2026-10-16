@@ -3,7 +3,7 @@ benchmark/datasets/*.jsonl
 finetune/train_debug.py
 finetune/data/
 finetune/output/
-leap-finetune/
+liquid-finetune/
 runners/
 
 blog1.md
