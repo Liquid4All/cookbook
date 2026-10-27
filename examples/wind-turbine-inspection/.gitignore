@@ -1,0 +1,12 @@
+data/
+outputs/
+.venv/
+__pycache__/
+*.pyc
+*.zip
+.ipynb_checkpoints/
+notebooks/data/
+notebooks/outputs/
+.env
+notebooks/results/
+notebooks/results_val/

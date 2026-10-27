@@ -1,0 +1,26 @@
+[project]
+name = "wind-turbine-inspection"
+version = "0.1.0"
+description = "Wind turbine blade defect detection: frontier models vs LFM3-VL, before and after fine-tuning"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "openai",
+    "pandas",
+    "pillow",
+    "python-dotenv",
+    "tqdm",
+    # Local LFM3-VL inference
+    "accelerate",
+    "peft==0.21.2",
+    "torch==2.10.0",
+    "torchvision==0.25.0",
+    "transformers==5.20.0",
+]
+
+[dependency-groups]
+dev = ["jupyter"]
+
+[tool.uv]
+package = false
