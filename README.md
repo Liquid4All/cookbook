@@ -1,20 +1,17 @@
 <div align="center">
-  <img 
-    src="https://github.com/user-attachments/assets/e0f42ac6-822f-4b7b-a0ae-07b2a619258d" 
-    alt="Liquid AI" 
-    style="width: 100%; max-width: 100%; height: auto; display: inline-block; margin-bottom: 0.5em; margin-top: 0.5em;"
-  />
-  <div style="display: flex; justify-content: center; gap: 0.5em;">
-    <a href="https://playground.liquid.ai/"><strong>Try LFM</strong></a> • 
-    <a href="https://docs.liquid.ai/lfm"><strong>Documentation</strong></a> • 
-    <a href="https://leap.liquid.ai/"><strong>LEAP</strong></a>
-  </div>
-  <br/>
+  <img src="assets/cookbook-banner.webp" alt="Liquid AI Cookbook" width="100%" />
+  <p>
+    <a href="https://console.liquid.ai/dashboard"><strong>API</strong></a>
+    &nbsp;&nbsp;&nbsp;
+    <a href="https://playground.liquid.ai/"><strong>Try on Playground</strong></a>
+    &nbsp;&nbsp;&nbsp;
+    <a href="https://docs.liquid.ai/lfm/getting-started/welcome"><strong>Documentation</strong></a>
+  </p>
   <a href="https://discord.com/invite/liquid-ai"><img src="https://img.shields.io/discord/1385439864920739850?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2" alt="Join Discord"></a>
 </div>
 </br>
 
-**Examples**, **tutorials**, and **applications** to help you build with our open-weight [LFMs](https://huggingface.co/LiquidAI) and the [LEAP SDK](https://leap.liquid.ai/) on laptops, mobile, and edge devices.
+**Examples**, **tutorials**, and **applications** to help you build with our open-weight [LFMs](https://huggingface.co/LiquidAI) on laptops, mobile, and edge devices.
 
 ## Contents
 
@@ -87,11 +84,15 @@ Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edg
 
 ## 🎯 Fine-Tuning Examples
 
-We recommend fine-tuning LFM2.5 for your specific use case to achieve the best results. Below you'll find Colab notebooks and Python scripts for customizing LFM models with your own data.
+We recommend fine-tuning LFM3 for your specific use case to achieve the best results. Below you'll find Colab notebooks and Python scripts for customizing LFM models with your own data.
 
 | Name | Framework | Description | Link |
 |------|-----------|-------------|------|
 | **Text Models** | | | |
+| Supervised Fine-Tuning (SFT) for structured extraction | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Fine-tune LFM3-1.7B with LoRA to turn messy documents in many languages into JSON that follows a schema | [Notebook](./finetuning/notebooks/lfm3_sft_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_sft_with_trl.ipynb) |
+| Continued Pre-Training (CPT) for a new language | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Continue pre-training LFM3-1.7B with LoRA on Turkish Wikipedia, a language it doesn't officially support | [Notebook](./finetuning/notebooks/lfm3_cpt_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_cpt_with_trl.ipynb) |
+| Direct Preference Optimization (DPO) for grounded answers | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Teach LFM3-1.7B to answer only from the retrieved documents, and to say so when the answer isn't there | [Notebook](./finetuning/notebooks/lfm3_dpo_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_dpo_with_trl.ipynb) |
+| Group Relative Policy Optimization (GRPO) for tool calling | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Train LFM3-1.7B as a phone assistant that picks the right calls among 108 tools, with a verifiable reward and LoRA | [Notebook](./finetuning/notebooks/lfm3_grpo_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_grpo_with_trl.ipynb) |
 | Continued Pre-Training (CPT) for text completion | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
 | Continued Pre-Training (CPT) for translation | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Adapt models to specific languages or translation domains using domain data | [Notebook](./finetuning/notebooks/cpt_translation_with_unsloth.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/cpt_translation_with_unsloth.ipynb) |
 | Supervised Fine-Tuning (SFT) | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Memory-efficient SFT using Unsloth with LoRA for 2x faster training | [Notebook](./finetuning/notebooks/sft_with_unsloth.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_with_unsloth.ipynb) |
@@ -106,13 +107,21 @@ We recommend fine-tuning LFM2.5 for your specific use case to achieve the best r
 | Supervised Fine-Tuning (SFT) | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Learn how to fine-tune a decision model (d1-3B) on your own labels with LoRA, using intent classification on Banking77 as the example | [Notebook](./finetuning/notebooks/sft_for_decision_models_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_for_decision_models_with_trl.ipynb) |
 | Supervised Fine-Tuning (SFT) | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Learn how to fine-tune a decision model (d1-3B) on your own labels with Unsloth and LoRA, using intent classification on Banking77 as the example | [Notebook](./finetuning/notebooks/sft_for_decision_models_with_unsloth.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_for_decision_models_with_unsloth.ipynb) |
 | **Vision Models** | | | |
+| Supervised Fine-Tuning (SFT) for receipt extraction | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Fine-tune LFM3-VL-2B with LoRA to read photos of receipts into JSON that follows a schema | [Notebook](./finetuning/notebooks/lfm3_vl_sft_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_vl_sft_with_trl.ipynb) |
+| Group Relative Policy Optimization (GRPO) for formula transcription | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Train LFM3-VL-2B with LoRA to transcribe pictures of formulas into LaTeX, with a format reward and a LaTeX similarity reward | [Notebook](./finetuning/notebooks/lfm3_vl_grpo_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_vl_grpo_with_trl.ipynb) |
 | Supervised Fine-Tuning (SFT) | [Unsloth](https://github.com/unslothai/unsloth) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/unsloth)) | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model_with_unsloth.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_for_vision_language_model_with_unsloth.ipynb) |
 | Supervised Fine-Tuning (SFT) | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Supervised fine-tuning for LFM2.5-VL models using TRL with parameter-efficient LoRA | [Notebook](./finetuning/notebooks/sft_for_vision_language_model_with_trl.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/sft_for_vision_language_model_with_trl.ipynb) |
 | Supervised Fine-Tuning (SFT) | [Halo](https://github.com/whitecircle/halo) ([Docs](https://whitecircle.com/research/halo)) | Supervised fine-tuning for LFM2.5-VL-3B on CPPE-5 for object detection | [Notebook](./finetuning/notebooks/sft_for_vision_language_model_with_halo.ipynb) |
+| Wind Turbine Blade Inspection | [TRL](https://github.com/huggingface/trl) ([Docs](https://docs.liquid.ai/lfm/fine-tuning/trl)) | Fine-tune LFM3-VL-2B with SFT and GRPO to find and classify surface defects on wind turbine blade photos, and compare it with frontier models | [Code](./examples/wind-turbine-inspection/README.md) |
 | Satellite VLM Fine-Tuning | [leap-finetune](https://github.com/Liquid4All/leap-finetune/) | Fine-tune LFM2.5-VL-450M on satellite imagery for VQA, grounding, and captioning using Modal | [Code](./examples/satellite-vlm/README.md) |
 | Wildfire Prevention | [leap-finetune](https://github.com/Liquid4All/leap-finetune/) | Build a wildfire risk detection system using LFM2.5-VL-450M and Sentinel-2 satellite imagery, with fine-tuning and on-device inference | [Code](./examples/wildfire-prevention/README.md) |
 | **Audio Models** | | | |
+| Supervised Fine-Tuning (SFT) for voice commands | [HF Transformers](https://github.com/huggingface/transformers) | Fine-tune LFM3-Audio-2B with LoRA to map spoken smart-home commands directly to function calls | [Notebook](./finetuning/notebooks/lfm3_audio_sft_with_transformers.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_audio_sft_with_transformers.ipynb) |
+| Supervised Fine-Tuning (SFT) for a new voice | [HF Transformers](https://github.com/huggingface/transformers) | Teach LFM3-Audio-2B a new, consistent voice by training its speech output on LJSpeech | [Notebook](./finetuning/notebooks/lfm3_audio_tts_sft_with_transformers.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_audio_tts_sft_with_transformers.ipynb) |
 | LFM2.5-Audio Fine-Tuning | [liquid-audio](https://pypi.org/project/liquid-audio/) | Fine-tune LFM2.5-Audio-1.5B on the OHF-Voice dataset to map speech directly to Home Assistant function calls, with on-device GGUF inference | [Code](./examples/voice-assistant/README.md) |
+| **Omni Models** | | | |
+| Supervised Fine-Tuning (SFT) for voice commands | [HF Transformers](https://github.com/huggingface/transformers) | Fine-tune LFM3-Omni-2B with LoRA to map spoken smart-home commands directly to function calls | [Notebook](./finetuning/notebooks/lfm3_omni_sft_with_transformers.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_omni_sft_with_transformers.ipynb) |
+| Supervised Fine-Tuning (SFT) for spoken image Q&A | [HF Transformers](https://github.com/huggingface/transformers) | Fine-tune LFM3-Omni-2B to answer spoken questions about medical images | [Notebook](./finetuning/notebooks/lfm3_omni_vqa_sft_with_transformers.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Liquid4All/cookbook/blob/main/finetuning/notebooks/lfm3_omni_vqa_sft_with_transformers.ipynb) |
 | **Encoder Models** | | | |
 | Document Classification | [HF Transformers](https://github.com/huggingface/transformers) | Fine-tune LFM2.5-Encoder for custom long-document multi-label classification | [Code](./examples/lfm-encoder-classification/) |
 
