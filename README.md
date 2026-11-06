@@ -162,6 +162,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 
 | Name | Description | Link |
 |------|-------------|------|
+| Rapid-MLX | Serve LFM3-1.7B locally on Apple Silicon with MLX, streaming responses, and tool calling through an OpenAI-compatible API | [Code](https://github.com/raullenchai/Rapid-MLX) |
 | LFM-2.5 Thinking on Web | Run LFM2.5-1.2B reasoning model locally in the browser via WebGPU and Transformers.js | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
 | LFM-2.5 JP on Web | Run LFM2.5-1.2B Japanese model locally in the browser via WebGPU and Transformers.js | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
 | barq-web-rag | Browser-based RAG app for document Q&A with LFM2.5-1.2B-Thinking running fully local via WebGPU | [Code](https://github.com/YASSERRMD/barq-web-rag) |
