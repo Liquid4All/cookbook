@@ -152,6 +152,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 
 | Name | Description | Link |
 |------|-------------|------|
+| Rapid-MLX | Serve LFM3-1.7B locally on Apple Silicon with MLX, streaming responses, and tool calling through an OpenAI-compatible API | [Code](https://github.com/raullenchai/Rapid-MLX) |
 | LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
 | Food Images Fine-tuning | Fine-tune LFM models on food image datasets | [Code](https://github.com/benitomartin/food-images-finetuning) |
 | LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
