@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">koog-leap-sdk</string>
+    <string name="available_tools">Available Tools</string>
+    <string name="loading">Loading...</string>
+    <string name="enter_city_name">Enter city name</string>
+    <string name="get_weather">Get Weather</string>
+    <string name="calculator">Calculator</string>
+    <string name="a_simple_calculator_tool">A simple calculator tool</string>
+    <string name="weather">Weather</string>
+    <string name="get_current_weather_information">Get current weather information</string>
+    <string name="enter_expression">Enter expression</string>
+    <string name="calculator_tool">Calculator Tool</string>
+    <string name="weather_tool">Weather Tool</string>
+</resources>
