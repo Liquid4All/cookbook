@@ -1,17 +1,9 @@
 package ai.liquid.recipegenerator
 
-import ai.liquid.leap.LeapClient
-import ai.liquid.leap.LeapJson
-import ai.liquid.leap.ModelRunner
-import ai.liquid.leap.GenerationOptions
-import ai.liquid.leap.downloader.LeapModelDownloader
-import ai.liquid.leap.downloader.LeapModelDownloaderNotificationConfig
-import ai.liquid.leap.message.MessageResponse
+import android.app.DownloadManager
 import android.content.Context
+import android.net.Uri
 import android.util.Log
-import ai.liquid.leap.structuredoutput.Generatable
-import ai.liquid.leap.structuredoutput.GeneratableFactory
-import ai.liquid.leap.structuredoutput.Guide
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -19,101 +11,110 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.Json
+import java.io.File
 
 
 @Serializable
-@Generatable("A recipe for cooking great dishes")
 data class Recipe(
     val name: String,
 
-    @Guide("Ingredients for making the dishes")
     val ingredients: List<String>,
 
-    @Guide("Cooking time in minutes")
     val cookingTime: Int,
 
-    @Guide("Whether the meal is vegetarian")
     val isVegetarian: Boolean,
 
-    @Guide("Steps of cooking")
     val steps: List<String>,
 
 )
 
+// JSON schema for Recipe. llama.cpp turns it into a grammar, so the model can only generate matching JSON.
+private const val RECIPE_SCHEMA = """
+{
+  "type": "object",
+  "description": "A recipe for cooking great dishes",
+  "properties": {
+    "name": { "type": "string" },
+    "ingredients": { "type": "array", "items": { "type": "string" }, "description": "Ingredients for making the dishes" },
+    "cookingTime": { "type": "integer", "description": "Cooking time in minutes" },
+    "isVegetarian": { "type": "boolean", "description": "Whether the meal is vegetarian" },
+    "steps": { "type": "array", "items": { "type": "string" }, "description": "Steps of cooking" }
+  },
+  "required": ["name", "ingredients", "cookingTime", "isVegetarian", "steps"]
+}
+"""
+
 class MainActivityViewModel: ViewModel() {
-    private var modelRunner: ModelRunner? = null
+    private var modelRunner: LlamaJson? = null
     var recipeState: Recipe? by mutableStateOf(null)
     var status: String by mutableStateOf("Not ready to generate")
 
-    private val modelName = "LFM2-700M"
-    private val quantType = "Q8_0"
-    private var downloader: LeapModelDownloader? = null
-
-    private fun getDownloader(context: Context): LeapModelDownloader {
-        if (downloader == null) {
-            downloader = LeapModelDownloader(
-                context,
-                notificationConfig = LeapModelDownloaderNotificationConfig.build {
-                    notificationTitleDownloading = "Downloading Recipe Generator Model"
-                    notificationTitleDownloaded = "Model Ready!"
-                }
-            )
-        }
-        return downloader!!
-    }
+    private val modelUrl = "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q5_K_M.gguf"
+    private val modelFileName = "LFM2.5-1.2B-Instruct-Q5_K_M.gguf"
 
     suspend fun loadModel(context: Context) {
-        val downloader = getDownloader(context)
+        val modelFile = File(context.getExternalFilesDir(null), modelFileName)
 
         status = "Checking model status..."
-        val currentStatus = downloader.queryStatus(modelName, quantType)
 
-        if (currentStatus is LeapModelDownloader.ModelDownloadStatus.NotOnLocal) {
+        if (!modelFile.exists()) {
             // Model needs to be downloaded
             status = "Starting download..."
 
-            // Observe download progress
-            val progressFlow = downloader.observeDownloadProgress(modelName, quantType)
-
             // Start the download
-            downloader.requestDownloadModel(modelName, quantType)
+            val downloadManager = context.getSystemService(DownloadManager::class.java)
+            val downloadId = downloadManager.enqueue(
+                DownloadManager.Request(Uri.parse(modelUrl))
+                    .setTitle("Downloading Recipe Generator Model")
+                    .setDestinationUri(Uri.fromFile(modelFile))
+            )
 
-            // Collect progress updates until download completes
-            progressFlow
-                .onEach { progress ->
-                    if (progress != null) {
-                        val downloadedMB = progress.downloadedSizeInBytes / (1024 * 1024)
-                        val totalMB = progress.totalSizeInBytes / (1024 * 1024)
-                        val percentage = if (progress.totalSizeInBytes > 0) {
-                            (progress.downloadedSizeInBytes * 100.0 / progress.totalSizeInBytes).toInt()
-                        } else {
-                            0
-                        }
-                        status = "Downloading: $percentage% ($downloadedMB MB / $totalMB MB)"
-                    } else {
-                        val downloadStatus = downloader.queryStatus(modelName, quantType)
-                        if (downloadStatus is LeapModelDownloader.ModelDownloadStatus.Downloaded) {
+            // Poll progress updates until download completes
+            var downloading = true
+            while (downloading) {
+                downloadManager.query(DownloadManager.Query().setFilterById(downloadId)).use { cursor ->
+                    if (!cursor.moveToFirst()) return@use
+                    val downloadedSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                    val totalSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                    when (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                        DownloadManager.STATUS_SUCCESSFUL -> {
                             status = "Download complete!"
+                            downloading = false
+                        }
+                        DownloadManager.STATUS_FAILED -> {
+                            status = "Error: model download failed"
+                            return
+                        }
+                        else -> {
+                            val downloadedMB = downloadedSizeInBytes / (1024 * 1024)
+                            val totalMB = totalSizeInBytes / (1024 * 1024)
+                            val percentage = if (totalSizeInBytes > 0) {
+                                (downloadedSizeInBytes * 100.0 / totalSizeInBytes).toInt()
+                            } else {
+                                0
+                            }
+                            status = "Downloading: $percentage% ($downloadedMB MB / $totalMB MB)"
                         }
                     }
                 }
-                .takeWhile { progress ->
-                    progress != null || downloader.queryStatus(modelName, quantType) is LeapModelDownloader.ModelDownloadStatus.DownloadInProgress
-                }
-                .collect()
+                if (downloading) delay(500)
+            }
         }
 
         // Load the model
         status = "Loading model..."
         try {
-            modelRunner = downloader.loadModel(modelName, quantType)
+            modelRunner = withContext(Dispatchers.Default) {
+                LlamaJson(context.applicationInfo.nativeLibraryDir).also { it.load(modelFile.absolutePath) }
+            }
             status = "Model loaded"
         } catch (e: Exception) {
             Log.e("RecipeGenerator", "Error loading model", e)
@@ -128,34 +129,22 @@ class MainActivityViewModel: ViewModel() {
             }
             val modelRunner = checkNotNull(modelRunner)
             status = "Generating the recipe..."
-            // Simple system prompt - the schema will be automatically injected by the SDK
-            val conversation = modelRunner.createConversation(
-                "You are a recipe generator bot that reads the user's message and generates JSON output."
-            )
-            val options = GenerationOptions()
-            options.setResponseFormatType<Recipe>()
-            Log.d(MainActivityViewModel::class.simpleName, "Generating recipe with automatic schema injection. Constraint: ${options.jsonSchemaConstraint}")
+            // The schema goes into the system prompt and constrains generation as a grammar
+            val systemPrompt =
+                "You are a recipe generator bot that reads the user's message and generates JSON output " +
+                    "that follows this JSON schema: $RECIPE_SCHEMA"
+            Log.d(MainActivityViewModel::class.simpleName, "Generating recipe with JSON schema constraint: $RECIPE_SCHEMA")
             val buffer = StringBuilder()
             try {
-                conversation.generateResponse("A recipe for a dinner dish", options)
+                modelRunner.generate(systemPrompt, "A recipe for a dinner dish", RECIPE_SCHEMA)
                     .onEach { response ->
-                        when (response) {
-                            is MessageResponse.Chunk -> {
-                                buffer.append(response.text)
-                            }
-
-                            else -> {
-                                // ignore
-                            }
-                        }
+                        buffer.append(response)
                     }.collect()
 
                 val generatedText = buffer.toString()
                 Log.d("RecipeGenerator", "Generated text: $generatedText")
 
-                val recipe = GeneratableFactory.createFromJsonObject<Recipe>(
-                    LeapJson.parseToJsonElement(generatedText).jsonObject
-                )
+                val recipe = Json.decodeFromString<Recipe>(generatedText)
                 Log.d("RecipeGenerator", "Successfully parsed recipe: ${recipe.name}")
                 recipeState = recipe
                 status = "Recipe generated successfully!"
