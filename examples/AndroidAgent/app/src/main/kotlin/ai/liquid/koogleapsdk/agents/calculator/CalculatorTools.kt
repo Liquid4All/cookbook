@@ -1,7 +1,8 @@
 package ai.liquid.koogleapsdk.agents.calculator
 
-import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.annotations.LLMDescription
+import ai.liquid.koogleapsdk.agents.common.Tool
+import ai.liquid.koogleapsdk.agents.common.parametersSchema
+import ai.liquid.koogleapsdk.agents.common.property
 import kotlinx.serialization.Serializable
 
 object CalculatorTools {
@@ -11,9 +12,7 @@ object CalculatorTools {
     ) : Tool<CalculatorTool.Args, CalculatorTool.Result>() {
         @Serializable
         data class Args(
-            @property:LLMDescription("First number")// "Second number"
             val a: Float,
-            @property:LLMDescription("Second number")
             val b: Float
         )
 
@@ -21,7 +20,12 @@ object CalculatorTools {
         class Result(val result: Float)
 
         final override val argsSerializer = Args.serializer()
-        final override val resultSerializer = Result.serializer()
+        final override val parameters = parametersSchema(
+            "a" to property("number", "First number"),
+            "b" to property("number", "Second number"),
+        )
+
+        final override fun resultText(result: Result) = result.result.toString()
     }
 
     /**

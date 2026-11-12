@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "ai.liquid.koog_leap_sdk"
+        applicationId = "ai.liquid.androidagent"
         minSdk = libs.versions.minSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
@@ -59,13 +59,6 @@ android {
     buildFeatures {
         compose = true
     }
-
-    packaging {
-        resources {
-            // TODO remove when netty issue is resolved in koog
-            excludes.add("META-INF/*")
-        }
-    }
 }
 
 dependencies {
@@ -79,8 +72,10 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.compose.ui.tooling)
-    implementation(libs.koog.agents)
-    implementation(files("libs/koog-edge-0.0.1.aar"))
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     implementation(libs.kotlinx.serialization.core)

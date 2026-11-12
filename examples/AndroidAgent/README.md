@@ -1,40 +1,25 @@
-# LeapKoogAgent Android Example
+# AndroidAgent Example
 
-This is an example Android application demonstrating the integration of the [Koog framework](https://docs.koog.ai) with Leap SDK. The app showcases how to use Koog's AI agent capabilities within an Android environment.
+This is an example Android application that runs a tool-calling agent fully on-device with [llama.cpp](https://github.com/ggml-org/llama.cpp) and LFM2.5-1.2B-Instruct. The app showcases two agents: a calculator and a weather forecaster.
 
 ## Features
-- Integration with Koog framework for AI agent functionality
-- Example usage of Leap SDK
-- Demonstrates event handling and agent communication
+- A small agent loop in plain Kotlin: the model calls tools until it can answer
+- Tools defined as Kotlin classes with a JSON schema for their arguments
+- llama.cpp formats the tool list for the model and parses its tool calls
 
 ## Getting Started
 
 ### Prerequisites
-- Android Studio
+- Android Studio with the Android NDK and CMake installed
 - Android device or emulator
 
-### Model Installation
-To use the AI agent, you need to push the model file to your device:
-
-```
-adb push lfm2-1.2b-tool.bundle /tmp/models
-```
-
-This command copies the model bundle to the `/tmp/models` directory on your Android device. Make sure `adb` is installed and your device is connected.
+### Model Download
+On first use, the app downloads [LFM2.5-1.2B-Instruct](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF) (Q5_K_M, about 850 MB) from Hugging Face and reuses it on later launches.
 
 ### Building and Running
-1. Clone this repository.
-2. Open in Android Studio.
+1. Clone the cookbook with `git clone --recurse-submodules` to get the pinned llama.cpp source.
+2. Open the `AndroidAgent` folder in Android Studio.
 3. Build and run the app on your device or emulator.
-
-## Koog Framework
-[Koog](https://docs.koog.ai) is an open-source framework for building AI agents. It provides tools for:
-- Natural language understanding
-- Tool invocation
-- Context management
-- Extensible agent architecture
-- Integration with MCP servers (tools retrieval and execution)
 
 ## License
 This project is licensed under the MIT License.
-

@@ -24,5 +24,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "koog-leap-sdk"
+rootProject.name = "AndroidAgent"
 include(":app")

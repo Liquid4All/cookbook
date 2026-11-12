@@ -1,9 +1,8 @@
 package ai.liquid.koogleapsdk.agents.weather
 
-import ai.koog.agents.core.tools.Tool
-import ai.koog.agents.core.tools.ToolResult
-import ai.koog.agents.core.tools.ToolResultUtils
-import ai.koog.agents.core.tools.annotations.LLMDescription
+import ai.liquid.koogleapsdk.agents.common.Tool
+import ai.liquid.koogleapsdk.agents.common.parametersSchema
+import ai.liquid.koogleapsdk.agents.common.property
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.LocalDate
@@ -13,7 +12,6 @@ import kotlinx.datetime.offsetAt
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -43,7 +41,6 @@ object WeatherTools {
     object CurrentDatetimeTool : Tool<CurrentDatetimeTool.Args, CurrentDatetimeTool.Result>() {
         @Serializable
         data class Args(
-            @property:LLMDescription("The timezone to get the current date and time in (e.g., 'UTC', 'America/New_York', 'Europe/London'). Defaults to UTC.")
             val timezone: String = "UTC"
         )
 
@@ -53,15 +50,18 @@ object WeatherTools {
             val date: String,
             val time: String,
             val timezone: String
-        ) : ToolResult.TextSerializable() {
-            override fun textForLLM(): String {
+        ) {
+            fun textForLLM(): String {
                 return "Current datetime: $datetime, Date: $date, Time: $time, Timezone: $timezone"
             }
         }
 
         override val argsSerializer = Args.serializer()
-        override val resultSerializer: KSerializer<Result> =
-            ToolResultUtils.toTextSerializer<Result>()
+        override val parameters = parametersSchema(
+            "timezone" to property("string", "The timezone to get the current date and time in (e.g., 'UTC', 'America/New_York', 'Europe/London'). Defaults to UTC."),
+            required = emptyList(),
+        )
+        override fun resultText(result: Result) = result.textForLLM()
 
         override val name = "current_datetime"
         override val description = "Get the current date and time in the specified timezone"
@@ -98,13 +98,9 @@ object WeatherTools {
     object AddDatetimeTool : Tool<AddDatetimeTool.Args, AddDatetimeTool.Result>() {
         @Serializable
         data class Args(
-            @property:LLMDescription("The date to add to in ISO format (e.g., '2023-05-20')")
             val date: String,
-            @property:LLMDescription("The number of days to add")
             val days: Int,
-            @property:LLMDescription("The number of hours to add")
             val hours: Int,
-            @property:LLMDescription("The number of minutes to add")
             val minutes: Int
         )
 
@@ -115,8 +111,8 @@ object WeatherTools {
             val daysAdded: Int,
             val hoursAdded: Int,
             val minutesAdded: Int
-        ) : ToolResult.TextSerializable() {
-            override fun textForLLM(): String {
+        ) {
+            fun textForLLM(): String {
                 return buildString {
                     append("Date: $date")
                     if (originalDate.isBlank()) {
@@ -147,7 +143,13 @@ object WeatherTools {
         }
 
         override val argsSerializer = Args.serializer()
-        override val resultSerializer = ToolResultUtils.toTextSerializer<Result>()
+        override val parameters = parametersSchema(
+            "date" to property("string", "The date to add to in ISO format (e.g., '2023-05-20')"),
+            "days" to property("integer", "The number of days to add"),
+            "hours" to property("integer", "The number of hours to add"),
+            "minutes" to property("integer", "The number of minutes to add"),
+        )
+        override fun resultText(result: Result) = result.textForLLM()
 
         override val name = "add_datetime"
         override val description =
@@ -195,13 +197,9 @@ object WeatherTools {
     object WeatherForecastTool : Tool<WeatherForecastTool.Args, WeatherForecastTool.Result>() {
         @Serializable
         data class Args(
-            @property:LLMDescription("The location to get the weather forecast for (e.g., 'New York', 'London', 'Paris')")
             val location: String,
-            @property:LLMDescription("The date to get the weather forecast for in ISO format (e.g., '2023-05-20'). If empty, the forecast starts from today.")
             val date: String = "",
-            @property:LLMDescription("The number of days to forecast (1-7)")
             val days: Int = 1,
-            @property:LLMDescription("The granularity of the forecast: 'daily' for day-by-day forecast or 'hourly' for hour-by-hour forecast. Default is 'daily'.")
             val granularity: Granularity = Granularity.DAILY
         )
 
@@ -212,8 +210,8 @@ object WeatherTools {
             val forecast: String,
             val date: String,
             val granularity: Granularity
-        ) : ToolResult.TextSerializable() {
-            override fun textForLLM(): String {
+        ) {
+            fun textForLLM(): String {
                 val granularityText = when (granularity) {
                     Granularity.DAILY -> "daily"
                     Granularity.HOURLY -> "hourly"
@@ -230,7 +228,14 @@ object WeatherTools {
         }
 
         override val argsSerializer = Args.serializer()
-        override val resultSerializer = ToolResultUtils.toTextSerializer<Result>()
+        override val parameters = parametersSchema(
+            "location" to property("string", "The location to get the weather forecast for (e.g., 'New York', 'London', 'Paris')"),
+            "date" to property("string", "The date to get the weather forecast for in ISO format (e.g., '2023-05-20'). If empty, the forecast starts from today."),
+            "days" to property("integer", "The number of days to forecast (1-7)"),
+            "granularity" to property("string", "The granularity of the forecast: 'daily' for day-by-day forecast or 'hourly' for hour-by-hour forecast. Default is 'daily'."),
+            required = listOf("location"),
+        )
+        override fun resultText(result: Result) = result.textForLLM()
 
         override val name = "weather_forecast"
         override val description =
