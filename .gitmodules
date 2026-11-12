@@ -1,3 +1,6 @@
 [submodule "examples/SloganApp/llama.cpp"]
 	path = examples/SloganApp/llama.cpp
 	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "examples/VLMExample/llama.cpp"]
+	path = examples/VLMExample/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
