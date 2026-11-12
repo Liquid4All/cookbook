@@ -26,4 +26,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "ShareAI"
 include(":app")
+include(":lib")
+project(":lib").projectDir = file("llama.cpp/examples/llama.android/lib")
  
