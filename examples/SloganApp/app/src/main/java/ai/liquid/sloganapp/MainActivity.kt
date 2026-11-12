@@ -1,11 +1,8 @@
 package ai.liquid.sloganapp
 
-import ai.liquid.leap.LeapClient
-import ai.liquid.leap.ModelRunner
-import ai.liquid.leap.downloader.LeapModelDownloader
-import ai.liquid.leap.downloader.LeapModelDownloaderNotificationConfig
-import ai.liquid.leap.message.MessageResponse
+import android.app.DownloadManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.Button
@@ -18,25 +15,29 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
+import com.arm.aichat.AiChat
+import com.arm.aichat.InferenceEngine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 // System prompt constants
 private const val SYSTEM_PROMPT = "You are a marketing expert. Suggest engaging and creative slogans based on a business description provided by the user."
 // User prompt template.
-private const val USER_PROMPT_TEMPLATE = "/no_think Suggest slogans for this business: %s"
+private const val USER_PROMPT_TEMPLATE = "Suggest slogans for this business: %s"
 
 
 class MainActivity : ComponentActivity() {
-    private lateinit var modelRunner: ModelRunner
+    private lateinit var modelRunner: InferenceEngine
     private var modelLoaded = false
     private var generationJob: Job? = null
-    private var downloader: LeapModelDownloader? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,60 +61,57 @@ class MainActivity : ComponentActivity() {
 
             modelStatus.setTextColor(resources.getColor(R.color.model_loading_status_color, null))
 
-            val modelName = "Qwen3-0.6B"
-            val quantType = "Q8_0"
-
-            // Reuse downloader instance to avoid concurrent download issues
-            if (downloader == null) {
-                downloader = LeapModelDownloader(
-                    this@MainActivity,
-                    notificationConfig = LeapModelDownloaderNotificationConfig.build {
-                        notificationTitleDownloading = "Downloading Slogan Generator Model"
-                        notificationTitleDownloaded = "Model Ready!"
-                    }
-                )
-            }
-            val downloaderInstance = downloader!!
+            val modelUrl = "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q5_K_M.gguf"
+            val modelFile = File(getExternalFilesDir(null), "LFM2.5-1.2B-Instruct-Q5_K_M.gguf")
 
             // Check if model needs to be downloaded
-            val currentStatus = downloaderInstance.queryStatus(modelName, quantType)
-
-            if (currentStatus is LeapModelDownloader.ModelDownloadStatus.NotOnLocal) {
+            if (!modelFile.exists()) {
                 // Model needs to be downloaded
                 textView.text = "Starting download..."
 
-                // Observe download progress
-                val progressFlow = downloaderInstance.observeDownloadProgress(modelName, quantType)
-
                 // Start the download
-                downloaderInstance.requestDownloadModel(modelName, quantType)
+                val downloadManager = getSystemService(DownloadManager::class.java)
+                val downloadId = downloadManager.enqueue(
+                    DownloadManager.Request(Uri.parse(modelUrl))
+                        .setTitle("Downloading Slogan Generator Model")
+                        .setDestinationUri(Uri.fromFile(modelFile))
+                )
 
-                // Collect progress updates until download completes
-                progressFlow
-                    .onEach { progress ->
-                        if (progress != null) {
-                            val downloadedMB = progress.downloadedSizeInBytes / (1024 * 1024)
-                            val totalMB = progress.totalSizeInBytes / (1024 * 1024)
-                            val percentage = if (progress.totalSizeInBytes > 0) {
-                                (progress.downloadedSizeInBytes * 100.0 / progress.totalSizeInBytes).toInt()
-                            } else {
-                                0
-                            }
-                            textView.text = "Downloading: $percentage% ($downloadedMB MB / $totalMB MB)"
-                        } else {
-                            val downloadStatus = downloaderInstance.queryStatus(modelName, quantType)
-                            if (downloadStatus is LeapModelDownloader.ModelDownloadStatus.Downloaded) {
+                // Poll progress updates until download completes
+                var downloading = true
+                while (downloading) {
+                    downloadManager.query(DownloadManager.Query().setFilterById(downloadId)).use { cursor ->
+                        if (!cursor.moveToFirst()) return@use
+                        val downloadedSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                        val totalSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                        when (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                            DownloadManager.STATUS_SUCCESSFUL -> {
                                 textView.text = "Download complete!"
+                                downloading = false
+                            }
+                            DownloadManager.STATUS_FAILED -> throw IllegalStateException("Model download failed")
+                            else -> {
+                                val downloadedMB = downloadedSizeInBytes / (1024 * 1024)
+                                val totalMB = totalSizeInBytes / (1024 * 1024)
+                                val percentage = if (totalSizeInBytes > 0) {
+                                    (downloadedSizeInBytes * 100.0 / totalSizeInBytes).toInt()
+                                } else {
+                                    0
+                                }
+                                textView.text = "Downloading: $percentage% ($downloadedMB MB / $totalMB MB)"
                             }
                         }
                     }
-                    .takeWhile { progress ->
-                        progress != null || downloaderInstance.queryStatus(modelName, quantType) is LeapModelDownloader.ModelDownloadStatus.DownloadInProgress
-                    }
-                    .collect()
+                    if (downloading) delay(500)
+                }
             }
 
-            modelRunner = downloaderInstance.loadModel(modelName, quantType)
+            modelRunner = withContext(Dispatchers.Default) {
+                AiChat.getInferenceEngine(applicationContext).also {
+                    it.loadModel(modelFile.absolutePath)
+                    it.setSystemPrompt(SYSTEM_PROMPT)
+                }
+            }
             modelLoaded = true
 
             modelStatus.text = resources.getText(R.string.model_status_loaded)
@@ -145,18 +143,12 @@ class MainActivity : ComponentActivity() {
     ) {
         generationJob = lifecycleScope.launch {
             textView.text = getText(R.string.generation_in_progress_label)
-            val conversation = modelRunner.createConversation(SYSTEM_PROMPT)
 
-            conversation.generateResponse(USER_PROMPT_TEMPLATE.format(userInput)).onEach { chunk ->
-                when (chunk) {
-                    is MessageResponse.Chunk -> {
-                        if (textView.text.startsWith(getText(R.string.generation_in_progress_label))) {
-                            textView.text = chunk.text
-                        } else {
-                            textView.append(chunk.text)
-                        }
-                    }
-                    else -> {}
+            modelRunner.sendUserPrompt(USER_PROMPT_TEMPLATE.format(userInput)).onEach { chunk ->
+                if (textView.text.startsWith(getText(R.string.generation_in_progress_label))) {
+                    textView.text = chunk
+                } else {
+                    textView.append(chunk)
                 }
                 (textView.parent as ScrollView).post {
                     (textView.parent as ScrollView).fullScroll(ScrollView.FOCUS_DOWN)
