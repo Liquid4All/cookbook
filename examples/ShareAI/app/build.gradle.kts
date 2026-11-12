@@ -62,8 +62,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    implementation(libs.leap.sdk)
-    implementation(libs.leap.model.downloader)
+    implementation(project(":lib"))
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.jsoup)
 

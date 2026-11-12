@@ -1,20 +1,17 @@
 package com.leap.shareai.viewmodels
 
-import ai.liquid.leap.Conversation
-import ai.liquid.leap.LeapClient
-import ai.liquid.leap.LeapModelLoadingException
-import ai.liquid.leap.ModelRunner
-import ai.liquid.leap.downloader.LeapModelDownloader
-import ai.liquid.leap.downloader.LeapModelDownloaderNotificationConfig
-import ai.liquid.leap.message.ChatMessage
-import ai.liquid.leap.message.MessageResponse
+import android.app.DownloadManager
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arm.aichat.AiChat
+import com.arm.aichat.InferenceEngine
 import com.leap.shareai.model.ChatMessageDisplayItem
+import com.leap.shareai.model.Role
 import com.leap.shareai.webscraping.WebPageState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -25,29 +22,29 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import java.io.File
 
 
 class AIChatViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "LeapViewModel"
-        private const val MODEL_NAME = "LFM2-350M"
-        private const val QUANTIZATION_SLUG = "Q8_0"
+        private const val MODEL_URL = "https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF/resolve/main/LFM2.5-350M-Q8_0.gguf"
+        private const val MODEL_FILE = "LFM2.5-350M-Q8_0.gguf"
         private const val PROMPT = "Make a summary less than 500 words of the following text. Use Markdown If needed:\n\n"
     }
 
     private val _state = mutableStateOf<LeapState>(LeapState.Idle)
     val state: State<LeapState> = _state
 
-    private var modelRunner: ModelRunner? = null
-    private var conversation: Conversation? = null
+    private var modelRunner: InferenceEngine? = null
     private var generationJob: Job? = null
-    private var downloader: LeapModelDownloader? = null
 
     private val _responseChunks = MutableSharedFlow<String>()
     val responseChunks: SharedFlow<String> = _responseChunks
@@ -70,63 +67,57 @@ class AIChatViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.emit(true)
             try {
-                // Reuse downloader instance to avoid concurrent download issues
-                if (downloader == null) {
-                    downloader = LeapModelDownloader(
-                        context,
-                        notificationConfig = LeapModelDownloaderNotificationConfig.build {
-                            notificationTitleDownloading = "Downloading ShareAI Model"
-                            notificationTitleDownloaded = "Model Ready!"
-                        }
-                    )
-                }
-                val downloaderInstance = downloader!!
+                val modelFile = File(context.getExternalFilesDir(null), MODEL_FILE)
 
                 // Check if model needs to be downloaded
-                val currentStatus = downloaderInstance.queryStatus(MODEL_NAME, QUANTIZATION_SLUG)
-
-                if (currentStatus is LeapModelDownloader.ModelDownloadStatus.NotOnLocal) {
+                if (!modelFile.exists()) {
                     // Model needs to be downloaded
                     Log.d(TAG, "Model not found locally, starting download...")
 
-                    // Observe download progress
-                    val progressFlow = downloaderInstance.observeDownloadProgress(MODEL_NAME, QUANTIZATION_SLUG)
-
                     // Start the download
-                    downloaderInstance.requestDownloadModel(MODEL_NAME, QUANTIZATION_SLUG)
+                    val downloadManager = context.getSystemService(DownloadManager::class.java)
+                    val downloadId = downloadManager.enqueue(
+                        DownloadManager.Request(Uri.parse(MODEL_URL))
+                            .setTitle("Downloading ShareAI Model")
+                            .setDestinationUri(Uri.fromFile(modelFile))
+                    )
 
-                    // Collect progress updates until download completes
-                    progressFlow
-                        .onEach { progress ->
-                            if (progress != null) {
-                                val downloadedMB = progress.downloadedSizeInBytes / (1024 * 1024)
-                                val totalMB = progress.totalSizeInBytes / (1024 * 1024)
-                                val percentage = if (progress.totalSizeInBytes > 0) {
-                                    (progress.downloadedSizeInBytes * 100.0 / progress.totalSizeInBytes).toInt()
-                                } else {
-                                    0
-                                }
-                                Log.d(TAG, "Downloading: $percentage% ($downloadedMB MB / $totalMB MB)")
-                            } else {
-                                val downloadStatus = downloaderInstance.queryStatus(MODEL_NAME, QUANTIZATION_SLUG)
-                                if (downloadStatus is LeapModelDownloader.ModelDownloadStatus.Downloaded) {
+                    // Poll progress updates until download completes
+                    var downloading = true
+                    while (downloading) {
+                        downloadManager.query(DownloadManager.Query().setFilterById(downloadId)).use { cursor ->
+                            if (!cursor.moveToFirst()) return@use
+                            val downloadedSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                            val totalSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                            when (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                                DownloadManager.STATUS_SUCCESSFUL -> {
                                     Log.d(TAG, "Download complete!")
+                                    downloading = false
+                                }
+                                DownloadManager.STATUS_FAILED -> throw IllegalStateException("Model download failed")
+                                else -> {
+                                    val downloadedMB = downloadedSizeInBytes / (1024 * 1024)
+                                    val totalMB = totalSizeInBytes / (1024 * 1024)
+                                    val percentage = if (totalSizeInBytes > 0) {
+                                        (downloadedSizeInBytes * 100.0 / totalSizeInBytes).toInt()
+                                    } else {
+                                        0
+                                    }
+                                    Log.d(TAG, "Downloading: $percentage% ($downloadedMB MB / $totalMB MB)")
                                 }
                             }
                         }
-                        .takeWhile { progress ->
-                            progress != null || downloaderInstance.queryStatus(MODEL_NAME, QUANTIZATION_SLUG) is LeapModelDownloader.ModelDownloadStatus.DownloadInProgress
-                        }
-                        .collect()
+                        if (downloading) delay(500)
+                    }
                 }
 
-                modelRunner = downloaderInstance.loadModel(
-                    modelName = MODEL_NAME,
-                    quantizationType = QUANTIZATION_SLUG,
-                )
-                conversation = modelRunner?.createConversation()
-                Log.d(TAG, "Model loaded and conversation created")
-            } catch (e: LeapModelLoadingException) {
+                modelRunner = withContext(Dispatchers.Default) {
+                    AiChat.getInferenceEngine(context.applicationContext).also {
+                        it.loadModel(modelFile.absolutePath)
+                    }
+                }
+                Log.d(TAG, "Model loaded")
+            } catch (e: Exception) {
                 _state.value = LeapState.Error("Failed to load model: ${e.message}")
                 Log.e(TAG, "Failed to load model: ${e.message}")
             } finally {
@@ -139,7 +130,7 @@ class AIChatViewModel : ViewModel() {
         // Add user's message to the list
         Log.d(TAG, "Sending user input: $userInput")
         val massage = PROMPT + userInput.trim()
-        val userMessage = ChatMessageDisplayItem(ChatMessage.Role.USER, massage)
+        val userMessage = ChatMessageDisplayItem(Role.USER, massage)
         _messages.update { it + userMessage }
 
         generateResponse(massage)
@@ -148,8 +139,8 @@ class AIChatViewModel : ViewModel() {
 
     private fun generateResponse(input: String) {
 
-        val conv = conversation ?: run {
-            Log.e(TAG, "Conversation not initialized")
+        val runner = modelRunner ?: run {
+            Log.e(TAG, "Model not loaded")
             return
         }
 
@@ -157,42 +148,29 @@ class AIChatViewModel : ViewModel() {
 
         generationJob = viewModelScope.launch {
             _state.value = LeapState.Thinking
-            conv.generateResponse(input)
-                .onCompletion {
+            runner.sendUserPrompt(input)
+                .onCompletion { e ->
                     Log.d(TAG, "Generation complete")
+                    if (e == null) {
+                        _state.value = LeapState.Success(currentResponseText.toString())
+                        val aiMessage = ChatMessageDisplayItem(
+                            role = Role.ASSISTANT,
+                            text = currentResponseText.toString(),
+                            reasoning = currentReasoningText.takeIf { it.isNotBlank() }
+                                ?.toString()
+                        )
+                        _messages.update { it + aiMessage }
+                        Log.d(TAG, "AI message completed and added to list")
+                    }
                 }
                 .catch { e ->
                     Log.e(TAG, "Error generating response: ${e.message}")
                     _state.value = LeapState.Error("Error: ${e.message}")
                 }
-                .collect { response ->
-                    when (response) {
-                        is MessageResponse.Chunk -> {
-                            _state.value = LeapState.Generating
-                            currentResponseText.append(response.text)
-                            _responseChunks.emit(response.text)
-                        }
-
-                        is MessageResponse.ReasoningChunk -> {
-                            _state.value = LeapState.Thinking
-                            currentReasoningText.append(response.reasoning)
-                            _reasoningChunks.emit(response.reasoning)
-                        }
-
-                        is MessageResponse.Complete -> {
-                            _state.value = LeapState.Success(currentResponseText.toString())
-                            val aiMessage = ChatMessageDisplayItem(
-                                role = ChatMessage.Role.ASSISTANT,
-                                text = currentResponseText.toString(),
-                                reasoning = currentReasoningText.takeIf { it.isNotBlank() }
-                                    ?.toString()
-                            )
-                            _messages.update { it + aiMessage }
-                            Log.d(TAG, "AI message completed and added to list")
-                        }
-
-                        else -> Unit
-                    }
+                .collect { chunk ->
+                    _state.value = LeapState.Generating
+                    currentResponseText.append(chunk)
+                    _responseChunks.emit(chunk)
                 }
         }
     }
@@ -209,7 +187,7 @@ class AIChatViewModel : ViewModel() {
         // Do NOT use runBlocking here - it blocks the main thread
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                modelRunner?.unload()
+                modelRunner?.cleanUp()
             } catch (e: Exception) {
                 Log.e(TAG, "Error unloading model", e)
             }
