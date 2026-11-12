@@ -4,3 +4,6 @@
 [submodule "examples/VLMExample/llama.cpp"]
 	path = examples/VLMExample/llama.cpp
 	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "examples/RecipeGenerator/llama.cpp"]
+	path = examples/RecipeGenerator/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
