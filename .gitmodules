@@ -10,3 +10,6 @@
 [submodule "examples/ShareAI/llama.cpp"]
 	path = examples/ShareAI/llama.cpp
 	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "examples/AndroidAgent/llama.cpp"]
+	path = examples/AndroidAgent/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
