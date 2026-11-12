@@ -26,3 +26,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "Slogan App"
 include(":app")
+include(":lib")
+project(":lib").projectDir = file("llama.cpp/examples/llama.android/lib")
