@@ -1,12 +1,7 @@
 package ai.liquid.vlmtestapp
 
-import ai.liquid.leap.LeapClient
-import ai.liquid.leap.ModelRunner
-import ai.liquid.leap.downloader.LeapModelDownloader
-import ai.liquid.leap.downloader.LeapModelDownloaderNotificationConfig
-import ai.liquid.leap.message.ChatMessage
-import ai.liquid.leap.message.ChatMessageContent
-import ai.liquid.leap.message.MessageResponse
+import android.app.DownloadManager
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,11 +25,13 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -44,8 +41,7 @@ class MainActivity : ComponentActivity() {
     private val imageFileLiveData: MutableLiveData<File> = MutableLiveData<File>()
     private val isTakePictureButtonEnabled: MutableLiveData<Boolean> =
         MutableLiveData<Boolean>(true)
-    private lateinit var modelRunner: ModelRunner
-    private var downloader: LeapModelDownloader? = null
+    private lateinit var modelRunner: LlamaVlm
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,95 +112,80 @@ class MainActivity : ComponentActivity() {
 
     suspend fun generateWithImage(imageData: ByteArray) {
         if (!this::modelRunner.isInitialized) {
-            val modelName = "LFM2.5-VL-1.6B"
-            val quantType = "Q8_0"
+            val repoUrl = "https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B-GGUF/resolve/main"
+            val modelFile = File(getExternalFilesDir(null), "LFM2.5-VL-1.6B-Q8_0.gguf")
+            val mmprojFile = File(getExternalFilesDir(null), "mmproj-LFM2.5-VL-1.6b-Q8_0.gguf")
 
             generateText.value = "Loading the model..."
 
-            // Reuse downloader instance to avoid concurrent download issues
-            if (downloader == null) {
-                downloader = LeapModelDownloader(
-                    this@MainActivity,
-                    notificationConfig = LeapModelDownloaderNotificationConfig.build {
-                        notificationTitleDownloading = "Downloading VLM Model"
-                        notificationTitleDownloaded = "Model Ready!"
-                    }
-                )
+            // Download the model and its vision projector if they are not on the device yet
+            downloadIfMissing("$repoUrl/${modelFile.name}", modelFile)
+            downloadIfMissing("$repoUrl/${mmprojFile.name}", mmprojFile)
+
+            modelRunner = withContext(Dispatchers.Default) {
+                LlamaVlm(applicationInfo.nativeLibraryDir).also {
+                    it.load(modelFile.absolutePath, mmprojFile.absolutePath)
+                }
             }
-            val downloaderInstance = downloader!!
+        }
+        generateText.value = "Looking at the image and generating a description..."
 
-            // Check if model needs to be downloaded
-            val currentStatus = downloaderInstance.queryStatus(modelName, quantType)
+        var isGenerationStarted = false
+        modelRunner.generate(
+            systemPrompt = "You are a helpful multimodal assistant by Liquid AI.",
+            prompt = "Describe this image.",
+            image = imageData,
+        )
+            .onEach {
+                if (!isGenerationStarted) {
+                    isGenerationStarted = true
+                    generateText.value = ""
+                }
+                generateText.value = generateText.value + it
+            }.onCompletion {
+                Log.d("MainActivity", generateText.value.toString())
+            }.collect()
+    }
 
-            if (currentStatus is LeapModelDownloader.ModelDownloadStatus.NotOnLocal) {
-                // Model needs to be downloaded
-                generateText.value = "Starting download..."
+    private suspend fun downloadIfMissing(url: String, file: File) {
+        if (file.exists()) return
+        // Model needs to be downloaded
+        generateText.value = "Starting download..."
 
-                // Observe download progress
-                val progressFlow = downloaderInstance.observeDownloadProgress(modelName, quantType)
+        // Start the download
+        val downloadManager = getSystemService(DownloadManager::class.java)
+        val downloadId = downloadManager.enqueue(
+            DownloadManager.Request(Uri.parse(url))
+                .setTitle("Downloading VLM Model")
+                .setDestinationUri(Uri.fromFile(file))
+        )
 
-                // Start the download
-                downloaderInstance.requestDownloadModel(modelName, quantType)
-
-                // Collect progress updates until download completes
-                progressFlow
-                    .onEach { progress ->
-                        if (progress != null) {
-                            val downloadedMB = progress.downloadedSizeInBytes / (1024 * 1024)
-                            val totalMB = progress.totalSizeInBytes / (1024 * 1024)
-                            val percentage = if (progress.totalSizeInBytes > 0) {
-                                (progress.downloadedSizeInBytes * 100.0 / progress.totalSizeInBytes).toInt()
+        // Poll progress updates until download completes
+        while (true) {
+            downloadManager.query(DownloadManager.Query().setFilterById(downloadId)).use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val downloadedSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                    val totalSizeInBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                    when (cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))) {
+                        DownloadManager.STATUS_SUCCESSFUL -> {
+                            generateText.value = "Download complete!"
+                            return
+                        }
+                        DownloadManager.STATUS_FAILED -> throw IllegalStateException("Model download failed")
+                        else -> {
+                            val downloadedMB = downloadedSizeInBytes / (1024 * 1024)
+                            val totalMB = totalSizeInBytes / (1024 * 1024)
+                            val percentage = if (totalSizeInBytes > 0) {
+                                (downloadedSizeInBytes * 100.0 / totalSizeInBytes).toInt()
                             } else {
                                 0
                             }
                             generateText.value = "Downloading: $percentage% ($downloadedMB MB / $totalMB MB)"
-                        } else {
-                            val downloadStatus = downloaderInstance.queryStatus(modelName, quantType)
-                            if (downloadStatus is LeapModelDownloader.ModelDownloadStatus.Downloaded) {
-                                generateText.value = "Download complete!"
-                            }
                         }
                     }
-                    .takeWhile { progress ->
-                        progress != null || downloaderInstance.queryStatus(modelName, quantType) is LeapModelDownloader.ModelDownloadStatus.DownloadInProgress
-                    }
-                    .collect()
+                }
             }
-
-            modelRunner = downloaderInstance.loadModel(modelName, quantType)
+            delay(500)
         }
-        generateText.value = "Looking at the image and generating a description..."
-        val conversation =
-            modelRunner.createConversation("You are a helpful multimodal assistant by Liquid AI.")
-
-        val userMessage =
-            ChatMessage(
-                role = ChatMessage.Role.USER,
-                content =
-                    listOf(
-                        ChatMessageContent.Text("Describe this image."),
-                        ChatMessageContent.Image(imageData),
-                    ),
-            )
-
-        var isGenerationStarted = false
-        conversation.generateResponse(userMessage)
-            .onEach {
-                if (it is MessageResponse.Chunk) {
-                    if (!isGenerationStarted) {
-                        isGenerationStarted = true
-                        generateText.value = ""
-                    }
-                    generateText.value = generateText.value + it.text
-                } else if (it is MessageResponse.Complete) {
-                    val generatedContent = it.fullMessage.content.first() as ChatMessageContent.Text
-                    generateText.value = generatedContent.text
-                    Log.d("MainActivity", it.toString())
-                }
-            }.onCompletion {
-                conversation.history.forEach {
-                    Log.d("MainActivity", it.toString())
-                }
-            }.collect()
     }
 }
