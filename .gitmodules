@@ -1,0 +1,15 @@
+[submodule "examples/SloganApp/llama.cpp"]
+	path = examples/SloganApp/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "examples/VLMExample/llama.cpp"]
+	path = examples/VLMExample/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "examples/RecipeGenerator/llama.cpp"]
+	path = examples/RecipeGenerator/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "examples/ShareAI/llama.cpp"]
+	path = examples/ShareAI/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
+[submodule "examples/AndroidAgent/llama.cpp"]
+	path = examples/AndroidAgent/llama.cpp
+	url = https://github.com/ggml-org/llama.cpp.git
