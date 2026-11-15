@@ -167,6 +167,8 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | barq-web-rag | Browser-based RAG app for document Q&A with LFM2.5-1.2B-Thinking running fully local via WebGPU | [Code](https://github.com/YASSERRMD/barq-web-rag) |
 | Tauri Plugin LEAP AI | Tauri plugin to integrate LEAP and Liquid LFMs into desktop and mobile apps | [Crate](https://crates.io/crates/tauri-plugin-leap-ai) |
 | Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
+| LFM2 Math on Web | Run LFM2-350M-Math reasoning model locally in the browser via WebGPU and Transformers.js | [Code](https://github.com/sitammeur/lfm2-math-web) |
+| LFM2 Translate on Web | Run LFM2-350M-ENJP-MT English↔Japanese translation model locally in the browser via WebGPU and Transformers.js | [Code](https://github.com/sitammeur/lfm2-translate-web) |
 
 ### End-to-End Projects
 
