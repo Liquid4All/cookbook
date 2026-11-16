@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.leap.shareai.webscraping.WebPageContent
 import com.leap.shareai.webscraping.WebPageState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -18,8 +20,14 @@ class WebScrapingViewModel : ViewModel() {
     private val _state = mutableStateOf<WebPageState>(WebPageState.Idle)
     val state: State<WebPageState> = _state
 
+    private var request: Job? = null
+    private var lastUrl: String? = null
+
     fun extractTextFromUrl(url: String) {
-        viewModelScope.launch {
+        if (url == lastUrl && (request?.isActive == true || _state.value is WebPageState.Success)) return
+        lastUrl = url
+        request?.cancel()
+        request = viewModelScope.launch {
             _state.value = WebPageState.Loading
             Log.d("WebScrapingViewModel", "loading data")
             try {
@@ -28,6 +36,8 @@ class WebScrapingViewModel : ViewModel() {
                 }
                 Log.d("WebScrapingViewModel", "data loaded")
                 _state.value = WebPageState.Success(content)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.d("WebScrapingViewModel", "data loading error: $e")
                 _state.value = WebPageState.Error(e.message ?: "Unknown error occurred")

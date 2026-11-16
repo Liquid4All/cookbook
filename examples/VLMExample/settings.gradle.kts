@@ -26,4 +26,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "VLMTestApp"
 include(":app")
- 
+
+
+include(":runtime")
+project(":runtime").projectDir = file("../android-common")

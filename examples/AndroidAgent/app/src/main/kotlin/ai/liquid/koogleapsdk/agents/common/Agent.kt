@@ -1,6 +1,7 @@
 package ai.liquid.koogleapsdk.agents.common
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -68,6 +69,8 @@ class Agent(
             }
         }
         answer ?: error("The agent did not answer within $maxIterations iterations")
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
         onErrorEvent("${e.message}")
         throw e
@@ -78,6 +81,8 @@ class Agent(
         val tool = tools.find { it.name == name } ?: return "Error: unknown tool '$name'"
         return try {
             tool.call(arguments)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             "Error: ${e.message}"
         }

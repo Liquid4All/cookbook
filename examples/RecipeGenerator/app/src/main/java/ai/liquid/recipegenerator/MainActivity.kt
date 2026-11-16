@@ -1,19 +1,21 @@
 package ai.liquid.recipegenerator
 
-import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,47 +23,18 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     val viewModel: MainActivityViewModel by viewModels()
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            startGeneration()
-        } else {
-            // Permission denied, proceed without notifications
-            startGeneration()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        // Check and request notification permission for Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    startGeneration()
-                }
-                else -> {
-                    requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        } else {
-            startGeneration()
-        }
+        if (viewModel.generation.value.status == "Ready") viewModel.generateRecipe()
 
         setContent {
             Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                val state by viewModel.generation.collectAsState()
                 val recipe = viewModel.recipeState
                 if (recipe == null) {
                     Column(
@@ -72,15 +45,18 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = viewModel.status,
+                            text = state.error ?: state.status,
                             fontStyle = FontStyle.Italic,
                             fontSize = 24.sp,
                             textAlign = TextAlign.Center
                         )
+                        Button(onClick = { viewModel.generateRecipe() }, enabled = !state.busy) { Text("Retry") }
                     }
                 } else {
                     Column(Modifier.padding(innerPadding)) {
-                        RecipeView(recipe, modifier = Modifier.padding(8.dp))
+                        RecipeView(recipe, modifier = Modifier.weight(1f).padding(8.dp))
+                        Text(state.error ?: state.status)
+                        Button(onClick = { viewModel.generateRecipe() }, enabled = !state.busy) { Text("Generate another recipe") }
                     }
                 }
             }
@@ -88,13 +64,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startGeneration() {
-        viewModel.generateRecipe(this)
+        viewModel.generateRecipe()
     }
 }
 
 @Composable
 fun RecipeView(recipe: Recipe, modifier: Modifier = Modifier) {
-    Column(modifier) {
+    Column(modifier.verticalScroll(rememberScrollState())) {
         Text(recipe.name, fontSize = 24.sp)
         Text(
             "Cooking time: ${recipe.cookingTime} min",

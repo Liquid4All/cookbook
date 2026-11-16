@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,7 +60,6 @@ import com.halilibo.richtext.commonmark.CommonmarkAstNodeParser
 import com.halilibo.richtext.markdown.BasicMarkdown
 import com.halilibo.richtext.ui.material3.RichText
 import com.leap.shareai.viewmodels.AIChatViewModel
-import com.leap.shareai.viewmodels.LeapState
 import com.leap.shareai.viewmodels.WebScrapingViewModel
 import com.leap.shareai.webscraping.WebPageState
 
@@ -85,121 +85,36 @@ fun SummaryAppScreen(
     webScrapingViewModel: WebScrapingViewModel = viewModel(),
     aiChatViewModel: AIChatViewModel = viewModel()
 ) {
-    var currentStatus by remember { mutableStateOf(ProcessingStatus.LOADING_MODEL) }
-    var isProcessing by remember { mutableStateOf(true) }
-    var summaryText by remember { mutableStateOf("") }
-    var errorText by remember { mutableStateOf("") }
-
-    val aiChatState by aiChatViewModel.state
-    val webScrapingState by webScrapingViewModel.state
-
-    val isLoading by aiChatViewModel.isLoading.collectAsState(false)
-    val context = LocalContext.current
-
-    LaunchedEffect(Unit) { aiChatViewModel.loadModel(context) }
-    LaunchedEffect(isLoading) {
-        when {
-            isLoading -> {
-                currentStatus = ProcessingStatus.LOADING_MODEL
-                isProcessing = true
-            }
-
-            else -> {
-                Log.d("SummaryAppScreenUI", "Request to load url")
-                webScrapingViewModel.extractTextFromUrl(
-                    url = linkUrl
-                )
-            }
+    val generation by aiChatViewModel.generation.collectAsState()
+    val webState by webScrapingViewModel.state
+    LaunchedEffect(linkUrl) { webScrapingViewModel.extractTextFromUrl(linkUrl) }
+    LaunchedEffect(webState, linkUrl) {
+        val content = (webState as? WebPageState.Success)?.content
+        if (content != null && content.url == linkUrl) aiChatViewModel.summarize(linkUrl, content.text)
+    }
+    val error = (webState as? WebPageState.Error)?.message ?: generation.error.orEmpty()
+    val scraping = webState is WebPageState.Loading || webState is WebPageState.Idle
+    val status = when {
+        error.isNotEmpty() -> ProcessingStatus.ERROR
+        scraping -> ProcessingStatus.SCRAPING_WEBPAGE
+        generation.busy && generation.output.isEmpty() -> ProcessingStatus.LOADING_MODEL
+        generation.busy -> ProcessingStatus.GENERATING_SUMMARY
+        else -> ProcessingStatus.COMPLETED
+    }
+    Column(modifier.fillMaxSize()) {
+        SummaryAppScreenUI(
+            modifier = Modifier.weight(1f), currentStatus = status,
+            isProcessing = scraping || generation.busy, isThinking = false,
+            summaryText = if (scraping) "" else generation.output, errorText = error,
+        )
+        if (error.isNotEmpty()) {
+            Button(onClick = {
+                val content = (webState as? WebPageState.Success)?.content
+                if (content != null && content.url == linkUrl) aiChatViewModel.summarize(linkUrl, content.text, retry = true)
+                else webScrapingViewModel.extractTextFromUrl(linkUrl)
+            }, enabled = !generation.busy) { Text("Retry") }
         }
     }
-
-    val message by aiChatViewModel.responseChunks.collectAsState("")
-    val messages = remember { mutableStateOf("") }
-
-    val reasoningChunks by aiChatViewModel.reasoningChunks.collectAsState("")
-    val reasoningMessages = remember { mutableStateOf("") }
-
-    LaunchedEffect(reasoningChunks) {
-        if (reasoningChunks.isNotEmpty()) {
-            reasoningMessages.value += reasoningChunks
-            summaryText = reasoningMessages.value
-        }
-    }
-
-    LaunchedEffect(message) {
-        if (message.isNotEmpty()) {
-            messages.value += message
-            summaryText = messages.value
-        }
-    }
-
-    LaunchedEffect(webScrapingState) {
-        when (webScrapingState) {
-
-            is WebPageState.Error -> {
-                currentStatus = ProcessingStatus.ERROR
-                errorText = (webScrapingState as WebPageState.Error).message
-                isProcessing = false
-            }
-
-            WebPageState.Idle -> {}
-
-            WebPageState.Loading -> {
-                currentStatus = ProcessingStatus.SCRAPING_WEBPAGE
-                isProcessing = true
-            }
-
-            is WebPageState.Success -> {
-                currentStatus = ProcessingStatus.SCRAPING_WEBPAGE
-                isProcessing = true
-
-                aiChatViewModel.sendMessage(
-                    userInput = (webScrapingState as WebPageState.Success).content.text
-                )
-            }
-        }
-    }
-
-    LaunchedEffect(aiChatState) {
-        when (aiChatState) {
-            LeapState.Idle -> {}
-            LeapState.Loading -> {
-                currentStatus = ProcessingStatus.LOADING_MODEL
-                isProcessing = true
-            }
-
-            is LeapState.Error -> {
-                currentStatus = ProcessingStatus.ERROR
-                errorText = (aiChatState as LeapState.Error).message
-                isProcessing = false
-            }
-
-            LeapState.Thinking -> {
-                currentStatus = ProcessingStatus.THINKING
-                isProcessing = true
-            }
-
-            LeapState.Generating -> {
-                currentStatus = ProcessingStatus.GENERATING_SUMMARY
-                isProcessing = true
-            }
-
-            is LeapState.Success -> {
-                currentStatus = ProcessingStatus.COMPLETED
-                isProcessing = false
-                summaryText = (aiChatState as LeapState.Success).response
-                messages.value = summaryText // Update the messages state with the final summary
-            }
-        }
-    }
-    SummaryAppScreenUI(
-        modifier = modifier,
-        currentStatus = currentStatus,
-        isProcessing = isProcessing,
-        isThinking = aiChatState == LeapState.Thinking,
-        summaryText = summaryText,
-        errorText = errorText
-    )
 }
 
 @Composable
@@ -211,76 +126,26 @@ fun SummaryAppScreenUI(
     isThinking: Boolean,
     errorText: String = ""
 ) {
-    val gradientBrush = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF6366F1), // Indigo
-            Color(0xFF8B5CF6), // Violet
-            Color(0xFFA855F7)  // Purple
-        )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(gradientBrush)
-            .windowInsetsPadding(WindowInsets.systemBars)
-    ) {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(60.dp))
-
-            // Header
+    val gradient = Brush.verticalGradient(listOf(Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFA855F7)))
+    Box(modifier.fillMaxSize().background(gradient).windowInsetsPadding(WindowInsets.systemBars)) {
+        Column(Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Summary Generator", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = "Summary Generator",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = when {
+                when {
                     isProcessing -> "Processing your content..."
                     errorText.isNotEmpty() -> "Error occurred"
                     else -> "Summary Complete"
-                },
-                fontSize = 16.sp,
-                color = Color.White.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center
+                }, color = Color.White, fontSize = 16.sp,
             )
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Main content area
+            Spacer(Modifier.height(16.dp))
             when {
-                errorText.isNotEmpty() -> {
-                    ErrorCard(errorText, Modifier.weight(1f))
-                }
-
-                summaryText.isNotEmpty() -> {
-                    SummaryCard(summaryText, isThinking, modifier.weight(1f))
-                }
-
-                else -> {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+                errorText.isNotEmpty() -> ErrorCard(errorText, Modifier.weight(1f))
+                summaryText.isNotEmpty() -> SummaryCard(summaryText, isThinking, Modifier.weight(1f))
+                else -> Spacer(Modifier.weight(1f))
             }
-
-            Spacer(modifier = Modifier.height(40.dp))
+            if (isProcessing) StatusIndicators(currentStatus, true, Modifier.fillMaxWidth())
         }
-
-        // Status indicators at the bottom
-        StatusIndicators(
-            currentStatus = currentStatus,
-            isProcessing = isProcessing,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
     }
 }
 
@@ -473,8 +338,7 @@ fun SummaryCard(summaryText: String, isThinking: Boolean, modifier: Modifier) {
     }
     Card(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(bottom = 90.dp),
+            .fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White.copy(alpha = 0.9f)

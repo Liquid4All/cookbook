@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 class WeatherToolViewModel : MviViewModel<WeatherToolState, WeatherToolEvent>() {
     private val _state = MutableStateFlow(WeatherToolState())
@@ -24,7 +25,7 @@ class WeatherToolViewModel : MviViewModel<WeatherToolState, WeatherToolEvent>() 
     }
 
     internal fun fetchWeather(cityName: String) {
-        // Simulate fetching weather data
+        if (_state.value.isLoading) return
         _state.update {
             it.copy(isLoading = true, weatherInfo = null)
         }
@@ -60,8 +61,12 @@ class WeatherToolViewModel : MviViewModel<WeatherToolState, WeatherToolEvent>() 
                         weatherInfo = result,
                     )
                 }
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
-                // TODO handle errors
+                _state.update { it.copy(weatherInfo = "Unable to get weather: ${ex.message}. Please retry.") }
+            } finally {
+                _state.update { it.copy(isLoading = false) }
             }
         }
     }

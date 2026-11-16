@@ -38,7 +38,7 @@ fun WeatherToolScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        var city by remember { mutableStateOf("New York, 2025-10-22, DAILY") }
+        var city by remember { mutableStateOf("New York") }
         OutlinedTextField(
             value = city,
             onValueChange = {
@@ -73,7 +73,8 @@ fun WeatherToolScreen(
             onClick = {
                 onEvent(WeatherToolEvent.OnSearchClick(city))
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !state.isLoading && city.isNotBlank()
         ) {
             Text(text = stringResource(R.string.get_weather))
         }

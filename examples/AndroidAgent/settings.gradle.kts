@@ -26,3 +26,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "AndroidAgent"
 include(":app")
+include(":runtime")
+project(":runtime").projectDir = file("../android-common")

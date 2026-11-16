@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 class CalculatorToolViewModel : MviViewModel<CalculatorToolState, CalculatorToolEvent>() {
     private val _state = MutableStateFlow(CalculatorToolState())
@@ -24,6 +25,8 @@ class CalculatorToolViewModel : MviViewModel<CalculatorToolState, CalculatorTool
     }
 
     internal fun calculateUsingAgent(expression: String) {
+        if (_state.value.isCalculating) return
+        _state.update { it.copy(isCalculating = true, toolCalls = emptyList()) }
         viewModelScope.launch {
             _state.update {
                 it.copy(
@@ -63,6 +66,8 @@ class CalculatorToolViewModel : MviViewModel<CalculatorToolState, CalculatorTool
                         answer = result
                     )
                 }
+            } catch (ex: CancellationException) {
+                throw ex
             } catch (ex: Exception) {
                 _state.update {
                     it.copy(
@@ -70,6 +75,8 @@ class CalculatorToolViewModel : MviViewModel<CalculatorToolState, CalculatorTool
                     )
                 }
                 Log.e(this@CalculatorToolViewModel::class.simpleName, "Error occurred", ex)
+            } finally {
+                _state.update { it.copy(isCalculating = false) }
             }
         }
     }

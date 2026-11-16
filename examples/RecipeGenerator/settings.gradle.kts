@@ -26,3 +26,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "RecipeGenerator"
 include(":app")
+
+include(":runtime")
+project(":runtime").projectDir = file("../android-common")
