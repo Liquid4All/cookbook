@@ -13,15 +13,11 @@ import kotlinx.serialization.json.Json
 /**
  * Client for interacting with the Open Meteo API
  */
-class OpenMeteoClient {
-    private val client = HttpClient {
-        install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                coerceInputValues = true
-            })
-        }
+class OpenMeteoClient(private val client: HttpClient = HttpClient {
+    install(ContentNegotiation) {
+        json(Json { ignoreUnknownKeys = true; coerceInputValues = true })
     }
+}) {
 
     /**
      * Search for locations by name
@@ -45,7 +41,8 @@ class OpenMeteoClient {
      * Get weather forecast for a location
      * @param latitude The latitude of the location
      * @param longitude The longitude of the location
-     * @param forecastDays The number of days to forecast
+     * @param startDate First date in the requested forecast interval
+     * @param endDate Last date in the requested forecast interval
      * @param hourly The hourly weather variables to include
      * @param daily The daily weather variables to include
      * @param timezone The timezone to use for the forecast
@@ -54,7 +51,8 @@ class OpenMeteoClient {
     suspend fun getWeatherForecast(
         latitude: Double,
         longitude: Double,
-        forecastDays: Int = 7,
+        startDate: String,
+        endDate: String,
         hourly: List<String> = listOf(
             "temperature_2m",
             "precipitation_probability",
@@ -71,7 +69,8 @@ class OpenMeteoClient {
         return client.get("https://api.open-meteo.com/v1/forecast") {
             parameter("latitude", latitude)
             parameter("longitude", longitude)
-            parameter("forecast_days", forecastDays)
+            parameter("start_date", startDate)
+            parameter("end_date", endDate)
             parameter("hourly", hourly.joinToString(","))
             parameter("daily", daily.joinToString(","))
             parameter("timezone", timezone)

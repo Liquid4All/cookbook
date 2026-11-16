@@ -3,6 +3,8 @@ package ai.liquid.koogleapsdk.agents.weather
 import ai.liquid.koogleapsdk.agents.common.Tool
 import ai.liquid.koogleapsdk.agents.common.parametersSchema
 import ai.liquid.koogleapsdk.agents.common.property
+import kotlinx.datetime.Instant
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.LocalDate
@@ -230,7 +232,7 @@ object WeatherTools {
         override val argsSerializer = Args.serializer()
         override val parameters = parametersSchema(
             "location" to property("string", "The location to get the weather forecast for (e.g., 'New York', 'London', 'Paris')"),
-            "date" to property("string", "The date to get the weather forecast for in ISO format (e.g., '2023-05-20'). If empty, the forecast starts from today."),
+            "date" to property("string", "An ISO date, today, or tomorrow. Relative dates use the location's timezone. Empty means today."),
             "days" to property("integer", "The number of days to forecast (1-7)"),
             "granularity" to property("string", "The granularity of the forecast: 'daily' for day-by-day forecast or 'hourly' for hour-by-hour forecast. Default is 'daily'."),
             required = listOf("location"),
@@ -241,9 +243,11 @@ object WeatherTools {
         override val description =
             "Get a weather forecast for a location with specified granularity (daily or hourly)"
 
-        override suspend fun execute(args: Args): Result {
+        override suspend fun execute(args: Args): Result = execute(args, openMeteoClient, Clock.System.now())
+
+        internal suspend fun execute(args: Args, client: OpenMeteoClient, now: Instant): Result {
             // Search for the location
-            val locations = openMeteoClient.searchLocation(args.location)
+            val locations = client.searchLocation(args.location)
             if (locations.isEmpty()) {
                 return Result(
                     locationName = args.location,
@@ -254,26 +258,38 @@ object WeatherTools {
             }
 
             val location = locations.first()
-            val forecastDays = args.days.coerceIn(1, 7)
+            require(args.days in 1..7) { "Forecast duration must be between 1 and 7 days" }
+            val zone = location.timezone?.let { TimeZone.of(it) } ?: UTC_ZONE
+            val today = now.toLocalDateTime(zone).date
+            val start = when (val requested = args.date.trim().lowercase()) {
+                "", "today" -> today
+                "tomorrow" -> today.plus(DatePeriod(days = 1))
+                else -> LocalDate.parse(requested)
+            }
+            val end = start.plus(DatePeriod(days = args.days - 1))
+            require(start >= today && end <= today.plus(DatePeriod(days = 15))) {
+                "The requested dates are outside the available forecast range"
+            }
 
             // Get the weather forecast
-            val forecast = openMeteoClient.getWeatherForecast(
+            val forecast = client.getWeatherForecast(
                 latitude = location.latitude,
                 longitude = location.longitude,
-                forecastDays = forecastDays
+                startDate = start.toString(),
+                endDate = end.toString()
             )
 
             // Format the forecast based on granularity
             val formattedForecast = when (args.granularity) {
-                Granularity.HOURLY -> formatHourlyForecast(forecast, args.date)
-                Granularity.DAILY -> formatDailyForecast(forecast, args.date)
+                Granularity.HOURLY -> formatHourlyForecast(forecast, start.toString())
+                Granularity.DAILY -> formatDailyForecast(forecast, start.toString())
             }
 
             return Result(
                 locationName = location.name,
                 locationCountry = location.country,
                 forecast = formattedForecast,
-                date = args.date,
+                date = start.toString(),
                 granularity = args.granularity
             )
         }
@@ -285,7 +301,8 @@ object WeatherTools {
                 Clock.System.now().toLocalDateTime(UTC_ZONE).date.toString()
             }
 
-            val startIndex = daily.time.indexOfFirst { it >= startDate }.coerceAtLeast(0)
+            val startIndex = daily.time.indexOfFirst { it == startDate }
+            if (startIndex < 0) return "No forecast data available for $startDate"
 
             return buildString {
                 for (i in startIndex until daily.time.size) {
@@ -316,8 +333,9 @@ object WeatherTools {
 
             // Find the starting index for the requested date
             val startIndex = hourly.time.indexOfFirst {
-                it.startsWith(startDate) || it > startDate
-            }.coerceAtLeast(0)
+                it.startsWith(startDate)
+            }
+            if (startIndex < 0) return "No forecast data available for $startDate"
 
             return buildString {
                 // Group hourly forecasts by date for better readability

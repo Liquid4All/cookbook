@@ -3,7 +3,6 @@ package ai.liquid.koogleapsdk.agents.weather
 import ai.liquid.koogleapsdk.agents.common.Agent
 import ai.liquid.koogleapsdk.agents.common.AgentProvider
 import ai.liquid.koogleapsdk.agents.common.LocalModel
-import kotlinx.datetime.Clock
 
 /**
  * Factory for creating weather forecast agents
@@ -25,8 +24,9 @@ internal class WeatherAgentProvider : AgentProvider {
                 You are a helpful weather assistant.
                 You can provide weather forecasts for any location in the world and help the user plan their activities.
                 ALWAYS use the available tools to get weather data. NEVER say you do not have access to weather data.
-                ALWAYS use date and time tools to handle dates and times.
-                Today's date and time is ${Clock.System.now()}.
+                For weather today or tomorrow, pass date="today" or date="tomorrow" directly to weather_forecast.
+                The tool resolves those dates in the location's timezone.
+                For other date calculations, use date and time tools with the location's timezone.
                 When you receive a tool result, always explain it to the user in natural language.
                 Use the tools at your disposal to:
                 1. Get the current date and time
