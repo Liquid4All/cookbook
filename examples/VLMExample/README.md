@@ -1,0 +1,20 @@
+# VLMExample
+
+Capture a camera photo and generate its description locally.
+
+Model: **LFM2.5-VL-1.6B Q8_0 plus matching mmproj**. These examples intentionally use tested LFM2.5 checkpoints.
+
+## Build and run
+
+1. Install Android Studio with JDK 17, SDK 36, NDK `29.0.13113456`, and CMake `3.31.6`.
+2. Clone the cookbook with `git clone --recurse-submodules https://github.com/Liquid4All/cookbook.git`.
+3. Open `examples/VLMExample` in Android Studio. Keep the sibling `examples/android-common` module; it contains the shared runtime.
+4. Run on Android 12 (API 31) or newer. The app downloads the model on first use.
+
+Tap Take a picture. The app uses the fixed prompt `Describe this image.` There is no gallery picker or editable question field. The two model files require about 1.9 GB of storage.
+
+## Runtime behavior
+
+The [shared runtime](../android-common/README.md) verifies model file sizes and SHA-256 hashes before publishing them. Interrupted downloads restart safely, and verified cached files work offline. ViewModels retain models across rotation. A serialized native queue and per-instance handles prevent inference from racing cleanup or another request.
+
+The projects pin Kotlin `2.3.20` and llama.cpp `v0.9.0`. Run the shared runtime's unit and real-model instrumentation tests when changing inference or lifecycle code.
