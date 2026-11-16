@@ -1,25 +1,20 @@
-Recipe Generator
-===
+# RecipeGenerator
 
-This example demonstrates how to use LeapSDK to generate structured outputs with constraints. See [Leap documentation](https://leap.liquid.ai/docs/edge-sdk/android/constrained-generation) for more details.
+Generate a dinner recipe as five-field JSON constrained by a llama.cpp grammar.
 
-## Features
+Model: **LFM2.5-1.2B-Instruct Q5_K_M**. These examples intentionally use tested LFM2.5 checkpoints.
 
-- Generates recipe data as structured JSON output using JSON schema constraints
-- Uses `LeapDownloader` to automatically download and cache the LFM2-700M model
-- Implements kotlinx serialization for type-safe data parsing
-- Demonstrates the `@Generatable` annotation for structured output generation
+## Build and run
 
-## Implementation
+1. Install Android Studio with JDK 17, SDK 36, NDK `29.0.13113456`, and CMake `3.31.6`.
+2. Clone the cookbook with `git clone --recurse-submodules https://github.com/Liquid4All/cookbook.git`.
+3. Open `examples/RecipeGenerator` in Android Studio. Keep the sibling `examples/android-common` module; it contains the shared runtime.
+4. Run on Android 12 (API 31) or newer. The app downloads the model on first use.
 
-The main business logic is in [MainActivityViewModel.kt](app/src/main/java/ai/liquid/recipegenerator/MainActivityViewModel.kt).
+The app generates automatically on launch using the fixed prompt `A recipe for a dinner dish`. It displays name, ingredients, cookingTime, isVegetarian, and steps. Use Generate another recipe or Retry. There is no ingredient-entry field.
 
-## Requirements
+## Runtime behavior
 
-- LeapSDK 0.10.0
-- Android device or emulator with internet connection (for initial model download)
+The [shared runtime](../android-common/README.md) verifies model file sizes and SHA-256 hashes before publishing them. Interrupted downloads restart safely, and verified cached files work offline. ViewModels retain models across rotation. A serialized native queue and per-instance handles prevent inference from racing cleanup or another request.
 
-The model will be automatically downloaded and cached on first run via `LeapDownloader`.
-
-## Screenshot
-<img src="docs/screenshot.png" width="200">
+The projects pin Kotlin `2.3.20` and llama.cpp `v0.9.0`. Run the shared runtime's unit and real-model instrumentation tests when changing inference or lifecycle code.

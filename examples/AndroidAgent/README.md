@@ -1,25 +1,20 @@
-# AndroidAgent Example
+# AndroidAgent
 
-This is an example Android application that runs a tool-calling agent fully on-device with [llama.cpp](https://github.com/ggml-org/llama.cpp) and LFM2.5-1.2B-Instruct. The app showcases two agents: a calculator and a weather forecaster.
+Run a calculator or weather agent. Inference is local; weather data comes from Open-Meteo and requires internet access.
 
-## Features
-- A small agent loop in plain Kotlin: the model calls tools until it can answer
-- Tools defined as Kotlin classes with a JSON schema for their arguments
-- llama.cpp formats the tool list for the model and parses its tool calls
+Model: **LFM2.5-1.2B-Instruct Q5_K_M**. These examples intentionally use tested LFM2.5 checkpoints.
 
-## Getting Started
+## Build and run
 
-### Prerequisites
-- Android Studio with the Android NDK and CMake installed
-- Android device or emulator
+1. Install Android Studio with JDK 17, SDK 36, NDK `29.0.13113456`, and CMake `3.31.6`.
+2. Clone the cookbook with `git clone --recurse-submodules https://github.com/Liquid4All/cookbook.git`.
+3. Open `examples/AndroidAgent` in Android Studio. Keep the sibling `examples/android-common` module; it contains the shared runtime.
+4. Run on Android 12 (API 31) or newer. The app downloads the model on first use.
 
-### Model Download
-On first use, the app downloads [LFM2.5-1.2B-Instruct](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF) (Q5_K_M, about 850 MB) from Hugging Face and reuses it on later launches.
+Choose the calculator or weather agent. Try `1234 + 4321` or `London tomorrow`. Tool calls have stable IDs; weather queries request the selected date range instead of falling back to today.
 
-### Building and Running
-1. Clone the cookbook with `git clone --recurse-submodules` to get the pinned llama.cpp source.
-2. Open the `AndroidAgent` folder in Android Studio.
-3. Build and run the app on your device or emulator.
+## Runtime behavior
 
-## License
-This project is licensed under the MIT License.
+The [shared runtime](../android-common/README.md) verifies model file sizes and SHA-256 hashes before publishing them. Interrupted downloads restart safely, and verified cached files work offline. ViewModels retain models across rotation. A serialized native queue and per-instance handles prevent inference from racing cleanup or another request.
+
+The projects pin Kotlin `2.3.20` and llama.cpp `v0.9.0`. Run the shared runtime's unit and real-model instrumentation tests when changing inference or lifecycle code.
