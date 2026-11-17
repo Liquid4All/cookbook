@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="20dp"
+    android:paddingBottom="50dp"
+    android:paddingLeft="50dp"
+    android:paddingRight="50dp"
+    android:id="@+id/main_activity_layout"
+    >
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:typeface="monospace"
+        android:gravity="center"
+        android:text="@string/app_logo_text"
+        />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:paddingLeft="20dp"
+        android:paddingTop="0dp"
+        android:paddingRight="20dp"
+        android:paddingBottom="30dp"
+        android:gravity="end"
+        android:visibility="gone"
+        android:id="@+id/model_status"
+        android:color="@color/model_not_loaded_status_color"
+        />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:paddingLeft="20dp"
+        android:paddingTop="20dp"
+        android:paddingRight="20dp"
+        android:paddingBottom="30dp"
+        android:minLines="1"
+        android:maxLines="3"
+        android:inputType="textAutoCorrect"
+        android:id="@+id/user_input"
+        android:hint="@string/user_input_placeholder"
+        />
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/generate_button_label"
+        android:textSize="14sp"
+        android:id="@+id/generate_button"
+        />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/generated_text_scrollview"
+        >
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:paddingLeft="20dp"
+            android:paddingTop="20dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="20dp"
+            android:lineSpacingExtra="1.3sp"
+            android:lineSpacingMultiplier="1.0"
+            android:id="@+id/generated_text"
+            />
+    </ScrollView>
+
+</LinearLayout>
