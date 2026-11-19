@@ -160,6 +160,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
 | SFT + DPO Fine-tuning | Teaching a 1.2B model to be a grumpy Italian chef: SFT + DPO fine-tuning with Unsloth | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
 | LFM2-2.6B Mr. Tic Tac Toe | Fine-tune LFM2-2.6B with reinforcement learning to play tic-tac-toe | [Code](https://github.com/anakin87/llm-rl-environments-lil-course) |
+| LFM3-TS | LFM3-1.7B with a time-series encoder: ask about the trend, seasonality, local changes, and anomalies of a series; three-stage training recipe included | [Code](https://github.com/nardi-xhepi/lfm3-ts) |
 
 ### Deployment
 
