@@ -18,6 +18,16 @@ grouped-conv library is not shipped for gfx1010
 produces NaN gradients under fp16 AMP. Disabling AMP (or using fp32 compute with
 4bit weights) fixes it.
 
+## Real-data validation
+
+`train_real_data.py` fine-tunes on 64 examples from `HuggingFaceTB/smoltalk`
+for 20 steps (seq=512, batch=2, grad_accum=2, LoRA r=16):
+
+- Loss: 1.697 → 1.158 (final train_loss 1.561), no divergence
+- `grad_norm`: finite at every step (peak 4.031, final 0.6094)
+- Peak VRAM: **2.47 GiB**
+- Saved adapter reloads successfully via `PeftModel.from_pretrained`
+
 ## Setup
 
 ```powershell
@@ -46,6 +56,7 @@ $env:AMDGCN_USE_BUFFER_OPS="0"
 - `smoke_test_qlora.py` — recommended: NF4 4bit + fp32 compute, ~1.42 GiB peak
 - `smoke_test_fp32.py` — fp32 LoRA control run, ~6.63 GiB peak
 - `smoke_test_lora_fp16.py` — fp16 control run that reproduces the NaN gradient issue
+- `train_real_data.py` — 20-step run on real smoltalk data with loss/grad_norm logging
 
 Replace the two synthetic examples with your own `messages`-format instruction
 dataset. With only 1.42 GiB peak, `max_length` and batch size can be raised
