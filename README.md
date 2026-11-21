@@ -160,6 +160,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
 | SFT + DPO Fine-tuning | Teaching a 1.2B model to be a grumpy Italian chef: SFT + DPO fine-tuning with Unsloth | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
 | LFM2-2.6B Mr. Tic Tac Toe | Fine-tune LFM2-2.6B with reinforcement learning to play tic-tac-toe | [Code](https://github.com/anakin87/llm-rl-environments-lil-course) |
+| LFM3 on AMD RDNA1 | LoRA / QLoRA fine-tuning of LFM3-1.7B on RX 5700 XT (gfx1010) with Windows-native ROCm, including fp16-vs-fp32-vs-NF4 comparison and a NaN-gradient workaround | [Code](finetuning/amd-rdna1/README.md) |
 
 ### Deployment
 
