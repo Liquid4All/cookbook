@@ -159,9 +159,18 @@ def compute_metrics(
     probabilities = 1.0 / (1.0 + np.exp(-np.clip(logits, -30, 30)))
     predicted = (probabilities >= threshold).astype(int)
 
-    micro = precision_recall_fscore_support(target, predicted, average="micro", zero_division=0)
-    macro = precision_recall_fscore_support(target, predicted, average="macro", zero_division=0)
-    per_label = precision_recall_fscore_support(target, predicted, average=None, zero_division=0)
+    # A single indicator column is treated as binary by scikit-learn. Score only
+    # the positive class, which represents the configured label, in that case.
+    metric_labels = [1] if target.shape[1] == 1 else None
+    micro = precision_recall_fscore_support(
+        target, predicted, labels=metric_labels, average="micro", zero_division=0
+    )
+    macro = precision_recall_fscore_support(
+        target, predicted, labels=metric_labels, average="macro", zero_division=0
+    )
+    per_label = precision_recall_fscore_support(
+        target, predicted, labels=metric_labels, average=None, zero_division=0
+    )
     per_label_ap = [
         average_precision_score(target[:, index], probabilities[:, index])
         if target[:, index].any()
